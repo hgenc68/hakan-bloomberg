@@ -159,9 +159,14 @@ export default function ModelPortfolioTab() {
                       </div>
                     </td>
                     <td>
-                      <span className="badge-type hisse">
-                        {h.sector_icon || '💼'} {h.sector || h.macro_sector || 'Kurumsal'}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <span className="badge-type hisse" style={{ alignSelf: 'flex-start' }}>
+                          {h.sector_icon || '💼'} {h.macro_sector || 'Kurumsal'}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {h.sector || h.style_label}
+                        </span>
+                      </div>
                     </td>
                     <td className="text-right mono font-medium" style={{ color: 'var(--gold)' }}>
                       %{Number(h.weight_pct || 10).toFixed(1)}
@@ -179,7 +184,10 @@ export default function ModelPortfolioTab() {
                       {h.quant_score || 85.0}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 8px', fontWeight: 800 }}>
+                      <span
+                        className={`nav-badge ${h.signal?.includes('AL') ? 'emerald' : 'cyan'}`}
+                        style={{ fontSize: 9.5, padding: '3px 8px', fontWeight: 800, whiteSpace: 'nowrap', display: 'inline-block' }}
+                      >
                         {h.signal || 'GÜÇLÜ AL'}
                       </span>
                     </td>

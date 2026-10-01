@@ -41,6 +41,49 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* Universal Button Reset & Form Controls */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: inherit;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Bloomberg Universal Chips & Segmented Controls */
+.chip-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.chip-btn:hover {
+  background: rgba(0, 229, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(0, 229, 255, 0.35);
+}
+
+.chip-btn.active {
+  background: rgba(0, 229, 255, 0.15) !important;
+  color: #00e5ff !important;
+  border-color: #00e5ff !important;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+  font-weight: 700;
+}
+
 /* Container */
 .terminal-container {
   min-height: 100vh;
@@ -634,11 +677,13 @@ body {
   font-size: 10.5px;
   letter-spacing: 0.03em;
   border-bottom: 1px solid var(--border);
+  vertical-align: middle;
 }
 
 .terminal-table td {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
 }
 
 .table-row:hover {
@@ -664,9 +709,13 @@ body {
 
 .badge-type {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 2.5px 7px;
   border-radius: 4px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .badge-type.hisse { background: rgba(0, 229, 255, 0.1); color: var(--cyan); border: 1px solid rgba(0, 229, 255, 0.25); }

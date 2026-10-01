@@ -342,6 +342,7 @@ export const AppProvider = ({ children }) => {
       totalGoldCostTRY,
       goldProfitTRY,
       goldReturnPct,
+      gramGoldPrice,
       ppfBalanceTRY,
       usdtry
     };

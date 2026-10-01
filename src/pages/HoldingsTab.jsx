@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal }) {
-  const { portfolioSummary, currentCurrency, deleteHolding } = useApp();
+  const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry } = useApp();
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('val'); // default sort by Market Value
   const [sortDir, setSortDir] = useState('desc'); // default highest first
@@ -11,7 +11,14 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
-  const holdings = portfolioSummary.enrichedHoldings || [];
+  const fmt = (v, d = 2) => (Number(v) || 0).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtInt = (v) => (Number(v) || 0).toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+  const fmtShares = (v) => {
+    const n = Number(v) || 0;
+    return n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+  };
+
+  const holdings = portfolioSummary?.enrichedHoldings || [];
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -218,18 +225,18 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       </span>
                     </td>
                     <td className="text-right mono font-medium">
-                      {Number(h.shares).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                      {fmtShares(h.shares)}
                     </td>
                     <td className="text-right mono text-muted">
-                      {sym}{Number(displayedCost).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                      {sym}{fmt(displayedCost, 4)}
                     </td>
                     <td className="text-right mono text-bright">
                       <div style={{ fontWeight: 700 }}>
-                        {sym}{Number(displayedPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                        {sym}{fmt(displayedPrice, 4)}
                       </div>
                       {h.quoteCurrency === 'USD' && isTRY && (
                         <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                          (${Number(altPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })})
+                          (${fmt(altPrice, 4)})
                         </div>
                       )}
                     </td>
@@ -239,16 +246,16 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       </span>
                     </td>
                     <td className="text-right mono text-cyan" style={{ fontWeight: 800 }}>
-                      {sym}{totalVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {sym}{fmt(totalVal, 2)}
                     </td>
                     <td className="text-right mono">
                       <span className={isProfit ? 'text-up' : 'text-down'} style={{ fontWeight: 700 }}>
-                        {isProfit ? '+' : ''}{sym}{profitVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {isProfit ? '+' : ''}{sym}{fmt(profitVal, 2)}
                       </span>
                     </td>
                     <td className="text-right mono">
                       <span className={`return-badge ${isProfit ? 'up' : 'down'}`}>
-                        {isProfit ? '+' : ''}{(h.returnPct || 0).toFixed(2)}%
+                        {isProfit ? '+' : ''}{fmt(h.returnPct, 2)}%
                       </span>
                     </td>
                     <td className="text-right">
@@ -289,7 +296,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               })}
 
               {/* Sentetik Gram Altın Satırı */}
-              {portfolioSummary.totalGrams > 0 && (
+              {((portfolioSummary?.totalGrams) || 0) > 0 && (
                 <tr className="table-row synthetic-gold">
                   <td>
                     <div className="ticker-cell">
@@ -298,25 +305,25 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     </div>
                   </td>
                   <td><span className="badge-type altin">👑 Altın / Kalkan</span></td>
-                  <td className="text-right mono text-gold">{portfolioSummary.totalGrams} gr</td>
+                  <td className="text-right mono text-gold">{fmt(portfolioSummary?.totalGrams, 2)} gr</td>
                   <td className="text-right mono text-muted">
-                    ₺{(portfolioSummary.totalGoldCostTRY / portfolioSummary.totalGrams).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₺{fmt(portfolioSummary?.totalGrams > 0 ? (portfolioSummary?.totalGoldCostTRY / portfolioSummary?.totalGrams) : 0, 2)}
                   </td>
                   <td className="text-right mono text-gold">
-                    ₺{portfolioSummary.gramGoldPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₺{fmt(portfolioSummary?.gramGoldPrice || gramGoldPrice, 2)}
                   </td>
                   <td className="text-right mono"><span className="change-pill up">▲ Kalkan</span></td>
                   <td className="text-right mono text-gold" style={{ fontWeight: 800 }}>
-                    {sym}{(isTRY ? portfolioSummary.totalGoldValTRY : portfolioSummary.totalGoldValTRY / portfolioSummary.usdtry).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {sym}{fmt(isTRY ? portfolioSummary?.totalGoldValTRY : (portfolioSummary?.totalGoldValTRY / (portfolioSummary?.usdtry || usdtry || 1)), 2)}
                   </td>
                   <td className="text-right mono">
-                    <span className={portfolioSummary.goldProfitTRY >= 0 ? 'text-up' : 'text-down'} style={{ fontWeight: 700 }}>
-                      {portfolioSummary.goldProfitTRY >= 0 ? '+' : ''}{sym}{(isTRY ? portfolioSummary.goldProfitTRY : portfolioSummary.goldProfitTRY / portfolioSummary.usdtry).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className={(portfolioSummary?.goldProfitTRY || 0) >= 0 ? 'text-up' : 'text-down'} style={{ fontWeight: 700 }}>
+                      {(portfolioSummary?.goldProfitTRY || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? portfolioSummary?.goldProfitTRY : ((portfolioSummary?.goldProfitTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1)), 2)}
                     </span>
                   </td>
                   <td className="text-right mono">
-                    <span className={`return-badge ${portfolioSummary.goldReturnPct >= 0 ? 'up' : 'down'}`}>
-                      {portfolioSummary.goldReturnPct >= 0 ? '+' : ''}{portfolioSummary.goldReturnPct.toFixed(2)}%
+                    <span className={`return-badge ${(portfolioSummary?.goldReturnPct || 0) >= 0 ? 'up' : 'down'}`}>
+                      {(portfolioSummary?.goldReturnPct || 0) >= 0 ? '+' : ''}{fmt(portfolioSummary?.goldReturnPct, 2)}%
                     </span>
                   </td>
                   <td className="text-right">

@@ -36,6 +36,7 @@ export default function BenchmarkTab() {
   const curKey = isTRY ? 'try' : 'usd';
 
   const [chartType, setChartType] = useState('line'); // 'line' or 'bar'
+  const [timeframe, setTimeframe] = useState('1Y'); // '1W', '1M', '3M', '6M', '1Y', 'ALL'
   const [activeSeries, setActiveSeries] = useState({
     portfolio: true,
     SP500: true,
@@ -45,9 +46,19 @@ export default function BenchmarkTab() {
     BITCOIN: false
   });
 
-  const dates = benchmarkData.dates || [];
-  const sampleStep = Math.max(1, Math.floor(dates.length / 80));
-  const sampledDates = dates.filter((_, i) => i % sampleStep === 0);
+  const rawDates = benchmarkData.dates || [];
+  let sliceCount = rawDates.length;
+  if (timeframe === '1W') sliceCount = Math.min(rawDates.length, 6);
+  else if (timeframe === '1M') sliceCount = Math.min(rawDates.length, 22);
+  else if (timeframe === '3M') sliceCount = Math.min(rawDates.length, 65);
+  else if (timeframe === '6M') sliceCount = Math.min(rawDates.length, 130);
+  else if (timeframe === '1Y') sliceCount = Math.min(rawDates.length, 252);
+
+  const startIndex = Math.max(0, rawDates.length - sliceCount);
+  const slicedDates = rawDates.slice(startIndex);
+
+  const sampleStep = slicedDates.length > 90 ? Math.max(1, Math.floor(slicedDates.length / 75)) : 1;
+  const sampledDates = slicedDates.filter((_, i) => i % sampleStep === 0);
 
   const series = benchmarkData.normalized_series || {};
   const underwater = benchmarkData.underwater_series || {};
@@ -57,12 +68,20 @@ export default function BenchmarkTab() {
     setActiveSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const rebaseSeries = (arr) => {
+    if (!arr || arr.length === 0) return [];
+    const sliced = arr.slice(startIndex);
+    const baseVal = sliced[0] || 1;
+    const rebased = sliced.map(v => (v / baseVal) * 100);
+    return rebased.filter((_, i) => i % sampleStep === 0);
+  };
+
   // Base-100 Performance Line Chart
   const perfDatasets = [];
   if (activeSeries.portfolio && series[`portfolio_${curKey}`]) {
     perfDatasets.push({
       label: 'PORTFÖYÜNÜZ',
-      data: series[`portfolio_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      data: rebaseSeries(series[`portfolio_${curKey}`]),
       borderColor: '#ffffff',
       backgroundColor: 'rgba(255, 255, 255, 0.08)',
       borderWidth: 2.5,
@@ -73,7 +92,7 @@ export default function BenchmarkTab() {
   if (activeSeries.SP500 && series[`SP500_${curKey}`]) {
     perfDatasets.push({
       label: 'S&P 500 (^GSPC)',
-      data: series[`SP500_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      data: rebaseSeries(series[`SP500_${curKey}`]),
       borderColor: '#3b82f6',
       borderWidth: 1.8,
       pointRadius: 0,
@@ -83,7 +102,7 @@ export default function BenchmarkTab() {
   if (activeSeries.NASDAQ && series[`NASDAQ_${curKey}`]) {
     perfDatasets.push({
       label: 'Nasdaq 100 (^NDX)',
-      data: series[`NASDAQ_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      data: rebaseSeries(series[`NASDAQ_${curKey}`]),
       borderColor: '#a855f7',
       borderWidth: 1.8,
       pointRadius: 0,
@@ -93,7 +112,7 @@ export default function BenchmarkTab() {
   if (activeSeries.BIST100 && series[`BIST100_${curKey}`]) {
     perfDatasets.push({
       label: 'BIST 100 (XU100.IS)',
-      data: series[`BIST100_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      data: rebaseSeries(series[`BIST100_${curKey}`]),
       borderColor: '#ef4444',
       borderWidth: 1.8,
       pointRadius: 0,
@@ -103,7 +122,7 @@ export default function BenchmarkTab() {
   if (activeSeries.GOLD && series[`GOLD_${curKey}`]) {
     perfDatasets.push({
       label: 'Altın Ons (GC=F)',
-      data: series[`GOLD_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      data: rebaseSeries(series[`GOLD_${curKey}`]),
       borderColor: '#eab308',
       borderWidth: 1.8,
       pointRadius: 0,
@@ -113,7 +132,7 @@ export default function BenchmarkTab() {
   if (activeSeries.BITCOIN && series[`BITCOIN_${curKey}`]) {
     perfDatasets.push({
       label: 'Bitcoin (BTC-USD)',
-      data: series[`BITCOIN_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      data: rebaseSeries(series[`BITCOIN_${curKey}`]),
       borderColor: '#f97316',
       borderWidth: 1.8,
       pointRadius: 0,
@@ -207,7 +226,7 @@ export default function BenchmarkTab() {
   };
 
   // Underwater Drawdown Chart
-  const rawUnderwater = underwater[curKey] || [];
+  const rawUnderwater = (underwater[curKey] || []).slice(startIndex);
   const sampledUnderwater = rawUnderwater.filter((_, i) => i % sampleStep === 0);
 
   const underwaterChartData = {
@@ -289,30 +308,55 @@ export default function BenchmarkTab() {
                 {chartType === 'line' ? 'GÖSTERGELERE GÖRE NORMALİZE PERFORMANS (BAZ 100)' : 'BENCHMARK GETİRİ KARŞILAŞTIRMA ÇUBUK GRAFİĞİ'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                {chartType === 'line' ? 'Portföy ve benchmarkların 1 yıllık kümülatif getiri eğrileri' : '1 Yıllık Dönem Getirisi ve Yıllıklandırılmış CAGR Karşılaştırması'}
+                {chartType === 'line' ? `${timeframe} dönemi normalize getiri eğrileri (Başlangıç = 100)` : 'Dönem Getirisi ve Yıllıklandırılmış CAGR Karşılaştırması'}
               </div>
             </div>
 
-            {/* View Mode Toggle: Line vs Bar */}
-            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }}>
-              <button
-                type="button"
-                className={`chip-btn ${chartType === 'line' ? 'active' : ''}`}
-                onClick={() => setChartType('line')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-              >
-                <LineChart size={13} />
-                <span>Çizgi Grafik (Baz 100)</span>
-              </button>
-              <button
-                type="button"
-                className={`chip-btn ${chartType === 'bar' ? 'active' : ''}`}
-                onClick={() => setChartType('bar')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-              >
-                <BarChart3 size={13} />
-                <span>Çubuk Grafik (Karşılaştırma)</span>
-              </button>
+            {/* Timeframe & View Mode Toggles */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {/* Timeframe Selectors */}
+              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border)', borderRadius: 4, padding: 2, gap: 2 }}>
+                {[
+                  { id: '1W', label: '1H' },
+                  { id: '1M', label: '1A' },
+                  { id: '3M', label: '3A' },
+                  { id: '6M', label: '6A' },
+                  { id: '1Y', label: '1Y' },
+                  { id: 'ALL', label: 'TÜMÜ' }
+                ].map(tf => (
+                  <button
+                    key={tf.id}
+                    type="button"
+                    className={`chip-btn ${timeframe === tf.id ? 'active' : ''}`}
+                    onClick={() => setTimeframe(tf.id)}
+                    style={{ padding: '3px 8px', fontSize: 11, fontWeight: 700 }}
+                  >
+                    {tf.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* View Mode Toggle: Line vs Bar */}
+              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }}>
+                <button
+                  type="button"
+                  className={`chip-btn ${chartType === 'line' ? 'active' : ''}`}
+                  onClick={() => setChartType('line')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  <LineChart size={13} />
+                  <span>Çizgi Grafik</span>
+                </button>
+                <button
+                  type="button"
+                  className={`chip-btn ${chartType === 'bar' ? 'active' : ''}`}
+                  onClick={() => setChartType('bar')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  <BarChart3 size={13} />
+                  <span>Çubuk Grafik</span>
+                </button>
+              </div>
             </div>
           </div>
 

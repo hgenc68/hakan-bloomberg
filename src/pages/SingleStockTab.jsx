@@ -83,32 +83,66 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const marginOfSafety = curPrice > 0 ? Math.round(((simFairValRounded - curPrice) / curPrice) * 1000) / 10 : 0;
   const isUndervalued = marginOfSafety >= 0;
 
-  // Qualtrim 4-metric Bar Chart Data
-  const quarters = qData.quarters || ['2023 Q1', '2023 Q2', '2023 Q3', '2023 Q4', '2024 Q1', '2024 Q2', '2024 Q3', '2024 Q4'];
-  const revenue = qData.revenue || [7192, 13507, 18120, 22103, 26044, 30040, 35082, 39331];
-  const netIncome = qData.net_income || [2043, 6188, 9243, 12285, 14881, 16599, 19309, 21900];
-  const fcf = qData.fcf || [2658, 6048, 7042, 11217, 14936, 13483, 16787, 18200];
+  // Qualtrim 4-metric Multi-Chart Data (Revenue, Net Income, FCF + Historical Stock Price Overlay)
+  const quarters = qData.quarters || ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  
+  // Auto-scale large financial figures to Millions for crystal-clear readability
+  const maxRev = Math.max(...(qData.revenue || [1000]).filter(v => v !== null));
+  const scaleDiv = maxRev > 10000000 ? 1000000 : 1;
+  const unitSuffix = maxRev > 10000000 ? ' (M)' : '';
+
+  const revenue = (qData.revenue || [7192, 13507, 18120, 22103, 26044, 30040, 35082, 39331]).map(v => v !== null ? v / scaleDiv : null);
+  const netIncome = (qData.net_income || [2043, 6188, 9243, 12285, 14881, 16599, 19309, 21900]).map(v => v !== null ? v / scaleDiv : null);
+  const fcf = (qData.fcf || [2658, 6048, 7042, 11217, 14936, 13483, 16787, 18200]).map(v => v !== null ? v / scaleDiv : null);
+
+  // Historical Stock Price Line Overlay
+  const rawPrices = qData.price || quarters.map((_, i) => curPrice * (0.65 + (i / quarters.length) * 0.35));
+  const priceData = rawPrices.map(v => v !== null ? Number(v) : null);
 
   const qualtrimChartData = {
     labels: quarters,
     datasets: [
       {
-        label: 'Gelir (Revenue)',
+        type: 'line',
+        label: `Hisse Fiyatı (${currencySym})`,
+        data: priceData,
+        borderColor: '#fbbf24',
+        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#fbbf24',
+        pointBorderColor: '#fff',
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        tension: 0.3,
+        yAxisID: 'yPrice',
+        order: 1
+      },
+      {
+        type: 'bar',
+        label: `Gelir (Revenue)${unitSuffix}`,
         data: revenue,
         backgroundColor: '#3b82f6',
-        borderRadius: 4
+        borderRadius: 4,
+        yAxisID: 'yFinancials',
+        order: 2
       },
       {
-        label: 'Net Kâr (Net Income)',
+        type: 'bar',
+        label: `Net Kâr (Net Income)${unitSuffix}`,
         data: netIncome,
         backgroundColor: '#10b981',
-        borderRadius: 4
+        borderRadius: 4,
+        yAxisID: 'yFinancials',
+        order: 3
       },
       {
-        label: 'Serbest Nakit Akışı (FCF)',
+        type: 'bar',
+        label: `Serbest Nakit Akışı (FCF)${unitSuffix}`,
         data: fcf,
         backgroundColor: '#00e5ff',
-        borderRadius: 4
+        borderRadius: 4,
+        yAxisID: 'yFinancials',
+        order: 4
       }
     ]
   };
@@ -120,11 +154,59 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       legend: {
         position: 'top',
         labels: { color: '#94a3b8', font: { size: 10 } }
+      },
+      tooltip: {
+        backgroundColor: '#0f172a',
+        titleColor: '#e2e8f0',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        callbacks: {
+          label: (ctx) => {
+            if (ctx.dataset.yAxisID === 'yPrice') {
+              return ` ${ctx.dataset.label}: ${currencySym}${Number(ctx.raw || 0).toFixed(2)}`;
+            }
+            return ` ${ctx.dataset.label}: ${currencySym}${Number(ctx.raw || 0).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`;
+          }
+        }
       }
     },
     scales: {
-      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { size: 10 } } },
-      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { size: 10 } } }
+      x: {
+        grid: { color: 'rgba(255,255,255,0.04)' },
+        ticks: { color: '#64748b', font: { size: 10 } }
+      },
+      yFinancials: {
+        type: 'linear',
+        position: 'left',
+        grid: { color: 'rgba(255,255,255,0.04)' },
+        ticks: {
+          color: '#64748b',
+          font: { size: 10 },
+          callback: (v) => `${v.toLocaleString('tr-TR')}`
+        },
+        title: {
+          display: true,
+          text: `Bilanço ${unitSuffix} (${currencySym})`,
+          color: '#64748b',
+          font: { size: 9 }
+        }
+      },
+      yPrice: {
+        type: 'linear',
+        position: 'right',
+        grid: { drawOnChartArea: false },
+        ticks: {
+          color: '#fbbf24',
+          font: { size: 10, weight: 'bold' },
+          callback: (v) => `${currencySym}${v}`
+        },
+        title: {
+          display: true,
+          text: `Fiyat (${currencySym})`,
+          color: '#fbbf24',
+          font: { size: 9 }
+        }
+      }
     }
   };
 

@@ -77,72 +77,82 @@ export default function Top10QuantTab({ onSelectStock }) {
             />
           </div>
 
-          {/* Market Filter */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }}>
-            <button
-              type="button"
-              className={`chip-btn ${marketFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setMarketFilter('all')}
-            >
-              Tümü
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${marketFilter === 'bist' ? 'active' : ''}`}
-              onClick={() => setMarketFilter('bist')}
-            >
-              🇹🇷 BIST 100
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${marketFilter === 'us' ? 'active' : ''}`}
-              onClick={() => setMarketFilter('us')}
-            >
-              🇺🇸 Wall Street
-            </button>
-          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {/* Market Filter */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 3, gap: 3 }}>
+              <button
+                type="button"
+                className={`chip-btn ${marketFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setMarketFilter('all')}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                🌐 Tümü
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${marketFilter === 'bist' ? 'active' : ''}`}
+                onClick={() => setMarketFilter('bist')}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                🇹🇷 BIST 100
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${marketFilter === 'us' ? 'active' : ''}`}
+                onClick={() => setMarketFilter('us')}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                🇺🇸 Wall Street
+              </button>
+            </div>
 
-          {/* Style Filter */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }}>
-            <button
-              type="button"
-              className={`chip-btn ${styleFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setStyleFilter('all')}
-            >
-              Tüm Stiller
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${styleFilter === 'value' ? 'active' : ''}`}
-              onClick={() => setStyleFilter('value')}
-            >
-              🛡️ Derin Değer
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${styleFilter === 'growth' ? 'active' : ''}`}
-              onClick={() => setStyleFilter('growth')}
-            >
-              🚀 Büyüme & Tekel
-            </button>
-          </div>
+            {/* Style Filter */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 3, gap: 3 }}>
+              <button
+                type="button"
+                className={`chip-btn ${styleFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStyleFilter('all')}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                💎 Tüm Stiller
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${styleFilter === 'value' ? 'active' : ''}`}
+                onClick={() => setStyleFilter('value')}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                🛡️ Derin Değer
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${styleFilter === 'growth' ? 'active' : ''}`}
+                onClick={() => setStyleFilter('growth')}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                🚀 Büyüme & Tekel
+              </button>
+            </div>
 
-          {/* Limit Filter */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }}>
-            <button
-              type="button"
-              className={`chip-btn ${limit === 10 ? 'active' : ''}`}
-              onClick={() => setLimit(10)}
-            >
-              İlk 10
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${limit === 25 ? 'active' : ''}`}
-              onClick={() => setLimit(25)}
-            >
-              İlk 25
-            </button>
+            {/* Limit Filter */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 3, gap: 3 }}>
+              <button
+                type="button"
+                className={`chip-btn ${limit === 10 ? 'active' : ''}`}
+                onClick={() => setLimit(10)}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                İlk 10
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${limit === 25 ? 'active' : ''}`}
+                onClick={() => setLimit(25)}
+                style={{ padding: '4px 10px', fontSize: 11 }}
+              >
+                İlk 25
+              </button>
+            </div>
           </div>
         </div>
       </div>

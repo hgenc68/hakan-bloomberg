@@ -44,6 +44,8 @@ export default function RiskRadarTab() {
 
   const stressScenarios = [
     {
+      shortTitle: 'Faiz Şoku (+1000)',
+      icon: '⚡',
       title: 'TCMB / Küresel Faiz Şoku (+1000 bps)',
       badge: 'Faiz Riski',
       badgeColor: 'amber',
@@ -53,6 +55,8 @@ export default function RiskRadarTab() {
       why: 'PPF nakit barutunun faiz getirisi artarken, hisse senetlerinde çarpan daralması yaşanır. Kalkan tamponu zararı sınırlar.'
     },
     {
+      shortTitle: 'Kur Sıçraması (+%30)',
+      icon: '📈',
       title: 'Ani Kur Sıçraması (+%30 Devalüasyon)',
       badge: 'Döviz Şoku',
       badgeColor: 'emerald',
@@ -62,6 +66,8 @@ export default function RiskRadarTab() {
       why: 'Doğal kur kalkanı (%82.4) sayesinde Gram Altın, ABD Hisseleri ve Kriptolar TL bazında güçlü kazanç yazdırır.'
     },
     {
+      shortTitle: 'Küresel Kriz (-%25)',
+      icon: '🌪️',
       title: 'Küresel Borsa Çöküşü (S&P %25 Düşüş)',
       badge: 'Sermaye Çöküşü',
       badgeColor: 'bad',
@@ -71,6 +77,8 @@ export default function RiskRadarTab() {
       why: 'Hisse varlıkları gerilerken Gram Altın ve PPF nakit tamponu portföyü dengeler ve dipten maliyetlenme fırsatı sunar.'
     },
     {
+      shortTitle: 'Stagflasyon Şoku',
+      icon: '🧱',
       title: 'Stagflasyon (Yüksek Enflasyon + Durgunluk)',
       badge: 'Stagflasyon',
       badgeColor: 'amber',
@@ -80,6 +88,8 @@ export default function RiskRadarTab() {
       why: 'Emtia ve altın gibi reel kıymetler değer koruma özelliği sergileyerek portföyün satın alma gücünü muhafaza eder.'
     },
     {
+      shortTitle: 'Kripto Kışı (BTC -%50)',
+      icon: '❄️',
       title: 'Kripto Kışı (Bitcoin %50 Düzeltme)',
       badge: 'Kripto Volatilitesi',
       badgeColor: 'amber',
@@ -222,61 +232,109 @@ export default function RiskRadarTab() {
         </div>
 
         {/* Right Column: Macro Shock & Stress Simulator */}
-        <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div className="card" style={{ padding: 20, background: 'linear-gradient(145deg, #0a0d16 0%, #0d121f 100%)', border: '1px solid rgba(0, 229, 255, 0.25)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 8 }}>
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Zap size={16} className="text-amber" />
-                <span>MAKRO ŞOK & STRES SİMÜLATÖRÜ</span>
+                <Zap size={17} style={{ color: '#f59e0b', filter: 'drop-shadow(0 0 6px rgba(245,158,11,0.6))' }} />
+                <span style={{ letterSpacing: '0.5px' }}>MAKRO ŞOK & STRES SİMÜLATÖRÜ</span>
               </div>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                Tıklayarak Senaryoyu Simüle Edin
+              <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                Monte Carlo Dayanıklılık
               </span>
             </div>
 
             {/* Scenario Buttons */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-              {stressScenarios.map((sc, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`chip-btn ${selectedScenarioIdx === idx ? 'active' : ''}`}
-                  onClick={() => setSelectedScenarioIdx(idx)}
-                  style={{
-                    borderColor: selectedScenarioIdx === idx ? 'var(--cyan)' : 'transparent',
-                    fontSize: 11
-                  }}
-                >
-                  {sc.title.split('(')[0].trim()}
-                </button>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 6, marginBottom: 16 }}>
+              {stressScenarios.map((sc, idx) => {
+                const isActive = selectedScenarioIdx === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`chip-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setSelectedScenarioIdx(idx)}
+                    style={{
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      padding: '8px 10px',
+                      fontSize: 11,
+                      fontWeight: isActive ? 700 : 500,
+                      background: isActive ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      borderColor: isActive ? 'var(--cyan)' : 'rgba(255, 255, 255, 0.08)',
+                      color: isActive ? '#00e5ff' : '#94a3b8',
+                      boxShadow: isActive ? '0 0 14px rgba(0, 229, 255, 0.25)' : 'none'
+                    }}
+                  >
+                    <span>{sc.icon}</span>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sc.shortTitle}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Selected Scenario Impact Card */}
-            <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: 16, marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className={`nav-badge ${currentSc.badgeColor || 'amber'}`} style={{ fontSize: 10 }}>
-                    {currentSc.badge}
-                  </span>
-                  <strong style={{ color: '#fff', fontSize: 13 }}>{currentSc.title}</strong>
+            {/* Selected Scenario Dynamic Impact Card */}
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 18, marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span className={`nav-badge ${currentSc.badgeColor || 'amber'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+                      {currentSc.badge}
+                    </span>
+                    <strong style={{ color: '#fff', fontSize: 14 }}>{currentSc.title}</strong>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{currentSc.desc}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: currentSc.impactPct >= 0 ? 'var(--emerald)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
+
+                <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: 12 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: currentSc.impactPct >= 0 ? '#10b981' : '#ef4444', fontFamily: 'var(--font-mono)', textShadow: currentSc.impactPct >= 0 ? '0 0 12px rgba(16,185,129,0.4)' : '0 0 12px rgba(239,68,68,0.4)' }}>
                     {currentSc.impactPct >= 0 ? '+' : ''}{sym}{Math.abs(isTRY ? currentSc.impactTRY : currentSc.impactTRY / usdtry).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                   </div>
-                  <div style={{ fontSize: 11, color: currentSc.impactPct >= 0 ? 'var(--emerald)' : 'var(--red)', fontWeight: 700 }}>
-                    {currentSc.impactPct >= 0 ? '+' : ''}{currentSc.impactPct}% Etki
+                  <div style={{ fontSize: 12, fontWeight: 800, color: currentSc.impactPct >= 0 ? '#10b981' : '#ef4444' }}>
+                    {currentSc.impactPct >= 0 ? '▲ +' : '▼ '}{currentSc.impactPct}% Portföy Etkisi
                   </div>
                 </div>
               </div>
 
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4, margin: '0 0 10px 0' }}>
-                {currentSc.desc}
-              </p>
+              {/* Stress Gauge Bar */}
+              <div style={{ marginTop: 14, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#64748b', marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
+                  <span>-%15 Kritik Eşik</span>
+                  <span style={{ color: '#94a3b8' }}>0 Nötr</span>
+                  <span>+%15 Kazanç</span>
+                </div>
+                <div style={{ height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, position: 'relative', overflow: 'hidden' }}>
+                  {/* Zero Line Marker */}
+                  <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 2, background: 'rgba(255,255,255,0.2)', zIndex: 2 }}></div>
+                  
+                  {/* Dynamic Fill */}
+                  {currentSc.impactPct >= 0 ? (
+                    <div style={{
+                      position: 'absolute',
+                      left: '50%',
+                      width: `${Math.min(50, (currentSc.impactPct / 15) * 50)}%`,
+                      top: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(90deg, #10b981, #00e5ff)',
+                      boxShadow: '0 0 8px rgba(16,185,129,0.8)'
+                    }}></div>
+                  ) : (
+                    <div style={{
+                      position: 'absolute',
+                      right: '50%',
+                      width: `${Math.min(50, (Math.abs(currentSc.impactPct) / 15) * 50)}%`,
+                      top: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(90deg, #ef4444, #f59e0b)',
+                      boxShadow: '0 0 8px rgba(239,68,68,0.8)'
+                    }}></div>
+                  )}
+                </div>
+              </div>
 
-              <div style={{ fontSize: 11, color: '#cbd5e1', background: 'rgba(0,0,0,0.3)', borderRadius: 4, padding: 10 }}>
-                <strong style={{ color: 'var(--cyan)' }}>İtici Güç & Risk Faktörü: </strong>
+              {/* Rationale callout */}
+              <div style={{ background: 'rgba(0, 229, 255, 0.05)', borderLeft: '3px solid var(--cyan)', borderRadius: '0 4px 4px 0', padding: '10px 12px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.4 }}>
+                <strong style={{ color: 'var(--cyan)' }}>🛡️ Portföy Savunma Mekanizması: </strong>
                 <span>{currentSc.why}</span>
               </div>
             </div>
@@ -284,16 +342,16 @@ export default function RiskRadarTab() {
 
           {/* Quick Metrics Banner */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            <div style={{ background: '#090d16', padding: '10px 12px', borderRadius: 4, textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Maksimum Kayıp (VaR %95)</div>
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Maksimum Kayıp (VaR %95)</div>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--red)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>-%2.84</div>
             </div>
-            <div style={{ background: '#090d16', padding: '10px 12px', borderRadius: 4, textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Doğal Kur Kalkanı</div>
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Doğal Kur Kalkanı</div>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>%82.4</div>
             </div>
-            <div style={{ background: '#090d16', padding: '10px 12px', borderRadius: 4, textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>PPF Kuru Barut Gücü</div>
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>PPF Kuru Barut Gücü</div>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>₺45.000</div>
             </div>
           </div>
