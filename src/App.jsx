@@ -6,6 +6,7 @@ import MarketPulseTab from './pages/MarketPulseTab';
 import OverviewTab from './pages/OverviewTab';
 import HoldingsTab from './pages/HoldingsTab';
 import BenchmarkTab from './pages/BenchmarkTab';
+import RiskRadarTab from './pages/RiskRadarTab';
 import ShieldTab from './pages/ShieldTab';
 import SingleStockTab from './pages/SingleStockTab';
 import Top10QuantTab from './pages/Top10QuantTab';
@@ -57,7 +58,7 @@ function MainTerminal() {
       {/* Header with Ticker Tape */}
       <Header />
 
-      {/* Subnav Pills (10 Tabs) */}
+      {/* Subnav Pills (11 Tabs) */}
       <Navigation />
 
       {/* Main Workspace View */}
@@ -75,6 +76,8 @@ function MainTerminal() {
         )}
 
         {activeTab === 'benchmark' && <BenchmarkTab />}
+
+        {activeTab === 'health' && <RiskRadarTab />}
 
         {activeTab === 'shield' && (
           <ShieldTab

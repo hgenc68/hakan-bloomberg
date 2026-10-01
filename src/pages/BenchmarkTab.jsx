@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
   Filler,
   ArcElement
 } from 'chart.js';
-import { LineChart, Shield, Activity, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { LineChart, BarChart3, Shield, Activity, HelpCircle, CheckCircle2 } from 'lucide-react';
 import benchmarkData from '../data/benchmarkData.json';
 
 ChartJS.register(
@@ -21,6 +22,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -33,6 +35,7 @@ export default function BenchmarkTab() {
   const isTRY = currentCurrency === 'try';
   const curKey = isTRY ? 'try' : 'usd';
 
+  const [chartType, setChartType] = useState('line'); // 'line' or 'bar'
   const [activeSeries, setActiveSeries] = useState({
     portfolio: true,
     SP500: true,
@@ -43,7 +46,6 @@ export default function BenchmarkTab() {
   });
 
   const dates = benchmarkData.dates || [];
-  // Sample every 2nd or 3rd date to keep chart smooth and fast
   const sampleStep = Math.max(1, Math.floor(dates.length / 80));
   const sampledDates = dates.filter((_, i) => i % sampleStep === 0);
 
@@ -55,7 +57,7 @@ export default function BenchmarkTab() {
     setActiveSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Base-100 Performance Chart
+  // Base-100 Performance Line Chart
   const perfDatasets = [];
   if (activeSeries.portfolio && series[`portfolio_${curKey}`]) {
     perfDatasets.push({
@@ -154,6 +156,56 @@ export default function BenchmarkTab() {
     }
   };
 
+  // Comparative Bar Chart Data
+  const barBenchmarkKeys = ['PORTFOLIO', 'SP500', 'NASDAQ', 'BIST100', 'GOLD', 'BITCOIN'];
+  const barLabels = ['PORTFÖYÜNÜZ', 'S&P 500', 'Nasdaq 100', 'BIST 100', 'Altın (Ons)', 'Bitcoin'];
+  const barColors = ['#ffffff', '#3b82f6', '#a855f7', '#ef4444', '#eab308', '#f97316'];
+
+  const barPeriodReturns = barBenchmarkKeys.map(k => metrics[k]?.period_return || 0);
+  const barCAGRReturns = barBenchmarkKeys.map(k => metrics[k]?.cagr || 0);
+
+  const barChartData = {
+    labels: barLabels,
+    datasets: [
+      {
+        label: '1 Yıllık Kümülatif Getiri (%)',
+        data: barPeriodReturns,
+        backgroundColor: barColors,
+        borderRadius: 4
+      },
+      {
+        label: 'Yıllıklandırılmış Getiri (CAGR %)',
+        data: barCAGRReturns,
+        backgroundColor: barColors.map(c => c + '77'), // transparent version
+        borderRadius: 4
+      }
+    ]
+  };
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: { color: '#94a3b8', font: { size: 11 } }
+      },
+      tooltip: {
+        backgroundColor: '#0f172a',
+        callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(2)}%`
+        }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#e2e8f0', font: { size: 11, weight: 'bold' } } },
+      y: {
+        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+        ticks: { color: '#64748b', font: { size: 10 }, callback: (v) => `${v}%` }
+      }
+    }
+  };
+
   // Underwater Drawdown Chart
   const rawUnderwater = underwater[curKey] || [];
   const sampledUnderwater = rawUnderwater.filter((_, i) => i % sampleStep === 0);
@@ -215,7 +267,7 @@ export default function BenchmarkTab() {
             <span>PORTFÖY & BENCHMARK KARŞILAŞTIRMA (GIPS KURUMSAL STANDARDI)</span>
           </h2>
           <p className="workspace-subtitle">
-            Normalize Baz-100 Getiri Eğrisi, Underwater Drawdown ve Çoklu Gösterge Risk Matrisi (Alpha, Beta, Sharpe, Sortino, Calmar)
+            Çizgi ve Çubuk grafik seçenekleriyle normalize getiri eğrisi, Underwater Drawdown ve Çoklu Gösterge Risk Matrisi (Alpha, Beta, Sharpe, Sortino, Calmar)
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -230,18 +282,43 @@ export default function BenchmarkTab() {
         
         {/* Performance & Underwater Card */}
         <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          {/* Chart Header & Interactive Series Toggles */}
+          {/* Chart Header & Mode Toggles */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0' }}>
-                GÖSTERGELERE GÖRE NORMALİZE PERFORMANS (BAZ 100)
+                {chartType === 'line' ? 'GÖSTERGELERE GÖRE NORMALİZE PERFORMANS (BAZ 100)' : 'BENCHMARK GETİRİ KARŞILAŞTIRMA ÇUBUK GRAFİĞİ'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                Portföy ve benchmarkların 1 yıllık kümülatif getiri eğrileri
+                {chartType === 'line' ? 'Portföy ve benchmarkların 1 yıllık kümülatif getiri eğrileri' : '1 Yıllık Dönem Getirisi ve Yıllıklandırılmış CAGR Karşılaştırması'}
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {/* View Mode Toggle: Line vs Bar */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }}>
+              <button
+                type="button"
+                className={`chip-btn ${chartType === 'line' ? 'active' : ''}`}
+                onClick={() => setChartType('line')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <LineChart size={13} />
+                <span>Çizgi Grafik (Baz 100)</span>
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${chartType === 'bar' ? 'active' : ''}`}
+                onClick={() => setChartType('bar')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <BarChart3 size={13} />
+                <span>Çubuk Grafik (Karşılaştırma)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Series Toggles (Active for Line Chart) */}
+          {chartType === 'line' && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
               <button
                 type="button"
                 className={`chip-btn ${activeSeries.portfolio ? 'active' : ''}`}
@@ -291,11 +368,15 @@ export default function BenchmarkTab() {
                 🟠 Bitcoin
               </button>
             </div>
-          </div>
+          )}
 
-          {/* Performance Chart Box */}
+          {/* Chart Display Area */}
           <div style={{ height: 320, width: '100%', marginBottom: 16 }}>
-            <Line data={perfChartData} options={perfChartOptions} />
+            {chartType === 'line' ? (
+              <Line data={perfChartData} options={perfChartOptions} />
+            ) : (
+              <Bar data={barChartData} options={barChartOptions} />
+            )}
           </div>
 
           {/* Underwater Drawdown Chart Box */}

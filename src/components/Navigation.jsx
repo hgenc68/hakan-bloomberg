@@ -5,6 +5,7 @@ import {
   BarChart3, 
   ListFilter, 
   LineChart, 
+  Snowflake,
   ShieldCheck, 
   Target, 
   Trophy, 
@@ -21,12 +22,13 @@ export default function Navigation() {
 
   const tabs = [
     { id: 'market', label: 'Piyasa Özeti', icon: Globe, badge: 'CANLI', badgeColor: 'cyan' },
-    { id: 'overview', label: 'Genel Durum', icon: BarChart3 },
+    { id: 'overview', label: 'Portföy (Özet)', icon: BarChart3 },
     { id: 'holdings', label: 'Pozisyonlar', icon: ListFilter, badge: `${portfolioSummary.enrichedHoldings?.length || 0}`, badgeColor: 'amber' },
     { id: 'benchmark', label: 'Benchmark', icon: LineChart, badge: 'GIPS', badgeColor: 'cyan' },
+    { id: 'health', label: 'Sağlık (Kar Tanesi)', icon: Snowflake, badge: 'A-', badgeColor: 'emerald' },
     { id: 'shield', label: 'Kur Kalkanı', icon: ShieldCheck, badge: 'Zırh', badgeColor: 'gold' },
-    { id: 'single_stock', label: 'Tekil Hisse Radarı', icon: Target, badge: 'DCF', badgeColor: 'emerald' },
-    { id: 'top10', label: 'En Güçlü 10 Hisse', icon: Trophy, badge: 'Quant', badgeColor: 'emerald' },
+    { id: 'single_stock', label: 'Tekil Hisse', icon: Target, badge: 'DCF', badgeColor: 'emerald' },
+    { id: 'top10', label: 'En Güçlü 10', icon: Trophy, badge: 'Quant', badgeColor: 'emerald' },
     { id: 'model', label: 'Model Portföy', icon: Briefcase, badge: 'Hibrit', badgeColor: 'cyan' },
     { id: 'ledger', label: 'Kâr Defteri', icon: ScrollText, badge: realizedBadge, badgeColor: 'emerald' },
     { id: 'manage', label: 'Yönetim', icon: PlusCircle, badge: 'CRUD', badgeColor: 'amber' }

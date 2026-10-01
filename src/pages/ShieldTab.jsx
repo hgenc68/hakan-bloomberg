@@ -73,7 +73,6 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
 
   const stressResults = scenarios.map(sc => {
     const newRate = usdtry * (1 + sc.shock);
-    // Portföydeki varlıkların tepkisi
     let simValTRY = 0;
     catConfig.forEach(c => {
       const v = catTotalsTRY[c.key] || 0;
@@ -85,7 +84,6 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
     const simValUSD = simValTRY / newRate;
     const usdPurchasingChangePct = ((simValUSD - totalValUSD) / totalValUSD) * 100;
 
-    // TL mevduatta kalan birinin USD kaybı:
     const unhedgedUSD = totalValTRY / newRate;
     const unhedgedLossPct = ((unhedgedUSD - totalValUSD) / totalValUSD) * 100;
     const alphaVsUnhedged = usdPurchasingChangePct - unhedgedLossPct;
@@ -211,7 +209,7 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>📊</span>
-            <span>6 VARLIK SINIFI KURUMSAL DAĞILIM VE HEDEF MATRİSİ</span>
+            <span>6 VARLIK SINIFI KURUMSAL DAĞILIM VE HEDEF İLERLEMESİ</span>
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             Barbell Portföy Mimarisi
@@ -228,8 +226,7 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
                 <th className="text-right">Mevcut Pay (%)</th>
                 <th className="text-right">Hedef Pay (%)</th>
                 <th className="text-right">Sapma (Delta)</th>
-                <th className="text-right">Kur Koruma (Katsayı)</th>
-                <th className="text-right">Durum</th>
+                <th style={{ width: 190 }}>Hedef İlerlemesi (Durum Çubuğu)</th>
               </tr>
             </thead>
             <tbody>
@@ -237,15 +234,21 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
                 const val = catTotalsTRY[cat.key] || 0;
                 const weight = (val / totalValTRY) * 100;
                 const delta = weight - cat.target;
+                const targetPct = cat.target || 1;
+                const progressRatio = Math.round((weight / targetPct) * 100);
+                const barFillWidth = Math.min(100, progressRatio);
 
-                let statusBadge = 'emerald';
-                let statusText = 'Dengeli';
-                if (delta > 5) {
-                  statusBadge = 'amber';
-                  statusText = 'Aşırı Ağırlık (+)';
-                } else if (delta < -5) {
-                  statusBadge = 'cyan';
-                  statusText = 'Eksik Ağırlık (-)';
+                let progressColor = '#00e5ff'; // cyan
+                let statusLabel = `%${progressRatio} Tamamlandı`;
+                if (progressRatio >= 90 && progressRatio <= 115) {
+                  progressColor = '#10b981'; // emerald
+                  statusLabel = `%${progressRatio} (Tam Dengede)`;
+                } else if (progressRatio > 115) {
+                  progressColor = '#eab308'; // amber / gold
+                  statusLabel = `%${progressRatio} (Aşırı Ağırlık +)`;
+                } else if (progressRatio < 60) {
+                  progressColor = '#f97316'; // orange
+                  statusLabel = `%${progressRatio} (Eksik Kalan -)`;
                 }
 
                 return (
@@ -271,13 +274,30 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
                     <td className="text-right mono" style={{ color: delta >= 0 ? 'var(--emerald)' : 'var(--amber)' }}>
                       {delta >= 0 ? '+' : ''}{delta.toFixed(2)}%
                     </td>
-                    <td className="text-right mono">
-                      %{Math.round(cat.coef * 100)}
-                    </td>
-                    <td className="text-right">
-                      <span className={`nav-badge ${statusBadge}`} style={{ fontSize: 9.5, padding: '2px 6px' }}>
-                        {statusText}
-                      </span>
+                    {/* Visual Horizontal Progress Bar */}
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                          <span style={{ color: progressColor, fontWeight: 800 }}>
+                            {statusLabel}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                            %{weight.toFixed(1)} / %{cat.target.toFixed(0)}
+                          </span>
+                        </div>
+                        {/* Track & Bar */}
+                        <div style={{ width: '100%', height: 7, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: `${barFillWidth}%`,
+                              height: '100%',
+                              background: progressColor,
+                              borderRadius: 4,
+                              transition: 'width 0.6s ease'
+                            }}
+                          />
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 );

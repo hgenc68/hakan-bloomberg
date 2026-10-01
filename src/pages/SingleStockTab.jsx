@@ -1,8 +1,30 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Target, Search, Sliders, Activity, TrendingUp, ShieldCheck, BarChart3, HelpCircle } from 'lucide-react';
-import { Bar, Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 import stocksData from '../data/stocksData.json';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const { currentCurrency, usdtry } = useApp();
@@ -178,7 +200,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               </span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              Piyasa Fiyatı: <strong style={{ color: '#fff' }}>{currencySym}{curPrice.toFixed(2)}</strong> | 52H Zirve: <strong style={{ color: '#fff' }}>{currencySym}{cData.high_52w || curPrice * 1.15}</strong>
+              Piyasa Fiyatı: <strong style={{ color: '#fff' }}>{currencySym}{Number(curPrice).toFixed(2)}</strong> | 52H Zirve: <strong style={{ color: '#fff' }}>{currencySym}{Number(cData.high_52w || curPrice * 1.15).toFixed(2)}</strong>
             </div>
           </div>
 
@@ -246,7 +268,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               HESAPLANAN ADİL DEĞER (FAIR VALUE)
             </div>
             <div style={{ fontSize: 32, fontWeight: 900, color: isUndervalued ? 'var(--emerald)' : 'var(--red)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-              {currencySym}{simFairValRounded.toFixed(2)}
+              {currencySym}{Number(simFairValRounded).toFixed(2)}
             </div>
             <div style={{ fontSize: 12, fontWeight: 800, color: isUndervalued ? 'var(--emerald)' : 'var(--red)' }}>
               {isUndervalued ? `🟢 %${marginOfSafety} GÜVENLİK MARJI (İSKONTOLU)` : `🔴 %${Math.abs(marginOfSafety)} PRİMLİ (AŞIRI DEĞERLİ)`}
@@ -308,7 +330,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12, fontSize: 10.5, color: 'var(--text-muted)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span>Mevcut Piyasa Fiyatı:</span>
-              <strong style={{ color: '#fff' }}>{currencySym}{curPrice.toFixed(2)}</strong>
+              <strong style={{ color: '#fff' }}>{currencySym}{Number(curPrice).toFixed(2)}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span>Analist Hedef Konsensüsü:</span>
@@ -345,7 +367,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ display: 'flex', height: 24, borderRadius: 4, overflow: 'hidden', fontSize: 10, fontWeight: 800, textAlign: 'center', lineHeight: '24px' }}>
               <div style={{ flex: 1, background: '#ef4444', color: '#fff' }}>Graham: {currencySym}{(curPrice * 0.95).toFixed(0)}</div>
               <div style={{ flex: 1, background: '#00e5ff', color: '#000', border: '1.5px solid #fff' }}>Canlı: {currencySym}{curPrice.toFixed(0)}</div>
-              <div style={{ flex: 1, background: '#10b981', color: '#fff' }}>DCF: {currencySym}{simFairValRounded.toFixed(0)}</div>
+              <div style={{ flex: 1, background: '#10b981', color: '#fff' }}>DCF: {currencySym}{Number(simFairValRounded).toFixed(0)}</div>
               <div style={{ flex: 1, background: '#eab308', color: '#000' }}>Analist: {currencySym}{(curPrice * 1.22).toFixed(0)}</div>
             </div>
           </div>

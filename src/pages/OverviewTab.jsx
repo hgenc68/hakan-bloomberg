@@ -1,23 +1,27 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { TrendingUp, TrendingDown, DollarSign, Award, Shield, PieChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Award, Shield, PieChart, ArrowUpRight } from 'lucide-react';
 
 export default function OverviewTab() {
   const { portfolioSummary, currentCurrency, setActiveTab } = useApp();
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
-  const totalVal = isTRY ? portfolioSummary.totalValTRY : portfolioSummary.totalValUSD;
-  const altVal = isTRY ? portfolioSummary.totalValUSD : portfolioSummary.totalValTRY;
+  // Safe formatting helpers
+  const fmt = (v, d = 2) => (Number(v) || 0).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtInt = (v) => (Number(v) || 0).toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+
+  const totalVal = (isTRY ? portfolioSummary.totalValTRY : portfolioSummary.totalValUSD) || 0;
+  const altVal = (isTRY ? portfolioSummary.totalValUSD : portfolioSummary.totalValTRY) || 0;
   const altCur = isTRY ? 'USD' : 'TRY';
   
-  const consProfit = isTRY ? portfolioSummary.consolidatedProfitTRY : portfolioSummary.consolidatedProfitUSD;
+  const consProfit = (isTRY ? portfolioSummary.consolidatedProfitTRY : portfolioSummary.consolidatedProfitUSD) || 0;
   const consReturnPct = portfolioSummary.consolidatedReturnPct || 0;
   
-  const unrealProfit = isTRY ? portfolioSummary.unrealizedProfitTRY : portfolioSummary.unrealizedProfitUSD;
-  const realProfit = isTRY ? portfolioSummary.realizedProfitTRY : portfolioSummary.realizedProfitUSD;
+  const unrealProfit = (isTRY ? portfolioSummary.unrealizedProfitTRY : portfolioSummary.unrealizedProfitUSD) || 0;
+  const realProfit = (isTRY ? portfolioSummary.realizedProfitTRY : portfolioSummary.realizedProfitUSD) || 0;
 
-  const dayPL = isTRY ? portfolioSummary.dayPLTRY : portfolioSummary.dayPLUSD;
+  const dayPL = (isTRY ? portfolioSummary.dayPLTRY : portfolioSummary.dayPLUSD) || 0;
   const dayPLPct = portfolioSummary.dayPLPct || 0;
 
   // Breakdown by Asset Type
@@ -25,14 +29,14 @@ export default function OverviewTab() {
   let hisseVal = 0, etfVal = 0, kriptoVal = 0;
 
   holdings.forEach(h => {
-    const val = isTRY ? h.valTRY : h.valUSD;
+    const val = (isTRY ? h.valTRY : h.valUSD) || 0;
     if (h.type === 'Kripto') kriptoVal += val;
     else if (h.type === 'ETF') etfVal += val;
     else hisseVal += val;
   });
 
-  const goldVal = isTRY ? portfolioSummary.totalGoldValTRY : (portfolioSummary.totalGoldValTRY / portfolioSummary.usdtry);
-  const ppfVal = isTRY ? portfolioSummary.ppfBalanceTRY : (portfolioSummary.ppfBalanceTRY / portfolioSummary.usdtry);
+  const goldVal = isTRY ? (portfolioSummary.totalGoldValTRY || 0) : ((portfolioSummary.totalGoldValTRY || 0) / (portfolioSummary.usdtry || 49.03));
+  const ppfVal = isTRY ? (portfolioSummary.ppfBalanceTRY || 0) : ((portfolioSummary.ppfBalanceTRY || 0) / (portfolioSummary.usdtry || 49.03));
 
   const totalAll = totalVal > 0 ? totalVal : 1;
   const hissePct = (hisseVal / totalAll) * 100;
@@ -42,7 +46,7 @@ export default function OverviewTab() {
   const ppfPct = (ppfVal / totalAll) * 100;
 
   return (
-    <div className="tab-pane-content">
+    <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
       {/* 4 Main Bloomberg KPI Cards */}
       <div className="kpi-grid">
         {/* KPI 1: Toplam Değer */}
@@ -52,12 +56,12 @@ export default function OverviewTab() {
             <span className="badge-cur mono">{currentCurrency.toUpperCase()}</span>
           </div>
           <div className="kpi-val mono">
-            {sym}{totalVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {sym}{fmt(totalVal)}
           </div>
           <div className="kpi-sub">
-            <span className="mono text-muted">{altCur === 'USD' ? '$' : '₺'}{altVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {altCur}</span>
+            <span className="mono text-muted">{altCur === 'USD' ? '$' : '₺'}{fmt(altVal)} {altCur}</span>
             <span className={`mono ${dayPL >= 0 ? 'text-up' : 'text-down'}`}>
-              24s: {dayPL >= 0 ? '+' : ''}{sym}{dayPL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({dayPLPct >= 0 ? '+' : ''}{dayPLPct.toFixed(2)}%)
+              24s: {dayPL >= 0 ? '+' : ''}{sym}{fmt(dayPL)} ({dayPLPct >= 0 ? '+' : ''}{fmt(dayPLPct, 2)}%)
             </span>
           </div>
         </div>
@@ -69,17 +73,17 @@ export default function OverviewTab() {
             <span className="badge-pill emerald">Açık + Gerçekleşen</span>
           </div>
           <div className={`kpi-val mono ${consProfit >= 0 ? 'text-up' : 'text-down'}`}>
-            {consProfit >= 0 ? '+' : ''}{sym}{consProfit.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {consProfit >= 0 ? '+' : ''}{sym}{fmt(consProfit)}
           </div>
           <div className="kpi-sub">
             <span>Maliyet Getirisi:</span>
             <strong className={`mono ${consReturnPct >= 0 ? 'text-up' : 'text-down'}`}>
-              {consReturnPct >= 0 ? '+' : ''}{consReturnPct.toFixed(2)}%
+              {consReturnPct >= 0 ? '+' : ''}{fmt(consReturnPct, 2)}%
             </strong>
           </div>
           <div className="kpi-breakdown-row">
-            <span>Açık K/Z: <strong className={unrealProfit >= 0 ? 'text-up' : 'text-down'}>{sym}{unrealProfit.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>
-            <span>Gerçekleşen: <strong className="text-emerald">+{sym}{realProfit.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>
+            <span>Açık K/Z: <strong className={unrealProfit >= 0 ? 'text-up' : 'text-down'}>{sym}{fmt(unrealProfit)}</strong></span>
+            <span>Gerçekleşen: <strong className="text-emerald">+{sym}{fmt(realProfit)}</strong></span>
           </div>
         </div>
 
@@ -106,15 +110,15 @@ export default function OverviewTab() {
             <span className="badge-pill gold">Altın + PPF</span>
           </div>
           <div className="kpi-val mono text-gold">
-            {sym}{(goldVal + ppfVal).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {sym}{fmt(goldVal + ppfVal)}
           </div>
           <div className="kpi-sub">
-            <span>Gram Altın: <strong style={{ color: '#fff' }}>{portfolioSummary.totalGrams} gr</strong></span>
-            <span>PPF: <strong style={{ color: '#fff' }}>₺{portfolioSummary.ppfBalanceTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</strong></span>
+            <span>Gram Altın: <strong style={{ color: '#fff' }}>{fmt(portfolioSummary.totalGrams, 2)} gr</strong></span>
+            <span>PPF: <strong style={{ color: '#fff' }}>₺{fmt(portfolioSummary.ppfBalanceTRY, 2)}</strong></span>
           </div>
           <div className="kpi-breakdown-row">
             <span>Kalkan Koruma Oranı:</span>
-            <strong className="text-gold mono">{(goldPct + ppfPct).toFixed(1)}% (Hedef: %35)</strong>
+            <strong className="text-gold mono">{fmt(goldPct + ppfPct, 1)}% (Hedef: %35)</strong>
           </div>
         </div>
       </div>
@@ -123,28 +127,28 @@ export default function OverviewTab() {
       <div className="qualtrim-banner">
         <div className="qualtrim-badge-box">
           <span className="lbl">Toplam Portföy Değeri</span>
-          <span className="val mono">{sym}{totalVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="val mono">{sym}{fmt(totalVal)}</span>
         </div>
         <div className={`qualtrim-badge-box ${consProfit >= 0 ? '' : 'negative'}`}>
           <span className="lbl">Konsolide Net K/Z</span>
-          <span className="val mono">{consProfit >= 0 ? '+' : ''}{sym}{consProfit.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="val mono">{consProfit >= 0 ? '+' : ''}{sym}{fmt(consProfit)}</span>
         </div>
         <div className={`qualtrim-badge-box ${consReturnPct >= 0 ? '' : 'negative'}`}>
           <span className="lbl">Maliyet Getirisi</span>
-          <span className="val mono">{consReturnPct >= 0 ? '+' : ''}{consReturnPct.toFixed(2)}%</span>
+          <span className="val mono">{consReturnPct >= 0 ? '+' : ''}{fmt(consReturnPct, 2)}%</span>
         </div>
 
         {/* 24s Değişim Çipi */}
         <div className="day-chip">
           <span className="chip-lbl">24S DEĞİŞİM</span>
           <span className={`chip-val mono ${dayPLPct >= 0 ? 'text-up' : 'text-down'}`}>
-            {dayPLPct >= 0 ? '▲ +' : '▼ '}{dayPLPct.toFixed(2)}%
+            {dayPLPct >= 0 ? '▲ +' : '▼ '}{fmt(dayPLPct, 2)}%
           </span>
         </div>
       </div>
 
       {/* Varlık Dağılımı ve Portföy Yapısı */}
-      <div className="grid-2-col">
+      <div className="grid-2-col" style={{ marginTop: 20 }}>
         {/* Varlık Sınıfı Dağılımı */}
         <div className="card">
           <div className="card-header">
@@ -154,11 +158,11 @@ export default function OverviewTab() {
           <div className="card-body">
             {/* Progress bar */}
             <div className="multi-progress-bar">
-              <div className="bar-segment hisse" style={{ width: `${hissePct}%` }} title={`Hisse: %${hissePct.toFixed(1)}`}></div>
-              <div className="bar-segment etf" style={{ width: `${etfPct}%` }} title={`ETF: %${etfPct.toFixed(1)}`}></div>
-              <div className="bar-segment kripto" style={{ width: `${kriptoPct}%` }} title={`Kripto: %${kriptoPct.toFixed(1)}`}></div>
-              <div className="bar-segment altin" style={{ width: `${goldPct}%` }} title={`Gram Altın: %${goldPct.toFixed(1)}`}></div>
-              <div className="bar-segment ppf" style={{ width: `${ppfPct}%` }} title={`PPF: %${ppfPct.toFixed(1)}`}></div>
+              <div className="bar-segment hisse" style={{ width: `${Math.max(0, hissePct)}%` }} title={`Hisse: %${hissePct.toFixed(1)}`}></div>
+              <div className="bar-segment etf" style={{ width: `${Math.max(0, etfPct)}%` }} title={`ETF: %${etfPct.toFixed(1)}`}></div>
+              <div className="bar-segment kripto" style={{ width: `${Math.max(0, kriptoPct)}%` }} title={`Kripto: %${kriptoPct.toFixed(1)}`}></div>
+              <div className="bar-segment altin" style={{ width: `${Math.max(0, goldPct)}%` }} title={`Gram Altın: %${goldPct.toFixed(1)}`}></div>
+              <div className="bar-segment ppf" style={{ width: `${Math.max(0, ppfPct)}%` }} title={`PPF: %${ppfPct.toFixed(1)}`}></div>
             </div>
 
             {/* Legend list */}
@@ -166,31 +170,31 @@ export default function OverviewTab() {
               <div className="legend-row">
                 <span className="dot hisse"></span>
                 <span className="name">Hisse Senedi (BIST & ABD)</span>
-                <span className="val mono">{sym}{hisseVal.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                <span className="val mono">{sym}{fmtInt(hisseVal)}</span>
                 <span className="pct mono">{hissePct.toFixed(1)}%</span>
               </div>
               <div className="legend-row">
                 <span className="dot etf"></span>
                 <span className="name">ETF & Fonlar</span>
-                <span className="val mono">{sym}{etfVal.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                <span className="val mono">{sym}{fmtInt(etfVal)}</span>
                 <span className="pct mono">{etfPct.toFixed(1)}%</span>
               </div>
               <div className="legend-row">
                 <span className="dot kripto"></span>
                 <span className="name">Kripto Varlıklar</span>
-                <span className="val mono">{sym}{kriptoVal.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                <span className="val mono">{sym}{fmtInt(kriptoVal)}</span>
                 <span className="pct mono">{kriptoPct.toFixed(1)}%</span>
               </div>
               <div className="legend-row">
                 <span className="dot altin"></span>
                 <span className="name">Gram Altın (Kur Kalkanı)</span>
-                <span className="val mono">{sym}{goldVal.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                <span className="val mono">{sym}{fmtInt(goldVal)}</span>
                 <span className="pct mono">{goldPct.toFixed(1)}%</span>
               </div>
               <div className="legend-row">
                 <span className="dot ppf"></span>
                 <span className="name">PPF / TL Likit Kuru Barut</span>
-                <span className="val mono">{sym}{ppfVal.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                <span className="val mono">{sym}{fmtInt(ppfVal)}</span>
                 <span className="pct mono">{ppfPct.toFixed(1)}%</span>
               </div>
             </div>
@@ -212,7 +216,7 @@ export default function OverviewTab() {
           <div className="card-body">
             <div className="realized-callout-box">
               <div className="callout-val mono text-emerald">
-                +₺{portfolioSummary.realizedProfitTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                +₺{fmt(portfolioSummary.realizedProfitTRY)}
               </div>
               <div className="callout-desc">
                 Kısmi veya tam satış yaparak cebinize koyduğunuz kesinleşmiş net kazançtır.
@@ -221,15 +225,15 @@ export default function OverviewTab() {
               <div className="callout-stats">
                 <div>
                   <span className="lbl">Tamamlanan İşlem:</span>
-                  <span className="stat mono">{portfolioSummary.tradesCount} Adet</span>
+                  <span className="stat mono">{portfolioSummary.tradesCount || 0} Adet</span>
                 </div>
                 <div>
                   <span className="lbl">Win Rate (Başarı):</span>
-                  <span className="stat mono text-emerald">%{portfolioSummary.winRatePct.toFixed(1)}</span>
+                  <span className="stat mono text-emerald">%{fmt(portfolioSummary.winRatePct, 1)}</span>
                 </div>
                 <div>
                   <span className="lbl">Kasaya Giren Hasılat:</span>
-                  <span className="stat mono text-cyan">₺{portfolioSummary.totalProceedsTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                  <span className="stat mono text-cyan">₺{fmt(portfolioSummary.totalProceedsTRY)}</span>
                 </div>
               </div>
             </div>
