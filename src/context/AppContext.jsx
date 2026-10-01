@@ -203,15 +203,20 @@ export const AppProvider = ({ children }) => {
     const enrichedHoldings = holdings.map(h => {
       const sym = h.clean_ticker || TICKER_MAP[h.ticker.toUpperCase()] || h.ticker;
       const quote = marketQuotes[sym] || marketQuotes[h.ticker.toUpperCase()] || marketQuotes[h.ticker] || {};
-      const livePrice = quote.price !== undefined ? quote.price : (h.avg_cost || 0);
-      const prevClose = quote.previousClose !== undefined ? quote.previousClose : livePrice;
-      const changePct = quote.changePct !== undefined ? quote.changePct : 0;
-      const quoteCurrency = quote.currency || (sym.endsWith('.IS') ? 'TRY' : 'USD');
-
       // User holding tracking currency
       // If cost_rate > 1.5 or currency === 'USD', it was bought in USD (e.g. SPCX, DRAM, NVDA, TSM, ABBV)
       const isHoldingUSD = h.currency === 'USD' || (Number(h.cost_rate) > 1.5);
       const effectiveRate = Number(h.cost_rate) > 1.5 ? Number(h.cost_rate) : usdtry;
+
+      const hasQuote = quote.price !== undefined;
+      const livePrice = hasQuote ? quote.price : (h.avg_cost || 0);
+      const prevClose = quote.previousClose !== undefined ? quote.previousClose : livePrice;
+      const changePct = quote.changePct !== undefined ? quote.changePct : 0;
+
+      // If quote is not yet loaded from network, price is avg_cost whose currency is isHoldingUSD
+      const quoteCurrency = hasQuote
+        ? (quote.currency || (sym.endsWith('.IS') ? 'TRY' : 'USD'))
+        : (isHoldingUSD ? 'USD' : 'TRY');
 
       let costTRY = 0;
       let costUSD = 0;
