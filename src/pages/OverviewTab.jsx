@@ -1,5 +1,5 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -40,7 +40,10 @@ export default function OverviewTab() {
   holdings.forEach(h => {
     const val = (isTRY ? h.valTRY : h.valUSD) || 0;
     const tickerUpper = (h.ticker || '').toUpperCase();
-    if (h.type === 'Kripto') {
+    const cleanSym = tickerUpper.replace('-USD', '').replace('.IS', '');
+    const isCrypto = h.type === 'Kripto' || KNOWN_CRYPTO_SET.has(cleanSym) || KNOWN_CRYPTO_SET.has(tickerUpper);
+
+    if (isCrypto) {
       kriptoVal += val;
     } else if (h.type === 'ETF') {
       etfVal += val;

@@ -526,10 +526,10 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               <ShieldCheck size={18} style={{ color: beneish.color || 'var(--emerald)' }} />
               <div>
                 <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0', display: 'block' }}>
-                  ADLİ BİLANÇO DEDEKTÖRÜ (BENEISH M-SCORE)
+                  ADLİ BİLANÇO DEDEKTÖRÜ (FORENSIC / BENEISH M-SCORE)
                 </span>
-                <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                  6 Temel Bilanço İndeksiyle Finansal Makyaj ve Manipülasyon Taraması
+                <span style={{ fontSize: 10.5, color: 'var(--cyan)' }}>
+                  🔎 Adli Muhasebe (Forensic): Bilanço Hilesi ve Manipülasyon Taraması (Adil Değer Değildir)
                 </span>
               </div>
             </div>

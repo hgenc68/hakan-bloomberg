@@ -40,6 +40,39 @@ const TICKER_MAP = {
   'NVDA': 'NVDA'
 };
 
+// Known crypto tickers to ensure classification consistency
+export const KNOWN_CRYPTO_SET = new Set([
+  'BTC', 'BTC-USD', 'ETH', 'ETH-USD', 'LDO', 'LDO-USD', 'BIO', 'BIO-USD', 'BIO34812-USD',
+  'SUI', 'SUI-USD', 'SUI20947-USD', 'OP', 'OP-USD', 'ARKM', 'ARKM-USD', 'DOGE', 'DOGE-USD',
+  'SOL', 'SOL-USD', 'AVAX', 'AVAX-USD', 'XRP', 'XRP-USD', 'LINK', 'LINK-USD', 'BNB', 'BNB-USD'
+]);
+
+// Initial quotes fallback so portfolio calculation is instant without cold-start delay
+const DEFAULT_INITIAL_QUOTES = {
+  'USDTRY=X': { symbol: 'USDTRY=X', price: 49.03, currency: 'TRY', changePct: 0.12 },
+  'GC=F': { symbol: 'GC=F', price: 4200.0, currency: 'USD', changePct: 0.38 },
+  'BYDNR.IS': { symbol: 'BYDNR.IS', price: 33.64, currency: 'TRY', changePct: 0.5 },
+  'SPCX': { symbol: 'SPCX', price: 30.50, currency: 'USD', changePct: 0.2 },
+  'DRAM': { symbol: 'DRAM', price: 27.80, currency: 'USD', changePct: -0.3 },
+  'ETH-USD': { symbol: 'ETH-USD', price: 2680.0, currency: 'USD', changePct: 1.2 },
+  'BTC-USD': { symbol: 'BTC-USD', price: 83400.0, currency: 'USD', changePct: 1.5 },
+  'XAUT-USD': { symbol: 'XAUT-USD', price: 4190.0, currency: 'USD', changePct: 0.4 },
+  'LDO-USD': { symbol: 'LDO-USD', price: 0.445, currency: 'USD', changePct: -2.1 },
+  'BIO34812-USD': { symbol: 'BIO34812-USD', price: 0.0306, currency: 'USD', changePct: -1.2 },
+  'SUI20947-USD': { symbol: 'SUI20947-USD', price: 1.95, currency: 'USD', changePct: 0.8 },
+  'OP-USD': { symbol: 'OP-USD', price: 1.25, currency: 'USD', changePct: -0.5 },
+  'ARKM-USD': { symbol: 'ARKM-USD', price: 1.10, currency: 'USD', changePct: 0.3 },
+  'DOGE-USD': { symbol: 'DOGE-USD', price: 0.18, currency: 'USD', changePct: 1.1 },
+  'TSM': { symbol: 'TSM', price: 195.0, currency: 'USD', changePct: 1.8 },
+  'NVDA': { symbol: 'NVDA', price: 135.0, currency: 'USD', changePct: 1.4 },
+  'ABBV': { symbol: 'ABBV', price: 198.0, currency: 'USD', changePct: 0.2 },
+  'TUPRS.IS': { symbol: 'TUPRS.IS', price: 148.5, currency: 'TRY', changePct: 0.8 },
+  'FROTO.IS': { symbol: 'FROTO.IS', price: 1040.0, currency: 'TRY', changePct: 0.4 },
+  'THYAO.IS': { symbol: 'THYAO.IS', price: 312.0, currency: 'TRY', changePct: 0.6 },
+  'QQQ': { symbol: 'QQQ', price: 495.0, currency: 'USD', changePct: 0.5 },
+  'SPY': { symbol: 'SPY', price: 580.0, currency: 'USD', changePct: 0.3 }
+};
+
 export const AppProvider = ({ children }) => {
   // State from Firestore
   const [holdings, setHoldings] = useState([]);
@@ -49,10 +82,34 @@ export const AppProvider = ({ children }) => {
   const [settings, setSettings] = useState({ currency: 'try', timeframe: '1y' });
   const [loading, setLoading] = useState(true);
 
-  // Market quotes state
-  const [marketQuotes, setMarketQuotes] = useState({});
-  const [usdtry, setUsdtry] = useState(49.03);
-  const [gramGoldPrice, setGramGoldPrice] = useState(6600.0);
+  // Market quotes state with SWR (Stale-While-Revalidate) localStorage caching to eliminate startup jump
+  const [marketQuotes, setMarketQuotes] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bloomberg_market_quotes');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && Object.keys(parsed).length > 0) return parsed;
+      }
+    } catch (e) {}
+    return DEFAULT_INITIAL_QUOTES;
+  });
+
+  const [usdtry, setUsdtry] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bloomberg_usdtry');
+      if (cached && Number(cached) > 0) return Number(cached);
+    } catch (e) {}
+    return 49.03;
+  });
+
+  const [gramGoldPrice, setGramGoldPrice] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bloomberg_gram_gold');
+      if (cached && Number(cached) > 0) return Number(cached);
+    } catch (e) {}
+    return 6600.0;
+  });
+
   const [lastMarketUpdate, setLastMarketUpdate] = useState(null);
   const [isUpdatingMarket, setIsUpdatingMarket] = useState(false);
 
@@ -70,7 +127,22 @@ export const AppProvider = ({ children }) => {
   // 1. Subscribe to Firestore Collections in Real-Time
   useEffect(() => {
     const unsubHoldings = onSnapshot(collection(db, 'holdings'), (snap) => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      const list = snap.docs.map(d => {
+        const item = d.data();
+        const sym = (item.ticker || '').toUpperCase();
+        const clean = sym.replace('.IS', '').replace('-USD', '');
+        let type = item.type;
+        // Auto-fix misclassified cryptos (such as LDO, BIO, SUI, etc.)
+        if (KNOWN_CRYPTO_SET.has(clean) || KNOWN_CRYPTO_SET.has(sym)) {
+          if (type !== 'Kripto') {
+            type = 'Kripto';
+            try {
+              updateDoc(doc(db, 'holdings', d.id), { type: 'Kripto' });
+            } catch (err) {}
+          }
+        }
+        return { ...item, type, id: d.id };
+      });
       setHoldings(list);
       setLoading(false);
     });
@@ -175,10 +247,18 @@ export const AppProvider = ({ children }) => {
       // Extract Gold Ounce price and calculate Gram Gold TRY
       const goldOunceUSD = fetchedQuotes['GC=F']?.price || 4200.0;
       const calcGramGold = (goldOunceUSD / 31.1034768) * usdRate;
-      setGramGoldPrice(calcGramGold > 0 ? calcGramGold : 6600.0);
+      const finalGramGold = calcGramGold > 0 ? calcGramGold : 6600.0;
+      setGramGoldPrice(finalGramGold);
 
       setMarketQuotes(fetchedQuotes);
       setLastMarketUpdate(new Date());
+
+      // Persist to local cache so future cold reloads are instantaneous without jumping
+      try {
+        localStorage.setItem('bloomberg_market_quotes', JSON.stringify(fetchedQuotes));
+        localStorage.setItem('bloomberg_usdtry', String(usdRate));
+        localStorage.setItem('bloomberg_gram_gold', String(finalGramGold));
+      } catch (err) {}
     } catch (err) {
       console.warn('Market data fetch error:', err);
     } finally {
@@ -208,15 +288,20 @@ export const AppProvider = ({ children }) => {
       const isHoldingUSD = h.currency === 'USD' || (Number(h.cost_rate) > 1.5);
       const effectiveRate = Number(h.cost_rate) > 1.5 ? Number(h.cost_rate) : usdtry;
 
-      const hasQuote = quote.price !== undefined;
-      const livePrice = hasQuote ? quote.price : (h.avg_cost || 0);
+      const hasQuote = quote.price !== undefined && quote.price !== null && Number(quote.price) > 0;
+      // If live quote is not found, use last recorded/persisted price from database before falling back to avg_cost
+      const lastRecordedPrice = Number(h.current_price) || Number(h.currentPrice) || Number(h.last_price) || 0;
+      const livePrice = hasQuote ? quote.price : (lastRecordedPrice > 0 ? lastRecordedPrice : (h.avg_cost || 0));
       const prevClose = quote.previousClose !== undefined ? quote.previousClose : livePrice;
       const changePct = quote.changePct !== undefined ? quote.changePct : 0;
+
+      // Clean check if sym is BIST
+      const isBIST = sym.endsWith('.IS') || (h.type === 'Hisse' && h.currency === 'TRY' && !isHoldingUSD && !sym.includes('-USD'));
 
       // If quote is not yet loaded from network, price is avg_cost whose currency is isHoldingUSD
       const quoteCurrency = hasQuote
         ? (quote.currency || (sym.endsWith('.IS') ? 'TRY' : 'USD'))
-        : (isHoldingUSD ? 'USD' : 'TRY');
+        : (isHoldingUSD ? 'USD' : (isBIST ? 'TRY' : (h.currency || 'TRY')));
 
       let costTRY = 0;
       let costUSD = 0;

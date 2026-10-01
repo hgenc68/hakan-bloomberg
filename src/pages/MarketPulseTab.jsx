@@ -74,12 +74,14 @@ export default function MarketPulseTab() {
   ];
 
   const newsItems = [
-    { time: '13:30', source: 'KAP', title: 'THYAO: 2026 yılı 3. çeyrek yolcu doluluk oranları ve filo genişleme raporu açıklandı.', tag: 'Havacılık', bull: true },
-    { time: '13:15', source: 'Bloomberg', title: 'Fed Başkanı Powell: Çekirdek enflasyondaki yumuşama faiz indirim döngüsünü destekliyor.', tag: 'Makro', bull: true },
-    { time: '12:50', source: 'Reuters', title: 'TCMB Para Politikası Kurulu: Sıkı para politikası dezenflasyon tesis edilene kadar sürecek.', tag: 'TCMB', bull: false },
-    { time: '12:20', source: 'KAP', title: 'EREGL: Yüksek katma değerli yeşil çelik tesisi yatırımı ve teşvik belgesi onayı.', tag: 'Sanayi', bull: true },
-    { time: '11:45', source: 'CoinDesk', title: 'Bitcoin 83.000$ üzerinde konsolide olurken kurumsal ETF girişleri rekor seviyede seyrediyor.', tag: 'Kripto', bull: true },
-    { time: '11:10', source: 'Foreks', title: 'ABD Truflation öncü enflasyon verisi yıllık %2.28 ile resmi hedefe yakınsadı.', tag: 'Enflasyon', bull: true }
+    { time: '14:10', source: 'Bloomberg', title: 'Fed FOMC Karar Metni: Enflasyon göstergelerindeki dengelenme faiz indirim patikasını destekliyor; istihdam piyasası yakından izleniyor.', tag: 'Fed & Makro', bull: true },
+    { time: '13:45', source: 'KAP', title: 'THYAO: 2026 yılı 3. çeyrek yolcu doluluk oranları ve filo genişleme raporu açıklandı.', tag: 'BIST Havacılık', bull: true },
+    { time: '13:20', source: 'Reuters', title: 'TCMB Para Politikası Kurulu: Aylık enflasyon ana eğiliminde kalıcı düşüş sağlanana kadar sıkı para politikası duruşu korunacak.', tag: 'TCMB / Faiz', bull: false },
+    { time: '12:55', source: 'Bloomberg', title: 'TSM & NVDA: Yeni nesil yapay zeka çip mimarileri için sipariş teslimat takvimi rekor küresel taleple öne çekildi.', tag: 'Yarı İletken', bull: true },
+    { time: '12:30', source: 'KAP', title: 'EREGL: Yüksek katma değerli yeşil çelik tesisi yatırımı ve Sanayi Bakanlığı teşvik belgesi onayı tamamlandı.', tag: 'BIST Sanayi', bull: true },
+    { time: '11:50', source: 'CoinDesk', title: 'Bitcoin 83.000$ üzerinde konsolide olurken kurumsal ETF girişleri ve rezerv çeşitlendirme stratejileri rekor seviyede.', tag: 'Kripto / ETF', bull: true },
+    { time: '11:15', source: 'Foreks', title: 'ABD Truflation bağımsız zincir üstü enflasyon metriği yıllık %2.25 bandında resmi hedefe yakınsadı.', tag: 'Enflasyon', bull: true },
+    { time: '10:40', source: 'Foreks', title: 'BIST 100: Kurumsal yabancı girişleri ve teknoloji hisselerindeki güçlü bilanço beklentisiyle yükseliş trendi korunuyor.', tag: 'BIST 100', bull: true }
   ];
 
   return (

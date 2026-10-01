@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, ArrowRight, ShieldCheck } from 'lucide-react';
 import stocksData from '../data/stocksData.json';
 
@@ -97,7 +97,14 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
   const totalValAll = portfolioSummary?.totalValTRY || 1;
   const equityHoldings = useMemo(() => {
-    return holdings.filter(h => h.type === 'Hisse' || h.type === 'ETF');
+    return holdings.filter(h => {
+      const sym = (h.ticker || '').toUpperCase();
+      const clean = sym.replace('.IS', '').replace('-USD', '');
+      const isCrypto = h.type === 'Kripto' || KNOWN_CRYPTO_SET.has(clean) || KNOWN_CRYPTO_SET.has(sym);
+      const isGoldOrCash = h.type === 'Altın' || h.type === 'Emtia' || h.type === 'Nakit' || clean === 'XAUT';
+      if (isCrypto || isGoldOrCash) return false;
+      return h.type === 'Hisse' || h.type === 'ETF' || h.type === 'Hisse Senedi';
+    });
   }, [holdings]);
 
   const rebalanceList = useMemo(() => {
