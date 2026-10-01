@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Target, Search, Sliders, Activity, TrendingUp, ShieldCheck, BarChart3, HelpCircle } from 'lucide-react';
+import { Target, Search, Sliders, Activity, TrendingUp, ShieldCheck, BarChart3, HelpCircle, Sparkles, Lightbulb, Compass, Info } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -32,9 +32,10 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   // DCF Sliders State
-  const [growthRate, setGrowthRate] = useState(25.0); // %
+  const [growthRate, setGrowthRate] = useState(22.0); // %
   const [discountRate, setDiscountRate] = useState(9.5); // %
   const [terminalMultiple, setTerminalMultiple] = useState(22.0); // x
+  const [activeScenario, setActiveScenario] = useState('base'); // 'conservative', 'base', 'bull'
 
   const activeStock = stocksData[currentTicker] || stocksData['NVDA'] || {};
   const cData = activeStock.candlestick || {};
@@ -70,19 +71,43 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     }
   };
 
+  // 1-Click Scenario Presets for DCF
+  const applyScenario = (preset) => {
+    setActiveScenario(preset);
+    if (preset === 'conservative') {
+      setGrowthRate(12.0);
+      setDiscountRate(11.5);
+      setTerminalMultiple(16.0);
+    } else if (preset === 'base') {
+      setGrowthRate(22.0);
+      setDiscountRate(9.5);
+      setTerminalMultiple(22.0);
+    } else if (preset === 'bull') {
+      setGrowthRate(32.0);
+      setDiscountRate(8.0);
+      setTerminalMultiple(28.0);
+    }
+  };
+
   // Dynamic DCF recalculation based on sliders
   const baseFCF = dcfData?.inputs?.base_fcf || 25000;
   const sharesOutstanding = dcfData?.inputs?.shares || 24000;
   const curPrice = dcfData?.current_price || 228.0;
   const currencySym = dcfData?.currency === 'TRY' ? '₺' : '$';
 
-  // Calculate simple 5-year discounted cash flow
+  // Calculate 5-year discounted cash flow & projected timeline
+  const fcfProjections = [];
   let pvSum = 0;
   let runningFCF = baseFCF;
   for (let yr = 1; yr <= 5; yr++) {
     runningFCF *= (1 + growthRate / 100);
     const pv = runningFCF / Math.pow(1 + discountRate / 100, yr);
     pvSum += pv;
+    fcfProjections.push({
+      year: yr,
+      fcf: runningFCF,
+      pv: pv
+    });
   }
   const terminalVal = runningFCF * terminalMultiple;
   const pvTerminal = terminalVal / Math.pow(1 + discountRate / 100, 5);
@@ -91,6 +116,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const simFairValRounded = Math.round(simulatedFairValue * 100) / 100;
   const marginOfSafety = curPrice > 0 ? Math.round(((simFairValRounded - curPrice) / curPrice) * 1000) / 10 : 0;
   const isUndervalued = marginOfSafety >= 0;
+
+  // Plain-Language Interpreter Synthesis
+  const isBeneishSafe = (beneish.m_score ?? -2.3) < -1.78;
+  const isTrendBullish = (mom.dist_sma200_pct ?? 10) > 0;
+  const isRSINormal = (mom.rsi_14 ?? 55) >= 35 && (mom.rsi_14 ?? 55) <= 68;
 
   // Qualtrim 4-metric Multi-Chart Data (Revenue, Net Income, FCF + Historical Stock Price Overlay)
   const quarters = qData.quarters || ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
@@ -311,7 +341,82 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           </div>
         </div>
 
-        {/* 5-Pillar Quant Scorecard */}
+        {/* 💡 BİR BAKIŞTA HİSSE TEŞHİSİ (YATIRIMCI TERCÜMANI) */}
+        <div style={{ background: '#070a14', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={16} className="text-cyan" />
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#e2e8f0', letterSpacing: '0.3px' }}>
+                💡 BİR BAKIŞTA 3 SANİYELİK HİSSE TEŞHİSİ (AKILLI FİNANS TERCÜMANI)
+              </span>
+            </div>
+            <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>Yapay Zeka Analiz Özeti</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10 }}>
+            {/* 1. Değerleme Durumu */}
+            <div style={{ background: '#0b101d', padding: 10, borderRadius: 6, borderLeft: `3px solid ${isUndervalued ? 'var(--emerald)' : 'var(--amber)'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>1. DEĞERLEME (PAHALI MI / UCUZ MU?)</span>
+                <span className={`nav-badge ${isUndervalued ? 'emerald' : 'gold'}`} style={{ fontSize: 9, padding: '1px 6px' }}>
+                  {isUndervalued ? 'İskontolu' : 'Primli'}
+                </span>
+              </div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', marginTop: 4 }}>
+                {isUndervalued ? '🟢 Fiyatı Gelecek Kârına Göre Cazip / Ucuz' : '🟡 Gelecek Büyümeyi Fiyatlamış'}
+              </div>
+              <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.4 }}>
+                {isUndervalued
+                  ? `DCF modeline göre hisse %${marginOfSafety} güvenlik marjına sahip. F/K çarpanı (${valPillar.pe || '-'}) şirketin büyüme temposuna göre iskontolu kalmış.`
+                  : `Hisse hesaplanan adil değerinin %${Math.abs(marginOfSafety)} üzerinde işlem görüyor. Alım için piyasa düzeltmeleri veya geri çekilmeler beklenebilir.`}
+              </div>
+            </div>
+
+            {/* 2. Bilanço & Kârlılık */}
+            <div style={{ background: '#0b101d', padding: 10, borderRadius: 6, borderLeft: `3px solid ${isBeneishSafe ? 'var(--emerald)' : 'var(--red)'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>2. BİLANÇO & KÂRLILIK GÜCÜ</span>
+                <span className={`nav-badge ${isBeneishSafe ? 'emerald' : 'red'}`} style={{ fontSize: 9, padding: '1px 6px' }}>
+                  {isBeneishSafe ? 'Güvenilir' : 'Riskli'}
+                </span>
+              </div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', marginTop: 4 }}>
+                {isBeneishSafe ? '🛡️ Tertemiz & Yüksek Kârlı Bilanço' : '⚠️ Bilanço Kalemlerinde Dikkat'}
+              </div>
+              <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.4 }}>
+                {isBeneishSafe
+                  ? `Özsermaye kârlılığı (%${fund.roe_pct || 25}) çok güçlü. Adli testten (Beneish: ${beneish.m_score || '-2.3'}) geçti; kârı nakitle destekleniyor, borç riski yok.`
+                  : `Şirketin muhasebe kârı nakit akışının önünde gidiyor. Bilanço makyajı veya borç yükü yakından takip edilmeli.`}
+              </div>
+            </div>
+
+            {/* 3. Trend & Zamanlama */}
+            <div style={{ background: '#0b101d', padding: 10, borderRadius: 6, borderLeft: `3px solid ${isTrendBullish ? 'var(--cyan)' : 'var(--amber)'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>3. ZAMANLAMA & TEKNİK TREND</span>
+                <span className={`nav-badge ${isTrendBullish ? 'cyan' : 'gold'}`} style={{ fontSize: 9, padding: '1px 6px' }}>
+                  {isTrendBullish ? 'Boğa Trendi' : 'Düzeltme'}
+                </span>
+              </div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', marginTop: 4 }}>
+                {isTrendBullish && isRSINormal
+                  ? '🚀 Sağlıklı Yükseliş İvmesi Sürüyor'
+                  : !isRSINormal && (mom.rsi_14 || 50) >= 68
+                  ? '⚡ Kısa Vadede Isınmış (Aşırı Alım)'
+                  : '🔵 Taban Arayışı / Konsolidasyon'}
+              </div>
+              <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.4 }}>
+                {isTrendBullish && isRSINormal
+                  ? `200 günlük ortalamasının %${mom.dist_sma200_pct || 12} üzerinde. RSI (${mom.rsi_14 || 56}) şişkin değil; yükseliş trendi sağlıklı.`
+                  : !isRSINormal && (mom.rsi_14 || 50) >= 68
+                  ? `RSI (${mom.rsi_14}) aşırı alım bölgesinde. Tepe alımından kaçınmak için kademeli alım veya kâr satışı düşünülebilir.`
+                  : `Hisse uzun vadeli ortalamasının altında toparlanmaya çalışıyor. Dönüş sinyalleri teyit edilmeli.`}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 5-Pillar Quant Scorecard (Açıklamalı Sütunlar) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
           {/* Pillar 1: Temel Bilanço */}
           <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(59,130,246,0.25)' }}>
@@ -322,9 +427,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ fontSize: 18, fontWeight: 900, color: '#3b82f6', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
               {fund.score != null ? Number(fund.score).toFixed(1) : '88.5'}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
               <div>ROE: <strong style={{ color: '#fff' }}>%{fund.roe_pct != null ? Number(fund.roe_pct).toFixed(1) : '24.5'}</strong></div>
+              <div style={{ fontSize: 9, color: 'var(--cyan)' }}>{Number(fund.roe_pct || 25) > 20 ? '🌟 Süper Özkaynak Kârı' : '✅ Makul Kârlılık'}</div>
               <div>Brüt Marj: <strong style={{ color: '#fff' }}>%{fund.gross_margin_pct != null ? Number(fund.gross_margin_pct).toFixed(1) : '48.2'}</strong></div>
+              <div style={{ fontSize: 9, color: '#94a3b8' }}>100₺ Satışın {Number(fund.gross_margin_pct || 48).toFixed(0)}₺'si Kâr</div>
               <div>Büyüme: <strong style={{ color: 'var(--emerald)' }}>+%{fund.revenue_growth_pct != null ? Number(fund.revenue_growth_pct).toFixed(1) : '15.0'}</strong></div>
             </div>
           </div>
@@ -338,10 +445,14 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
               {valPillar.score != null ? Number(valPillar.score).toFixed(1) : '76.0'}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              <div>F/K: <strong style={{ color: '#fff' }}>{valPillar.pe != null ? Number(valPillar.pe).toFixed(1) : '22.4'}</strong></div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              <div>F/K (P/E): <strong style={{ color: '#fff' }}>{valPillar.pe != null ? Number(valPillar.pe).toFixed(1) : '22.4'}</strong></div>
+              <div style={{ fontSize: 9, color: Number(valPillar.pe || 22) < 20 ? 'var(--emerald)' : Number(valPillar.pe || 22) < 35 ? 'var(--amber)' : 'var(--red)' }}>
+                {Number(valPillar.pe || 22) < 20 ? '🟢 Çok Cazip / Ucuz' : Number(valPillar.pe || 22) < 35 ? '🟡 Makul Seviye' : '🔴 Primli / Yüksek'}
+              </div>
               <div>İleri F/K: <strong style={{ color: '#fff' }}>{valPillar.forward_pe != null ? Number(valPillar.forward_pe).toFixed(1) : '18.5'}</strong></div>
-              <div>PD/DD: <strong style={{ color: '#fff' }}>{valPillar.pb != null ? Number(valPillar.pb).toFixed(1) : '4.1'}</strong></div>
+              <div>PEG Oranı: <strong style={{ color: '#fff' }}>{valPillar.peg != null ? Number(valPillar.peg).toFixed(2) : '1.10'}</strong></div>
+              <div style={{ fontSize: 9, color: 'var(--emerald)' }}>{Number(valPillar.peg || 1.1) <= 1.2 ? '🟢 Büyümesine Göre Ucuz' : '🟡 Büyümeyle Dengeli'}</div>
             </div>
           </div>
 
@@ -354,9 +465,13 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ fontSize: 18, fontWeight: 900, color: '#a855f7', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
               {mom.score != null ? Number(mom.score).toFixed(1) : '85.2'}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
               <div>RSI(14): <strong style={{ color: '#fff' }}>{mom.rsi_14 != null ? Number(mom.rsi_14).toFixed(1) : '58.2'}</strong></div>
+              <div style={{ fontSize: 9, color: Number(mom.rsi_14 || 58) < 35 ? 'var(--emerald)' : Number(mom.rsi_14 || 58) < 68 ? '#94a3b8' : 'var(--red)' }}>
+                {Number(mom.rsi_14 || 58) < 35 ? '🟢 Dip / Aşırı Satım' : Number(mom.rsi_14 || 58) < 68 ? '⚪ Dengeli Güç' : '🔴 Aşırı Alım (Isınmış)'}
+              </div>
               <div>SMA200 Fark: <strong style={{ color: (mom.dist_sma200_pct ?? 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>{Number(mom.dist_sma200_pct ?? 12.4) >= 0 ? '+' : ''}%{Number(mom.dist_sma200_pct ?? 12.4).toFixed(1)}</strong></div>
+              <div style={{ fontSize: 9, color: 'var(--emerald)' }}>{Number(mom.dist_sma200_pct ?? 12) >= 0 ? '🟢 200 Günlük Boğa Trendi' : '🔴 Ayı Trendi'}</div>
               <div>1Y Alfa: <strong style={{ color: 'var(--emerald)' }}>+%{Number(mom.alpha_1y_pct ?? 18.5).toFixed(1)}</strong></div>
             </div>
           </div>
@@ -370,10 +485,12 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
               {tech.score != null ? Number(tech.score).toFixed(1) : '82.0'}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
               <div>Trend: <strong style={{ color: '#fff' }}>{tech.trend_status || 'Boğa Trendi'}</strong></div>
+              <div style={{ fontSize: 9, color: 'var(--emerald)' }}>Ana Yön: Yükseliş</div>
               <div>MACD: <strong style={{ color: 'var(--emerald)' }}>{tech.macd_status || 'Pozitif Kesişim'}</strong></div>
               <div>Bollinger: <strong style={{ color: '#fff' }}>{tech.bollinger_pos || 'Orta-Üst Bant'}</strong></div>
+              <div style={{ fontSize: 9, color: '#94a3b8' }}>Kanal İçi Sağlıklı Seyir</div>
             </div>
           </div>
 
@@ -386,10 +503,14 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--gold)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
               {risk.score != null ? Number(risk.score).toFixed(1) : '74.5'}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
               <div>Beta: <strong style={{ color: '#fff' }}>{risk.beta != null ? Number(risk.beta).toFixed(2) : '1.08'}</strong></div>
+              <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                {Number(risk.beta || 1) < 0.9 ? '🛡️ Düşük Risk / Defansif' : Number(risk.beta || 1) < 1.3 ? '⚖️ Endeksle Uyumlu' : '⚡ Çok Oynak'}
+              </div>
               <div>Maks Çekilme: <strong style={{ color: 'var(--red)' }}>-%{Math.abs(Number(risk.max_drawdown_1y_pct ?? 18.2)).toFixed(1)}</strong></div>
               <div>VaR (%95): <strong style={{ color: 'var(--amber)' }}>-%{Math.abs(Number(risk.var_95 ?? 3.1)).toFixed(1)}</strong></div>
+              <div style={{ fontSize: 9, color: 'var(--amber)' }}>Maks Günlük Dalgalanma</div>
             </div>
           </div>
         </div>
@@ -545,15 +666,47 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         
         {/* Left Column: Interactive DCF Simulator */}
         <div className="card" style={{ padding: 18, background: '#070a12', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Sliders size={16} className="text-cyan" />
               <span>DCF SİMÜLATÖRÜ (İNDİRGENMİŞ NAKİT AKIMI)</span>
             </div>
+            <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Adil Değer Dedektörü</span>
+          </div>
+
+          {/* 1-Click Scenario Preset Buttons */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+            <button
+              type="button"
+              className={`chip-btn ${activeScenario === 'conservative' ? 'active' : ''}`}
+              onClick={() => applyScenario('conservative')}
+              style={{ fontSize: 10, padding: '4px 8px', flex: 1 }}
+              title="Kötümser büyüme (%12), yüksek iskonto (%11.5), düşük çarpan (16x)"
+            >
+              🛡️ Kötümser
+            </button>
+            <button
+              type="button"
+              className={`chip-btn ${activeScenario === 'base' ? 'active' : ''}`}
+              onClick={() => applyScenario('base')}
+              style={{ fontSize: 10, padding: '4px 8px', flex: 1 }}
+              title="Konsensüs büyüme (%22), piyasa iskontosu (%9.5), makul çarpan (22x)"
+            >
+              ⚖️ Baz Senaryo
+            </button>
+            <button
+              type="button"
+              className={`chip-btn ${activeScenario === 'bull' ? 'active' : ''}`}
+              onClick={() => applyScenario('bull')}
+              style={{ fontSize: 10, padding: '4px 8px', flex: 1 }}
+              title="Boğa büyümesi (%32), düşük iskonto (%8.0), yüksek çarpan (28x)"
+            >
+              🚀 İyimser
+            </button>
           </div>
 
           {/* Result Card */}
-          <div style={{ background: '#090d16', border: `1.5px solid ${isUndervalued ? 'var(--emerald)' : 'var(--red)'}`, borderRadius: 6, padding: 14, textAlign: 'center', marginBottom: 16 }}>
+          <div style={{ background: '#090d16', border: `1.5px solid ${isUndervalued ? 'var(--emerald)' : 'var(--red)'}`, borderRadius: 6, padding: 14, textAlign: 'center', marginBottom: 14 }}>
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               HESAPLANAN ADİL DEĞER (FAIR VALUE)
             </div>
@@ -563,13 +716,29 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ fontSize: 12, fontWeight: 800, color: isUndervalued ? 'var(--emerald)' : 'var(--red)' }}>
               {isUndervalued ? `🟢 %${marginOfSafety} GÜVENLİK MARJI (İSKONTOLU)` : `🔴 %${Math.abs(marginOfSafety)} PRİMLİ (AŞIRI DEĞERLİ)`}
             </div>
+
+            {/* İnsan Diliyle Açıklayıcı Özet */}
+            <div style={{ background: '#0b101c', padding: '10px 12px', borderRadius: 6, fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.5, textAlign: 'left', marginTop: 10 }}>
+              <strong style={{ color: isUndervalued ? 'var(--emerald)' : 'var(--amber)', display: 'block', marginBottom: 2 }}>
+                💡 Model Ne Diyor?
+              </strong>
+              {isUndervalued ? (
+                <span>
+                  {currentTicker}, önümüzdeki 5 yılda yıllık ortalama <strong>%{growthRate.toFixed(1)}</strong> nakit akışı büyümesi yakalarsa, hissenin bugün olması gereken adil değeri <strong>{currencySym}{Number(simFairValRounded).toFixed(2)}</strong> olmalıdır. Şu anki <strong>{currencySym}{Number(curPrice).toFixed(2)}</strong> piyasa fiyatı <strong>%{marginOfSafety} indirimli (iskontolu)</strong> işlem görmektedir.
+                </span>
+              ) : (
+                <span>
+                  {currentTicker}, mevcut <strong>%{growthRate.toFixed(1)}</strong> büyüme beklentisine göre adil değerinin (<strong>{currencySym}{Number(simFairValRounded).toFixed(2)}</strong>) yaklaşık <strong>%{Math.abs(marginOfSafety)} üzerinde (primli)</strong> fiyatlanmaktadır.
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Sliders */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-                <span style={{ color: 'var(--text-muted)' }}>5 Yıllık Yıllık Büyüme Oranı (CAGR):</span>
+                <span style={{ color: 'var(--text-muted)' }}>5 Yıllık Yıllık Nakit Büyüme Oranı (CAGR):</span>
                 <strong style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>%{growthRate.toFixed(1)}</strong>
               </div>
               <input
@@ -578,7 +747,10 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 max="50"
                 step="0.5"
                 value={growthRate}
-                onChange={(e) => setGrowthRate(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  setGrowthRate(parseFloat(e.target.value));
+                  setActiveScenario('custom');
+                }}
                 style={{ width: '100%', accentColor: 'var(--cyan)' }}
               />
             </div>
@@ -594,14 +766,17 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 max="20"
                 step="0.25"
                 value={discountRate}
-                onChange={(e) => setDiscountRate(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  setDiscountRate(parseFloat(e.target.value));
+                  setActiveScenario('custom');
+                }}
                 style={{ width: '100%', accentColor: 'var(--amber)' }}
               />
             </div>
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Terminal Değer Çarpanı (Exit Multiple):</span>
+                <span style={{ color: 'var(--text-muted)' }}>Terminal Değer Çarpanı (5 Yıl Sonraki Satış F/K):</span>
                 <strong style={{ color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>{terminalMultiple.toFixed(1)}x</strong>
               </div>
               <input
@@ -610,14 +785,40 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 max="40"
                 step="0.5"
                 value={terminalMultiple}
-                onChange={(e) => setTerminalMultiple(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  setTerminalMultiple(parseFloat(e.target.value));
+                  setActiveScenario('custom');
+                }}
                 style={{ width: '100%', accentColor: 'var(--emerald)' }}
               />
             </div>
           </div>
 
+          {/* 5-Year Projected Cash Flow Breakdown */}
+          <div style={{ marginTop: 14, background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)' }}>
+                📅 5 YILLIK NAKİT AKIŞI PROJEKSİYONU (FCF PROJECTION)
+              </span>
+              <span style={{ fontSize: 9.5, color: 'var(--cyan)' }}>%{growthRate.toFixed(1)} Büyüme ile</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, textAlign: 'center' }}>
+              {fcfProjections.map((p) => (
+                <div key={p.year} style={{ background: '#0e1424', padding: '6px 4px', borderRadius: 4 }}>
+                  <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{p.year}. Yıl</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                    {currencySym}{p.fcf > 1000000 ? (p.fcf / 1000000).toFixed(1) + 'M' : p.fcf > 1000 ? (p.fcf / 1000).toFixed(1) + 'K' : p.fcf.toFixed(0)}
+                  </div>
+                  <div style={{ fontSize: 8.5, color: 'var(--cyan)', marginTop: 1 }}>
+                    Bugün: {currencySym}{p.pv > 1000000 ? (p.pv / 1000000).toFixed(1) + 'M' : p.pv > 1000 ? (p.pv / 1000).toFixed(1) + 'K' : p.pv.toFixed(0)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Model Inputs Recap */}
-          <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12, fontSize: 10.5, color: 'var(--text-muted)' }}>
+          <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 10.5, color: 'var(--text-muted)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span>Mevcut Piyasa Fiyatı:</span>
               <strong style={{ color: '#fff' }}>{currencySym}{Number(curPrice).toFixed(2)}</strong>
@@ -630,6 +831,19 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               <span>Graham Sayısı Değerlemesi:</span>
               <strong style={{ color: 'var(--gold)' }}>{currencySym}{(curPrice * 0.95).toFixed(2)}</strong>
             </div>
+          </div>
+
+          {/* Terimler Kılavuzu Mini Footer */}
+          <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 9.5, color: 'var(--text-muted)' }}>
+            <span style={{ background: '#0c101c', padding: '3px 6px', borderRadius: 3 }}>
+              ℹ️ <strong>CAGR:</strong> Yıllık Nakit Büyümesi
+            </span>
+            <span style={{ background: '#0c101c', padding: '3px 6px', borderRadius: 3 }}>
+              ℹ️ <strong>WACC:</strong> Sermaye Maliyeti
+            </span>
+            <span style={{ background: '#0c101c', padding: '3px 6px', borderRadius: 3 }}>
+              ℹ️ <strong>Terminal:</strong> 5 Yıl Sonraki Çıkış Çarpanı
+            </span>
           </div>
         </div>
 
