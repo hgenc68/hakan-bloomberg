@@ -405,7 +405,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 </th>
                 <th onClick={() => handleSort('change')} className="text-right" style={{ cursor: 'pointer' }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>24s Değişim</span>
+                    <span>24s Değişim & K/Z</span>
                     {renderSortIndicator('change')}
                   </div>
                 </th>
@@ -436,6 +436,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 const profitVal = isTRY ? h.profitTRY : h.profitUSD;
                 const totalVal = isTRY ? h.valTRY : h.valUSD;
                 const changeUp = (h.changePct || 0) >= 0;
+                const dayPLVal = isTRY ? (h.dayPLTRY || 0) : (h.dayPLUSD || 0);
+                const dayPLUp = dayPLVal >= 0;
 
                 // Price display with native currency note
                 const displayedPrice = isTRY ? h.livePriceTRY : h.livePriceUSD;
@@ -493,9 +495,14 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       )}
                     </td>
                     <td className="text-right mono">
-                      <span className={`change-pill ${changeUp ? 'up' : 'down'}`}>
-                        {changeUp ? '▲ +' : '▼ '}{Math.abs(h.changePct || 0).toFixed(2)}%
-                      </span>
+                      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <span className={`change-pill ${changeUp ? 'up' : 'down'}`}>
+                          {changeUp ? '▲ +' : '▼ '}{Math.abs(h.changePct || 0).toFixed(2)}%
+                        </span>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: dayPLUp ? 'var(--up)' : 'var(--down)' }}>
+                          {dayPLUp ? '+' : ''}{sym}{fmt(dayPLVal, 2)}
+                        </span>
+                      </div>
                     </td>
                     <td className="text-right mono text-cyan" style={{ fontWeight: 800 }}>
                       {sym}{fmt(totalVal, 2)}
@@ -574,7 +581,14 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   <td className="text-right mono text-gold">
                     ₺{fmt(portfolioSummary?.gramGoldPrice || gramGoldPrice, 2)}
                   </td>
-                  <td className="text-right mono"><span className="change-pill up">▲ Kalkan</span></td>
+                  <td className="text-right mono">
+                    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <span className="change-pill up">▲ Kalkan</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        Kur Sigortası
+                      </span>
+                    </div>
+                  </td>
                   <td className="text-right mono text-gold" style={{ fontWeight: 800 }}>
                     {sym}{fmt(isTRY ? portfolioSummary?.totalGoldValTRY : (portfolioSummary?.totalGoldValTRY / (portfolioSummary?.usdtry || usdtry || 1)), 2)}
                   </td>

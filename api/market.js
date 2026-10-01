@@ -1,18 +1,82 @@
 // Vercel Serverless Function to fetch live market quotes & macro pulse
 const SPECIAL_MAP = {
+  // SUI
   'SUI': 'SUI20947-USD',
   'SUI-USD': 'SUI20947-USD',
+  'SUIUSD': 'SUI20947-USD',
+  // BIO Protocol
   'BIO': 'BIO34812-USD',
   'BIO-USD': 'BIO34812-USD',
+  'BIOUSD': 'BIO34812-USD',
+  // Tether Gold
   'XAUT': 'XAUT-USD',
   'XAUT-USD': 'XAUT-USD',
+  'XAUTUSD': 'XAUT-USD',
+  // Lido DAO
   'LDO': 'LDO-USD',
+  'LDO-USD': 'LDO-USD',
+  'LDOUSD': 'LDO-USD',
+  // Optimism
   'OP': 'OP-USD',
+  'OP-USD': 'OP-USD',
+  'OPUSD': 'OP-USD',
+  // Arkham
   'ARKM': 'ARKM-USD',
+  'ARKM-USD': 'ARKM-USD',
+  'ARKMUSD': 'ARKM-USD',
+  // Dogecoin
   'DOGE': 'DOGE-USD',
+  'DOGE-USD': 'DOGE-USD',
+  'DOGEUSD': 'DOGE-USD',
+  // Bitcoin
   'BTC': 'BTC-USD',
-  'ETH': 'ETH-USD'
+  'BTC-USD': 'BTC-USD',
+  'BTCUSD': 'BTC-USD',
+  // Ethereum
+  'ETH': 'ETH-USD',
+  'ETH-USD': 'ETH-USD',
+  'ETHUSD': 'ETH-USD',
+  // Solana
+  'SOL': 'SOL-USD',
+  'SOL-USD': 'SOL-USD',
+  'SOLUSD': 'SOL-USD',
+  // Avalanche
+  'AVAX': 'AVAX-USD',
+  'AVAX-USD': 'AVAX-USD',
+  'AVAXUSD': 'AVAX-USD',
+  // XRP
+  'XRP': 'XRP-USD',
+  'XRP-USD': 'XRP-USD',
+  'XRPUSD': 'XRP-USD',
+  // Chainlink
+  'LINK': 'LINK-USD',
+  'LINK-USD': 'LINK-USD',
+  'LINKUSD': 'LINK-USD',
+  // Binance Coin
+  'BNB': 'BNB-USD',
+  'BNB-USD': 'BNB-USD',
+  'BNBUSD': 'BNB-USD',
+  // BIST Stocks
+  'TUPRS': 'TUPRS.IS',
+  'TUPRS.IS': 'TUPRS.IS',
+  'BYDNR': 'BYDNR.IS',
+  'BYDNR.IS': 'BYDNR.IS'
 };
+
+function resolveSymbol(raw) {
+  if (!raw) return raw;
+  const upper = raw.toUpperCase().trim();
+  if (SPECIAL_MAP[upper]) return SPECIAL_MAP[upper];
+  
+  if (upper.endsWith('USD') && !upper.includes('-') && !upper.includes('=') && !upper.includes('.')) {
+    const base = upper.slice(0, -3);
+    const withHyphen = `${base}-USD`;
+    if (SPECIAL_MAP[withHyphen]) return SPECIAL_MAP[withHyphen];
+    if (SPECIAL_MAP[base]) return SPECIAL_MAP[base];
+    return withHyphen;
+  }
+  return upper;
+}
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -79,7 +143,7 @@ export default async function handler(req, res) {
     const fetchPromises = symbolList.map(async (rawSymbol) => {
       try {
         const upper = rawSymbol.toUpperCase();
-        const resolvedSymbol = SPECIAL_MAP[upper] || upper;
+        const resolvedSymbol = resolveSymbol(upper);
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolvedSymbol)}?interval=1d&range=5d`;
         const resp = await fetch(url, {
           headers: {
@@ -92,9 +156,31 @@ export default async function handler(req, res) {
         if (!meta) return null;
 
         const currentPrice = meta.regularMarketPrice || meta.chartPreviousClose || 0;
-        const prevClose = meta.previousClose || meta.chartPreviousClose || currentPrice;
+        
+        // Extract closes array from quote indicators
+        const closes = (json?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [])
+          .filter(c => typeof c === 'number' && !isNaN(c));
+        
+        // Yahoo Finance provides official 24h regularMarketChangePercent
+        let changePct = (meta.regularMarketChangePercent !== undefined && meta.regularMarketChangePercent !== null)
+          ? Number(meta.regularMarketChangePercent)
+          : null;
+
+        // Accurate prior day close (yesterday, NOT 5 days ago!)
+        let prevClose = meta.previousClose;
+        if (!prevClose && closes.length >= 2) {
+          prevClose = closes[closes.length - 2];
+        }
+
+        if (changePct === null) {
+          changePct = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
+        } else if (!prevClose && changePct !== 0 && currentPrice) {
+          prevClose = currentPrice / (1 + changePct / 100);
+        } else if (!prevClose) {
+          prevClose = currentPrice;
+        }
+
         const change = currentPrice - prevClose;
-        const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
         const quoteObj = {
           symbol: upper,
@@ -103,13 +189,24 @@ export default async function handler(req, res) {
           previousClose: prevClose,
           change: change,
           changePct: changePct,
-          currency: meta.currency || 'USD',
+          currency: meta.currency || (resolvedSymbol.endsWith('.IS') ? 'TRY' : 'USD'),
           regularMarketTime: meta.regularMarketTime
         };
 
         results[upper] = quoteObj;
         if (resolvedSymbol !== upper) {
           results[resolvedSymbol] = quoteObj;
+        }
+
+        // Store under common aliases so any frontend lookup succeeds
+        if (upper.endsWith('-USD')) {
+          results[upper.replace('-USD', 'USD')] = quoteObj;
+          results[upper.replace('-USD', '')] = quoteObj;
+        } else if (upper.endsWith('USD') && !upper.includes('-')) {
+          results[upper.slice(0, -3) + '-USD'] = quoteObj;
+          results[upper.slice(0, -3)] = quoteObj;
+        } else if (upper.endsWith('.IS')) {
+          results[upper.replace('.IS', '')] = quoteObj;
         }
       } catch (err) {
         console.warn(`Error fetching ${rawSymbol}:`, err.message);

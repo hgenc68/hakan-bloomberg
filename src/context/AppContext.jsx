@@ -20,31 +20,67 @@ export const useApp = () => {
 // Normalized ticker map for BIST, US, and Cryptos
 const TICKER_MAP = {
   'BYDNR': 'BYDNR.IS',
+  'BYDNR.IS': 'BYDNR.IS',
+  'TUPRS': 'TUPRS.IS',
+  'TUPRS.IS': 'TUPRS.IS',
   'SPCX': 'SPCX',
   'DRAM': 'DRAM',
   'ETH-USD': 'ETH-USD',
+  'ETHUSD': 'ETH-USD',
+  'ETH': 'ETH-USD',
   'BTC-USD': 'BTC-USD',
+  'BTCUSD': 'BTC-USD',
+  'BTC': 'BTC-USD',
   'XAUT-USD': 'XAUT-USD',
+  'XAUTUSD': 'XAUT-USD',
   'XAUT': 'XAUT-USD',
   'XAUT-usd': 'XAUT-USD',
   'LDO': 'LDO-USD',
+  'LDO-USD': 'LDO-USD',
+  'LDOUSD': 'LDO-USD',
   'BIO-USD': 'BIO34812-USD',
   'BIO': 'BIO34812-USD',
+  'BIOUSD': 'BIO34812-USD',
   'SUI': 'SUI20947-USD',
   'SUI-USD': 'SUI20947-USD',
+  'SUIUSD': 'SUI20947-USD',
   'OP': 'OP-USD',
+  'OP-USD': 'OP-USD',
+  'OPUSD': 'OP-USD',
   'ARKM': 'ARKM-USD',
+  'ARKM-USD': 'ARKM-USD',
+  'ARKMUSD': 'ARKM-USD',
   'DOGE': 'DOGE-USD',
+  'DOGE-USD': 'DOGE-USD',
+  'DOGEUSD': 'DOGE-USD',
+  'SOL': 'SOL-USD',
+  'SOL-USD': 'SOL-USD',
+  'SOLUSD': 'SOL-USD',
+  'AVAX': 'AVAX-USD',
+  'AVAX-USD': 'AVAX-USD',
+  'AVAXUSD': 'AVAX-USD',
+  'XRP': 'XRP-USD',
+  'XRP-USD': 'XRP-USD',
+  'XRPUSD': 'XRP-USD',
+  'LINK': 'LINK-USD',
+  'LINK-USD': 'LINK-USD',
+  'LINKUSD': 'LINK-USD',
+  'BNB': 'BNB-USD',
+  'BNB-USD': 'BNB-USD',
+  'BNBUSD': 'BNB-USD',
   'ABBV': 'ABBV',
   'TSM': 'TSM',
-  'NVDA': 'NVDA'
+  'NVDA': 'NVDA',
+  'XOM': 'XOM'
 };
 
 // Known crypto tickers to ensure classification consistency
 export const KNOWN_CRYPTO_SET = new Set([
-  'BTC', 'BTC-USD', 'ETH', 'ETH-USD', 'LDO', 'LDO-USD', 'BIO', 'BIO-USD', 'BIO34812-USD',
-  'SUI', 'SUI-USD', 'SUI20947-USD', 'OP', 'OP-USD', 'ARKM', 'ARKM-USD', 'DOGE', 'DOGE-USD',
-  'SOL', 'SOL-USD', 'AVAX', 'AVAX-USD', 'XRP', 'XRP-USD', 'LINK', 'LINK-USD', 'BNB', 'BNB-USD'
+  'BTC', 'BTC-USD', 'BTCUSD', 'ETH', 'ETH-USD', 'ETHUSD', 'LDO', 'LDO-USD', 'LDOUSD',
+  'BIO', 'BIO-USD', 'BIOUSD', 'BIO34812-USD', 'SUI', 'SUI-USD', 'SUIUSD', 'SUI20947-USD',
+  'OP', 'OP-USD', 'OPUSD', 'ARKM', 'ARKM-USD', 'ARKMUSD', 'DOGE', 'DOGE-USD', 'DOGEUSD',
+  'SOL', 'SOL-USD', 'SOLUSD', 'AVAX', 'AVAX-USD', 'AVAXUSD', 'XRP', 'XRP-USD', 'XRPUSD',
+  'LINK', 'LINK-USD', 'LINKUSD', 'BNB', 'BNB-USD', 'BNBUSD'
 ]);
 
 // Initial quotes fallback so portfolio calculation is instant without cold-start delay
@@ -253,7 +289,18 @@ export const AppProvider = ({ children }) => {
       })();
 
       currentHoldings.forEach(h => {
-        const sym = h.clean_ticker || TICKER_MAP[(h.ticker || '').toUpperCase()] || h.ticker;
+        const rawUpper = (h.ticker || '').toUpperCase();
+        let sym = h.clean_ticker || TICKER_MAP[rawUpper];
+        if (!sym) {
+          if (h.type === 'Hisse' && h.currency === 'TRY' && !rawUpper.endsWith('.IS')) {
+            sym = `${rawUpper}.IS`;
+          } else if (rawUpper.endsWith('USD') && !rawUpper.includes('-')) {
+            const base = rawUpper.slice(0, -3);
+            sym = TICKER_MAP[`${base}-USD`] || TICKER_MAP[base] || `${base}-USD`;
+          } else {
+            sym = h.ticker;
+          }
+        }
         if (sym) symbolsToFetch.add(sym);
       });
 
@@ -277,24 +324,57 @@ export const AppProvider = ({ children }) => {
       if (Object.keys(fetchedQuotes).length === 0) {
         const promises = Array.from(symbolsToFetch).map(async (s) => {
           try {
-            const cleanS = TICKER_MAP[s.toUpperCase()] || s;
-            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanS)}?interval=1d&range=2d`);
+            const rawUpper = s.toUpperCase();
+            let cleanS = TICKER_MAP[rawUpper];
+            if (!cleanS) {
+              if (rawUpper.endsWith('USD') && !rawUpper.includes('-')) {
+                const base = rawUpper.slice(0, -3);
+                cleanS = TICKER_MAP[`${base}-USD`] || TICKER_MAP[base] || `${base}-USD`;
+              } else {
+                cleanS = s;
+              }
+            }
+            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanS)}?interval=1d&range=5d`);
             if (!r.ok) return;
             const j = await r.json();
             const meta = j?.chart?.result?.[0]?.meta;
             if (meta) {
               const p = meta.regularMarketPrice || meta.chartPreviousClose || 0;
-              const prev = meta.previousClose || meta.chartPreviousClose || p;
+              const closes = (j?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [])
+                .filter(c => typeof c === 'number' && !isNaN(c));
+
+              let changePct = (meta.regularMarketChangePercent !== undefined && meta.regularMarketChangePercent !== null)
+                ? Number(meta.regularMarketChangePercent)
+                : null;
+
+              let prev = meta.previousClose;
+              if (!prev && closes.length >= 2) {
+                prev = closes[closes.length - 2];
+              }
+
+              if (changePct === null) {
+                changePct = prev > 0 ? ((p - prev) / prev) * 100 : 0;
+              } else if (!prev && changePct !== 0 && p) {
+                prev = p / (1 + changePct / 100);
+              } else if (!prev) {
+                prev = p;
+              }
+
               const quoteObj = {
                 symbol: s,
+                resolvedSymbol: cleanS,
                 price: p,
                 previousClose: prev,
                 change: p - prev,
-                changePct: prev > 0 ? ((p - prev) / prev) * 100 : 0,
+                changePct: changePct,
                 currency: meta.currency || (cleanS.endsWith('.IS') ? 'TRY' : 'USD')
               };
               fetchedQuotes[s] = quoteObj;
               fetchedQuotes[cleanS] = quoteObj;
+              if (s.endsWith('-USD')) {
+                fetchedQuotes[s.replace('-USD', 'USD')] = quoteObj;
+                fetchedQuotes[s.replace('-USD', '')] = quoteObj;
+              }
             }
           } catch (err) {}
         });
@@ -345,8 +425,24 @@ export const AppProvider = ({ children }) => {
 
     // A) Holdings Calculation with currency normalization
     const enrichedHoldings = holdings.map(h => {
-      const sym = h.clean_ticker || TICKER_MAP[h.ticker.toUpperCase()] || h.ticker;
-      const quote = marketQuotes[sym] || marketQuotes[h.ticker.toUpperCase()] || marketQuotes[h.ticker] || {};
+      const rawUpper = (h.ticker || '').toUpperCase();
+      let sym = h.clean_ticker || TICKER_MAP[rawUpper];
+      if (!sym) {
+        if (h.type === 'Hisse' && h.currency === 'TRY' && !rawUpper.endsWith('.IS')) {
+          sym = `${rawUpper}.IS`;
+        } else if (rawUpper.endsWith('USD') && !rawUpper.includes('-')) {
+          const base = rawUpper.slice(0, -3);
+          sym = TICKER_MAP[`${base}-USD`] || TICKER_MAP[base] || `${base}-USD`;
+        } else {
+          sym = h.ticker;
+        }
+      }
+      const quote = marketQuotes[sym] 
+        || marketQuotes[rawUpper] 
+        || marketQuotes[rawUpper.replace('-USD', 'USD')]
+        || marketQuotes[rawUpper.replace('-USD', '')]
+        || marketQuotes[h.ticker] 
+        || {};
       // User holding tracking currency
       // If cost_rate > 1.5 or currency === 'USD', it was bought in USD (e.g. SPCX, DRAM, NVDA, TSM, ABBV)
       const isHoldingUSD = h.currency === 'USD' || (Number(h.cost_rate) > 1.5);
@@ -401,9 +497,17 @@ export const AppProvider = ({ children }) => {
       const returnPct = costTRY > 0 ? (profitTRY / costTRY) * 100 : 0;
 
       // True 24-hour day change
-      const prevLivePriceTRY = quoteCurrency === 'USD' ? (prevClose * usdtry) : prevClose;
-      const dayPLTRY = (h.shares || 0) * (livePriceTRY - prevLivePriceTRY);
-      const dayPLUSD = usdtry > 0 ? (dayPLTRY / usdtry) : 0;
+      let dayPLTRY = 0;
+      let dayPLUSD = 0;
+      if (prevClose > 0 && livePrice > 0) {
+        if (quoteCurrency === 'USD') {
+          dayPLUSD = (h.shares || 0) * (livePrice - prevClose);
+          dayPLTRY = dayPLUSD * usdtry;
+        } else {
+          dayPLTRY = (h.shares || 0) * (livePrice - prevClose);
+          dayPLUSD = usdtry > 0 ? (dayPLTRY / usdtry) : 0;
+        }
+      }
 
       totalCostTRY += costTRY;
       totalValTRY += valTRY;
