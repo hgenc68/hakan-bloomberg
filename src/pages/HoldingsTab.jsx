@@ -444,6 +444,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
                 // Cost display
                 const displayedCost = isTRY ? (h.costTRY / (h.shares || 1)) : (h.costUSD / (h.shares || 1));
+                const altCost = isTRY ? (h.costUSD / (h.shares || 1)) : (h.costTRY / (h.shares || 1));
 
                 return (
                   <tr key={h.id} className="table-row">
@@ -462,15 +463,32 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       {fmtShares(h.shares)}
                     </td>
                     <td className="text-right mono text-muted">
-                      {sym}{fmt(displayedCost, 4)}
+                      <div>
+                        {sym}{fmt(displayedCost, 4)}
+                      </div>
+                      {(h.quoteCurrency === 'USD' || h.isHoldingUSD) && isTRY && (
+                        <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                          (${fmt(altCost, 4)})
+                        </div>
+                      )}
+                      {!isTRY && (h.quoteCurrency === 'TRY' || !h.isHoldingUSD) && (
+                        <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                          (₺{fmt(altCost, 4)})
+                        </div>
+                      )}
                     </td>
                     <td className="text-right mono text-bright">
                       <div style={{ fontWeight: 700 }}>
                         {sym}{fmt(displayedPrice, 4)}
                       </div>
-                      {h.quoteCurrency === 'USD' && isTRY && (
-                        <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
+                      {(h.quoteCurrency === 'USD' || h.isHoldingUSD) && isTRY && (
+                        <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 2 }}>
                           (${fmt(altPrice, 4)})
+                        </div>
+                      )}
+                      {!isTRY && (h.quoteCurrency === 'TRY' || !h.isHoldingUSD) && (
+                        <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                          (₺{fmt(altPrice, 4)})
                         </div>
                       )}
                     </td>
