@@ -1,12 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, ArrowRight, ShieldCheck } from 'lucide-react';
+import stocksData from '../data/stocksData.json';
 
 export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal }) {
-  const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry } = useApp();
+  const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab } = useApp();
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('val'); // default sort by Market Value
   const [sortDir, setSortDir] = useState('desc'); // default highest first
+  const [showRebalanceAssistant, setShowRebalanceAssistant] = useState(true);
+  const [rebalancePeriod, setRebalancePeriod] = useState('monthly'); // 'monthly' or 'weekly'
 
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
@@ -92,6 +95,67 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     return list;
   }, [holdings, search, sortKey, sortDir, isTRY]);
 
+  const totalValAll = portfolioSummary?.totalValTRY || 1;
+  const equityHoldings = useMemo(() => {
+    return holdings.filter(h => h.type === 'Hisse' || h.type === 'ETF');
+  }, [holdings]);
+
+  const rebalanceList = useMemo(() => {
+    return equityHoldings.map(h => {
+      const sym = (h.ticker || '').toUpperCase();
+      const clean = sym.replace('.IS', '').replace('-USD', '');
+      const stockInfo = stocksData[clean] || stocksData[sym] || {};
+      const quantScore = stockInfo.analysis?.quant_score || 78.0;
+      const isUS = h.currency === 'USD' || h.isHoldingUSD || Number(h.cost_rate) > 1.5;
+      const category = h.type === 'ETF' ? 'Tematik ETF' : (isUS ? 'ABD Hisse' : 'BIST 100');
+      const weightPct = ((h.valTRY || 0) / totalValAll) * 100;
+
+      let action = 'HOLD';
+      let badgeColor = 'cyan';
+      let actionTitle = '🛡️ TUT / KORU';
+      let reason = 'Mevcut ağırlık dengeli, büyüme ve bilanço yapısı hedeflerle uyumlu.';
+
+      if (weightPct > 15.0) {
+        action = 'TRIM';
+        badgeColor = 'red';
+        actionTitle = '🚪 KISMEN ÇIK / AZALT';
+        reason = `Portföyün %${weightPct.toFixed(1)}'ini oluşturuyor. %7.5 tek varlık tavanını aştı; kâr alıp kalkanı güçlendirin.`;
+      } else if (weightPct > 7.5) {
+        action = 'TRIM_MILD';
+        badgeColor = 'amber';
+        actionTitle = '⚖️ AĞIRLIK AZALT';
+        reason = `Mevcut pay (%${weightPct.toFixed(1)}) üst sınırda. Yeni ekleme yapmayın, kâr realizasyonunu değerlendirin.`;
+      } else if (quantScore >= 82.0 && weightPct < 6.0) {
+        action = 'ACCUMULATE';
+        badgeColor = 'emerald';
+        actionTitle = '✨ EKLE / BİRİKTİR';
+        reason = `Quant Skoru ${quantScore.toFixed(1)} (A+) ile güçlü boğa trendinde. Ağırlığı düşük (%${weightPct.toFixed(1)}), kademeli eklenebilir.`;
+      } else if (quantScore < 65.0) {
+        action = 'EXIT';
+        badgeColor = 'red';
+        actionTitle = '🚪 MODEL DIŞI / ÇIK';
+        reason = `Quant skoru ${quantScore.toFixed(1)} seviyesine geriledi. Momentum ve bilanço zayıfladı.`;
+      } else {
+        action = 'HOLD';
+        badgeColor = 'cyan';
+        actionTitle = '🛡️ TUT / KORU';
+        reason = `Quant Skoru ${quantScore.toFixed(1)} ile istikrarlı. Pozisyon ağırlığı (%${weightPct.toFixed(1)}) makul seviyede.`;
+      }
+
+      return {
+        ...h,
+        clean,
+        category,
+        quantScore,
+        weightPct,
+        action,
+        badgeColor,
+        actionTitle,
+        reason
+      };
+    });
+  }, [equityHoldings, totalValAll, isTRY, usdtry]);
+
   const renderSortIndicator = (key) => {
     if (sortKey !== key) {
       return <ArrowUpDown size={11} style={{ opacity: 0.35, marginLeft: 4 }} />;
@@ -105,6 +169,145 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
+      {/* 🤖 AY BAŞI KİŞİSEL REBALANCE & DENGELEME ASİSTANI (BIST, ABD & ETF) */}
+      <div className="card" style={{ marginBottom: 16, padding: 16, background: '#070a14', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: showRebalanceAssistant ? 12 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 6, background: 'rgba(0, 229, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
+              <Briefcase size={18} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>🤖 KİŞİSEL PORTFÖY REBALANCE ASİSTANI (BIST, ABD & ETF)</span>
+                <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>
+                  📅 {rebalancePeriod === 'monthly' ? 'Ekim 2026 Dengelemesi' : 'Haftalık Momentum'}
+                </span>
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                Sadece Hisse ve ETF pozisyonlarınız için Quant skoru, risk tavanı ve model portföy kriterlerine göre üretilen net aksiyonlar
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Period Selector */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
+              <button
+                type="button"
+                className={`chip-btn ${rebalancePeriod === 'monthly' ? 'active' : ''}`}
+                onClick={() => setRebalancePeriod('monthly')}
+                style={{ fontSize: 10, padding: '3px 8px' }}
+                title="Kurumsal standart: Ay başında çeyreklik bilançolara göre dengelenir"
+              >
+                📅 Aylık (Önerilen)
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${rebalancePeriod === 'weekly' ? 'active' : ''}`}
+                onClick={() => setRebalancePeriod('weekly')}
+                style={{ fontSize: 10, padding: '3px 8px' }}
+                title="Haftalık momentum ve aşırı alım/satım takibi"
+              >
+                ⚡ Haftalık
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="chip-btn"
+              onClick={() => setShowRebalanceAssistant(prev => !prev)}
+              style={{ fontSize: 10, padding: '4px 8px' }}
+            >
+              {showRebalanceAssistant ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </div>
+        </div>
+
+        {showRebalanceAssistant && (
+          <div>
+            {/* Neden Aylık Notu */}
+            <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 6, padding: '8px 12px', fontSize: 10.5, color: '#cbd5e1', marginBottom: 12 }}>
+              <strong style={{ color: 'var(--cyan)' }}>💡 Uzman Notu (Aylık vs Haftalık): </strong>
+              <span>
+                Hisse ve ETF'lerde haftalık al-sat komisyon eritir ve testere piyasasında yanıltır (bilançolar çeyrekliktir). 
+                Bu nedenle profesyonel fonlar portföylerini <strong>her ayın 1'inde</strong> yeniden dengeler.
+              </span>
+            </div>
+
+            {/* Rebalance Table */}
+            <div className="table-responsive">
+              <table className="terminal-table" style={{ fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    <th>Varlık</th>
+                    <th>Kategori</th>
+                    <th className="text-right">Portföy Payı</th>
+                    <th className="text-right">Quant Skor</th>
+                    <th style={{ textAlign: 'center' }}>Model Önerisi</th>
+                    <th>Model Gerekçesi & Aksiyon Sebebi</th>
+                    <th style={{ textAlign: 'center' }}>Hızlı İşlem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rebalanceList.map((item, idx) => (
+                    <tr key={idx} className="table-row">
+                      <td>
+                        <strong className="mono" style={{ color: 'var(--cyan)' }}>{item.ticker}</strong>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block' }}>{item.name}</span>
+                      </td>
+                      <td>
+                        <span className={`badge-type ${item.category.includes('BIST') ? 'bist' : item.category.includes('ABD') ? 'us' : 'etf'}`} style={{ fontSize: 9.5 }}>
+                          {item.category}
+                        </span>
+                      </td>
+                      <td className="text-right mono font-medium" style={{ color: item.weightPct > 15 ? 'var(--red)' : item.weightPct > 7.5 ? 'var(--amber)' : '#fff' }}>
+                        %{item.weightPct.toFixed(1)}
+                      </td>
+                      <td className="text-right mono font-medium" style={{ color: item.quantScore >= 80 ? 'var(--emerald)' : 'var(--amber)' }}>
+                        {item.quantScore.toFixed(1)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`nav-badge ${item.badgeColor}`} style={{ fontSize: 9.5, padding: '3px 8px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                          {item.actionTitle}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.4 }}>
+                        {item.reason}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {item.action === 'TRIM' || item.action === 'TRIM_MILD' || item.action === 'EXIT' ? (
+                          <button
+                            type="button"
+                            className="btn-action-row"
+                            onClick={() => onOpenSellModal(item)}
+                            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.4)', padding: '3px 8px', borderRadius: 4, fontSize: 10 }}
+                            title="Kısmi satış yaparak kârı kilitle"
+                          >
+                            Satış Yap ➔
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-action-row"
+                            onClick={() => {
+                              if (onOpenAddModal) onOpenAddModal();
+                            }}
+                            style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--emerald)', border: '1px solid rgba(16,185,129,0.4)', padding: '3px 8px', borderRadius: 4, fontSize: 10 }}
+                            title="Yeni lot ekle"
+                          >
+                            Ekleme Yap ➔
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Top Action Bar */}
       <div className="table-action-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div className="search-box" style={{ width: 340 }}>
