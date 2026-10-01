@@ -33,22 +33,30 @@ export default function OverviewTab() {
   const dayPL = (isTRY ? portfolioSummary.dayPLTRY : portfolioSummary.dayPLUSD) || 0;
   const dayPLPct = portfolioSummary.dayPLPct || 0;
 
-  // Breakdown by Asset Type
+  // Breakdown by Asset Type (Separating BIST vs US Equity for Macro Transparency)
   const holdings = portfolioSummary.enrichedHoldings || [];
-  let hisseVal = 0, etfVal = 0, kriptoVal = 0;
+  let bistVal = 0, usVal = 0, etfVal = 0, kriptoVal = 0;
 
   holdings.forEach(h => {
     const val = (isTRY ? h.valTRY : h.valUSD) || 0;
-    if (h.type === 'Kripto') kriptoVal += val;
-    else if (h.type === 'ETF') etfVal += val;
-    else hisseVal += val;
+    if (h.type === 'Kripto') {
+      kriptoVal += val;
+    } else if (h.type === 'ETF') {
+      etfVal += val;
+    } else {
+      // Stock: check if BIST or US/Global
+      const isUS = h.currency === 'USD' || h.isHoldingUSD || Number(h.cost_rate) > 1.5;
+      if (isUS) usVal += val;
+      else bistVal += val;
+    }
   });
 
   const goldVal = isTRY ? (portfolioSummary.totalGoldValTRY || 0) : ((portfolioSummary.totalGoldValTRY || 0) / (portfolioSummary.usdtry || 49.03));
   const ppfVal = isTRY ? (portfolioSummary.ppfBalanceTRY || 0) : ((portfolioSummary.ppfBalanceTRY || 0) / (portfolioSummary.usdtry || 49.03));
 
   const totalAll = totalVal > 0 ? totalVal : 1;
-  const hissePct = (hisseVal / totalAll) * 100;
+  const bistPct = (bistVal / totalAll) * 100;
+  const usPct = (usVal / totalAll) * 100;
   const etfPct = (etfVal / totalAll) * 100;
   const kriptoPct = (kriptoVal / totalAll) * 100;
   const goldPct = (goldVal / totalAll) * 100;
@@ -56,17 +64,19 @@ export default function OverviewTab() {
 
   const pieData = {
     labels: [
-      'Hisse Senedi (BIST & ABD)',
-      'ETF & Fonlar',
-      'Kripto Varlıklar',
-      'Gram Altın (Kur Kalkanı)',
-      'PPF / TL Kuru Barut'
+      'BIST Hisseleri (🇹🇷)',
+      'ABD Hisseleri (🇺🇸)',
+      'ETF & Fonlar (🟣)',
+      'Kripto Varlıklar (🟠)',
+      'Gram Altın (🟡)',
+      'PPF / Kuru Barut (🟢)'
     ],
     datasets: [
       {
-        data: [hisseVal, etfVal, kriptoVal, goldVal, ppfVal],
+        data: [bistVal, usVal, etfVal, kriptoVal, goldVal, ppfVal],
         backgroundColor: [
-          '#3b82f6', // Hisse: Blue
+          '#3b82f6', // BIST: Blue
+          '#06b6d4', // ABD: Cyan
           '#8b5cf6', // ETF: Purple
           '#f97316', // Kripto: Orange
           '#eab308', // Altın: Gold
@@ -211,9 +221,9 @@ export default function OverviewTab() {
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <span className="card-title">💎 VARLIK SINIFI DAĞILIMI (PASTA GRAFİK)</span>
-              <span className="card-subtitle">5 Ana Varlık Sınıfı Ağırlık Analizi</span>
+              <span className="card-subtitle">6 Varlık Sınıfı & BIST/ABD Ayrımlı Portföy Mimarisi</span>
             </div>
-            <span className="nav-badge cyan" style={{ fontSize: 10 }}>Dinamik Dilimler</span>
+            <span className="nav-badge cyan" style={{ fontSize: 10 }}>Dinamik 6 Dilim</span>
           </div>
           <div className="card-body">
             {/* Pie Chart & Detailed Legend Flex Layout */}
@@ -227,31 +237,37 @@ export default function OverviewTab() {
               <div className="distribution-legend" style={{ flex: 1, minWidth: 220 }}>
                 <div className="legend-row">
                   <span className="dot" style={{ background: '#3b82f6', boxShadow: '0 0 8px rgba(59,130,246,0.5)' }}></span>
-                  <span className="name">Hisse Senedi (BIST & ABD)</span>
-                  <span className="val mono">{sym}{fmtInt(hisseVal)}</span>
-                  <span className="pct mono" style={{ color: '#3b82f6', fontWeight: 700 }}>{hissePct.toFixed(1)}%</span>
+                  <span className="name">🇹🇷 BIST Hisseleri</span>
+                  <span className="val mono">{sym}{fmtInt(bistVal)}</span>
+                  <span className="pct mono" style={{ color: '#3b82f6', fontWeight: 700 }}>{bistPct.toFixed(1)}%</span>
+                </div>
+                <div className="legend-row">
+                  <span className="dot" style={{ background: '#06b6d4', boxShadow: '0 0 8px rgba(6,182,212,0.5)' }}></span>
+                  <span className="name">🇺🇸 ABD Hisseleri</span>
+                  <span className="val mono">{sym}{fmtInt(usVal)}</span>
+                  <span className="pct mono" style={{ color: '#06b6d4', fontWeight: 700 }}>{usPct.toFixed(1)}%</span>
                 </div>
                 <div className="legend-row">
                   <span className="dot" style={{ background: '#8b5cf6', boxShadow: '0 0 8px rgba(139,92,246,0.5)' }}></span>
-                  <span className="name">ETF & Fonlar</span>
+                  <span className="name">🟣 ETF & Fonlar</span>
                   <span className="val mono">{sym}{fmtInt(etfVal)}</span>
                   <span className="pct mono" style={{ color: '#8b5cf6', fontWeight: 700 }}>{etfPct.toFixed(1)}%</span>
                 </div>
                 <div className="legend-row">
                   <span className="dot" style={{ background: '#f97316', boxShadow: '0 0 8px rgba(249,115,22,0.5)' }}></span>
-                  <span className="name">Kripto Varlıklar</span>
+                  <span className="name">🟠 Kripto Varlıklar</span>
                   <span className="val mono">{sym}{fmtInt(kriptoVal)}</span>
                   <span className="pct mono" style={{ color: '#f97316', fontWeight: 700 }}>{kriptoPct.toFixed(1)}%</span>
                 </div>
                 <div className="legend-row">
                   <span className="dot" style={{ background: '#eab308', boxShadow: '0 0 8px rgba(234,179,8,0.5)' }}></span>
-                  <span className="name">Gram Altın (Kur Kalkanı)</span>
+                  <span className="name">🟡 Gram Altın (Kur Kalkanı)</span>
                   <span className="val mono">{sym}{fmtInt(goldVal)}</span>
                   <span className="pct mono" style={{ color: '#eab308', fontWeight: 700 }}>{goldPct.toFixed(1)}%</span>
                 </div>
                 <div className="legend-row">
                   <span className="dot" style={{ background: '#10b981', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }}></span>
-                  <span className="name">PPF / TL Likit Kuru Barut</span>
+                  <span className="name">🟢 PPF / Kuru Barut</span>
                   <span className="val mono">{sym}{fmtInt(ppfVal)}</span>
                   <span className="pct mono" style={{ color: '#10b981', fontWeight: 700 }}>{ppfPct.toFixed(1)}%</span>
                 </div>
@@ -260,7 +276,8 @@ export default function OverviewTab() {
 
             {/* Horizontal Mini Track Bar */}
             <div className="multi-progress-bar" style={{ height: 6, borderRadius: 3 }}>
-              <div style={{ width: `${Math.max(0, hissePct)}%`, background: '#3b82f6' }} title={`Hisse: %${hissePct.toFixed(1)}`}></div>
+              <div style={{ width: `${Math.max(0, bistPct)}%`, background: '#3b82f6' }} title={`BIST: %${bistPct.toFixed(1)}`}></div>
+              <div style={{ width: `${Math.max(0, usPct)}%`, background: '#06b6d4' }} title={`ABD: %${usPct.toFixed(1)}`}></div>
               <div style={{ width: `${Math.max(0, etfPct)}%`, background: '#8b5cf6' }} title={`ETF: %${etfPct.toFixed(1)}`}></div>
               <div style={{ width: `${Math.max(0, kriptoPct)}%`, background: '#f97316' }} title={`Kripto: %${kriptoPct.toFixed(1)}`}></div>
               <div style={{ width: `${Math.max(0, goldPct)}%`, background: '#eab308' }} title={`Gram Altın: %${goldPct.toFixed(1)}`}></div>

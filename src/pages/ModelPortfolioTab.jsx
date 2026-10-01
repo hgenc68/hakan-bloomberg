@@ -134,6 +134,7 @@ export default function ModelPortfolioTab() {
             <thead>
               <tr>
                 <th>Varlık</th>
+                <th>Dengeleme Durumu</th>
                 <th>Sektör & Tema</th>
                 <th className="text-right">Ağırlık %</th>
                 <th className="text-right">Giriş Fiyatı</th>
@@ -147,6 +148,7 @@ export default function ModelPortfolioTab() {
             <tbody>
               {holdings.map((h, idx) => {
                 const isUp = (h.return_pct || 0) >= 0;
+                const isNew = h.status === 'NEW';
 
                 return (
                   <tr key={idx} className="table-row">
@@ -157,6 +159,17 @@ export default function ModelPortfolioTab() {
                         </strong>
                         <span className="ticker-desc">{h.name || h.ticker}</span>
                       </div>
+                    </td>
+                    <td>
+                      {isNew ? (
+                        <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '3px 8px', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                          ✨ YENİ GİRDİ
+                        </span>
+                      ) : (
+                        <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '3px 8px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                          🛡️ KORUNDU
+                        </span>
+                      )}
                     </td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -201,6 +214,63 @@ export default function ModelPortfolioTab() {
           </table>
         </div>
       </div>
+
+      {/* Portföyden Çıkarılanlar / Tasfiye Edilenler Tablosu */}
+      {currentModel.exited && currentModel.exited.length > 0 && (
+        <div className="card table-card" style={{ marginTop: 20, padding: 18, background: 'var(--bg-card)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: 13, color: '#fca5a5', display: 'flex', alignItems: 'center', gap: 6 }}>
+                🚪 BU AY PORTFÖYDEN ÇIKARILANLAR (EXITED & REBALANCE)
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Aylık model dengelemesinde quant skoru, trend kaybı veya kâr realizasyonu nedeniyle tasfiye edilen varlıklar
+              </span>
+            </div>
+            <span className="nav-badge red" style={{ fontSize: 10, padding: '3px 9px' }}>
+              {currentModel.exited.length} Pozisyon Tasfiye Edildi
+            </span>
+          </div>
+
+          <div className="table-responsive">
+            <table className="terminal-table" style={{ fontSize: 11.5 }}>
+              <thead>
+                <tr>
+                  <th>Varlık</th>
+                  <th>Sektör</th>
+                  <th className="text-right">Dönem Getirisi %</th>
+                  <th>Çıkış Gerekçesi & Model Kararı</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentModel.exited.map((ex, idx) => {
+                  const isUp = (ex.final_return_pct || 0) >= 0;
+                  return (
+                    <tr key={idx} className="table-row">
+                      <td>
+                        <div className="ticker-cell">
+                          <strong className="ticker-symbol mono" style={{ color: '#f87171' }}>
+                            {ex.ticker}
+                          </strong>
+                          <span className="ticker-desc">{ex.name || ex.ticker}</span>
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--text-muted)' }}>{ex.sector || '-'}</td>
+                      <td className="text-right mono font-medium" style={{ color: isUp ? 'var(--emerald)' : 'var(--red)' }}>
+                        {isUp ? '+' : ''}{Number(ex.final_return_pct || 0).toFixed(2)}%
+                      </td>
+                      <td style={{ fontSize: 11, color: '#cbd5e1' }}>
+                        <span className="nav-badge red" style={{ fontSize: 9, marginRight: 8, padding: '2px 6px' }}>TASFİYE</span>
+                        {ex.reason || 'Aylık dengeleme & model optimizasyonu'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
