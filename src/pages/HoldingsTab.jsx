@@ -630,9 +630,14 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   --
                 </td>
                 <td className="text-right mono">
-                  <span className={`change-pill ${(portfolioSummary?.dayPLPct || 0) >= 0 ? 'up' : 'down'}`}>
-                    {(portfolioSummary?.dayPLPct || 0) >= 0 ? '▲ +' : '▼ '}{Math.abs(portfolioSummary?.dayPLPct || 0).toFixed(2)}%
-                  </span>
+                  <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                    <span className={`change-pill ${(portfolioSummary?.dayPLPct || 0) >= 0 ? 'up' : 'down'}`}>
+                      {(portfolioSummary?.dayPLPct || 0) >= 0 ? '▲ +' : '▼ '}{Math.abs(portfolioSummary?.dayPLPct || 0).toFixed(2)}%
+                    </span>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: ((isTRY ? portfolioSummary?.dayPLTRY : portfolioSummary?.dayPLUSD) || 0) >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                      {((isTRY ? portfolioSummary?.dayPLTRY : portfolioSummary?.dayPLUSD) || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? portfolioSummary?.dayPLTRY : portfolioSummary?.dayPLUSD, 2)}
+                    </span>
+                  </div>
                 </td>
                 <td className="text-right mono text-cyan" style={{ fontSize: 13, fontWeight: 900 }}>
                   {sym}{fmt(isTRY ? portfolioSummary?.totalValTRY : portfolioSummary?.totalValUSD, 2)}
