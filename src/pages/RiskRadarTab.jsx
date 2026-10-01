@@ -22,6 +22,52 @@ ChartJS.register(
   Legend
 );
 
+export const getHealthColorTheme = (score) => {
+  const num = Number(score) || 0;
+  if (num < 50) {
+    return {
+      status: 'critical',
+      label: 'Kritik / Sağlıksız',
+      color: '#ef4444',
+      bgRgba: 'rgba(239, 68, 68, 0.28)',
+      pointBg: '#ef4444',
+      badgeClass: 'red',
+      icon: '🚨'
+    };
+  }
+  if (num < 70) {
+    return {
+      status: 'warning',
+      label: 'Orta / İyileştirilmeli',
+      color: '#f59e0b',
+      bgRgba: 'rgba(245, 158, 11, 0.28)',
+      pointBg: '#f59e0b',
+      badgeClass: 'amber',
+      icon: '⚠️'
+    };
+  }
+  if (num < 85) {
+    return {
+      status: 'healthy',
+      label: 'Sağlıklı & Güvenli',
+      color: '#00e5ff',
+      bgRgba: 'rgba(0, 229, 255, 0.25)',
+      pointBg: '#00e5ff',
+      badgeClass: 'cyan',
+      icon: '🛡️'
+    };
+  }
+  return {
+    status: 'excellent',
+    label: 'Mükemmel & Zırhlı',
+    color: '#10b981',
+    bgRgba: 'rgba(16, 185, 129, 0.28)',
+    pointBg: '#10b981',
+    badgeClass: 'emerald',
+    icon: '💎'
+  };
+};
+
 export default function RiskRadarTab() {
   const { portfolioSummary, currentCurrency, usdtry } = useApp();
   const isTRY = currentCurrency === 'try';
@@ -41,6 +87,7 @@ export default function RiskRadarTab() {
   };
 
   const [selectedScenarioIdx, setSelectedScenarioIdx] = useState(0);
+  const [isSimulatingStress, setIsSimulatingStress] = useState(false);
 
   const stressScenarios = [
     {
@@ -52,7 +99,16 @@ export default function RiskRadarTab() {
       impactTRY: -14250,
       impactPct: -3.85,
       desc: 'Merkez bankalarının politika faizini aniden 1000 baz puan artırması ve kredi musluklarının daralması senaryosu.',
-      why: 'PPF nakit barutunun faiz getirisi artarken, hisse senetlerinde çarpan daralması yaşanır. Kalkan tamponu zararı sınırlar.'
+      why: 'PPF nakit barutunun faiz getirisi artarken, hisse senetlerinde çarpan daralması yaşanır. Kalkan tamponu zararı sınırlar.',
+      stressedAxes: [
+        { label: 'Getiri Gücü', score: 62 },
+        { label: 'Düşüş Koruması', score: 70 },
+        { label: 'Risk Kalitesi', score: 65 },
+        { label: 'Çeşitlendirme', score: 82 },
+        { label: 'Enflasyon Kalkanı', score: 68 }
+      ],
+      stressedComposite: 69,
+      stressedGrade: 'B (Orta / Dikkat)'
     },
     {
       shortTitle: 'Kur Sıçraması (+%30)',
@@ -63,7 +119,16 @@ export default function RiskRadarTab() {
       impactTRY: 48650,
       impactPct: 13.15,
       desc: 'Dolar/TL kurunun kontrol aralığından çıkarak aniden %30 yukarı sıçraması ve döviz talebinin patlaması senaryosu.',
-      why: 'Doğal kur kalkanı (%82.4) sayesinde Gram Altın, ABD Hisseleri ve Kriptolar TL bazında güçlü kazanç yazdırır.'
+      why: 'Doğal kur kalkanı (%82.4) sayesinde Gram Altın, ABD Hisseleri ve Kriptolar TL bazında güçlü kazanç yazdırır.',
+      stressedAxes: [
+        { label: 'Getiri Gücü', score: 88 },
+        { label: 'Düşüş Koruması', score: 85 },
+        { label: 'Risk Kalitesi', score: 84 },
+        { label: 'Çeşitlendirme', score: 92 },
+        { label: 'Enflasyon Kalkanı', score: 96 }
+      ],
+      stressedComposite: 89,
+      stressedGrade: 'A+ (Mükemmel Zırh)'
     },
     {
       shortTitle: 'Küresel Kriz (-%25)',
@@ -74,7 +139,16 @@ export default function RiskRadarTab() {
       impactTRY: -28400,
       impactPct: -7.68,
       desc: 'Wall Street ve küresel borsalarda resesyon endişeleriyle %25 oranında sert bir düzeltme dalgası yaşanması.',
-      why: 'Hisse varlıkları gerilerken Gram Altın ve PPF nakit tamponu portföyü dengeler ve dipten maliyetlenme fırsatı sunar.'
+      why: 'Hisse varlıkları gerilerken Gram Altın ve PPF nakit tamponu portföyü dengeler ve dipten maliyetlenme fırsatı sunar.',
+      stressedAxes: [
+        { label: 'Getiri Gücü', score: 40 },
+        { label: 'Düşüş Koruması', score: 52 },
+        { label: 'Risk Kalitesi', score: 45 },
+        { label: 'Çeşitlendirme', score: 72 },
+        { label: 'Enflasyon Kalkanı', score: 64 }
+      ],
+      stressedComposite: 48,
+      stressedGrade: 'D (Kritik / Sağlıksız)'
     },
     {
       shortTitle: 'Stagflasyon Şoku',
@@ -85,7 +159,16 @@ export default function RiskRadarTab() {
       impactTRY: 8200,
       impactPct: 2.22,
       desc: 'Ekonomik büyümenin sıfırlanırken enflasyonun yapışkan biçimde yüksek kalmaya devam ettiği zorlu makro ortam.',
-      why: 'Emtia ve altın gibi reel kıymetler değer koruma özelliği sergileyerek portföyün satın alma gücünü muhafaza eder.'
+      why: 'Emtia ve altın gibi reel kıymetler değer koruma özelliği sergileyerek portföyün satın alma gücünü muhafaza eder.',
+      stressedAxes: [
+        { label: 'Getiri Gücü', score: 58 },
+        { label: 'Düşüş Koruması', score: 64 },
+        { label: 'Risk Kalitesi', score: 62 },
+        { label: 'Çeşitlendirme', score: 80 },
+        { label: 'Enflasyon Kalkanı', score: 75 }
+      ],
+      stressedComposite: 67,
+      stressedGrade: 'B (Orta Seviye)'
     },
     {
       shortTitle: 'Kripto Kışı (BTC -%50)',
@@ -96,30 +179,46 @@ export default function RiskRadarTab() {
       impactTRY: -11500,
       impactPct: -3.11,
       desc: 'Kripto para piyasalarında regülasyon baskısıyla sert bir likidite geri çekilmesi yaşanması.',
-      why: 'Kripto varlıkların toplam portföydeki payı kontrollü seviyede tutulduğu için genel servet üzerindeki etkisi sınırlı kalır.'
+      why: 'Kripto varlıkların toplam portföydeki payı kontrollü seviyede tutulduğu için genel servet üzerindeki etkisi sınırlı kalır.',
+      stressedAxes: [
+        { label: 'Getiri Gücü', score: 74 },
+        { label: 'Düşüş Koruması', score: 82 },
+        { label: 'Risk Kalitesi', score: 74 },
+        { label: 'Çeşitlendirme', score: 86 },
+        { label: 'Enflasyon Kalkanı', score: 82 }
+      ],
+      stressedComposite: 79,
+      stressedGrade: 'A- (Sağlıklı / Dengeli)'
     }
   ];
 
   const currentSc = stressScenarios[selectedScenarioIdx] || stressScenarios[0];
 
-  // Radar Chart Data (Kar Tanesi / Snowflake)
-  const radarLabels = (healthScore.axes || []).map(a => a.label);
-  const radarScores = (healthScore.axes || []).map(a => a.score);
+  // Active Radar Data (Kar Tanesi / Snowflake)
+  const activeAxes = isSimulatingStress ? (currentSc.stressedAxes || healthScore.axes) : (healthScore.axes || []);
+  const activeCompositeScore = isSimulatingStress ? (currentSc.stressedComposite || 70) : (healthScore.composite_score || 84);
+  const activeGrade = isSimulatingStress ? (currentSc.stressedGrade || 'B') : (healthScore.grade || 'A-');
+
+  // Dynamic Theme (Kırmızı < 50, Sarı 50-69, Mavi/Cyan 70-84, Yeşil >= 85)
+  const activeTheme = getHealthColorTheme(activeCompositeScore);
+
+  const radarLabels = activeAxes.map(a => a.label);
+  const radarScores = activeAxes.map(a => a.score);
 
   const radarData = {
     labels: radarLabels,
     datasets: [
       {
-        label: 'Portföy Sağlık Skoru',
+        label: isSimulatingStress ? `Şok Simülasyonu (${currentSc.shortTitle})` : 'Portföy Sağlık Skoru',
         data: radarScores,
-        backgroundColor: 'rgba(0, 229, 255, 0.25)',
-        borderColor: '#00e5ff',
-        borderWidth: 2,
-        pointBackgroundColor: '#10b981',
+        backgroundColor: activeTheme.bgRgba,
+        borderColor: activeTheme.color,
+        borderWidth: 2.5,
+        pointBackgroundColor: activeTheme.pointBg,
         pointBorderColor: '#fff',
         pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: '#00e5ff',
-        pointRadius: 4
+        pointHoverBorderColor: activeTheme.color,
+        pointRadius: 4.5
       }
     ]
   };
@@ -187,11 +286,11 @@ export default function RiskRadarTab() {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 420px) 1fr', gap: 16, marginBottom: 20 }}>
         
         {/* Left Column: Kar Tanesi (Snowflake) Radar Chart */}
-        <div className="card" style={{ padding: 18, background: '#070a12', border: '1px solid var(--border)' }}>
+        <div className="card" style={{ padding: 18, background: '#070a12', border: `1px solid ${activeTheme.color}40`, boxShadow: `0 0 20px ${activeTheme.color}15`, transition: 'all 0.3s ease' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Snowflake size={15} className="text-cyan" />
+                <Snowflake size={16} style={{ color: activeTheme.color }} />
                 <span>KAR TANESİ SAĞLIK RADARI</span>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
@@ -199,35 +298,77 @@ export default function RiskRadarTab() {
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>
-                {healthScore.composite_score || 84}/100
+              <div style={{ fontSize: 18, fontWeight: 900, color: activeTheme.color, fontFamily: 'var(--font-mono)', transition: 'color 0.3s' }}>
+                {activeCompositeScore}/100
               </div>
-              <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>
-                {healthScore.grade || 'A-'}
+              <span className={`nav-badge ${activeTheme.badgeClass}`} style={{ fontSize: 9.5, fontWeight: 800, transition: 'all 0.3s' }}>
+                {activeTheme.icon} {activeGrade}
               </span>
             </div>
           </div>
 
+          {/* Mode Switch: Base vs Shock Simulation */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, background: 'rgba(0,0,0,0.4)', padding: 3, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+            <button
+              type="button"
+              className={`chip-btn ${!isSimulatingStress ? 'active' : ''}`}
+              onClick={() => setIsSimulatingStress(false)}
+              style={{ flex: 1, fontSize: 10, padding: '4px 6px', textAlign: 'center' }}
+            >
+              📍 Mevcut Sağlık (84/100)
+            </button>
+            <button
+              type="button"
+              className={`chip-btn ${isSimulatingStress ? 'active' : ''}`}
+              onClick={() => setIsSimulatingStress(true)}
+              style={{ flex: 1, fontSize: 10, padding: '4px 6px', textAlign: 'center' }}
+              title="Sağ paneldeki şok senaryosuna göre kar tanesini simüle et"
+            >
+              ⚡ Şok Simülasyonu ({currentSc.shortTitle})
+            </button>
+          </div>
+
           {/* Radar Canvas */}
-          <div style={{ height: 260, width: '100%', position: 'relative', margin: '4px 0 12px 0' }}>
+          <div style={{ height: 260, width: '100%', position: 'relative', margin: '4px 0 8px 0' }}>
             <Radar data={radarData} options={radarOptions} />
           </div>
 
+          {/* Dynamic 4-Tier Health Color Scale Legend Bar */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, background: '#090d16', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 9.5, textAlign: 'center', marginBottom: 10 }}>
+            <div style={{ color: '#ef4444', fontWeight: activeTheme.status === 'critical' ? 900 : 500, background: activeTheme.status === 'critical' ? 'rgba(239,68,68,0.15)' : 'transparent', borderRadius: 3, padding: '2px 0' }}>
+              🔴 &lt;50 Sağlıksız
+            </div>
+            <div style={{ color: '#f59e0b', fontWeight: activeTheme.status === 'warning' ? 900 : 500, background: activeTheme.status === 'warning' ? 'rgba(245,158,11,0.15)' : 'transparent', borderRadius: 3, padding: '2px 0' }}>
+              🟡 50-69 Orta
+            </div>
+            <div style={{ color: '#00e5ff', fontWeight: activeTheme.status === 'healthy' ? 900 : 500, background: activeTheme.status === 'healthy' ? 'rgba(0,229,255,0.15)' : 'transparent', borderRadius: 3, padding: '2px 0' }}>
+              🔵 70-84 Sağlıklı
+            </div>
+            <div style={{ color: '#10b981', fontWeight: activeTheme.status === 'excellent' ? 900 : 500, background: activeTheme.status === 'excellent' ? 'rgba(16,185,129,0.15)' : 'transparent', borderRadius: 3, padding: '2px 0' }}>
+              🟢 ≥85 Mükemmel
+            </div>
+          </div>
+
           {/* Summary Box */}
-          <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.4 }}>
-            {healthScore.summary_comment || 'Portföy döviz, altın ve faiz tamponlarıyla yüksek piyasa türbülanslarına karşı güçlü bir dengeye sahip.'}
+          <div style={{ background: '#090d16', border: `1px solid ${activeTheme.color}30`, borderRadius: 6, padding: '10px 12px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.4 }}>
+            {isSimulatingStress
+              ? `⚡ ${currentSc.title} şoku simüle edildiğinde portföy sağlık notu ${activeGrade} seviyesine evrilir. ${currentSc.why}`
+              : (healthScore.summary_comment || 'Portföy döviz, altın ve faiz tamponlarıyla yüksek piyasa türbülanslarına karşı güçlü bir dengeye sahip.')}
           </div>
 
           {/* 5 Factor Breakdown Pills */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginTop: 12 }}>
-            {(healthScore.axes || []).map((ax, i) => (
-              <div key={i} style={{ background: 'rgba(255,255,255,0.03)', padding: 6, borderRadius: 4, textAlign: 'center' }}>
-                <div style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{ax.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: ax.score >= 80 ? 'var(--emerald)' : (ax.score >= 60 ? 'var(--cyan)' : 'var(--amber)'), marginTop: 2, fontFamily: 'var(--font-mono)' }}>
-                  {ax.score}
+            {activeAxes.map((ax, i) => {
+              const pillTheme = getHealthColorTheme(ax.score);
+              return (
+                <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${pillTheme.color}25`, padding: 6, borderRadius: 4, textAlign: 'center' }}>
+                  <div style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{ax.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: pillTheme.color, marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+                    {ax.score}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
