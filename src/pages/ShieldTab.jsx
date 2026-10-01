@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Shield, Plus, DollarSign, Award, Trash2, AlertTriangle, ShieldCheck, TrendingUp, Zap } from 'lucide-react';
+import { Shield, Plus, DollarSign, Award, Trash2, AlertTriangle, ShieldCheck, TrendingUp, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
   const { goldPurchases, portfolioSummary, deleteGoldPurchase, usdtry } = useApp();
+  const [isGoldTableExpanded, setIsGoldTableExpanded] = useState(false);
 
   const totalGrams = portfolioSummary.totalGrams || 0;
-  const goldValTRY = portfolioSummary.totalGoldValTRY || 0;
-  const goldCostTRY = portfolioSummary.totalGoldCostTRY || 0;
-  const goldProfitTRY = portfolioSummary.goldProfitTRY || 0;
-  const goldReturnPct = portfolioSummary.goldReturnPct || 0;
+  const physicalGoldValTRY = portfolioSummary.totalGoldValTRY || 0;
+  const physicalGoldCostTRY = portfolioSummary.totalGoldCostTRY || 0;
+  const physicalGoldProfitTRY = portfolioSummary.goldProfitTRY || 0;
   const ppfBalTRY = portfolioSummary.ppfBalanceTRY || 0;
   const totalValTRY = portfolioSummary.totalValTRY || 1;
   const totalValUSD = portfolioSummary.totalValUSD || 1;
@@ -20,11 +20,14 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
   let catTotalsTRY = {
     us_equities_etf: 0,
     bist_export: 0,
-    gold_metals: goldValTRY,
+    gold_metals: physicalGoldValTRY,
     cash_ppf: ppfBalTRY,
     bist_domestic: 0,
     crypto: 0
   };
+
+  let holdingsGoldValTRY = 0;
+  let holdingsGoldCostTRY = 0;
 
   const knownExporters = new Set(['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS']);
 
@@ -32,11 +35,14 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
     const sym = (h.ticker || '').toUpperCase();
     const clean = sym.replace('.IS', '').replace('-USD', '');
     const val = h.valTRY || 0;
+    const cost = h.costTRY || 0;
 
     if (h.type === 'Kripto' || ['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(clean)) {
       catTotalsTRY.crypto += val;
     } else if (h.type === 'Altın' || clean.includes('XAUT') || clean.includes('GOLD')) {
       catTotalsTRY.gold_metals += val;
+      holdingsGoldValTRY += val;
+      holdingsGoldCostTRY += cost;
     } else if (h.isHoldingUSD || ['SPCX', 'DRAM', 'NVDA', 'TSM', 'ABBV', 'AAPL', 'MSFT'].includes(clean)) {
       catTotalsTRY.us_equities_etf += val;
     } else if (knownExporters.has(clean)) {
@@ -45,6 +51,13 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
       catTotalsTRY.bist_domestic += val;
     }
   });
+
+  // Consolidated Gold Figures (Physical Gram Gold + Exchange Traded Gold/Certificates)
+  const totalGoldValTRY = catTotalsTRY.gold_metals;
+  const totalGoldCostTRY = physicalGoldCostTRY + holdingsGoldCostTRY;
+  const totalGoldProfitTRY = totalGoldValTRY - totalGoldCostTRY;
+  const totalGoldReturnPct = totalGoldCostTRY > 0 ? (totalGoldProfitTRY / totalGoldCostTRY) * 100 : 0;
+  const totalShieldValTRY = totalGoldValTRY + ppfBalTRY;
 
   const catConfig = [
     { key: 'us_equities_etf', label: 'ABD Hisse & Global ETF', color: '#00e5ff', target: 35.0, coef: 1.0 },
@@ -156,20 +169,20 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
           </div>
         </div>
 
-        {/* KPI 2: Gram Altın Havuzu */}
+        {/* KPI 2: Toplam Altın Havuzu (Fiziki + Borsa) */}
         <div className="kpi-card gold" style={{ padding: 16 }}>
           <div className="kpi-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Fiziki / Banka Altın</span>
-            <span className="nav-badge gold" style={{ fontSize: 10 }}>👑 {totalGrams.toFixed(2)} gr</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Toplam Altın & Değerli Maden</span>
+            <span className="nav-badge gold" style={{ fontSize: 10 }}>👑 {totalGrams.toFixed(2)} gr Fiziki + Borsa</span>
           </div>
           <div className="kpi-val mono text-gold" style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
-            ₺{goldValTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₺{totalGoldValTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="kpi-sub mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            <span>Kâr: </span>
-            <span className={goldProfitTRY >= 0 ? 'text-up' : 'text-down'} style={{ fontWeight: 700 }}>
-              {goldProfitTRY >= 0 ? '+' : ''}₺{goldProfitTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ({goldReturnPct.toFixed(1)}%)
-            </span>
+            <span>Fiziki/Banka: <strong style={{ color: '#fff' }}>₺{physicalGoldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
+            {holdingsGoldValTRY > 0 && (
+              <span style={{ marginLeft: 6 }}>| Borsa/Fon: <strong style={{ color: 'var(--cyan)' }}>₺{holdingsGoldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
+            )}
           </div>
         </div>
 
@@ -192,14 +205,13 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
         <div className="kpi-card purple" style={{ padding: 16 }}>
           <div className="kpi-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Kalkan Serveti (Altın + PPF)</span>
-            <span className="nav-badge purple" style={{ fontSize: 10 }}>Defansif</span>
+            <span className="nav-badge purple" style={{ fontSize: 10 }}>Defansif Zırh</span>
           </div>
           <div className="kpi-val mono text-bright" style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
-            ₺{(goldValTRY + ppfBalTRY).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₺{totalShieldValTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="kpi-sub mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            <span>Dolar Karşılığı: </span>
-            <strong style={{ color: '#fff' }}>${((goldValTRY + ppfBalTRY) / usdtry).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>
+            <span>Altın: <strong style={{ color: 'var(--gold)' }}>₺{totalGoldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong> | PPF: <strong style={{ color: 'var(--cyan)' }}>₺{ppfBalTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
           </div>
         </div>
       </div>
@@ -361,22 +373,46 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
 
       {/* Gold Purchases Table */}
       <div className="card table-card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <span style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0' }}>👑 GRAM ALTIN ALIM GEÇMİŞİ (FİZİKİ & BANKA)</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>Tarih Sıralı Birikim Defteri</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>
+              Tarih Sıralı Birikim Defteri ({goldPurchases.length} Alım)
+            </span>
           </div>
-          <button
-            type="button"
-            className="btn-action-sm"
-            onClick={onOpenAddGoldModal}
-            style={{ padding: '4px 10px', fontSize: 11, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', borderRadius: 4 }}
-          >
-            + Yeni Alım Ekle
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {goldPurchases.length > 5 && (
+              <button
+                type="button"
+                className="chip-btn"
+                onClick={() => setIsGoldTableExpanded(prev => !prev)}
+                style={{ fontSize: 10.5, padding: '4px 10px' }}
+              >
+                {isGoldTableExpanded ? (
+                  <>
+                    <ChevronUp size={12} />
+                    <span>Daralt (Son 5 Alım)</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={12} />
+                    <span>Tümünü Göster ({goldPurchases.length} Alım)</span>
+                  </>
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn-action-sm"
+              onClick={onOpenAddGoldModal}
+              style={{ padding: '4px 10px', fontSize: 11, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', borderRadius: 4 }}
+            >
+              + Yeni Alım Ekle
+            </button>
+          </div>
         </div>
 
-        <div className="table-responsive">
+        <div className="table-responsive" style={{ maxHeight: isGoldTableExpanded ? '380px' : 'none', overflowY: isGoldTableExpanded ? 'auto' : 'visible' }}>
           <table className="terminal-table" style={{ fontSize: 11.5 }}>
             <thead>
               <tr>
@@ -391,7 +427,7 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
               </tr>
             </thead>
             <tbody>
-              {goldPurchases.map(g => {
+              {(isGoldTableExpanded ? goldPurchases : goldPurchases.slice(0, 5)).map(g => {
                 const cost = (Number(g.grams) || 0) * (Number(g.buy_price_try) || 0);
                 const liveVal = (Number(g.grams) || 0) * (portfolioSummary.gramGoldPrice || 6600);
                 const pl = liveVal - cost;
@@ -436,6 +472,34 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
                 );
               })}
             </tbody>
+            {/* Grand Total Summary Row for Gold */}
+            <tfoot>
+              <tr style={{ background: '#070a14', borderTop: '2px solid rgba(234, 179, 8, 0.4)', fontWeight: 800 }}>
+                <td style={{ color: 'var(--gold)', letterSpacing: '0.3px' }}>
+                  👑 TOPLAM FİZİKİ BİRİKİM ({goldPurchases.length} Alım)
+                </td>
+                <td className="text-right mono text-gold" style={{ fontSize: 12.5, fontWeight: 800 }}>
+                  {totalGrams.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gr
+                </td>
+                <td className="text-right mono text-muted" style={{ fontWeight: 700 }}>
+                  ₺{(totalGrams > 0 ? physicalGoldCostTRY / totalGrams : 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} /gr
+                </td>
+                <td className="text-right mono text-bright" style={{ fontWeight: 800 }}>
+                  ₺{physicalGoldCostTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td className="text-right mono text-cyan" style={{ fontSize: 12.5, fontWeight: 800 }}>
+                  ₺{physicalGoldValTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td className="text-right mono" style={{ fontWeight: 800 }}>
+                  <span className={physicalGoldProfitTRY >= 0 ? 'text-up' : 'text-down'}>
+                    {physicalGoldProfitTRY >= 0 ? '+' : ''}₺{physicalGoldProfitTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({physicalGoldCostTRY > 0 ? ((physicalGoldProfitTRY / physicalGoldCostTRY) * 100).toFixed(1) : 0}%)
+                  </span>
+                </td>
+                <td colSpan={2} style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  Kuru Barut & Doğal Zırh
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

@@ -440,30 +440,89 @@ export const AppProvider = ({ children }) => {
 
   // 4. CRUD Actions interacting with Firestore
   const addHolding = async (holdingData) => {
-    const docId = holdingData.ticker.replace(/[\/\.]/g, '_').toUpperCase();
-    await setDoc(doc(db, 'holdings', docId), {
-      ...holdingData,
-      ticker: holdingData.ticker.toUpperCase(),
-      shares: Number(holdingData.shares),
-      avg_cost: Number(holdingData.avg_cost),
-      updated_at: new Date().toISOString()
-    });
-    showToast(`${holdingData.ticker} başarıyla eklendi!`, '✅');
+    try {
+      const inputTicker = (holdingData.ticker || '').toUpperCase().trim();
+      const cleanInput = inputTicker.replace('.IS', '').replace('-USD', '');
+      const docId = inputTicker.replace(/[\/\.]/g, '_');
+
+      // Check if this holding already exists in the portfolio (matching ticker or clean ticker)
+      const existing = holdings.find(h => {
+        const hTicker = (h.ticker || '').toUpperCase();
+        const hClean = hTicker.replace('.IS', '').replace('-USD', '');
+        return hTicker === inputTicker || hClean === cleanInput;
+      });
+
+      const addedShares = parseFloat(String(holdingData.shares).replace(',', '.')) || 0;
+      const addedPrice = parseFloat(String(holdingData.avg_cost).replace(',', '.')) || 0;
+
+      if (addedShares <= 0 || addedPrice <= 0) {
+        showToast('Geçersiz adet veya maliyet!', '⚠️');
+        return;
+      }
+
+      if (existing) {
+        // Position Accumulation: Calculate weighted average cost
+        const existingShares = Number(existing.shares) || 0;
+        const existingCost = Number(existing.avg_cost) || 0;
+        const newTotalShares = existingShares + addedShares;
+        const newWeightedCost = newTotalShares > 0
+          ? ((existingShares * existingCost) + (addedShares * addedPrice)) / newTotalShares
+          : addedPrice;
+
+        const targetId = existing.id || docId;
+        await setDoc(doc(db, 'holdings', targetId), {
+          ...existing,
+          ...holdingData,
+          id: targetId,
+          shares: newTotalShares,
+          avg_cost: Math.round(newWeightedCost * 10000) / 10000,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+
+        const sym = holdingData.currency === 'USD' ? '$' : '₺';
+        showToast(`${inputTicker} alımı işlendi! Yeni Toplam: ${newTotalShares.toLocaleString('tr-TR', { maximumFractionDigits: 6 })} adet (Yeni Ort. Maliyet: ${sym}${newWeightedCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })})`, '📈', 5000);
+      } else {
+        // Brand new asset
+        await setDoc(doc(db, 'holdings', docId), {
+          ...holdingData,
+          ticker: inputTicker,
+          shares: addedShares,
+          avg_cost: addedPrice,
+          updated_at: new Date().toISOString()
+        });
+        showToast(`${inputTicker} portföye başarıyla eklendi!`, '✅');
+      }
+    } catch (err) {
+      console.error('addHolding error:', err);
+      showToast(`Pozisyon eklenirken hata: ${err.message}`, '⚠️');
+    }
   };
 
   const updateHolding = async (docId, holdingData) => {
-    await updateDoc(doc(db, 'holdings', docId), {
-      ...holdingData,
-      shares: Number(holdingData.shares),
-      avg_cost: Number(holdingData.avg_cost),
-      updated_at: new Date().toISOString()
-    });
-    showToast(`${holdingData.ticker || docId} güncellendi!`, '✅');
+    try {
+      const shares = parseFloat(String(holdingData.shares).replace(',', '.'));
+      const avg_cost = parseFloat(String(holdingData.avg_cost).replace(',', '.'));
+      await setDoc(doc(db, 'holdings', docId), {
+        ...holdingData,
+        shares,
+        avg_cost,
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+      showToast(`${holdingData.ticker || docId} güncellendi!`, '✅');
+    } catch (err) {
+      console.error('updateHolding error:', err);
+      showToast(`Güncelleme hatası: ${err.message}`, '⚠️');
+    }
   };
 
   const deleteHolding = async (docId) => {
-    await deleteDoc(doc(db, 'holdings', docId));
-    showToast(`Varlık başarıyla silindi!`, '🗑️');
+    try {
+      await deleteDoc(doc(db, 'holdings', docId));
+      showToast(`Varlık başarıyla silindi!`, '🗑️');
+    } catch (err) {
+      console.error('deleteHolding error:', err);
+      showToast(`Silme hatası: ${err.message}`, '⚠️');
+    }
   };
 
   // Automated Sell Execution: calculates realized P/L and logs to ledger

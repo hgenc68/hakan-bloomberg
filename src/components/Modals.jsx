@@ -73,16 +73,37 @@ export const POPULAR_ASSETS = [
   { ticker: 'DOGE', name: 'Dogecoin', type: 'Kripto', currency: 'USD', defaultPrice: 0.18 }
 ];
 
-// 1. Yeni Varlık Ekle Modalı (Akıllı Otomatik Tamamlama & İpuçları)
-export function AddHoldingModal({ onClose }) {
-  const { addHolding, usdtry, marketQuotes } = useApp();
-  const [ticker, setTicker] = useState('');
+// 1. Yeni Varlık Ekle / Alım Yap Modalı (Akıllı Otomatik Tamamlama, Mevcut Pozisyon Tespiti & Ağırlıklı Ortalama Maliyet)
+export function AddHoldingModal({ initialTicker, onClose }) {
+  const { addHolding, usdtry, marketQuotes, holdings } = useApp();
+  const [ticker, setTicker] = useState(initialTicker ? initialTicker.toUpperCase() : '');
   const [name, setName] = useState('');
   const [type, setType] = useState('Hisse');
   const [shares, setShares] = useState('');
   const [avgCost, setAvgCost] = useState('');
   const [currency, setCurrency] = useState('TRY');
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Check if ticker already exists in holdings (matching ticker or clean ticker)
+  const existingHolding = useMemo(() => {
+    const q = ticker.trim().toUpperCase();
+    if (!q) return null;
+    const cleanQ = q.replace('.IS', '').replace('-USD', '');
+    return (holdings || []).find(h => {
+      const hTicker = (h.ticker || '').toUpperCase();
+      const hClean = hTicker.replace('.IS', '').replace('-USD', '');
+      return hTicker === q || hClean === cleanQ;
+    });
+  }, [ticker, holdings]);
+
+  // When an existing holding is detected, sync default currency and type
+  useEffect(() => {
+    if (existingHolding) {
+      if (existingHolding.currency) setCurrency(existingHolding.currency);
+      if (existingHolding.type) setType(existingHolding.type);
+      if (existingHolding.name && !name) setName(existingHolding.name);
+    }
+  }, [existingHolding]);
 
   const suggestions = useMemo(() => {
     const q = ticker.trim().toUpperCase();
@@ -110,25 +131,80 @@ export function AddHoldingModal({ onClose }) {
     setShowSuggestions(false);
   };
 
+  const addedSharesNum = parseFloat(String(shares).replace(',', '.')) || 0;
+  const addedPriceNum = parseFloat(String(avgCost).replace(',', '.')) || 0;
+  const existingSharesNum = Number(existingHolding?.shares) || 0;
+  const existingAvgCostNum = Number(existingHolding?.avg_cost) || 0;
+  const newCombinedShares = existingSharesNum + addedSharesNum;
+  const newCombinedAvgCost = newCombinedShares > 0
+    ? ((existingSharesNum * existingAvgCostNum) + (addedSharesNum * addedPriceNum)) / newCombinedShares
+    : addedPriceNum;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!ticker || !shares || !avgCost) return;
     await addHolding({
       ticker: ticker.toUpperCase(),
       clean_ticker: ticker.includes('.') ? ticker : (type === 'Hisse' && currency === 'TRY' ? `${ticker}.IS` : ticker),
-      name: name || ticker,
+      name: name || existingHolding?.name || ticker,
       type,
-      shares: parseFloat(shares.replace(',', '.')),
-      avg_cost: parseFloat(avgCost.replace(',', '.')),
+      shares: parseFloat(String(shares).replace(',', '.')),
+      avg_cost: parseFloat(String(avgCost).replace(',', '.')),
       currency,
       cost_rate: currency === 'USD' ? (usdtry || 49.03) : 1.0
     });
     onClose();
   };
 
+  const modalTitle = existingHolding
+    ? `${existingHolding.ticker} - EK ALIM & POZİSYON ARTIR`
+    : 'YENİ VARLIK EKLE';
+
   return (
-    <ModalWrapper title="YENİ VARLIK EKLE" icon={Plus} onClose={onClose}>
+    <ModalWrapper title={modalTitle} icon={existingHolding ? Sparkles : Plus} onClose={onClose}>
       <form onSubmit={handleSubmit} className="modal-form">
+        {/* Existing Holding Position Accumulation Callout */}
+        {existingHolding && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(0, 229, 255, 0.12), rgba(16, 185, 129, 0.08))',
+            border: '1px solid rgba(0, 229, 255, 0.4)',
+            borderRadius: 6,
+            padding: '10px 14px',
+            marginBottom: 12
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--cyan)', fontWeight: 800, marginBottom: 4 }}>
+              <Sparkles size={14} />
+              <span>{existingHolding.ticker} Portföyünüzde Zaten Mevcut (Ek Alım Modu)</span>
+            </div>
+            <div style={{ fontSize: 11, color: '#cbd5e1' }}>
+              Mevcut Pozisyonunuz: <strong className="mono" style={{ color: '#fff' }}>{existingSharesNum.toLocaleString('tr-TR', { maximumFractionDigits: 6 })} adet</strong> @ <strong className="mono" style={{ color: 'var(--cyan)' }}>{existingHolding.currency === 'USD' ? '$' : '₺'}{existingAvgCostNum.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
+              ✓ Girdiğiniz adet mevcut pozisyonunuza eklenecek ve yeni ağırlıklı ortalama maliyetiniz otomatik olarak hesaplanacaktır.
+            </div>
+
+            {addedSharesNum > 0 && addedPriceNum > 0 && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 8,
+                marginTop: 8,
+                paddingTop: 8,
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+              }}>
+                <div>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block' }}>Yeni Toplam Adet:</span>
+                  <strong className="mono text-cyan" style={{ fontSize: 13 }}>{newCombinedShares.toLocaleString('tr-TR', { maximumFractionDigits: 6 })} adet</strong>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block' }}>Yeni Ağırlıklı Ort. Maliyet:</span>
+                  <strong className="mono text-emerald" style={{ fontSize: 13 }}>{currency === 'USD' ? '$' : '₺'}{newCombinedAvgCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="form-grid-2">
           <div className="form-group" style={{ position: 'relative' }}>
             <label>SEMBOL (TICKER) *</label>
@@ -197,7 +273,7 @@ export function AddHoldingModal({ onClose }) {
             <label>VARLIK ADI</label>
             <input
               type="text"
-              placeholder="Örn: Türk Hava Yolları"
+              placeholder="Örn: NVIDIA Corporation"
               value={name}
               onChange={e => setName(e.target.value)}
               className="quant-input"
@@ -260,7 +336,7 @@ export function AddHoldingModal({ onClose }) {
 
         <div className="form-grid-2">
           <div className="form-group">
-            <label>ADET / MİKTAR *</label>
+            <label>{existingHolding ? 'EKLENECEK ALIM ADEDİ *' : 'ADET / MİKTAR *'}</label>
             <input
               type="text"
               required
@@ -271,7 +347,7 @@ export function AddHoldingModal({ onClose }) {
             />
           </div>
           <div className="form-group">
-            <label>BİRİM MALİYET *</label>
+            <label>{existingHolding ? 'BU ALIMIN BİRİM FİYATI *' : 'BİRİM MALİYET *'}</label>
             <input
               type="text"
               required
@@ -285,7 +361,9 @@ export function AddHoldingModal({ onClose }) {
 
         <div className="modal-actions">
           <button type="button" className="btn-secondary" onClick={onClose}>İptal</button>
-          <button type="submit" className="btn-primary">Pozisyonu Kaydet</button>
+          <button type="submit" className="btn-primary" style={existingHolding ? { background: 'linear-gradient(135deg, #0284c7, #0369a1)', border: 'none' } : {}}>
+            {existingHolding ? `${existingHolding.ticker} Pozisyonuna Ekle` : 'Pozisyonu Kaydet'}
+          </button>
         </div>
       </form>
     </ModalWrapper>

@@ -69,7 +69,7 @@ function MainTerminal() {
         
         {activeTab === 'holdings' && (
           <HoldingsTab
-            onOpenAddModal={() => setShowAddModal(true)}
+            onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
             onOpenSellModal={(h) => setSelectedSellHolding(h)}
             onOpenEditModal={(h) => setSelectedEditHolding(h)}
           />
@@ -122,7 +122,12 @@ function MainTerminal() {
       </main>
 
       {/* Modals */}
-      {showAddModal && <AddHoldingModal onClose={() => setShowAddModal(false)} />}
+      {showAddModal && (
+        <AddHoldingModal
+          initialTicker={typeof showAddModal === 'string' ? showAddModal : ''}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
       
       {selectedSellHolding && (
         <SellHoldingModal

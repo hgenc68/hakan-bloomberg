@@ -297,7 +297,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                             type="button"
                             className="btn-action-row"
                             onClick={() => {
-                              if (onOpenAddModal) onOpenAddModal();
+                              if (onOpenAddModal) onOpenAddModal(item.ticker);
                             }}
                             style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--emerald)', border: '1px solid rgba(16,185,129,0.4)', padding: '3px 8px', borderRadius: 4, fontSize: 10 }}
                             title="Yeni lot ekle"
@@ -345,8 +345,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
       {/* Holdings Table */}
       <div className="card table-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-        <div className="table-responsive">
-          <table className="terminal-table">
+        <div className="table-responsive terminal-table-scroll" style={{ maxHeight: 'calc(100vh - 230px)', minHeight: '380px', overflow: 'auto' }}>
+          <table className="terminal-table sticky-header-table">
             <thead>
               <tr style={{ userSelect: 'none' }}>
                 <th onClick={() => handleSort('ticker')} style={{ cursor: 'pointer' }}>
@@ -472,6 +472,16 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       <div className="row-actions">
                         <button
                           type="button"
+                          className="btn-action-row buy"
+                          onClick={() => onOpenAddModal && onOpenAddModal(h.ticker)}
+                          title="Bu varlıktan ek alım yap (Ağırlıklı maliyet hesaplanır)"
+                          style={{ background: 'rgba(0, 229, 255, 0.12)', color: 'var(--cyan)', border: '1px solid rgba(0, 229, 255, 0.3)', padding: '3px 7px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10.5 }}
+                        >
+                          <Plus size={11} />
+                          <span>Al</span>
+                        </button>
+                        <button
+                          type="button"
                           className="btn-action-row sell"
                           onClick={() => onOpenSellModal(h)}
                           title="Kısmi Satış Yap (Kârı Deftere İşle)"
@@ -544,6 +554,48 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 </tr>
               )}
             </tbody>
+
+            {/* Grand Total Summary Row */}
+            <tfoot>
+              <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
+                <td style={{ color: 'var(--cyan)', letterSpacing: '0.4px' }}>
+                  🎯 GENEL PORTFÖY TOPLAMI
+                </td>
+                <td>
+                  <span className="nav-badge cyan" style={{ fontSize: 9 }}>{sortedHoldings.length} Varlık</span>
+                </td>
+                <td className="text-right mono text-muted">
+                  --
+                </td>
+                <td className="text-right mono text-muted" style={{ fontWeight: 800 }}>
+                  {sym}{fmt(isTRY ? portfolioSummary?.totalCostTRY : portfolioSummary?.totalCostUSD, 2)}
+                </td>
+                <td className="text-right mono text-muted">
+                  --
+                </td>
+                <td className="text-right mono">
+                  <span className={`change-pill ${(portfolioSummary?.dayPLPct || 0) >= 0 ? 'up' : 'down'}`}>
+                    {(portfolioSummary?.dayPLPct || 0) >= 0 ? '▲ +' : '▼ '}{Math.abs(portfolioSummary?.dayPLPct || 0).toFixed(2)}%
+                  </span>
+                </td>
+                <td className="text-right mono text-cyan" style={{ fontSize: 13, fontWeight: 900 }}>
+                  {sym}{fmt(isTRY ? portfolioSummary?.totalValTRY : portfolioSummary?.totalValUSD, 2)}
+                </td>
+                <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
+                  <span className={((isTRY ? portfolioSummary?.unrealizedProfitTRY : portfolioSummary?.unrealizedProfitUSD) || 0) >= 0 ? 'text-up' : 'text-down'}>
+                    {((isTRY ? portfolioSummary?.unrealizedProfitTRY : portfolioSummary?.unrealizedProfitUSD) || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? portfolioSummary?.unrealizedProfitTRY : portfolioSummary?.unrealizedProfitUSD, 2)}
+                  </span>
+                </td>
+                <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
+                  <span className={`return-badge ${(portfolioSummary?.unrealizedReturnPct || 0) >= 0 ? 'up' : 'down'}`}>
+                    {(portfolioSummary?.unrealizedReturnPct || 0) >= 0 ? '+' : ''}{fmt(portfolioSummary?.unrealizedReturnPct, 2)}%
+                  </span>
+                </td>
+                <td className="text-right">
+                  <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>Aktif Portföy</span>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
