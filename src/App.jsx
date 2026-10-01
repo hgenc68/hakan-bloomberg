@@ -80,7 +80,12 @@ function MainTerminal() {
 
         {activeTab === 'benchmark' && <BenchmarkTab />}
 
-        {activeTab === 'health' && <RiskRadarTab />}
+        {activeTab === 'health' && (
+          <RiskRadarTab
+            onOpenSellModal={(h) => setSelectedSellHolding(h)}
+            onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
+          />
+        )}
 
         {activeTab === 'shield' && (
           <ShieldTab

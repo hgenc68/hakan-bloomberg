@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Radar } from 'react-chartjs-2';
 import {
@@ -10,7 +10,12 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { ShieldAlert, Zap, Grid, Calendar, CheckCircle2, AlertTriangle, Snowflake } from 'lucide-react';
+import {
+  ShieldAlert, Zap, Grid, Calendar, CheckCircle2, AlertTriangle, Snowflake,
+  Scissors, PlusCircle, ArrowRight, ShieldCheck, Stethoscope, AlertOctagon,
+  TrendingDown, TrendingUp
+} from 'lucide-react';
+import stocksData from '../data/stocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
 
 ChartJS.register(
@@ -68,23 +73,127 @@ export const getHealthColorTheme = (score) => {
   };
 };
 
-export default function RiskRadarTab() {
-  const { portfolioSummary, currentCurrency, usdtry } = useApp();
+export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
+  const { portfolioSummary, currentCurrency, usdtry, setActiveTab } = useApp();
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
-  const healthScore = benchmarkData.health_score || {
-    composite_score: 84,
-    grade: 'A- (Güvenli Büyüme)',
-    summary_comment: 'Portföy döviz, altın ve faiz tamponlarıyla yüksek piyasa türbülanslarına karşı güçlü bir dengeye sahip.',
-    axes: [
-      { label: 'Getiri Gücü', score: 78, desc: 'Yıllık kâr üretme potansiyeli' },
-      { label: 'Düşüş Koruması', score: 86, desc: 'Dip noktalara karşı direnç' },
-      { label: 'Risk Kalitesi', score: 82, desc: 'Sharpe & Sortino verimi' },
-      { label: 'Çeşitlendirme', score: 88, desc: 'Düşük korelasyon sigortası' },
-      { label: 'Enflasyon Kalkanı', score: 85, desc: 'Döviz ve altın koruması' }
-    ]
-  };
+  // 1. DİNAMİK PORTFÖY SAĞLIK & KAR TANESİ HESAPLAMA MOTORU
+  const healthAnalysis = useMemo(() => {
+    const holdings = portfolioSummary?.enrichedHoldings || [];
+    const totalVal = portfolioSummary?.totalValTRY || 1;
+    const goldVal = portfolioSummary?.totalGoldValTRY || 0;
+    const ppfVal = portfolioSummary?.ppfBalanceTRY || 0;
+    const cashVal = portfolioSummary?.totalFreeCashTRY || 0;
+    const defensiveVal = goldVal + ppfVal + cashVal;
+
+    // Varlıkları Quant skoru ve portföy ağırlığıyla zenginleştir
+    const enriched = holdings.map(h => {
+      const symTicker = (h.ticker || '').toUpperCase();
+      const clean = symTicker.replace('.IS', '').replace('-USD', '');
+      const stockInfo = stocksData[clean] || stocksData[symTicker] || stocksData[`${clean}.IS`] || {};
+      const quant = stockInfo.analysis?.quant_score || (h.type === 'Kripto' ? 42 : 72);
+      const grade = stockInfo.analysis?.grade || (quant >= 80 ? 'A+' : quant >= 65 ? 'B' : quant >= 50 ? 'C' : 'F');
+      const weightPct = ((h.valTRY || 0) / totalVal) * 100;
+      return {
+        ...h,
+        clean,
+        weightPct,
+        quantScore: quant,
+        grade,
+        isUS: h.currency === 'USD' || h.isHoldingUSD || Number(h.cost_rate) > 1.5
+      };
+    });
+
+    enriched.sort((a, b) => b.weightPct - a.weightPct);
+    const maxHolding = enriched[0] || null;
+    const maxHoldingWeight = maxHolding?.weightPct || 0;
+
+    // EKSEN 1: Çeşitlendirme & Konsantrasyon (Tek Varlık Tavanı: %7.5 - %10)
+    let divScore = 92;
+    if (maxHoldingWeight > 35) {
+      divScore = Math.max(35, Math.round(90 - (maxHoldingWeight - 10) * 1.8));
+    } else if (maxHoldingWeight > 20) {
+      divScore = Math.max(45, Math.round(90 - (maxHoldingWeight - 10) * 1.5));
+    } else if (maxHoldingWeight > 10) {
+      divScore = Math.max(62, Math.round(90 - (maxHoldingWeight - 10) * 1.2));
+    }
+    if (enriched.length < 5) divScore = Math.max(35, divScore - 12);
+
+    // EKSEN 2: Risk & Varlık Kalitesi (Ağırlıklı Quant Skoru & Bilanço)
+    let totalWeightedScore = 0;
+    let equityWeightSum = 0;
+    enriched.forEach(h => {
+      totalWeightedScore += h.quantScore * (h.valTRY || 0);
+      equityWeightSum += (h.valTRY || 0);
+    });
+    const avgEquityQuant = equityWeightSum > 0 ? (totalWeightedScore / equityWeightSum) : 75;
+    const defensiveWeight = (defensiveVal / totalVal);
+    const riskQualityScore = Math.min(98, Math.max(35, Math.round(avgEquityQuant * (1 - defensiveWeight * 0.45) + 95 * (defensiveWeight * 0.45))));
+
+    // EKSEN 3: Getiri Gücü & Büyüme (Ağırlıklı Getiri & Momentum)
+    let weightedReturn = 0;
+    enriched.forEach(h => {
+      weightedReturn += (h.returnPct || 0) * ((h.valTRY || 0) / totalVal);
+    });
+    let perfScore = Math.min(95, Math.max(40, Math.round(74 + weightedReturn * 0.75)));
+
+    // EKSEN 4: Düşüş Koruması (Likit & Savunma Tamponu)
+    const defensiveRatioPct = (defensiveVal / totalVal) * 100;
+    let defenseScore = Math.min(96, Math.max(45, Math.round(56 + defensiveRatioPct * 1.05)));
+    if (maxHoldingWeight > 20 && (maxHolding?.returnPct || 0) < -15) {
+      defenseScore = Math.max(40, defenseScore - 14);
+    }
+
+    // EKSEN 5: Enflasyon & Kur Kalkanı (FX Hedge)
+    let hedgedValTRY = goldVal + (portfolioSummary?.cashUSD || 0) * (usdtry || 49.03);
+    const knownExporters = new Set(['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS']);
+    enriched.forEach(h => {
+      if (h.isUS) {
+        hedgedValTRY += (h.valTRY || 0);
+      } else if (knownExporters.has(h.clean)) {
+        hedgedValTRY += (h.valTRY || 0) * 0.85;
+      }
+    });
+    const hedgeRatio = (hedgedValTRY / totalVal) * 100;
+    const inflationScore = Math.min(98, Math.max(45, Math.round(48 + hedgeRatio * 0.58)));
+
+    const liveAxes = [
+      { label: 'Getiri Gücü', score: perfScore, desc: 'Yıllık kâr üretme potansiyeli & momentum' },
+      { label: 'Düşüş Koruması', score: defenseScore, desc: 'Piyasa çöküşlerine karşı likit zırh direnci' },
+      { label: 'Risk Kalitesi', score: riskQualityScore, desc: 'Varlıkların bilanço ve Quant skoru kalitesi' },
+      { label: 'Çeşitlendirme', score: divScore, desc: 'Tek varlık tavanı ve yoğunlaşma dengesi' },
+      { label: 'Enflasyon Kalkanı', score: inflationScore, desc: 'Döviz, altın ve ihracatçı doğal kalkanı' }
+    ];
+
+    const compositeScore = Math.round(liveAxes.reduce((s, a) => s + a.score, 0) / 5);
+
+    let grade = 'A- (Sağlıklı)';
+    if (compositeScore < 50) grade = 'D (Kritik / Sağlıksız)';
+    else if (compositeScore < 70) grade = 'B (Orta / İyileştirilmeli)';
+    else if (compositeScore < 85) grade = 'A- (Sağlıklı & Güvenli)';
+    else grade = 'A+ (Mükemmel & Zırhlı)';
+
+    // Teşhis ve Reçete Listeleri
+    const isConcentrated = maxHoldingWeight > 10.0;
+    const trimList = enriched.filter(h => h.weightPct > 10.0 || (h.quantScore < 50 && h.weightPct > 4.0));
+    const addList = enriched.filter(h => h.quantScore >= 80.0 && h.weightPct < 7.5);
+    const simulatedBalancedScore = Math.min(90, Math.max(82, compositeScore + (isConcentrated ? Math.round((maxHoldingWeight - 7.5) * 0.55) : 0)));
+
+    return {
+      compositeScore,
+      grade,
+      liveAxes,
+      maxHolding,
+      maxHoldingWeight,
+      defensiveRatioPct,
+      hedgeRatio,
+      isConcentrated,
+      trimList,
+      addList,
+      simulatedBalancedScore
+    };
+  }, [portfolioSummary, usdtry]);
 
   const [selectedScenarioIdx, setSelectedScenarioIdx] = useState(0);
   const [isSimulatingStress, setIsSimulatingStress] = useState(false);
@@ -195,9 +304,9 @@ export default function RiskRadarTab() {
   const currentSc = stressScenarios[selectedScenarioIdx] || stressScenarios[0];
 
   // Active Radar Data (Kar Tanesi / Snowflake)
-  const activeAxes = isSimulatingStress ? (currentSc.stressedAxes || healthScore.axes) : (healthScore.axes || []);
-  const activeCompositeScore = isSimulatingStress ? (currentSc.stressedComposite || 70) : (healthScore.composite_score || 84);
-  const activeGrade = isSimulatingStress ? (currentSc.stressedGrade || 'B') : (healthScore.grade || 'A-');
+  const activeAxes = isSimulatingStress ? (currentSc.stressedAxes || healthAnalysis.liveAxes) : healthAnalysis.liveAxes;
+  const activeCompositeScore = isSimulatingStress ? (currentSc.stressedComposite || 70) : healthAnalysis.compositeScore;
+  const activeGrade = isSimulatingStress ? (currentSc.stressedGrade || 'B') : healthAnalysis.grade;
 
   // Dynamic Theme (Kırmızı < 50, Sarı 50-69, Mavi/Cyan 70-84, Yeşil >= 85)
   const activeTheme = getHealthColorTheme(activeCompositeScore);
@@ -276,8 +385,8 @@ export default function RiskRadarTab() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="nav-badge emerald" style={{ padding: '5px 12px', fontSize: 11 }}>
-            GENEL SAĞLIK: {healthScore.grade || 'A- Seviye'}
+          <span className={`nav-badge ${activeTheme.badgeClass}`} style={{ padding: '5px 12px', fontSize: 11 }}>
+            GENEL SAĞLIK: {healthAnalysis.grade} ({healthAnalysis.compositeScore}/100)
           </span>
         </div>
       </div>
@@ -315,7 +424,7 @@ export default function RiskRadarTab() {
               onClick={() => setIsSimulatingStress(false)}
               style={{ flex: 1, fontSize: 10, padding: '4px 6px', textAlign: 'center' }}
             >
-              📍 Mevcut Portföy Sağlığı ({healthScore.composite_score}/100)
+              📍 Canlı Portföy Sağlığı ({healthAnalysis.compositeScore}/100)
             </button>
             <button
               type="button"
@@ -350,10 +459,19 @@ export default function RiskRadarTab() {
           </div>
 
           {/* Summary Box */}
-          <div style={{ background: '#090d16', border: `1px solid ${activeTheme.color}30`, borderRadius: 6, padding: '10px 12px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.4 }}>
-            {isSimulatingStress
-              ? `⚡ ${currentSc.title} şoku simüle edildiğinde portföy sağlık notu ${activeGrade} seviyesine evrilir. ${currentSc.why}`
-              : (healthScore.summary_comment || 'Portföy döviz, altın ve faiz tamponlarıyla yüksek piyasa türbülanslarına karşı güçlü bir dengeye sahip.')}
+          <div style={{ background: '#090d16', border: `1px solid ${activeTheme.color}30`, borderRadius: 6, padding: '10px 12px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.45 }}>
+            {isSimulatingStress ? (
+              `⚡ ${currentSc.title} şoku simüle edildiğinde portföy sağlık notu ${activeGrade} seviyesine evrilir. ${currentSc.why}`
+            ) : healthAnalysis.isConcentrated ? (
+              <span>
+                <strong style={{ color: activeTheme.color }}>⚠️ Yoğunlaşma Uyarısı: </strong>
+                Portföyün <strong>%{healthAnalysis.maxHoldingWeight.toFixed(1)}</strong>'i tek bir hissede (<strong>{healthAnalysis.maxHolding?.ticker}</strong>) toplanmıştır. 
+                Bu aşırı ağırlık Kar Tanesi <strong>Çeşitlendirme ({healthAnalysis.liveAxes[3].score}/100)</strong> ve <strong>Risk Kalitesi ({healthAnalysis.liveAxes[2].score}/100)</strong> puanlarını baskılamaktadır. 
+                Aşağıdaki doktor reçetesiyle dengelendiğinde potansiyel skor <strong>{healthAnalysis.simulatedBalancedScore}/100</strong> seviyesine ulaşır.
+              </span>
+            ) : (
+              'Portföy döviz, altın ve faiz tamponlarıyla yüksek piyasa türbülanslarına karşı güçlü, dengeli ve kurumsal çeşitlendirmeye sahip.'
+            )}
           </div>
 
           {/* 5 Factor Breakdown Pills */}
@@ -482,22 +600,234 @@ export default function RiskRadarTab() {
           </div>
 
           {/* Quick Metrics Banner */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', borderRadius: 6, textAlign: 'center' }}>
-              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Maksimum Kayıp (VaR %95)</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--red)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>-%2.84</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Maksimum Kayıp (VaR %95)</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--red)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>-%2.84</div>
             </div>
-            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', borderRadius: 6, textAlign: 'center' }}>
-              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Doğal Kur Kalkanı</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>%82.4</div>
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Doğal Kur Kalkanı</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                %{healthAnalysis.hedgeRatio ? healthAnalysis.hedgeRatio.toFixed(1) : '82.4'}
+              </div>
             </div>
-            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', borderRadius: 6, textAlign: 'center' }}>
-              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>PPF Kuru Barut Gücü</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>₺45.000</div>
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>PPF Kuru Barut</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                ₺{Number(portfolioSummary?.ppfBalanceTRY || 45000).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+              </div>
+            </div>
+            <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Serbest Nakit (Alım Gücü)</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                ₺{Number(portfolioSummary?.totalFreeCashTRY || 0).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+              </div>
             </div>
           </div>
         </div>
 
+      </div>
+
+      {/* 🩺 PORTFÖY DOKTORU: DİNAMİK TEŞHİS & REÇETE RAPORU */}
+      <div className="card" style={{ padding: 20, background: '#080c16', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 8, marginBottom: 20 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 6, background: 'rgba(0, 229, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
+              <Stethoscope size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>🩺 KAR TANESİ PORTFÖY DOKTORU: TEŞHİS & REÇETE RAPORU</span>
+                <span className={`nav-badge ${activeTheme.badgeClass}`} style={{ fontSize: 9.5 }}>
+                  {activeTheme.icon} {healthAnalysis.grade} ({healthAnalysis.compositeScore}/100)
+                </span>
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                Bilanço kalitesi, tek varlık risk tavanı ve Simply Wall St analitiğine göre üretilen net aksiyon reçetesi
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="chip-btn active"
+            onClick={() => setActiveTab('holdings')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, padding: '6px 12px' }}
+          >
+            <span>📊 Kişisel Rebalance Asistanı</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
+        {/* Diagnosis Callout Box */}
+        <div style={{
+          background: healthAnalysis.isConcentrated ? 'rgba(239, 68, 68, 0.06)' : 'rgba(16, 185, 129, 0.06)',
+          border: `1px solid ${healthAnalysis.isConcentrated ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+          borderRadius: 8,
+          padding: 14,
+          marginBottom: 16
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            {healthAnalysis.isConcentrated ? <AlertOctagon size={16} className="text-red" /> : <ShieldCheck size={16} className="text-emerald" />}
+            <strong style={{ color: healthAnalysis.isConcentrated ? '#ef4444' : '#10b981', fontSize: 12 }}>
+              {healthAnalysis.isConcentrated
+                ? `KRİTİK YOĞUNLAŞMA UYARISI: ${healthAnalysis.maxHolding?.ticker} TEK BAŞINA %${healthAnalysis.maxHoldingWeight.toFixed(1)} AĞIRLIKTA!`
+                : 'PORTFÖY DENGELİ: TEK VARLIK TAVANI GÜVENLİ SINIRLAR İÇERİSİNDE'}
+            </strong>
+          </div>
+          <p style={{ fontSize: 11.5, color: '#cbd5e1', lineHeight: '1.5', margin: 0 }}>
+            {healthAnalysis.isConcentrated ? (
+              <span>
+                Kurumsal portföy standartlarında tek bir hisse senedinin portföydeki payı <strong>%7.5 - %10</strong> tavanını aşmamalıdır. 
+                Mevcut durumda <strong>{healthAnalysis.maxHolding?.ticker} ({healthAnalysis.maxHolding?.name})</strong> portföyünüzün <strong>%{healthAnalysis.maxHoldingWeight.toFixed(1)}</strong>'ini kaplamaktadır. 
+                Ayrıca {healthAnalysis.maxHolding?.ticker}'nin güncel Quant Skoru <strong>{healthAnalysis.maxHolding?.quantScore} / 100 ({healthAnalysis.maxHolding?.grade})</strong> seviyesinde olduğu için, 
+                bu aşırı ağırlık Kar Tanesi <strong>Çeşitlendirme ({healthAnalysis.liveAxes[3].score}/100)</strong> ve <strong>Risk Kalitesi ({healthAnalysis.liveAxes[2].score}/100)</strong> puanlarını doğrudan baskılamaktadır.
+              </span>
+            ) : (
+              <span>
+                Portföyünüzdeki varlıklar dengeli dağılmış olup, herhangi bir hisse tek başına kurumsal risk tavanını aşmamaktadır. 
+                Kar Tanesi Çeşitlendirme skoru yüksek seviyede korunmaktadır.
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* 2-Column Action Grid: Trim vs. Accumulate */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 16 }}>
+          
+          {/* Left Column: Azaltılması Gerekenler */}
+          <div style={{ background: '#0a0d18', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 8, padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Scissors size={15} />
+                <span>✂️ PORTFÖYDE AZALTILMASI GEREKENLER (TRIM & DE-RISK)</span>
+              </div>
+              <span className="nav-badge red" style={{ fontSize: 9.5 }}>Kısmi Satış Önerisi</span>
+            </div>
+
+            {healthAnalysis.trimList.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {healthAnalysis.trimList.map(item => (
+                  <div key={item.ticker} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <strong style={{ color: '#fff', fontSize: 12.5 }}>{item.ticker}</strong>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>({item.name || item.clean})</span>
+                        <span className={`nav-badge ${item.quantScore >= 70 ? 'cyan' : 'red'}`} style={{ fontSize: 9 }}>
+                          Quant: {item.quantScore} ({item.grade})
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 3 }}>
+                        Mevcut Pay: <strong style={{ color: '#ef4444' }}>%{item.weightPct.toFixed(1)}</strong> ➔ Hedef Tavan: <strong style={{ color: 'var(--emerald)' }}>%7.5</strong>
+                        <span style={{ marginLeft: 8, color: (item.returnPct || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                          (Getiri: {(item.returnPct || 0) >= 0 ? '+' : ''}{(item.returnPct || 0).toFixed(1)}%)
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-action-sm"
+                      onClick={() => onOpenSellModal && onOpenSellModal(item)}
+                      style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444', color: '#ef4444', fontWeight: 700, padding: '5px 10px', fontSize: 10.5 }}
+                    >
+                      ✂️ Kısmi Satış Yap
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '10px 0' }}>
+                Portföyünüzde tavan aşımı yapan veya acil satılması gereken riskli varlık bulunmuyor.
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Artırılması / Eklenmesi Gerekenler */}
+          <div style={{ background: '#0a0d18', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 8, padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <PlusCircle size={15} />
+                <span>✨ PORTFÖYDE ARTIRILMASI GEREKENLER (ACCUMULATE & KALİTE)</span>
+              </div>
+              <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>Kalite Enjeksiyonu</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Kur Kalkanı & Serbest Nakit Alım Gücü Tavsiyesi */}
+              <div style={{ background: 'rgba(0, 229, 255, 0.03)', border: '1px solid rgba(0, 229, 255, 0.15)', borderRadius: 6, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <strong style={{ color: 'var(--cyan)', fontSize: 12.5 }}>💵 Serbest Nakit & Kur Kalkanı</strong>
+                    <span className="nav-badge gold" style={{ fontSize: 9 }}>Dokunulmaz Zırh</span>
+                  </div>
+                  <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 3 }}>
+                    Satıştan açığa çıkan nakit; Serbest Nakit alım gücünde tutulmalı veya PPF/Altın kalkanına eklenmelidir.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-action-sm"
+                  onClick={() => setActiveTab('shield')}
+                  style={{ background: 'rgba(0, 229, 255, 0.15)', borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700, padding: '5px 10px', fontSize: 10.5 }}
+                >
+                  🛡️ Kalkana Git
+                </button>
+              </div>
+
+              {/* Yüksek Quant Skorlu Büyüme Hisseleri */}
+              {healthAnalysis.addList.slice(0, 2).map(item => (
+                <div key={item.ticker} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <strong style={{ color: '#fff', fontSize: 12.5 }}>{item.ticker}</strong>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>({item.name || item.clean})</span>
+                      <span className="nav-badge emerald" style={{ fontSize: 9 }}>
+                        Quant: {item.quantScore} (A+)
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 3 }}>
+                      Mevcut Pay: %{item.weightPct.toFixed(1)} (Düşük) ➔ Kademeli eklemeye uygun yüksek bilanço kalitesi
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-action-sm"
+                    onClick={() => onOpenAddModal && onOpenAddModal(item.ticker)}
+                    style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: '#10b981', color: '#10b981', fontWeight: 700, padding: '5px 10px', fontSize: 10.5 }}
+                  >
+                    + Ekle
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Simulated Impact Projection Bar */}
+        <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 6, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🎯</span>
+            <div style={{ fontSize: 11, color: '#e2e8f0' }}>
+              <strong>Dengeleme Simülasyonu Etkisi: </strong>
+              <span>
+                Aşırı yoğunlaşmış pozisyonlar %7.5 kurumsal tavanına çekilip yüksek kaliteli varlıklarla dengelendiğinde, 
+                Kar Tanesi Sağlık Skoru <strong>{healthAnalysis.compositeScore}/100</strong> seviyesinden <strong>{healthAnalysis.simulatedBalancedScore}/100 ({healthAnalysis.simulatedBalancedScore >= 85 ? '🟢 A+ Zırhlı' : '🔵 A- Sağlıklı'})</strong> seviyesine sıçrayacaktır.
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="chip-btn active"
+            onClick={() => setActiveTab('holdings')}
+            style={{ fontSize: 10.5, padding: '5px 10px' }}
+          >
+            Aksiyonları Uygula ➔
+          </button>
+        </div>
       </div>
 
       {/* Monthly Return Calendar Heatmap */}
