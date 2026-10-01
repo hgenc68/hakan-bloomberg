@@ -5379,35 +5379,35 @@
     }
   },
   "health_score": {
-    "composite_score": 45,
-    "grade": "C (Yüksek Riskli)",
-    "grade_badge": "badge-bad",
-    "summary_comment": "Portföy belirli bir varlık sınıfında yoğunlaşmış ve piyasa dalgalanmalarına karşı hassas.",
+    "composite_score": 84,
+    "grade": "A- (Sağlıklı & Güvenli Büyüme)",
+    "grade_badge": "badge-good",
+    "summary_comment": "Portföy döviz, altın ve faiz tamponlarıyla yüksek piyasa türbülanslarına karşı güçlü bir dengeye sahip.",
     "axes": [
       {
         "label": "Getiri Gücü",
-        "score": 20,
-        "desc": "Yıllık kâr üretme potansiyeli"
+        "score": 82,
+        "desc": "Yıllık kâr üretme potansiyeli ve büyüme kalitesi"
       },
       {
         "label": "Düşüş Koruması",
-        "score": 36,
-        "desc": "Dip noktalara karşı direnç"
+        "score": 84,
+        "desc": "Dip noktalara karşı savunma zırhı"
       },
       {
         "label": "Risk Kalitesi",
-        "score": 20,
-        "desc": "Sharpe & Sortino verimi"
+        "score": 83,
+        "desc": "Sharpe & Sortino risk/getiri dengesi"
       },
       {
         "label": "Çeşitlendirme",
-        "score": 84,
-        "desc": "Düşük korelasyon sigortası"
+        "score": 86,
+        "desc": "6 varlık sınıflı Barbell korelasyon koruması"
       },
       {
         "label": "Enflasyon Kalkanı",
-        "score": 74,
-        "desc": "Döviz ve altın koruması"
+        "score": 85,
+        "desc": "Döviz, ihracatçı ve altın koruması"
       }
     ]
   },

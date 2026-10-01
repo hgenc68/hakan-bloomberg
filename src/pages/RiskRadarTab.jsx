@@ -315,7 +315,7 @@ export default function RiskRadarTab() {
               onClick={() => setIsSimulatingStress(false)}
               style={{ flex: 1, fontSize: 10, padding: '4px 6px', textAlign: 'center' }}
             >
-              📍 Mevcut Sağlık (84/100)
+              📍 Mevcut Portföy Sağlığı ({healthScore.composite_score}/100)
             </button>
             <button
               type="button"
@@ -324,7 +324,7 @@ export default function RiskRadarTab() {
               style={{ flex: 1, fontSize: 10, padding: '4px 6px', textAlign: 'center' }}
               title="Sağ paneldeki şok senaryosuna göre kar tanesini simüle et"
             >
-              ⚡ Şok Simülasyonu ({currentSc.shortTitle})
+              ⚡ Şok Testi: {currentSc.shortTitle} ({currentSc.stressedComposite}/100)
             </button>
           </div>
 
