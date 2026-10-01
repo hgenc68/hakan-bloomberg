@@ -468,65 +468,76 @@ export const AppProvider = ({ children }) => {
 
   // Automated Sell Execution: calculates realized P/L and logs to ledger
   const sellHolding = async (holding, sharesSold, sellPrice, sellCurrency = 'TRY') => {
-    const qty = parseFloat(sharesSold);
-    const p = parseFloat(sellPrice);
+    const qty = parseFloat(String(sharesSold).replace(',', '.'));
+    const p = parseFloat(String(sellPrice).replace(',', '.'));
     if (!qty || qty <= 0 || !p || p <= 0) {
       showToast('Geçersiz satış adedi veya fiyatı!', '⚠️');
       return;
     }
 
-    const isSellUSD = sellCurrency === 'USD';
-    const isCostUSD = holding.currency === 'USD' || (holding.cost_rate && holding.cost_rate > 1.5);
-    
-    // Total proceeds
-    const proceedsTRY = isSellUSD ? (qty * p * usdtry) : (qty * p);
-    const proceedsUSD = proceedsTRY / usdtry;
+    try {
+      const isSellUSD = sellCurrency === 'USD';
+      const isCostUSD = holding.currency === 'USD' || (holding.cost_rate && Number(holding.cost_rate) > 1.5) || holding.isHoldingUSD;
+      
+      // Total proceeds
+      const proceedsTRY = isSellUSD ? (qty * p * usdtry) : (qty * p);
+      const proceedsUSD = proceedsTRY / usdtry;
 
-    // Cost basis of sold shares
-    const costTRY = isCostUSD ? (qty * (holding.avg_cost || 0) * (holding.cost_rate || usdtry)) : (qty * (holding.avg_cost || 0));
-    const costUSD = costTRY / (holding.cost_rate || usdtry);
+      // Cost basis of sold shares
+      const costRate = Number(holding.cost_rate) > 1.5 ? Number(holding.cost_rate) : usdtry;
+      const costTRY = isCostUSD ? (qty * (holding.avg_cost || 0) * costRate) : (qty * (holding.avg_cost || 0));
+      const costUSD = costTRY / costRate;
 
-    // Realized Profit
-    const realizedPL_TRY = proceedsTRY - costTRY;
-    const realizedPL_USD = proceedsUSD - costUSD;
-    const returnPct = costTRY > 0 ? (realizedPL_TRY / costTRY) * 100 : 0;
+      // Realized Profit
+      const realizedPL_TRY = proceedsTRY - costTRY;
+      const realizedPL_USD = proceedsUSD - costUSD;
+      const returnPct = costTRY > 0 ? (realizedPL_TRY / costTRY) * 100 : 0;
 
-    const tradeId = Date.now();
-    const tradeItem = {
-      id: tradeId,
-      date: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      ticker: holding.ticker,
-      name: holding.name || holding.ticker,
-      type: holding.type || 'Hisse',
-      action: qty >= holding.shares ? 'Tam Satış' : 'Kısmi Satış',
-      shares: qty,
-      avg_cost: holding.avg_cost,
-      sell_price: p,
-      currency: sellCurrency,
-      holding_currency: holding.currency || 'TRY',
-      exchange_rate: usdtry,
-      total_proceeds_try: Math.round(proceedsTRY * 100) / 100,
-      total_proceeds_usd: Math.round(proceedsUSD * 100) / 100,
-      realized_pl_try: Math.round(realizedPL_TRY * 100) / 100,
-      realized_pl_usd: Math.round(realizedPL_USD * 100) / 100,
-      realized_return_pct: Math.round(returnPct * 100) / 100,
-      note: `${holding.ticker} ${qty >= holding.shares ? 'Tam' : 'Kısmi'} Satış (${sellCurrency})`
-    };
+      const tradeId = Date.now();
+      const tradeItem = {
+        id: tradeId,
+        date: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        ticker: holding.ticker,
+        name: holding.name || holding.ticker,
+        type: holding.type || 'Hisse',
+        action: qty >= (holding.shares || 0) ? 'Tam Satış' : 'Kısmi Satış',
+        shares: qty,
+        avg_cost: holding.avg_cost,
+        sell_price: p,
+        currency: sellCurrency,
+        holding_currency: holding.currency || 'TRY',
+        exchange_rate: usdtry,
+        total_proceeds_try: Math.round(proceedsTRY * 100) / 100,
+        total_proceeds_usd: Math.round(proceedsUSD * 100) / 100,
+        realized_pl_try: Math.round(realizedPL_TRY * 100) / 100,
+        realized_pl_usd: Math.round(realizedPL_USD * 100) / 100,
+        realized_return_pct: Math.round(returnPct * 100) / 100,
+        note: `${holding.ticker} ${qty >= (holding.shares || 0) ? 'Tam' : 'Kısmi'} Satış (${sellCurrency})`
+      };
 
-    // 1. Record in trade ledger
-    await setDoc(doc(db, 'trade_ledger', String(tradeId)), tradeItem);
+      // 1. Record in trade ledger
+      await setDoc(doc(db, 'trade_ledger', String(tradeId)), tradeItem);
 
-    // 2. Update or delete holding
-    const remainingShares = holding.shares - qty;
-    if (remainingShares <= 0.00001) {
-      await deleteDoc(doc(db, 'holdings', holding.id));
-      showToast(`${holding.ticker} pozisyonu tamamen kapatıldı ve Kâr Defterine işlendi!`, '📜');
-    } else {
-      await updateDoc(doc(db, 'holdings', holding.id), {
-        shares: remainingShares,
-        updated_at: new Date().toISOString()
-      });
-      showToast(`${holding.ticker} kısmi satışı yapıldı (+₺${tradeItem.realized_pl_try})!`, '✅');
+      // 2. Identify the holding document safely and update
+      const targetDocId = holding.id || (holding.ticker ? holding.ticker.replace(/[\/\.]/g, '_').toUpperCase() : null);
+      if (targetDocId) {
+        const remainingShares = Math.max(0, (holding.shares || 0) - qty);
+        if (remainingShares <= 0.00001) {
+          try {
+            await deleteDoc(doc(db, 'holdings', targetDocId));
+          } catch (e) {}
+          showToast(`${holding.ticker} pozisyonu tamamen kapatıldı ve Kâr Defterine işlendi!`, '📜');
+        } else {
+          await setDoc(doc(db, 'holdings', targetDocId), {
+            shares: remainingShares,
+            updated_at: new Date().toISOString()
+          }, { merge: true });
+          showToast(`${holding.ticker} kısmi satışı yapıldı (+₺${tradeItem.realized_pl_try.toLocaleString('tr-TR')})!`, '✅');
+        }
+      }
+    } catch (err) {
+      console.error('SellHolding error:', err);
+      showToast(`Satış kaydedilirken hata oluştu: ${err.message}`, '⚠️');
     }
   };
 
