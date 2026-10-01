@@ -11,11 +11,13 @@ export default function Header() {
     currentCurrency,
     setCurrentCurrency,
     lastMarketUpdate,
-    portfolioSummary
+    portfolioSummary,
+    gramGoldPrice
   } = useApp();
 
   const tickers = [
     { label: 'USD/TRY', key: 'USDTRY=X', fallback: usdtry, suffix: '₺' },
+    { label: 'GRAM ALTIN', customPrice: gramGoldPrice || 6600, suffix: '₺', customChangePct: marketQuotes['GC=F']?.changePct || 0.38 },
     { label: 'BIST 100', key: 'XU100.IS', fallback: 9850, suffix: '' },
     { label: 'S&P 500', key: '^GSPC', fallback: 5800, suffix: '$' },
     { label: 'ALTIN (ONS)', key: 'GC=F', fallback: 2680, suffix: '$' },
@@ -29,9 +31,9 @@ export default function Header() {
       <div className="ticker-tape">
         <div className="ticker-tape-track">
           {tickers.map(t => {
-            const q = marketQuotes[t.key] || {};
-            const price = q.price !== undefined ? q.price : t.fallback;
-            const changePct = q.changePct || 0;
+            const q = t.key ? (marketQuotes[t.key] || {}) : {};
+            const price = t.customPrice !== undefined ? t.customPrice : (q.price !== undefined ? q.price : t.fallback);
+            const changePct = t.customChangePct !== undefined ? t.customChangePct : (q.changePct || 0);
             const isUp = changePct >= 0;
 
             return (

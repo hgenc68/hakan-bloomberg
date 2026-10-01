@@ -35,14 +35,17 @@ export default function OverviewTab() {
 
   // Breakdown by Asset Type (Separating BIST vs US Equity for Macro Transparency)
   const holdings = portfolioSummary.enrichedHoldings || [];
-  let bistVal = 0, usVal = 0, etfVal = 0, kriptoVal = 0;
+  let bistVal = 0, usVal = 0, etfVal = 0, kriptoVal = 0, goldHoldingsVal = 0;
 
   holdings.forEach(h => {
     const val = (isTRY ? h.valTRY : h.valUSD) || 0;
+    const tickerUpper = (h.ticker || '').toUpperCase();
     if (h.type === 'Kripto') {
       kriptoVal += val;
     } else if (h.type === 'ETF') {
       etfVal += val;
+    } else if (h.type === 'Altın' || h.type === 'Emtia' || tickerUpper.includes('XAUT') || tickerUpper.includes('PAXG') || tickerUpper.includes('GOLD')) {
+      goldHoldingsVal += val;
     } else {
       // Stock: check if BIST or US/Global
       const isUS = h.currency === 'USD' || h.isHoldingUSD || Number(h.cost_rate) > 1.5;
@@ -51,7 +54,8 @@ export default function OverviewTab() {
     }
   });
 
-  const goldVal = isTRY ? (portfolioSummary.totalGoldValTRY || 0) : ((portfolioSummary.totalGoldValTRY || 0) / (portfolioSummary.usdtry || 49.03));
+  const physicalGoldVal = isTRY ? (portfolioSummary.totalGoldValTRY || 0) : ((portfolioSummary.totalGoldValTRY || 0) / (portfolioSummary.usdtry || 49.03));
+  const goldVal = physicalGoldVal + goldHoldingsVal;
   const ppfVal = isTRY ? (portfolioSummary.ppfBalanceTRY || 0) : ((portfolioSummary.ppfBalanceTRY || 0) / (portfolioSummary.usdtry || 49.03));
 
   const totalAll = totalVal > 0 ? totalVal : 1;

@@ -23,7 +23,7 @@ export function ModalWrapper({ title, icon: Icon, onClose, children }) {
 
 // 1. Yeni Varlık Ekle Modalı
 export function AddHoldingModal({ onClose }) {
-  const { addHolding } = useApp();
+  const { addHolding, usdtry } = useApp();
   const [ticker, setTicker] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState('Hisse');
@@ -42,7 +42,7 @@ export function AddHoldingModal({ onClose }) {
       shares: parseFloat(shares.replace(',', '.')),
       avg_cost: parseFloat(avgCost.replace(',', '.')),
       currency,
-      cost_rate: currency === 'USD' ? 49.03 : 1.0
+      cost_rate: currency === 'USD' ? (usdtry || 49.03) : 1.0
     });
     onClose();
   };
@@ -252,7 +252,7 @@ export function SellHoldingModal({ holding, onClose }) {
 
 // 3. Varlığı Düzenle Modalı
 export function EditHoldingModal({ holding, onClose }) {
-  const { updateHolding } = useApp();
+  const { updateHolding, usdtry } = useApp();
   const [ticker, setTicker] = useState(holding?.ticker || '');
   const [name, setName] = useState(holding?.name || '');
   const [shares, setShares] = useState(String(holding?.shares || ''));
@@ -270,7 +270,8 @@ export function EditHoldingModal({ holding, onClose }) {
       shares: parseFloat(shares.replace(',', '.')),
       avg_cost: parseFloat(avgCost.replace(',', '.')),
       currency,
-      type
+      type,
+      cost_rate: currency === 'USD' ? (holding.cost_rate && Number(holding.cost_rate) > 1.5 ? Number(holding.cost_rate) : (usdtry || 49.03)) : 1.0
     });
     onClose();
   };
