@@ -307,14 +307,31 @@ export default function OverviewTab() {
           </div>
           <div className="card-body">
             <div className="realized-callout-box">
-              <div className="callout-val mono text-emerald">
-                +₺{fmt(portfolioSummary.realizedProfitTRY)}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 2 }}>
+                    Cebe Giren Gerçekleşen Net Kâr:
+                  </span>
+                  <div className="callout-val mono text-emerald" style={{ fontSize: 26, fontWeight: 900 }}>
+                    +₺{fmt(portfolioSummary.realizedProfitTRY)}
+                  </div>
+                </div>
+                <div style={{ paddingLeft: 14, borderLeft: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 2 }}>
+                    Kasaya Giren Toplam Satış Hasılatı:
+                  </span>
+                  <div className="mono text-cyan" style={{ fontSize: 20, fontWeight: 800 }}>
+                    ₺{fmt(portfolioSummary.totalProceedsTRY)}
+                  </div>
+                </div>
               </div>
-              <div className="callout-desc">
-                Kısmi veya tam satış yaparak cebinize koyduğunuz kesinleşmiş net kazançtır.
-                Piyasa çökse veya hisseleriniz düşse dahi bu kâr kesinleşmiştir ve riskten korunmaktadır.
+
+              <div className="callout-desc" style={{ background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.15)', borderRadius: 6, padding: '8px 12px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.5 }}>
+                💡 <strong>Hasılat ile Net Kâr Arasındaki Fark:</strong> Kasaya giren <strong>₺{fmt(portfolioSummary.totalProceedsTRY)}</strong> hasılat, yaptığınız satışlardan hesabınıza nakit olarak geçen <u>toplam para</u>dır (Geri Dönen Ana Para + Kâr). 
+                Bunun <strong>+₺{fmt(portfolioSummary.realizedProfitTRY)}</strong>'si ise hisselerin alış maliyeti düşüldükten sonra cebinize kalan <u>saf kârınızdır</u>.
               </div>
-              <div className="callout-stats">
+
+              <div className="callout-stats" style={{ marginTop: 8 }}>
                 <div>
                   <span className="lbl">Tamamlanan İşlem:</span>
                   <span className="stat mono">{portfolioSummary.tradesCount || 0} Adet</span>
@@ -324,8 +341,8 @@ export default function OverviewTab() {
                   <span className="stat mono text-emerald">%{fmt(portfolioSummary.winRatePct, 1)}</span>
                 </div>
                 <div>
-                  <span className="lbl">Kasaya Giren Hasılat:</span>
-                  <span className="stat mono text-cyan">₺{fmt(portfolioSummary.totalProceedsTRY)}</span>
+                  <span className="lbl">Geri Alınan Ana Para (Maliyet):</span>
+                  <span className="stat mono text-bright">₺{fmt(Math.max(0, (portfolioSummary.totalProceedsTRY || 0) - (portfolioSummary.realizedProfitTRY || 0)))}</span>
                 </div>
               </div>
             </div>

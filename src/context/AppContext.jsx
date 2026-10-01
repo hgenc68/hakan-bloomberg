@@ -74,13 +74,53 @@ const DEFAULT_INITIAL_QUOTES = {
 };
 
 export const AppProvider = ({ children }) => {
-  // State from Firestore
-  const [holdings, setHoldings] = useState([]);
-  const [goldPurchases, setGoldPurchases] = useState([]);
-  const [allocation, setAllocation] = useState({ ppf_balance_try: 45000, targets: {}, guardrails: {} });
-  const [tradeLedger, setTradeLedger] = useState([]);
+  // 1. Instant Rehydration State from localStorage SWR Cache to eliminate startup jump on Fn+F5
+  const [holdings, setHoldings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bloomberg_cached_holdings');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const [goldPurchases, setGoldPurchases] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bloomberg_cached_gold');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const [allocation, setAllocation] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bloomberg_cached_alloc');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed) return parsed;
+      }
+    } catch (e) {}
+    return { ppf_balance_try: 45000, targets: {}, guardrails: {} };
+  });
+
+  const [tradeLedger, setTradeLedger] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bloomberg_cached_ledger');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
   const [settings, setSettings] = useState({ currency: 'try', timeframe: '1y' });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Market quotes state with SWR (Stale-While-Revalidate) localStorage caching to eliminate startup jump
   const [marketQuotes, setMarketQuotes] = useState(() => {
@@ -124,7 +164,7 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setToast(null), duration);
   }, []);
 
-  // 1. Subscribe to Firestore Collections in Real-Time
+  // 1. Subscribe to Firestore Collections in Real-Time & sync to local cache
   useEffect(() => {
     const unsubHoldings = onSnapshot(collection(db, 'holdings'), (snap) => {
       const list = snap.docs.map(d => {
@@ -145,17 +185,27 @@ export const AppProvider = ({ children }) => {
       });
       setHoldings(list);
       setLoading(false);
+      try {
+        localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(list));
+      } catch (e) {}
     });
 
     const unsubGold = onSnapshot(collection(db, 'gold_purchases'), (snap) => {
       const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
       list.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       setGoldPurchases(list);
+      try {
+        localStorage.setItem('bloomberg_cached_gold', JSON.stringify(list));
+      } catch (e) {}
     });
 
     const unsubAlloc = onSnapshot(doc(db, 'allocation', 'current'), (docSnap) => {
       if (docSnap.exists()) {
-        setAllocation(docSnap.data());
+        const data = docSnap.data();
+        setAllocation(data);
+        try {
+          localStorage.setItem('bloomberg_cached_alloc', JSON.stringify(data));
+        } catch (e) {}
       }
     });
 
@@ -163,6 +213,9 @@ export const AppProvider = ({ children }) => {
       const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
       list.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
       setTradeLedger(list);
+      try {
+        localStorage.setItem('bloomberg_cached_ledger', JSON.stringify(list));
+      } catch (e) {}
     });
 
     const unsubSettings = onSnapshot(doc(db, 'settings', 'preferences'), (docSnap) => {
@@ -191,9 +244,17 @@ export const AppProvider = ({ children }) => {
         'SPY', 'QQQ', 'DIA', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F'
       ]);
       
-      holdings.forEach(h => {
-        const sym = h.clean_ticker || TICKER_MAP[h.ticker.toUpperCase()] || h.ticker;
-        symbolsToFetch.add(sym);
+      const currentHoldings = holdings.length > 0 ? holdings : (() => {
+        try {
+          return JSON.parse(localStorage.getItem('bloomberg_cached_holdings') || '[]');
+        } catch (e) {
+          return [];
+        }
+      })();
+
+      currentHoldings.forEach(h => {
+        const sym = h.clean_ticker || TICKER_MAP[(h.ticker || '').toUpperCase()] || h.ticker;
+        if (sym) symbolsToFetch.add(sym);
       });
 
       const symList = Array.from(symbolsToFetch).join(',');
@@ -241,24 +302,27 @@ export const AppProvider = ({ children }) => {
       }
 
       // Extract USDTRY rate
-      const usdRate = fetchedQuotes['USDTRY=X']?.price || 49.03;
+      const usdRate = fetchedQuotes['USDTRY=X']?.price || (marketQuotes['USDTRY=X']?.price) || 49.03;
       setUsdtry(usdRate);
 
       // Extract Gold Ounce price and calculate Gram Gold TRY
-      const goldOunceUSD = fetchedQuotes['GC=F']?.price || 4200.0;
+      const goldOunceUSD = fetchedQuotes['GC=F']?.price || (marketQuotes['GC=F']?.price) || 4200.0;
       const calcGramGold = (goldOunceUSD / 31.1034768) * usdRate;
-      const finalGramGold = calcGramGold > 0 ? calcGramGold : 6600.0;
+      const finalGramGold = calcGramGold > 0 ? calcGramGold : (gramGoldPrice || 6600.0);
       setGramGoldPrice(finalGramGold);
 
-      setMarketQuotes(fetchedQuotes);
+      if (Object.keys(fetchedQuotes).length > 0) {
+        setMarketQuotes(prev => {
+          const merged = { ...prev, ...fetchedQuotes };
+          try {
+            localStorage.setItem('bloomberg_market_quotes', JSON.stringify(merged));
+            localStorage.setItem('bloomberg_usdtry', String(usdRate));
+            localStorage.setItem('bloomberg_gram_gold', String(finalGramGold));
+          } catch (err) {}
+          return merged;
+        });
+      }
       setLastMarketUpdate(new Date());
-
-      // Persist to local cache so future cold reloads are instantaneous without jumping
-      try {
-        localStorage.setItem('bloomberg_market_quotes', JSON.stringify(fetchedQuotes));
-        localStorage.setItem('bloomberg_usdtry', String(usdRate));
-        localStorage.setItem('bloomberg_gram_gold', String(finalGramGold));
-      } catch (err) {}
     } catch (err) {
       console.warn('Market data fetch error:', err);
     } finally {
