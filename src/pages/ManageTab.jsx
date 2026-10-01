@@ -1,9 +1,9 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, ShoppingCart, Shield, Edit3, Trash2, ScrollText } from 'lucide-react';
+import { Plus, ShoppingCart, Shield, Edit3, Trash2, ScrollText, Download, Upload, HardDrive } from 'lucide-react';
 
 export default function ManageTab({ onOpenAddModal, onOpenSellModal, onOpenEditModal, onOpenAddGoldModal, onOpenPpfModal }) {
-  const { holdings, deleteHolding, setActiveTab } = useApp();
+  const { holdings, deleteHolding, setActiveTab, exportBackup, importBackup } = useApp();
 
   return (
     <div className="tab-pane-content">
@@ -64,6 +64,75 @@ export default function ManageTab({ onOpenAddModal, onOpenSellModal, onOpenEditM
           <div className="tile-title">PPF Kuru Barut Güncelle</div>
           <div className="tile-desc">Likit Para Piyasası Fonu / TL nakit tamponunuzu güncelleyin</div>
         </button>
+      </div>
+
+      {/* Cloud & Backup Hub (Zero Excel Dependency) */}
+      <div className="card" style={{ marginTop: '20px', padding: 18, background: '#090d16', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 6, background: 'rgba(0, 229, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
+              <HardDrive size={18} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', letterSpacing: '0.4px' }}>
+                ☁️ BULUT VERİ VE YEDEKLEME MERKEZİ (EXCEL'DEN TAMAMEN BAĞIMSIZ)
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Tüm portföyünüz Google Firebase Firestore bulutunda saklanır. Yerel Excel dosyasına ihtiyaç kalmamıştır.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="chip-btn active"
+              onClick={exportBackup}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: 11 }}
+            >
+              <Download size={14} />
+              <span>Yedek İndir (JSON)</span>
+            </button>
+
+            <label
+              className="chip-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: 11, cursor: 'pointer' }}
+            >
+              <Upload size={14} />
+              <span>Yedekten Geri Yükle</span>
+              <input
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (evt) => {
+                    try {
+                      const data = JSON.parse(evt.target?.result);
+                      if (window.confirm('Bu yedeği Firestore bulut veritabanına yüklemek istediğinize emin misiniz?')) {
+                        importBackup(data);
+                      }
+                    } catch (err) {
+                      alert('Geçersiz JSON dosyası!');
+                    }
+                  };
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '10px 14px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.5 }}>
+          <strong style={{ color: 'var(--emerald)' }}>✓ Tam Bulut Senkronizasyonu Aktif: </strong>
+          <span>
+            Yeni hisse/kripto/altın ekleme, kısmi satış yapma ve kâr realizasyonları doğrudan bulut veritabanına yazılmaktadır.
+            Bilgisayarınızda veya telefonunuzda herhangi bir Excel dosyası çalıştırmanıza gerek yoktur. Dilediğiniz an yukarıdaki butonla tüm portföyünüzün offline kopyasını indirebilirsiniz.
+          </span>
+        </div>
       </div>
 
       {/* Active Positions Management List */}

@@ -488,6 +488,78 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // 100% Cloud Standalone JSON Backup Export & Import (Zero Excel Dependency)
+  const exportBackup = () => {
+    try {
+      const backupData = {
+        app: 'Hakan Genç Bloomberg Terminal',
+        version: '2.0.0',
+        exported_at: new Date().toISOString(),
+        holdings,
+        goldPurchases,
+        allocation,
+        tradeLedger,
+        settings
+      };
+
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      downloadAnchor.setAttribute('download', `Bloomberg_Terminal_Yedek_${dateStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      showToast('Portföy yedeği JSON olarak başarıyla indirildi!', '💾');
+    } catch (err) {
+      showToast(`Yedekleme hatası: ${err.message}`, '⚠️');
+    }
+  };
+
+  const importBackup = async (jsonData) => {
+    try {
+      if (!jsonData || typeof jsonData !== 'object') throw new Error('Geçersiz JSON dosyası');
+
+      // 1. Restore holdings
+      if (Array.isArray(jsonData.holdings)) {
+        for (const h of jsonData.holdings) {
+          const docId = (h.ticker || h.id).replace(/[\/\.]/g, '_').toUpperCase();
+          await setDoc(doc(db, 'holdings', docId), {
+            ...h,
+            ticker: (h.ticker || docId).toUpperCase(),
+            shares: Number(h.shares),
+            avg_cost: Number(h.avg_cost),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      // 2. Restore gold purchases
+      if (Array.isArray(jsonData.goldPurchases)) {
+        for (const g of jsonData.goldPurchases) {
+          await setDoc(doc(db, 'gold_purchases', String(g.id || Date.now())), g);
+        }
+      }
+
+      // 3. Restore allocation
+      if (jsonData.allocation) {
+        await setDoc(doc(db, 'allocation', 'current'), jsonData.allocation);
+      }
+
+      // 4. Restore trade ledger
+      if (Array.isArray(jsonData.tradeLedger)) {
+        for (const t of jsonData.tradeLedger) {
+          await setDoc(doc(db, 'trade_ledger', String(t.id || Date.now())), t);
+        }
+      }
+
+      showToast('Yedek başarıyla Firestore bulut veritabanına geri yüklendi!', '✅');
+    } catch (err) {
+      showToast(`Geri yükleme hatası: ${err.message}`, '⚠️');
+    }
+  };
+
   const value = {
     holdings,
     goldPurchases,
@@ -517,7 +589,9 @@ export const AppProvider = ({ children }) => {
     addGoldPurchase,
     deleteGoldPurchase,
     updatePpfBalance,
-    transferToShield
+    transferToShield,
+    exportBackup,
+    importBackup
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
