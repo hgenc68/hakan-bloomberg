@@ -2,10 +2,15 @@ import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
+import MarketPulseTab from './pages/MarketPulseTab';
 import OverviewTab from './pages/OverviewTab';
 import HoldingsTab from './pages/HoldingsTab';
-import TradeLedgerTab from './pages/TradeLedgerTab';
+import BenchmarkTab from './pages/BenchmarkTab';
 import ShieldTab from './pages/ShieldTab';
+import SingleStockTab from './pages/SingleStockTab';
+import Top10QuantTab from './pages/Top10QuantTab';
+import ModelPortfolioTab from './pages/ModelPortfolioTab';
+import TradeLedgerTab from './pages/TradeLedgerTab';
 import ManageTab from './pages/ManageTab';
 import {
   AddHoldingModal,
@@ -17,7 +22,7 @@ import {
 } from './components/Modals';
 
 function MainTerminal() {
-  const { activeTab, loading, toast } = useApp();
+  const { activeTab, setActiveTab, loading, toast } = useApp();
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -26,6 +31,9 @@ function MainTerminal() {
   const [transferModalAmount, setTransferModalAmount] = useState(null);
   const [showAddGoldModal, setShowAddGoldModal] = useState(false);
   const [showPpfModal, setShowPpfModal] = useState(false);
+
+  // Selected stock for SingleStockTab
+  const [selectedStockTicker, setSelectedStockTicker] = useState('NVDA');
 
   if (loading) {
     return (
@@ -49,11 +57,13 @@ function MainTerminal() {
       {/* Header with Ticker Tape */}
       <Header />
 
-      {/* Subnav Pills */}
+      {/* Subnav Pills (10 Tabs) */}
       <Navigation />
 
       {/* Main Workspace View */}
       <main className="terminal-main">
+        {activeTab === 'market' && <MarketPulseTab />}
+
         {activeTab === 'overview' && <OverviewTab />}
         
         {activeTab === 'holdings' && (
@@ -64,16 +74,36 @@ function MainTerminal() {
           />
         )}
 
-        {activeTab === 'ledger' && (
-          <TradeLedgerTab
-            onOpenTransferModal={(amt) => setTransferModalAmount(amt || 7547.95)}
-          />
-        )}
+        {activeTab === 'benchmark' && <BenchmarkTab />}
 
         {activeTab === 'shield' && (
           <ShieldTab
             onOpenAddGoldModal={() => setShowAddGoldModal(true)}
             onOpenPpfModal={() => setShowPpfModal(true)}
+          />
+        )}
+
+        {activeTab === 'single_stock' && (
+          <SingleStockTab
+            selectedTicker={selectedStockTicker}
+            onSelectTicker={(t) => setSelectedStockTicker(t)}
+          />
+        )}
+
+        {activeTab === 'top10' && (
+          <Top10QuantTab
+            onSelectStock={(t) => {
+              setSelectedStockTicker(t);
+              setActiveTab('single_stock');
+            }}
+          />
+        )}
+
+        {activeTab === 'model' && <ModelPortfolioTab />}
+
+        {activeTab === 'ledger' && (
+          <TradeLedgerTab
+            onOpenTransferModal={(amt) => setTransferModalAmount(amt || 7547.95)}
           />
         )}
 

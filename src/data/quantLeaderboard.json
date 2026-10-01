@@ -1,0 +1,577 @@
+{
+  "bist": [
+    {
+      "rank": 1,
+      "ticker": "TUPRS.IS",
+      "market": "BIST",
+      "quant_score": 87.7,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 406.0,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 87.3,
+        "growth": 85.2,
+        "profitability": 88.5,
+        "momentum": 85.7,
+        "revisions": 84.5
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 2,
+      "ticker": "AGHOL.IS",
+      "market": "BIST",
+      "quant_score": 86.6,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 34.0,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 86.3,
+        "growth": 84.2,
+        "profitability": 87.3,
+        "momentum": 84.7,
+        "revisions": 83.6
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 3,
+      "ticker": "KRDMD.IS",
+      "market": "BIST",
+      "quant_score": 86.0,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 46.96,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 85.7,
+        "growth": 83.7,
+        "profitability": 86.7,
+        "momentum": 84.1,
+        "revisions": 83.1
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 4,
+      "ticker": "BIMAS.IS",
+      "market": "BIST",
+      "quant_score": 85.4,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 424.75,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 85.1,
+        "growth": 83.2,
+        "profitability": 86.1,
+        "momentum": 83.6,
+        "revisions": 82.6
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 5,
+      "ticker": "SOKM.IS",
+      "market": "BIST",
+      "quant_score": 81.0,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 57.25,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 81.0,
+        "growth": 79.3,
+        "profitability": 81.6,
+        "momentum": 79.5,
+        "revisions": 78.8
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 6,
+      "ticker": "CCOLA.IS",
+      "market": "BIST",
+      "quant_score": 76.2,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 77.9,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 76.4,
+        "growth": 75.1,
+        "profitability": 76.7,
+        "momentum": 75.1,
+        "revisions": 74.8
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 7,
+      "ticker": "KCHOL.IS",
+      "market": "BIST",
+      "quant_score": 75.1,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 216.5,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 75.3,
+        "growth": 74.1,
+        "profitability": 75.6,
+        "momentum": 74.1,
+        "revisions": 73.8
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 8,
+      "ticker": "EREGL.IS",
+      "market": "BIST",
+      "quant_score": 72.9,
+      "grade": "B",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 37.74,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 73.3,
+        "growth": 72.2,
+        "profitability": 73.4,
+        "momentum": 72.1,
+        "revisions": 72.0
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 9,
+      "ticker": "BRSAN.IS",
+      "market": "BIST",
+      "quant_score": 72.5,
+      "grade": "B",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 672.0,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 72.9,
+        "growth": 71.8,
+        "profitability": 73.0,
+        "momentum": 71.7,
+        "revisions": 71.6
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 10,
+      "ticker": "VAKBN.IS",
+      "market": "BIST",
+      "quant_score": 71.4,
+      "grade": "B",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 33.8,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 71.8,
+        "growth": 70.8,
+        "profitability": 71.8,
+        "momentum": 70.7,
+        "revisions": 70.7
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 11,
+      "ticker": "TRGYO.IS",
+      "market": "BIST",
+      "quant_score": 70.9,
+      "grade": "B",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 91.2,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 71.4,
+        "growth": 70.4,
+        "profitability": 71.3,
+        "momentum": 70.2,
+        "revisions": 70.3
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 12,
+      "ticker": "AEFES.IS",
+      "market": "BIST",
+      "quant_score": 70.6,
+      "grade": "B",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 18.83,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 71.1,
+        "growth": 70.1,
+        "profitability": 71.0,
+        "momentum": 70.0,
+        "revisions": 70.0
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 13,
+      "ticker": "HALKB.IS",
+      "market": "BIST",
+      "quant_score": 68.9,
+      "grade": "B-",
+      "signal": "İZLE",
+      "style_label": "Değerleme Tavanı",
+      "price": 44.9,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 69.5,
+        "growth": 68.6,
+        "profitability": 69.3,
+        "momentum": 68.4,
+        "revisions": 68.6
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 14,
+      "ticker": "ASELS.IS",
+      "market": "BIST",
+      "quant_score": 64.9,
+      "grade": "C+",
+      "signal": "İZLE",
+      "style_label": "Büyüme & Tekel",
+      "price": 372.25,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 65.7,
+        "growth": 65.1,
+        "profitability": 65.2,
+        "momentum": 64.7,
+        "revisions": 65.2
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    },
+    {
+      "rank": 15,
+      "ticker": "TOASO.IS",
+      "market": "BIST",
+      "quant_score": 64.8,
+      "grade": "C+",
+      "signal": "İZLE",
+      "style_label": "Derin Değer",
+      "price": 290.0,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 65.6,
+        "growth": 65.0,
+        "profitability": 65.1,
+        "momentum": 64.6,
+        "revisions": 65.1
+      },
+      "catalyst": "Yuksek karlilik & guclu bilanco + MA200 uzerinde boga trendi + Endeksi asan getiri ivmesi"
+    }
+  ],
+  "us": [
+    {
+      "rank": 1,
+      "ticker": "CVX",
+      "market": "US",
+      "quant_score": 85.5,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 204.45,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 85.2,
+        "growth": 83.2,
+        "profitability": 86.2,
+        "momentum": 83.7,
+        "revisions": 82.7
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 2,
+      "ticker": "TSM",
+      "market": "US",
+      "quant_score": 85.1,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Büyüme & Tekel",
+      "price": 450.61,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 84.8,
+        "growth": 82.9,
+        "profitability": 85.8,
+        "momentum": 83.3,
+        "revisions": 82.3
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 3,
+      "ticker": "XOM",
+      "market": "US",
+      "quant_score": 82.6,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 160.59,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 82.5,
+        "growth": 80.7,
+        "profitability": 83.3,
+        "momentum": 81.0,
+        "revisions": 80.2
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 4,
+      "ticker": "ABBV",
+      "market": "US",
+      "quant_score": 81.8,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Derin Değer",
+      "price": 264.34,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 81.7,
+        "growth": 80.0,
+        "profitability": 82.4,
+        "momentum": 80.3,
+        "revisions": 79.5
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 5,
+      "ticker": "TXN",
+      "market": "US",
+      "quant_score": 81.0,
+      "grade": "A",
+      "signal": "GÜÇLÜ AL",
+      "style_label": "Büyüme & Tekel",
+      "price": 278.07,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 81.0,
+        "growth": 79.3,
+        "profitability": 81.6,
+        "momentum": 79.5,
+        "revisions": 78.8
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 6,
+      "ticker": "AMD",
+      "market": "US",
+      "quant_score": 79.8,
+      "grade": "B+",
+      "signal": "İZLE",
+      "style_label": "Değerleme Tavanı",
+      "price": 630.63,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 79.8,
+        "growth": 78.2,
+        "profitability": 80.4,
+        "momentum": 78.4,
+        "revisions": 77.8
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 7,
+      "ticker": "NVDA",
+      "market": "US",
+      "quant_score": 78.7,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Büyüme & Tekel",
+      "price": 225.07,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 78.8,
+        "growth": 77.3,
+        "profitability": 79.3,
+        "momentum": 77.4,
+        "revisions": 76.9
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 8,
+      "ticker": "MRK",
+      "market": "US",
+      "quant_score": 78.0,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Dengeli Kalite",
+      "price": 148.78,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 78.1,
+        "growth": 76.6,
+        "profitability": 78.6,
+        "momentum": 76.8,
+        "revisions": 76.3
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 9,
+      "ticker": "JPM",
+      "market": "US",
+      "quant_score": 77.6,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 343.06,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 77.7,
+        "growth": 76.3,
+        "profitability": 78.2,
+        "momentum": 76.4,
+        "revisions": 76.0
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 10,
+      "ticker": "LLY",
+      "market": "US",
+      "quant_score": 77.0,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Büyüme & Tekel",
+      "price": 1183.46,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 77.1,
+        "growth": 75.8,
+        "profitability": 77.5,
+        "momentum": 75.8,
+        "revisions": 75.5
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 11,
+      "ticker": "AAPL",
+      "market": "US",
+      "quant_score": 76.6,
+      "grade": "B+",
+      "signal": "İZLE",
+      "style_label": "Değerleme Tavanı",
+      "price": 341.07,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 76.8,
+        "growth": 75.4,
+        "profitability": 77.1,
+        "momentum": 75.5,
+        "revisions": 75.1
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 12,
+      "ticker": "GOOGL",
+      "market": "US",
+      "quant_score": 75.6,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 343.92,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 75.8,
+        "growth": 74.5,
+        "profitability": 76.1,
+        "momentum": 74.6,
+        "revisions": 74.3
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 13,
+      "ticker": "JNJ",
+      "market": "US",
+      "quant_score": 75.5,
+      "grade": "B+",
+      "signal": "AL",
+      "style_label": "Dengeli Kalite",
+      "price": 271.22,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 75.7,
+        "growth": 74.4,
+        "profitability": 76.0,
+        "momentum": 74.5,
+        "revisions": 74.2
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 14,
+      "ticker": "QCOM",
+      "market": "US",
+      "quant_score": 74.9,
+      "grade": "B",
+      "signal": "İZLE",
+      "style_label": "Değerleme Tavanı",
+      "price": 201.97,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 75.2,
+        "growth": 73.9,
+        "profitability": 75.4,
+        "momentum": 73.9,
+        "revisions": 73.7
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    },
+    {
+      "rank": 15,
+      "ticker": "CSCO",
+      "market": "US",
+      "quant_score": 73.2,
+      "grade": "B",
+      "signal": "AL",
+      "style_label": "Derin Değer",
+      "price": 106.7,
+      "date": "2026-09-27",
+      "pillars": {
+        "value": 73.5,
+        "growth": 72.4,
+        "profitability": 73.7,
+        "momentum": 72.3,
+        "revisions": 72.2
+      },
+      "catalyst": "Kurumsal tekel & yuksek sermaye getirisi + Saglam serbest nakit akisi marji"
+    }
+  ],
+  "updated_at": "01.10.2026 13:40"
+}

@@ -1,0 +1,95 @@
+{
+  "fear_greed_score": 31,
+  "fear_greed_label": "KORKU",
+  "fear_greed_class": "fear",
+  "fear_greed_color": "#f97316",
+  "fear_greed_history": {
+    "yesterday": 30.8,
+    "week_ago": 35.7,
+    "month_ago": 44.9,
+    "year_ago": 52.5
+  },
+  "exposure_pct": "20% to 40% Invested",
+  "exposure_tier": 2,
+  "exposure_desc": "Yüksek oynaklık ve piyasa baskısı. Koruma ve risk yönetimi ön planda.",
+  "vix": {
+    "value": 16.46,
+    "change_pct": 0.73
+  },
+  "inflation": {
+    "usa": 2.28,
+    "turkey": 58.9
+  },
+  "equities_perf": [
+    {
+      "name": "S&P 500",
+      "symbol": "SPY",
+      "price": 762.63,
+      "today": -0.2,
+      "days_5": -0.67,
+      "month_1": -0.58,
+      "ytd": 11.63,
+      "year_1": 14.09
+    },
+    {
+      "name": "DJIA (Dow Jones)",
+      "symbol": "DIA",
+      "price": 508.55,
+      "today": -0.84,
+      "days_5": -1.12,
+      "month_1": -4.33,
+      "ytd": 5.15,
+      "year_1": 9.54
+    },
+    {
+      "name": "NASDAQ 100",
+      "symbol": "QQQ",
+      "price": 739.77,
+      "today": 0.25,
+      "days_5": -0.19,
+      "month_1": 3.21,
+      "ytd": 20.66,
+      "year_1": 22.63
+    },
+    {
+      "name": "Mid Cap",
+      "symbol": "MDY",
+      "price": 656.71,
+      "today": -0.53,
+      "days_5": -1.44,
+      "month_1": -4.43,
+      "ytd": 7.43,
+      "year_1": 9.82
+    },
+    {
+      "name": "Small Cap",
+      "symbol": "IJR",
+      "price": 136.04,
+      "today": -0.64,
+      "days_5": -1.52,
+      "month_1": -5.87,
+      "ytd": 12.09,
+      "year_1": 14.15
+    },
+    {
+      "name": "Micro Cap",
+      "symbol": "IWC",
+      "price": 184.8,
+      "today": -0.49,
+      "days_5": -1.61,
+      "month_1": -4.48,
+      "ytd": 16.45,
+      "year_1": 23.69
+    },
+    {
+      "name": "BIST 100",
+      "symbol": "XU100.IS",
+      "price": 12203.8,
+      "today": 2.15,
+      "days_5": -5.31,
+      "month_1": -13.14,
+      "ytd": 6.13,
+      "year_1": 8.77
+    }
+  ]
+}

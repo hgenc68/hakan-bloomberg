@@ -17,7 +17,7 @@ export const useApp = () => {
   return context;
 };
 
-// Fallback initial ticker map for BIST and US symbols
+// Normalized ticker map for BIST, US, and Cryptos
 const TICKER_MAP = {
   'BYDNR': 'BYDNR.IS',
   'SPCX': 'SPCX',
@@ -26,9 +26,12 @@ const TICKER_MAP = {
   'BTC-USD': 'BTC-USD',
   'XAUT-USD': 'XAUT-USD',
   'XAUT': 'XAUT-USD',
+  'XAUT-usd': 'XAUT-USD',
   'LDO': 'LDO-USD',
-  'BIO-USD': 'BIO-USD',
-  'SUI': 'SUI-USD',
+  'BIO-USD': 'BIO34812-USD',
+  'BIO': 'BIO34812-USD',
+  'SUI': 'SUI20947-USD',
+  'SUI-USD': 'SUI20947-USD',
   'OP': 'OP-USD',
   'ARKM': 'ARKM-USD',
   'DOGE': 'DOGE-USD',
@@ -41,7 +44,7 @@ export const AppProvider = ({ children }) => {
   // State from Firestore
   const [holdings, setHoldings] = useState([]);
   const [goldPurchases, setGoldPurchases] = useState([]);
-  const [allocation, setAllocation] = useState({ ppf_balance_try: 0, targets: {}, guardrails: {} });
+  const [allocation, setAllocation] = useState({ ppf_balance_try: 45000, targets: {}, guardrails: {} });
   const [tradeLedger, setTradeLedger] = useState([]);
   const [settings, setSettings] = useState({ currency: 'try', timeframe: '1y' });
   const [loading, setLoading] = useState(true);
@@ -54,7 +57,8 @@ export const AppProvider = ({ children }) => {
   const [isUpdatingMarket, setIsUpdatingMarket] = useState(false);
 
   // Active UI tab & Currency
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'holdings', 'ledger', 'shield', 'manage'
+  // Default to 'market' (Global Piyasa Nabzı / Piyasa Özeti) as in original terminal
+  const [activeTab, setActiveTab] = useState('market'); 
   const [currentCurrency, setCurrentCurrency] = useState('try'); // 'try' or 'usd'
   const [toast, setToast] = useState(null);
 
@@ -110,7 +114,10 @@ export const AppProvider = ({ children }) => {
   const fetchMarketData = useCallback(async () => {
     setIsUpdatingMarket(true);
     try {
-      const symbolsToFetch = new Set(['USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'BTC-USD', 'ETH-USD']);
+      const symbolsToFetch = new Set([
+        'USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'BTC-USD', 'ETH-USD',
+        'SPY', 'QQQ', 'DIA', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F'
+      ]);
       
       holdings.forEach(h => {
         const sym = h.clean_ticker || TICKER_MAP[h.ticker.toUpperCase()] || h.ticker;
@@ -119,7 +126,7 @@ export const AppProvider = ({ children }) => {
 
       const symList = Array.from(symbolsToFetch).join(',');
       
-      // Try local/vercel API route first, fallback to direct query if needed
+      // Try local/vercel API route first
       let fetchedQuotes = {};
       try {
         const res = await fetch(`/api/market?symbols=${encodeURIComponent(symList)}`);
@@ -130,28 +137,31 @@ export const AppProvider = ({ children }) => {
           }
         }
       } catch (e) {
-        // Dev fallback
+        // Fallback
       }
 
       // If API empty or failed, fetch individually
       if (Object.keys(fetchedQuotes).length === 0) {
         const promises = Array.from(symbolsToFetch).map(async (s) => {
           try {
-            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=2d`);
+            const cleanS = TICKER_MAP[s.toUpperCase()] || s;
+            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanS)}?interval=1d&range=2d`);
             if (!r.ok) return;
             const j = await r.json();
             const meta = j?.chart?.result?.[0]?.meta;
             if (meta) {
               const p = meta.regularMarketPrice || meta.chartPreviousClose || 0;
               const prev = meta.previousClose || meta.chartPreviousClose || p;
-              fetchedQuotes[s] = {
+              const quoteObj = {
                 symbol: s,
                 price: p,
                 previousClose: prev,
                 change: p - prev,
                 changePct: prev > 0 ? ((p - prev) / prev) * 100 : 0,
-                currency: meta.currency || 'USD'
+                currency: meta.currency || (cleanS.endsWith('.IS') ? 'TRY' : 'USD')
               };
+              fetchedQuotes[s] = quoteObj;
+              fetchedQuotes[cleanS] = quoteObj;
             }
           } catch (err) {}
         });
@@ -183,56 +193,77 @@ export const AppProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
-  // 3. Portfolio Mathematical Aggregations
+  // 3. Robust Portfolio Mathematical Aggregations
   const portfolioSummary = useMemo(() => {
-    const isTRY = currentCurrency === 'try';
     let totalCostTRY = 0;
     let totalValTRY = 0;
-    let dayPLTRY = 0;
+    let dayPLTRYTotal = 0;
 
-    // A) Holdings Calculation
+    // A) Holdings Calculation with currency normalization
     const enrichedHoldings = holdings.map(h => {
       const sym = h.clean_ticker || TICKER_MAP[h.ticker.toUpperCase()] || h.ticker;
-      const quote = marketQuotes[sym] || {};
+      const quote = marketQuotes[sym] || marketQuotes[h.ticker.toUpperCase()] || marketQuotes[h.ticker] || {};
       const livePrice = quote.price !== undefined ? quote.price : (h.avg_cost || 0);
       const prevClose = quote.previousClose !== undefined ? quote.previousClose : livePrice;
       const changePct = quote.changePct !== undefined ? quote.changePct : 0;
+      const quoteCurrency = quote.currency || (sym.endsWith('.IS') ? 'TRY' : 'USD');
 
-      const isAssetUSD = h.currency === 'USD' || (h.cost_rate && h.cost_rate > 1.5);
-      
+      // User holding tracking currency
+      // If cost_rate > 1.5 or currency === 'USD', it was bought in USD (e.g. SPCX, DRAM, NVDA, TSM, ABBV)
+      const isHoldingUSD = h.currency === 'USD' || (Number(h.cost_rate) > 1.5);
+      const effectiveRate = Number(h.cost_rate) > 1.5 ? Number(h.cost_rate) : usdtry;
+
       let costTRY = 0;
-      let valTRY = 0;
       let costUSD = 0;
+      let valTRY = 0;
       let valUSD = 0;
+      let livePriceTRY = 0;
+      let livePriceUSD = 0;
 
-      if (isAssetUSD) {
+      // Normalize live price into both currencies
+      if (quoteCurrency === 'USD') {
+        livePriceUSD = livePrice;
+        livePriceTRY = livePrice * usdtry;
+      } else {
+        livePriceTRY = livePrice;
+        livePriceUSD = usdtry > 0 ? (livePrice / usdtry) : 0;
+      }
+
+      if (isHoldingUSD) {
         costUSD = (h.shares || 0) * (h.avg_cost || 0);
-        valUSD = (h.shares || 0) * livePrice;
-        costTRY = costUSD * (h.cost_rate || usdtry);
+        costTRY = costUSD * effectiveRate;
+        valUSD = (h.shares || 0) * livePriceUSD;
         valTRY = valUSD * usdtry;
       } else {
+        // Holding is bought/tracked in TRY (e.g. BYDNR, or Cryptos bought in TRY)
         costTRY = (h.shares || 0) * (h.avg_cost || 0);
-        valTRY = (h.shares || 0) * livePrice;
-        costUSD = costTRY / (h.cost_rate || usdtry);
-        valUSD = valTRY / usdtry;
+        costUSD = effectiveRate > 0 ? (costTRY / effectiveRate) : 0;
+        valTRY = (h.shares || 0) * livePriceTRY;
+        valUSD = usdtry > 0 ? (valTRY / usdtry) : 0;
       }
 
       const profitTRY = valTRY - costTRY;
       const profitUSD = valUSD - costUSD;
       const returnPct = costTRY > 0 ? (profitTRY / costTRY) * 100 : 0;
 
-      // Day P&L
-      const dayChangeTRY = (h.shares || 0) * (livePrice - prevClose) * (isAssetUSD ? usdtry : 1);
+      // True 24-hour day change
+      const prevLivePriceTRY = quoteCurrency === 'USD' ? (prevClose * usdtry) : prevClose;
+      const dayPLTRY = (h.shares || 0) * (livePriceTRY - prevLivePriceTRY);
+      const dayPLUSD = usdtry > 0 ? (dayPLTRY / usdtry) : 0;
 
       totalCostTRY += costTRY;
       totalValTRY += valTRY;
-      dayPLTRY += dayChangeTRY;
+      dayPLTRYTotal += dayPLTRY;
 
       return {
         ...h,
+        cleanTicker: sym,
         livePrice,
+        livePriceTRY,
+        livePriceUSD,
         prevClose,
         changePct,
+        quoteCurrency,
         costTRY,
         valTRY,
         costUSD,
@@ -240,7 +271,9 @@ export const AppProvider = ({ children }) => {
         profitTRY,
         profitUSD,
         returnPct,
-        isAssetUSD
+        dayPLTRY,
+        dayPLUSD,
+        isHoldingUSD
       };
     });
 
@@ -278,8 +311,8 @@ export const AppProvider = ({ children }) => {
     const consolidatedProfitUSD = unrealizedProfitUSD + totalRealizedPL_USD;
     const consolidatedReturnPct = totalCostTRY > 0 ? (consolidatedProfitTRY / totalCostTRY) * 100 : 0;
 
-    const dayPLUSD = dayPLTRY / usdtry;
-    const dayPLPct = (totalValTRY - dayPLTRY) > 0 ? (dayPLTRY / (totalValTRY - dayPLTRY)) * 100 : 0;
+    const dayPLUSD = dayPLTRYTotal / usdtry;
+    const dayPLPct = (totalValTRY - dayPLTRYTotal) > 0 ? (dayPLTRYTotal / (totalValTRY - dayPLTRYTotal)) * 100 : 0;
 
     return {
       totalValTRY,
@@ -296,7 +329,7 @@ export const AppProvider = ({ children }) => {
       consolidatedProfitTRY,
       consolidatedProfitUSD,
       consolidatedReturnPct,
-      dayPLTRY,
+      dayPLTRY: dayPLTRYTotal,
       dayPLUSD,
       dayPLPct,
       tradesCount: tradeLedger.length,
@@ -312,7 +345,7 @@ export const AppProvider = ({ children }) => {
       ppfBalanceTRY,
       usdtry
     };
-  }, [holdings, goldPurchases, allocation, tradeLedger, marketQuotes, usdtry, gramGoldPrice, currentCurrency]);
+  }, [holdings, goldPurchases, allocation, tradeLedger, marketQuotes, usdtry, gramGoldPrice]);
 
   // 4. CRUD Actions interacting with Firestore
   const addHolding = async (holdingData) => {

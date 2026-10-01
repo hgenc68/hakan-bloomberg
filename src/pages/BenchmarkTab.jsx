@@ -1,0 +1,436 @@
+import React, { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import { Line, Doughnut } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  ArcElement
+} from 'chart.js';
+import { LineChart, Shield, Activity, HelpCircle, CheckCircle2 } from 'lucide-react';
+import benchmarkData from '../data/benchmarkData.json';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  ArcElement
+);
+
+export default function BenchmarkTab() {
+  const { currentCurrency, usdtry } = useApp();
+  const isTRY = currentCurrency === 'try';
+  const curKey = isTRY ? 'try' : 'usd';
+
+  const [activeSeries, setActiveSeries] = useState({
+    portfolio: true,
+    SP500: true,
+    NASDAQ: true,
+    BIST100: true,
+    GOLD: true,
+    BITCOIN: false
+  });
+
+  const dates = benchmarkData.dates || [];
+  // Sample every 2nd or 3rd date to keep chart smooth and fast
+  const sampleStep = Math.max(1, Math.floor(dates.length / 80));
+  const sampledDates = dates.filter((_, i) => i % sampleStep === 0);
+
+  const series = benchmarkData.normalized_series || {};
+  const underwater = benchmarkData.underwater_series || {};
+  const metrics = benchmarkData.metrics_by_currency?.[curKey] || {};
+
+  const toggleSeries = (key) => {
+    setActiveSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Base-100 Performance Chart
+  const perfDatasets = [];
+  if (activeSeries.portfolio && series[`portfolio_${curKey}`]) {
+    perfDatasets.push({
+      label: 'PORTFÖYÜNÜZ',
+      data: series[`portfolio_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      borderColor: '#ffffff',
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      borderWidth: 2.5,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
+  if (activeSeries.SP500 && series[`SP500_${curKey}`]) {
+    perfDatasets.push({
+      label: 'S&P 500 (^GSPC)',
+      data: series[`SP500_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      borderColor: '#3b82f6',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
+  if (activeSeries.NASDAQ && series[`NASDAQ_${curKey}`]) {
+    perfDatasets.push({
+      label: 'Nasdaq 100 (^NDX)',
+      data: series[`NASDAQ_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      borderColor: '#a855f7',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
+  if (activeSeries.BIST100 && series[`BIST100_${curKey}`]) {
+    perfDatasets.push({
+      label: 'BIST 100 (XU100.IS)',
+      data: series[`BIST100_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      borderColor: '#ef4444',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
+  if (activeSeries.GOLD && series[`GOLD_${curKey}`]) {
+    perfDatasets.push({
+      label: 'Altın Ons (GC=F)',
+      data: series[`GOLD_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      borderColor: '#eab308',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
+  if (activeSeries.BITCOIN && series[`BITCOIN_${curKey}`]) {
+    perfDatasets.push({
+      label: 'Bitcoin (BTC-USD)',
+      data: series[`BITCOIN_${curKey}`].filter((_, i) => i % sampleStep === 0),
+      borderColor: '#f97316',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      tension: 0.2
+    });
+  }
+
+  const perfChartData = {
+    labels: sampledDates,
+    datasets: perfDatasets
+  };
+
+  const perfChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f172a',
+        titleColor: '#e2e8f0',
+        bodyColor: '#e2e8f0',
+        borderColor: '#334155',
+        borderWidth: 1,
+        padding: 10,
+        callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(2)} (Baz 100)`
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+        ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } }
+      },
+      y: {
+        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+        ticks: { color: '#64748b', font: { size: 10 } }
+      }
+    }
+  };
+
+  // Underwater Drawdown Chart
+  const rawUnderwater = underwater[curKey] || [];
+  const sampledUnderwater = rawUnderwater.filter((_, i) => i % sampleStep === 0);
+
+  const underwaterChartData = {
+    labels: sampledDates,
+    datasets: [
+      {
+        label: 'Zirveden Düşüş (Drawdown %)',
+        data: sampledUnderwater,
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        borderWidth: 1.5,
+        fill: true,
+        pointRadius: 0,
+        tension: 0.2
+      }
+    ]
+  };
+
+  const underwaterChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0f172a',
+        callbacks: {
+          label: (ctx) => `Düşüş: ${Number(ctx.raw).toFixed(2)}%`
+        }
+      }
+    },
+    scales: {
+      x: { display: false },
+      y: {
+        max: 0,
+        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+        ticks: { color: '#ef4444', font: { size: 9 }, callback: (v) => `${v}%` }
+      }
+    }
+  };
+
+  const metricRows = [
+    { key: 'PORTFOLIO', name: 'PORTFÖYÜNÜZ', code: 'PORTFOLIO', color: '#fff', bold: true },
+    { key: 'SP500', name: 'S&P 500', code: '^GSPC', color: '#3b82f6' },
+    { key: 'NASDAQ', name: 'Nasdaq 100', code: '^NDX', color: '#a855f7' },
+    { key: 'BIST100', name: 'BIST 100', code: 'XU100.IS', color: '#ef4444' },
+    { key: 'GOLD', name: 'Altın (Ons)', code: 'GC=F', color: '#eab308' },
+    { key: 'BITCOIN', name: 'Bitcoin', code: 'BTC-USD', color: '#f97316' }
+  ];
+
+  return (
+    <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
+      {/* Header */}
+      <div className="workspace-header" style={{ marginBottom: 16 }}>
+        <div>
+          <h2 className="workspace-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <LineChart size={20} className="text-cyan" />
+            <span>PORTFÖY & BENCHMARK KARŞILAŞTIRMA (GIPS KURUMSAL STANDARDI)</span>
+          </h2>
+          <p className="workspace-subtitle">
+            Normalize Baz-100 Getiri Eğrisi, Underwater Drawdown ve Çoklu Gösterge Risk Matrisi (Alpha, Beta, Sharpe, Sortino, Calmar)
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="nav-badge cyan" style={{ padding: '5px 12px', fontSize: 11 }}>
+            SEÇİLİ BAZ: {isTRY ? 'TRY NORMALIZE (%40 Rf)' : 'USD NORMALIZE (%4.25 Rf)'}
+          </span>
+        </div>
+      </div>
+
+      {/* Main Charts Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 20 }}>
+        
+        {/* Performance & Underwater Card */}
+        <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          {/* Chart Header & Interactive Series Toggles */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0' }}>
+                GÖSTERGELERE GÖRE NORMALİZE PERFORMANS (BAZ 100)
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Portföy ve benchmarkların 1 yıllık kümülatif getiri eğrileri
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`chip-btn ${activeSeries.portfolio ? 'active' : ''}`}
+                style={{ borderColor: activeSeries.portfolio ? '#fff' : 'transparent', color: '#fff' }}
+                onClick={() => toggleSeries('portfolio')}
+              >
+                ⚪ Portföy
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${activeSeries.SP500 ? 'active' : ''}`}
+                style={{ borderColor: activeSeries.SP500 ? '#3b82f6' : 'transparent', color: '#3b82f6' }}
+                onClick={() => toggleSeries('SP500')}
+              >
+                🔵 S&P 500
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${activeSeries.NASDAQ ? 'active' : ''}`}
+                style={{ borderColor: activeSeries.NASDAQ ? '#a855f7' : 'transparent', color: '#a855f7' }}
+                onClick={() => toggleSeries('NASDAQ')}
+              >
+                🟣 Nasdaq
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${activeSeries.BIST100 ? 'active' : ''}`}
+                style={{ borderColor: activeSeries.BIST100 ? '#ef4444' : 'transparent', color: '#ef4444' }}
+                onClick={() => toggleSeries('BIST100')}
+              >
+                🔴 BIST 100
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${activeSeries.GOLD ? 'active' : ''}`}
+                style={{ borderColor: activeSeries.GOLD ? '#eab308' : 'transparent', color: '#eab308' }}
+                onClick={() => toggleSeries('GOLD')}
+              >
+                🟡 Altın
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${activeSeries.BITCOIN ? 'active' : ''}`}
+                style={{ borderColor: activeSeries.BITCOIN ? '#f97316' : 'transparent', color: '#f97316' }}
+                onClick={() => toggleSeries('BITCOIN')}
+              >
+                🟠 Bitcoin
+              </button>
+            </div>
+          </div>
+
+          {/* Performance Chart Box */}
+          <div style={{ height: 320, width: '100%', marginBottom: 16 }}>
+            <Line data={perfChartData} options={perfChartOptions} />
+          </div>
+
+          {/* Underwater Drawdown Chart Box */}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>
+                UNDERWATER DRAWDOWN GRAFİĞİ (Zirveden Düşüş & Toparlanma)
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                Maksimum Kayıp: <strong style={{ color: '#ef4444' }}>{metrics['PORTFOLIO']?.max_drawdown || -37.38}%</strong>
+              </div>
+            </div>
+            <div style={{ height: 100, width: '100%' }}>
+              <Line data={underwaterChartData} options={underwaterChartOptions} />
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Quantitative Risk & Benchmark Analytics Matrix Card */}
+      <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>📊</span>
+            <span>BLOOMBERG KANTİTATİF RİSK & GÖSTERGE ANALİTİK MATRİSİ</span>
+          </div>
+          <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+            Seçili Baz: <strong style={{ color: 'var(--amber)' }}>{isTRY ? 'TRY' : 'USD'}</strong>
+          </span>
+        </div>
+
+        <div className="table-responsive">
+          <table className="terminal-table" style={{ fontSize: 11 }}>
+            <thead>
+              <tr>
+                <th>Varlık / Gösterge</th>
+                <th>Sembol</th>
+                <th className="text-right">Dönem Getirisi</th>
+                <th className="text-right">Yıllık Getiri (CAGR)</th>
+                <th className="text-right">Volatilite (σ)</th>
+                <th className="text-right">Sharpe Oranı</th>
+                <th className="text-right">Sortino Oranı</th>
+                <th className="text-right">Beta (β)</th>
+                <th className="text-right">Jensen Alpha (α)</th>
+                <th className="text-right">Tracking Error</th>
+                <th className="text-right">Max Drawdown</th>
+                <th className="text-right">Calmar</th>
+                <th className="text-right">Korelasyon</th>
+              </tr>
+            </thead>
+            <tbody>
+              {metricRows.map(row => {
+                const m = metrics[row.key] || {};
+                const isPort = row.key === 'PORTFOLIO';
+
+                return (
+                  <tr
+                    key={row.key}
+                    className="table-row"
+                    style={{ background: isPort ? 'rgba(255, 255, 255, 0.03)' : 'transparent' }}
+                  >
+                    <td>
+                      <strong style={{ color: row.color, fontWeight: isPort ? 900 : 700 }}>
+                        {row.name}
+                      </strong>
+                    </td>
+                    <td className="mono text-muted">{row.code}</td>
+                    <td className="text-right mono" style={{ fontWeight: 700, color: (m.period_return || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {(m.period_return || 0) >= 0 ? '+' : ''}{Number(m.period_return || 0).toFixed(2)}%
+                    </td>
+                    <td className="text-right mono" style={{ color: (m.cagr || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {(m.cagr || 0) >= 0 ? '+' : ''}{Number(m.cagr || 0).toFixed(2)}%
+                    </td>
+                    <td className="text-right mono">{Number(m.volatility || 0).toFixed(2)}%</td>
+                    <td className="text-right mono font-medium" style={{ color: (m.sharpe || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {Number(m.sharpe || 0).toFixed(2)}
+                    </td>
+                    <td className="text-right mono" style={{ color: (m.sortino || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {Number(m.sortino || 0).toFixed(2)}
+                    </td>
+                    <td className="text-right mono font-medium">
+                      {isPort ? '1.00' : Number(m.beta || 0).toFixed(2)}
+                    </td>
+                    <td className="text-right mono" style={{ color: (m.alpha || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {isPort ? '0.00%' : `${(m.alpha || 0) >= 0 ? '+' : ''}${Number(m.alpha || 0).toFixed(2)}%`}
+                    </td>
+                    <td className="text-right mono">
+                      {isPort ? '0.00%' : `${Number(m.tracking_error || 0).toFixed(2)}%`}
+                    </td>
+                    <td className="text-right mono text-down" style={{ color: 'var(--red)' }}>
+                      {Number(m.max_drawdown || 0).toFixed(2)}%
+                    </td>
+                    <td className="text-right mono">
+                      {Number(m.calmar || 0).toFixed(2)}
+                    </td>
+                    <td className="text-right mono">
+                      {isPort ? '1.00' : Number(m.correlation || 0).toFixed(2)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Quantitative Decision Guide Legend */}
+        <div style={{ background: '#0b101b', borderTop: '1px solid var(--border)', padding: '12px 16px', fontSize: 10.5, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 14, borderRadius: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="nav-badge emerald" style={{ padding: '2px 6px', fontSize: 9 }}>Üstün</span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              <strong style={{ color: '#fff' }}>Sharpe & Sortino:</strong> Risksiz faiz üzeri birim risk başına getiri kalitesi.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="nav-badge cyan" style={{ padding: '2px 6px', fontSize: 9 }}>Defansif</span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              <strong style={{ color: '#fff' }}>Beta (β):</strong> &lt; 0.85 portföyün piyasa çöküşlerine karşı korumalı olduğunu gösterir.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="nav-badge emerald" style={{ padding: '2px 6px', fontSize: 9 }}>+Alfa</span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              <strong style={{ color: '#fff' }}>Jensen Alpha (α):</strong> Portföy yöneticisinin piyasaya attığı reel performans farkı.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="nav-badge cyan" style={{ padding: '2px 6px', fontSize: 9 }}>Eş Koruma</span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              <strong style={{ color: '#fff' }}>Korelasyon:</strong> 0'a yakın/negatif varlıklar portföy riskini dağıtır.
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
