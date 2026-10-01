@@ -644,14 +644,16 @@ export function TransferToShieldModal({ defaultAmount, onClose }) {
     <ModalWrapper title="KÂR / HASILATI KUR KALKANINA AKTAR" icon={Shield} onClose={onClose}>
       <form onSubmit={handleSubmit} className="modal-form">
         <div className="info-desc-box">
-          Satıştan elde ettiğiniz kesinleşmiş kârı veya satış bedelini <strong>Kur Kalkanı PPF</strong> (TL Likit Fon) veya <strong>Gram Altın</strong> sepetinize ekleyerek portföyünüzün koruma kalkanını güçlendirebilirsiniz.
+          Satıştan elde ettiğiniz kârı veya satış bedelini <strong>Kur Kalkanı PPF</strong>, <strong>Gram Altın</strong> veya <strong>Serbest Nakit (Alım Gücü)</strong> havuzuna aktarabilirsiniz.
         </div>
 
         <div className="form-group">
-          <label>HEDEF KALKAN TÜRÜ</label>
+          <label>HEDEF KALKAN / NAKİT HAVUZU</label>
           <select value={destination} onChange={e => setDestination(e.target.value)} className="quant-input">
-            <option value="ppf">🏢 Para Piyasası Fonu (PPF / TL Likit Kuru Barut)</option>
+            <option value="ppf">🏢 Para Piyasası Fonu (PPF / TL Kuru Barut Zırhı)</option>
             <option value="gold">🥇 Gram Altın (Kur Kalkanı Altın Havuzu)</option>
+            <option value="cash_try">💵 Serbest Nakit Hesabı (TL Alım Gücü - BIST/Midas)</option>
+            <option value="cash_usd">💵 Serbest Nakit Hesabı (USD Alım Gücü - ABD/Midas)</option>
           </select>
         </div>
 
@@ -802,3 +804,108 @@ export function UpdatePpfModal({ onClose }) {
     </ModalWrapper>
   );
 }
+
+// 7. Serbest Nakit & Alım Gücü Güncelle Modalı (TRY & USD)
+export function UpdateCashModal({ onClose }) {
+  const { allocation, updateCashBalance, usdtry } = useApp();
+  const [cashTRY, setCashTRY] = useState(String(allocation.cash_try ?? '0'));
+  const [cashUSD, setCashUSD] = useState(String(allocation.cash_usd ?? '0'));
+
+  const numTRY = Math.max(0, parseFloat(String(cashTRY).replace(',', '.')) || 0);
+  const numUSD = Math.max(0, parseFloat(String(cashUSD).replace(',', '.')) || 0);
+
+  const rate = usdtry || 49.03;
+  const usdInTRY = numUSD * rate;
+  const totalBuyingPowerTRY = numTRY + usdInTRY;
+  const totalBuyingPowerUSD = rate > 0 ? (totalBuyingPowerTRY / rate) : 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await updateCashBalance(numTRY, numUSD);
+    onClose();
+  };
+
+  return (
+    <ModalWrapper title="SERBEST NAKİT & ALIM GÜCÜ (BUYING POWER)" icon={DollarSign} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="modal-form">
+        <div className="info-desc-box" style={{ background: 'rgba(6, 182, 212, 0.08)', borderColor: 'rgba(6, 182, 212, 0.25)' }}>
+          <strong style={{ color: 'var(--cyan)' }}>💡 Taktik Nakit vs. Stratejik Zırh: </strong>
+          <span>
+            Gram Altın ve PPF dokunulmaması gereken <strong>savunma kalkanınızdır</strong>. 
+            Buraya gireceğiniz TL ve Dolar tutarları ise BIST, ABD borsası veya Midas hesaplarınızda <strong>hisse alımı için hazır bekleyen serbest cephanenizdir</strong>.
+          </span>
+        </div>
+
+        <div className="form-grid-2">
+          {/* TRY Input */}
+          <div className="form-group">
+            <div className="label-between">
+              <label>SERBEST TL NAKİT (₺)</label>
+              <button type="button" className="btn-text-link" onClick={() => setCashTRY('0')}>0 ₺</button>
+            </div>
+            <input
+              type="text"
+              required
+              placeholder="0.00"
+              value={cashTRY}
+              onChange={e => setCashTRY(e.target.value)}
+              className="quant-input mono text-emerald"
+              style={{ fontSize: '15px', fontWeight: 700 }}
+            />
+            <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: 4 }}>
+              ≈ ${(rate > 0 ? numTRY / rate : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+            </div>
+          </div>
+
+          {/* USD Input */}
+          <div className="form-group">
+            <div className="label-between">
+              <label>SERBEST USD NAKİT ($)</label>
+              <button type="button" className="btn-text-link" onClick={() => setCashUSD('0')}>0 $</button>
+            </div>
+            <input
+              type="text"
+              required
+              placeholder="0.00"
+              value={cashUSD}
+              onChange={e => setCashUSD(e.target.value)}
+              className="quant-input mono text-cyan"
+              style={{ fontSize: '15px', fontWeight: 700 }}
+            />
+            <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', marginTop: 4 }}>
+              ≈ ₺{usdInTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TRY
+            </div>
+          </div>
+        </div>
+
+        {/* Live Buying Power Summary Box */}
+        <div style={{ background: '#0b101d', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 6, padding: '12px 14px', margin: '14px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Toplam Kullanılabilir Alım Gücü (Buying Power)
+            </span>
+            <span className="nav-badge cyan" style={{ fontSize: '9.5px' }}>
+              Kur: ₺{rate.toFixed(2)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+            <span className="mono text-emerald" style={{ fontSize: '20px', fontWeight: 900 }}>
+              ₺{totalBuyingPowerTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span className="mono text-muted" style={{ fontSize: '13px' }}>
+              (${totalBuyingPowerUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
+            </span>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button type="button" className="btn-secondary" onClick={onClose}>İptal</button>
+          <button type="submit" className="btn-primary" style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)' }}>
+            💵 Serbest Nakdi Kaydet
+          </button>
+        </div>
+      </form>
+    </ModalWrapper>
+  );
+}
+

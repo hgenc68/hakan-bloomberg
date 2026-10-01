@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Shield, Plus, DollarSign, Award, Trash2, AlertTriangle, ShieldCheck, TrendingUp, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 
-export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
+export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCashModal }) {
   const { goldPurchases, portfolioSummary, deleteGoldPurchase, usdtry } = useApp();
   const [isGoldTableExpanded, setIsGoldTableExpanded] = useState(false);
 
@@ -11,6 +11,10 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
   const physicalGoldCostTRY = portfolioSummary.totalGoldCostTRY || 0;
   const physicalGoldProfitTRY = portfolioSummary.goldProfitTRY || 0;
   const ppfBalTRY = portfolioSummary.ppfBalanceTRY || 0;
+  const cashTRY = portfolioSummary.cashTRY || 0;
+  const cashUSD = portfolioSummary.cashUSD || 0;
+  const totalFreeCashTRY = portfolioSummary.totalFreeCashTRY || 0;
+  const totalFreeCashUSD = portfolioSummary.totalFreeCashUSD || 0;
   const totalValTRY = portfolioSummary.totalValTRY || 1;
   const totalValUSD = portfolioSummary.totalValUSD || 1;
 
@@ -21,7 +25,7 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
     us_equities_etf: 0,
     bist_export: 0,
     gold_metals: physicalGoldValTRY,
-    cash_ppf: ppfBalTRY,
+    cash_ppf: ppfBalTRY + totalFreeCashTRY,
     bist_domestic: 0,
     crypto: 0
   };
@@ -58,20 +62,25 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
   const totalGoldProfitTRY = totalGoldValTRY - totalGoldCostTRY;
   const totalGoldReturnPct = totalGoldCostTRY > 0 ? (totalGoldProfitTRY / totalGoldCostTRY) * 100 : 0;
   const totalShieldValTRY = totalGoldValTRY + ppfBalTRY;
+  const totalLiquidBufferTRY = totalShieldValTRY + totalFreeCashTRY;
 
   const catConfig = [
     { key: 'us_equities_etf', label: 'ABD Hisse & Global ETF', color: '#00e5ff', target: 35.0, coef: 1.0 },
     { key: 'bist_export', label: 'BIST 100 İhracatçı', color: '#10b981', target: 20.0, coef: 0.85 },
     { key: 'gold_metals', label: 'Gram Altın & Emtia', color: '#eab308', target: 20.0, coef: 1.0 },
-    { key: 'cash_ppf', label: 'Para Piyasası Fonu (PPF)', color: '#3b82f6', target: 15.0, coef: 0.0 },
+    { key: 'cash_ppf', label: 'PPF & Serbest Nakit (Likit)', color: '#3b82f6', target: 15.0, coef: 0.0 },
     { key: 'bist_domestic', label: 'BIST İç Pazar', color: '#f59e0b', target: 5.0, coef: 0.15 },
     { key: 'crypto', label: 'Kripto Varlıklar', color: '#8b5cf6', target: 5.0, coef: 1.0 }
   ];
 
-  // Natural FX Hedge Ratio
+  // Natural FX Hedge Ratio (USD cash has 1.0 hedge coefficient)
   let hedgedValTRY = 0;
   catConfig.forEach(c => {
-    hedgedValTRY += (catTotalsTRY[c.key] || 0) * c.coef;
+    if (c.key === 'cash_ppf') {
+      hedgedValTRY += (cashUSD * usdtry); // USD Serbest Nakit tam kur korumalıdır
+    } else {
+      hedgedValTRY += (catTotalsTRY[c.key] || 0) * c.coef;
+    }
   });
 
   const fxHedgeRatioPct = Math.round((hedgedValTRY / totalValTRY) * 1000) / 10;
@@ -116,7 +125,7 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
       {/* Top Banner */}
-      <div className="ledger-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div className="ledger-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span>🛡️</span>
@@ -130,7 +139,16 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
           </p>
         </div>
 
-        <div className="action-btns" style={{ display: 'flex', gap: 10 }}>
+        <div className="action-btns" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-primary-cyan"
+            onClick={onOpenCashModal}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: '#000', fontWeight: 700, padding: '7px 14px', borderRadius: 4 }}
+          >
+            <DollarSign size={14} />
+            <span>💵 Serbest Nakit (TRY/USD)</span>
+          </button>
           <button
             type="button"
             className="btn-primary-gold"
@@ -138,7 +156,7 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eab308', color: '#000', fontWeight: 700, padding: '7px 14px', borderRadius: 4 }}
           >
             <Plus size={14} />
-            <span>👑 Gram Altın Alımı Ekle</span>
+            <span>👑 Gram Altın Alımı</span>
           </button>
           <button
             type="button"
@@ -147,13 +165,13 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#10b981', color: '#000', fontWeight: 700, padding: '7px 14px', borderRadius: 4 }}
           >
             <Shield size={14} />
-            <span>🏢 PPF Bakiyesi Güncelle</span>
+            <span>🏢 PPF Kuru Barut</span>
           </button>
         </div>
       </div>
 
-      {/* 4 Shield KPI Cards */}
-      <div className="kpi-grid" style={{ marginBottom: 20 }}>
+      {/* 5 Shield & Liquidity KPI Cards */}
+      <div className="kpi-grid" style={{ marginBottom: 16 }}>
         {/* KPI 1: Toplam Doğal Kur Kalkanı */}
         <div className="kpi-card green" style={{ padding: 16 }}>
           <div className="kpi-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -172,7 +190,7 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
         {/* KPI 2: Toplam Altın Havuzu (Fiziki + Borsa) */}
         <div className="kpi-card gold" style={{ padding: 16 }}>
           <div className="kpi-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Toplam Altın & Değerli Maden</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Toplam Altın & Emtia</span>
             <span className="nav-badge gold" style={{ fontSize: 10 }}>👑 {totalGrams.toFixed(2)} gr Fiziki + Borsa</span>
           </div>
           <div className="kpi-val mono text-gold" style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
@@ -181,37 +199,102 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal }) {
           <div className="kpi-sub mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             <span>Fiziki/Banka: <strong style={{ color: '#fff' }}>₺{physicalGoldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
             {holdingsGoldValTRY > 0 && (
-              <span style={{ marginLeft: 6 }}>| Borsa/Fon: <strong style={{ color: 'var(--cyan)' }}>₺{holdingsGoldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
+              <span style={{ marginLeft: 6 }}>| Fon: <strong style={{ color: 'var(--cyan)' }}>₺{holdingsGoldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
             )}
           </div>
         </div>
 
-        {/* KPI 3: PPF Kuru Barut */}
+        {/* KPI 3: PPF Kuru Barut (Stratejik Zırh) */}
         <div className="kpi-card cyan" style={{ padding: 16 }}>
           <div className="kpi-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>PPF / TL Kuru Barut</span>
-            <span className="nav-badge cyan" style={{ fontSize: 10 }}>Likit Tampon</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>PPF / Kuru Barut</span>
+            <span className="nav-badge cyan" style={{ fontSize: 10 }}>Stratejik Zırh</span>
           </div>
           <div className="kpi-val mono text-cyan" style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
             ₺{ppfBalTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="kpi-sub mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            <span>Düşüşlerde Alım Gücü: </span>
-            <strong style={{ color: 'var(--emerald)' }}>Aktif Hazır</strong>
+            <span>Fonksiyon: </span>
+            <strong style={{ color: 'var(--emerald)' }}>Dokunulmaz Güvenlik Tamponu</strong>
           </div>
         </div>
 
-        {/* KPI 4: Toplam Kalkan Serveti */}
-        <div className="kpi-card purple" style={{ padding: 16 }}>
+        {/* KPI 4: Serbest Nakit & Alım Gücü (Taktik Cephane) */}
+        <div className="kpi-card highlight" style={{ padding: 16 }}>
           <div className="kpi-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Kalkan Serveti (Altın + PPF)</span>
-            <span className="nav-badge purple" style={{ fontSize: 10 }}>Defansif Zırh</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Serbest Nakit (Alım Gücü)</span>
+            <button type="button" onClick={onOpenCashModal} className="nav-badge cyan" style={{ fontSize: 9.5, cursor: 'pointer', border: 'none' }}>
+              Düzenle ✎
+            </button>
           </div>
-          <div className="kpi-val mono text-bright" style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
-            ₺{totalShieldValTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="kpi-val mono text-emerald" style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
+            ₺{totalFreeCashTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="kpi-sub mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            <span>Altın: <strong style={{ color: 'var(--gold)' }}>₺{totalGoldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong> | PPF: <strong style={{ color: 'var(--cyan)' }}>₺{ppfBalTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
+            <span>TL: <strong style={{ color: '#fff' }}>₺{cashTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong> | USD: <strong style={{ color: 'var(--cyan)' }}>${cashUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong></span>
+          </div>
+        </div>
+
+        {/* KPI 5: Toplam Likit & Kalkan Serveti */}
+        <div className="kpi-card purple" style={{ padding: 16 }}>
+          <div className="kpi-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Kalkan + Likit Serveti</span>
+            <span className="nav-badge purple" style={{ fontSize: 10 }}>Toplam Likit</span>
+          </div>
+          <div className="kpi-val mono text-bright" style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>
+            ₺{totalLiquidBufferTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="kpi-sub mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            <span>Zırh: <strong style={{ color: 'var(--gold)' }}>₺{totalShieldValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong> | Nakit: <strong style={{ color: 'var(--emerald)' }}>₺{totalFreeCashTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong></span>
+          </div>
+        </div>
+      </div>
+
+      {/* Likidite Mimarisi: Stratejik Zırh vs. Taktik Serbest Nakit */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 20 }}>
+        {/* Sol Kolon: Stratejik Dokunulmaz Zırh */}
+        <div style={{ background: 'rgba(234, 179, 8, 0.05)', border: '1px solid rgba(234, 179, 8, 0.25)', borderRadius: 8, padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🛡️</span>
+              <span>STRATEJİK SAVUNMA KALKANI (KURU BARUT)</span>
+            </div>
+            <span className="nav-badge gold" style={{ fontSize: 9.5 }}>Dokunulmaz Rezerv</span>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)', marginBottom: 4 }}>
+            ₺{totalShieldValTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div style={{ fontSize: 11, color: '#cbd5e1', lineHeight: '1.45' }}>
+            <strong>Altın ({totalGrams.toFixed(2)}g) + PPF:</strong> Piyasa çöküşlerine ve hiper-enflasyona karşı ana sigortadır. Kâr realizasyonlarıyla sürekli beslenir, olağanüstü krizler haricinde hisse alımı için harcanmaz.
+          </div>
+        </div>
+
+        {/* Sağ Kolon: Taktik Operasyonel Serbest Nakit */}
+        <div style={{ background: 'rgba(6, 182, 212, 0.05)', border: '1px solid rgba(6, 182, 212, 0.25)', borderRadius: 8, padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--cyan)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>⚡</span>
+              <span>SERBEST NAKİT & ALIM GÜCÜ (BUYING POWER)</span>
+            </div>
+            <button
+              type="button"
+              className="btn-text-link"
+              onClick={onOpenCashModal}
+              style={{ color: 'var(--cyan)', fontSize: 10.5, fontWeight: 700 }}
+            >
+              Bakiyeyi Güncelle ➔
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
+              ₺{totalFreeCashTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              (${totalFreeCashUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
+            </span>
+          </div>
+          <div style={{ fontSize: 11, color: '#cbd5e1', lineHeight: '1.45' }}>
+            <strong>Serbest TL + Dolar:</strong> Midas ve BIST hesaplarınızda bekleyen, anlık dip fırsatlarında hisse veya fon almak için doğrudan harcanabilir taktik cephanenizdir.
           </div>
         </div>
       </div>

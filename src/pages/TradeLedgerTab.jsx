@@ -95,7 +95,7 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
             <span className="badge-pill purple">Kuru Barut</span>
           </div>
           <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: '1.4', margin: '4px 0 10px 0' }}>
-            Elde ettiğiniz kârı Para Piyasası Fonu'na (PPF) aktararak koruyabilir veya Gram Altın'a çevirebilirsiniz.
+            Elde ettiğiniz kârı PPF veya Gram Altın kalkanına aktarabilir ya da Serbest Nakit Alım Gücünüze ekleyebilirsiniz.
           </div>
           <button
             type="button"

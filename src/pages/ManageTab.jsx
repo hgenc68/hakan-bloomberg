@@ -1,8 +1,8 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, ShoppingCart, Shield, Edit3, Trash2, ScrollText, Download, Upload, HardDrive } from 'lucide-react';
+import { Plus, ShoppingCart, Shield, Edit3, Trash2, ScrollText, Download, Upload, HardDrive, DollarSign } from 'lucide-react';
 
-export default function ManageTab({ onOpenAddModal, onOpenSellModal, onOpenEditModal, onOpenAddGoldModal, onOpenPpfModal }) {
+export default function ManageTab({ onOpenAddModal, onOpenSellModal, onOpenEditModal, onOpenAddGoldModal, onOpenPpfModal, onOpenCashModal }) {
   const { holdings, deleteHolding, setActiveTab, exportBackup, importBackup } = useApp();
 
   return (
@@ -43,6 +43,16 @@ export default function ManageTab({ onOpenAddModal, onOpenSellModal, onOpenEditM
           <div className="tile-icon emerald"><ShoppingCart size={24} /></div>
           <div className="tile-title">Kısmi Satış & Kâr Realizasyonu</div>
           <div className="tile-desc">Pozisyondan kâr alıp otomatik Kâr Defterine kaydedin</div>
+        </button>
+
+        <button
+          type="button"
+          className="manage-tile"
+          onClick={onOpenCashModal}
+        >
+          <div className="tile-icon cyan"><DollarSign size={24} /></div>
+          <div className="tile-title">Serbest Nakit (TRY/USD)</div>
+          <div className="tile-desc">Hisse alımı için hazır bekleyen operasyonel alım gücünüzü güncelleyin</div>
         </button>
 
         <button

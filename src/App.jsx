@@ -19,7 +19,8 @@ import {
   EditHoldingModal,
   TransferToShieldModal,
   AddGoldModal,
-  UpdatePpfModal
+  UpdatePpfModal,
+  UpdateCashModal
 } from './components/Modals';
 
 function MainTerminal() {
@@ -32,6 +33,7 @@ function MainTerminal() {
   const [transferModalAmount, setTransferModalAmount] = useState(null);
   const [showAddGoldModal, setShowAddGoldModal] = useState(false);
   const [showPpfModal, setShowPpfModal] = useState(false);
+  const [showCashModal, setShowCashModal] = useState(false);
 
   // Selected stock for SingleStockTab
   const [selectedStockTicker, setSelectedStockTicker] = useState('NVDA');
@@ -72,6 +74,7 @@ function MainTerminal() {
             onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
             onOpenSellModal={(h) => setSelectedSellHolding(h)}
             onOpenEditModal={(h) => setSelectedEditHolding(h)}
+            onOpenCashModal={() => setShowCashModal(true)}
           />
         )}
 
@@ -83,6 +86,7 @@ function MainTerminal() {
           <ShieldTab
             onOpenAddGoldModal={() => setShowAddGoldModal(true)}
             onOpenPpfModal={() => setShowPpfModal(true)}
+            onOpenCashModal={() => setShowCashModal(true)}
           />
         )}
 
@@ -117,6 +121,7 @@ function MainTerminal() {
             onOpenEditModal={(h) => setSelectedEditHolding(h)}
             onOpenAddGoldModal={() => setShowAddGoldModal(true)}
             onOpenPpfModal={() => setShowPpfModal(true)}
+            onOpenCashModal={() => setShowCashModal(true)}
           />
         )}
       </main>
@@ -152,6 +157,7 @@ function MainTerminal() {
 
       {showAddGoldModal && <AddGoldModal onClose={() => setShowAddGoldModal(false)} />}
       {showPpfModal && <UpdatePpfModal onClose={() => setShowPpfModal(false)} />}
+      {showCashModal && <UpdateCashModal onClose={() => setShowCashModal(false)} />}
     </div>
   );
 }

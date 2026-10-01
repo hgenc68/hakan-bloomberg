@@ -102,10 +102,10 @@ export const AppProvider = ({ children }) => {
       const cached = localStorage.getItem('bloomberg_cached_alloc');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed) return parsed;
+        if (parsed) return { cash_try: 0, cash_usd: 0, ...parsed };
       }
     } catch (e) {}
-    return { ppf_balance_try: 45000, targets: {}, guardrails: {} };
+    return { ppf_balance_try: 45000, cash_try: 0, cash_usd: 0, targets: {}, guardrails: {} };
   });
 
   const [tradeLedger, setTradeLedger] = useState(() => {
@@ -441,10 +441,17 @@ export const AppProvider = ({ children }) => {
     totalCostTRY += totalGoldCostTRY;
     totalValTRY += totalGoldValTRY;
 
-    // C) PPF Cash Buffer
+    // C) PPF & Serbest Nakit Tamponu (Kuru Barut & Alım Gücü)
     const ppfBalanceTRY = Number(allocation.ppf_balance_try) || 0;
-    totalCostTRY += ppfBalanceTRY;
-    totalValTRY += ppfBalanceTRY;
+    const cashTRY = Number(allocation.cash_try) || 0;
+    const cashUSD = Number(allocation.cash_usd) || 0;
+    const cashUSDinTRY = cashUSD * usdtry;
+    const totalFreeCashTRY = cashTRY + cashUSDinTRY;
+    const totalFreeCashUSD = usdtry > 0 ? (totalFreeCashTRY / usdtry) : 0;
+
+    // Both PPF and Serbest Nakit are liquid cash assets (cost basis = current value)
+    totalCostTRY += ppfBalanceTRY + totalFreeCashTRY;
+    totalValTRY += ppfBalanceTRY + totalFreeCashTRY;
 
     // D) Realized P&L from Trade Ledger
     const totalRealizedPL_TRY = tradeLedger.reduce((acc, t) => acc + (Number(t.realized_pl_try) || 0), 0);
@@ -498,6 +505,17 @@ export const AppProvider = ({ children }) => {
       goldReturnPct,
       gramGoldPrice,
       ppfBalanceTRY,
+      cashTRY,
+      cashUSD,
+      cashUSDinTRY,
+      totalFreeCashTRY,
+      totalFreeCashUSD,
+      buyingPowerTRY: totalFreeCashTRY,
+      buyingPowerUSD: totalFreeCashUSD,
+      totalCashAndPPF_TRY: ppfBalanceTRY + totalFreeCashTRY,
+      totalCashAndPPF_USD: usdtry > 0 ? (ppfBalanceTRY + totalFreeCashTRY) / usdtry : 0,
+      totalShieldValTRY: totalGoldValTRY + ppfBalanceTRY, // Stratejik Zırh (Altın + PPF)
+      totalLiquidTRY: totalGoldValTRY + ppfBalanceTRY + totalFreeCashTRY, // Toplam Likit Servet
       usdtry
     };
   }, [holdings, goldPurchases, allocation, tradeLedger, marketQuotes, usdtry, gramGoldPrice]);
@@ -696,6 +714,18 @@ export const AppProvider = ({ children }) => {
     showToast(`PPF bakiyesi ₺${Number(balanceTRY).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} olarak güncellendi!`, '🛡️');
   };
 
+  const updateCashBalance = async (tryAmt, usdAmt) => {
+    const cleanTRY = Math.max(0, parseFloat(String(tryAmt).replace(',', '.')) || 0);
+    const cleanUSD = Math.max(0, parseFloat(String(usdAmt).replace(',', '.')) || 0);
+    await setDoc(doc(db, 'allocation', 'current'), {
+      ...allocation,
+      cash_try: cleanTRY,
+      cash_usd: cleanUSD,
+      last_updated: new Date().toISOString()
+    }, { merge: true });
+    showToast(`Serbest Nakit güncellendi: ₺${cleanTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} / $${cleanUSD.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, '💵');
+  };
+
   const transferToShield = async (amountTRY, destination = 'ppf') => {
     const amt = parseFloat(amountTRY);
     if (!amt || amt <= 0) return;
@@ -704,6 +734,17 @@ export const AppProvider = ({ children }) => {
       const curBal = Number(allocation.ppf_balance_try) || 0;
       await updatePpfBalance(curBal + amt);
       showToast(`₺${amt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} PPF Kuru Barut tamponuna aktarıldı!`, '🛡️');
+    } else if (destination === 'cash_try' || destination === 'cash') {
+      const curTRY = Number(allocation.cash_try) || 0;
+      const curUSD = Number(allocation.cash_usd) || 0;
+      await updateCashBalance(curTRY + amt, curUSD);
+      showToast(`₺${amt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} Serbest Nakit (TL) alım gücüne aktarıldı!`, '💵');
+    } else if (destination === 'cash_usd') {
+      const curTRY = Number(allocation.cash_try) || 0;
+      const curUSD = Number(allocation.cash_usd) || 0;
+      const amtUSD = usdtry > 0 ? (amt / usdtry) : 0;
+      await updateCashBalance(curTRY, curUSD + amtUSD);
+      showToast(`$${amtUSD.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} Serbest Nakit (USD) alım gücüne aktarıldı!`, '💵');
     } else {
       const pGold = gramGoldPrice > 0 ? gramGoldPrice : 6600.0;
       const grams = Math.round((amt / pGold) * 100) / 100;
@@ -813,6 +854,7 @@ export const AppProvider = ({ children }) => {
     addGoldPurchase,
     deleteGoldPurchase,
     updatePpfBalance,
+    updateCashBalance,
     transferToShield,
     exportBackup,
     importBackup

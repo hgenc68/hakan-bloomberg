@@ -60,6 +60,7 @@ export default function OverviewTab() {
   const physicalGoldVal = isTRY ? (portfolioSummary.totalGoldValTRY || 0) : ((portfolioSummary.totalGoldValTRY || 0) / (portfolioSummary.usdtry || 49.03));
   const goldVal = physicalGoldVal + goldHoldingsVal;
   const ppfVal = isTRY ? (portfolioSummary.ppfBalanceTRY || 0) : ((portfolioSummary.ppfBalanceTRY || 0) / (portfolioSummary.usdtry || 49.03));
+  const freeCashVal = isTRY ? (portfolioSummary.totalFreeCashTRY || 0) : (portfolioSummary.totalFreeCashUSD || 0);
 
   const totalAll = totalVal > 0 ? totalVal : 1;
   const bistPct = (bistVal / totalAll) * 100;
@@ -68,27 +69,38 @@ export default function OverviewTab() {
   const kriptoPct = (kriptoVal / totalAll) * 100;
   const goldPct = (goldVal / totalAll) * 100;
   const ppfPct = (ppfVal / totalAll) * 100;
+  const freeCashPct = (freeCashVal / totalAll) * 100;
+
+  const pieLabels = [
+    'BIST Hisseleri (🇹🇷)',
+    'ABD Hisseleri (🇺🇸)',
+    'ETF & Fonlar (🟣)',
+    'Kripto Varlıklar (🟠)',
+    'Gram Altın (🟡)',
+    'PPF / Kuru Barut (🟢)'
+  ];
+  const pieValues = [bistVal, usVal, etfVal, kriptoVal, goldVal, ppfVal];
+  const pieColors = [
+    '#3b82f6', // BIST: Blue
+    '#06b6d4', // ABD: Cyan
+    '#8b5cf6', // ETF: Purple
+    '#f97316', // Kripto: Orange
+    '#eab308', // Altın: Gold
+    '#10b981'  // PPF: Emerald
+  ];
+
+  if (freeCashVal > 0) {
+    pieLabels.push('Serbest Nakit (💵)');
+    pieValues.push(freeCashVal);
+    pieColors.push('#14b8a6'); // Teal
+  }
 
   const pieData = {
-    labels: [
-      'BIST Hisseleri (🇹🇷)',
-      'ABD Hisseleri (🇺🇸)',
-      'ETF & Fonlar (🟣)',
-      'Kripto Varlıklar (🟠)',
-      'Gram Altın (🟡)',
-      'PPF / Kuru Barut (🟢)'
-    ],
+    labels: pieLabels,
     datasets: [
       {
-        data: [bistVal, usVal, etfVal, kriptoVal, goldVal, ppfVal],
-        backgroundColor: [
-          '#3b82f6', // BIST: Blue
-          '#06b6d4', // ABD: Cyan
-          '#8b5cf6', // ETF: Purple
-          '#f97316', // Kripto: Orange
-          '#eab308', // Altın: Gold
-          '#10b981'  // PPF: Emerald
-        ],
+        data: pieValues,
+        backgroundColor: pieColors,
         borderColor: '#0a0d14',
         borderWidth: 2,
         hoverOffset: 6
@@ -177,22 +189,22 @@ export default function OverviewTab() {
           </div>
         </div>
 
-        {/* KPI 4: Kur Kalkanı */}
+        {/* KPI 4: Kur Kalkanı & Likit Tampon */}
         <div className="kpi-card gold">
           <div className="kpi-header">
-            <span>Kur Kalkanı & Kuru Barut</span>
-            <span className="badge-pill gold">Altın + PPF</span>
+            <span>Kur Kalkanı & Likit Tampon</span>
+            <span className="badge-pill gold">Altın + PPF + Nakit</span>
           </div>
           <div className="kpi-val mono text-gold">
-            {sym}{fmt(goldVal + ppfVal)}
+            {sym}{fmt(goldVal + ppfVal + freeCashVal)}
           </div>
           <div className="kpi-sub">
-            <span>Gram Altın: <strong style={{ color: '#fff' }}>{fmt(portfolioSummary.totalGrams, 2)} gr</strong></span>
-            <span>PPF: <strong style={{ color: '#fff' }}>₺{fmt(portfolioSummary.ppfBalanceTRY, 2)}</strong></span>
+            <span>Zırh: <strong style={{ color: '#fff' }}>{sym}{fmt(goldVal + ppfVal)}</strong></span>
+            <span>Nakit: <strong style={{ color: 'var(--emerald)' }}>{sym}{fmt(freeCashVal)}</strong></span>
           </div>
           <div className="kpi-breakdown-row">
-            <span>Kalkan Koruma Oranı:</span>
-            <strong className="text-gold mono">{fmt(goldPct + ppfPct, 1)}% (Hedef: %35)</strong>
+            <span>Likit Koruma Oranı:</span>
+            <strong className="text-gold mono">{fmt(goldPct + ppfPct + freeCashPct, 1)}% (Hedef: %35)</strong>
           </div>
         </div>
       </div>
@@ -278,6 +290,14 @@ export default function OverviewTab() {
                   <span className="val mono">{sym}{fmtInt(ppfVal)}</span>
                   <span className="pct mono" style={{ color: '#10b981', fontWeight: 700 }}>{ppfPct.toFixed(1)}%</span>
                 </div>
+                {freeCashVal > 0 && (
+                  <div className="legend-row">
+                    <span className="dot" style={{ background: '#14b8a6', boxShadow: '0 0 8px rgba(20,184,166,0.5)' }}></span>
+                    <span className="name">💵 Serbest Nakit (Alım Gücü)</span>
+                    <span className="val mono">{sym}{fmtInt(freeCashVal)}</span>
+                    <span className="pct mono" style={{ color: '#14b8a6', fontWeight: 700 }}>{freeCashPct.toFixed(1)}%</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -289,6 +309,9 @@ export default function OverviewTab() {
               <div style={{ width: `${Math.max(0, kriptoPct)}%`, background: '#f97316' }} title={`Kripto: %${kriptoPct.toFixed(1)}`}></div>
               <div style={{ width: `${Math.max(0, goldPct)}%`, background: '#eab308' }} title={`Gram Altın: %${goldPct.toFixed(1)}`}></div>
               <div style={{ width: `${Math.max(0, ppfPct)}%`, background: '#10b981' }} title={`PPF: %${ppfPct.toFixed(1)}`}></div>
+              {freeCashVal > 0 && (
+                <div style={{ width: `${Math.max(0, freeCashPct)}%`, background: '#14b8a6' }} title={`Serbest Nakit: %${freeCashPct.toFixed(1)}`}></div>
+              )}
             </div>
           </div>
         </div>

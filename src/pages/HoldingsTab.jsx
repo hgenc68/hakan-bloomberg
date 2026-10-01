@@ -3,7 +3,7 @@ import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, ArrowRight, ShieldCheck } from 'lucide-react';
 import stocksData from '../data/stocksData.json';
 
-export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal }) {
+export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal }) {
   const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab } = useApp();
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('val'); // default sort by Market Value
@@ -233,12 +233,36 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
         {showRebalanceAssistant && (
           <div>
             {/* Neden Aylık Notu */}
-            <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 6, padding: '8px 12px', fontSize: 10.5, color: '#cbd5e1', marginBottom: 12 }}>
+            <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 6, padding: '8px 12px', fontSize: 10.5, color: '#cbd5e1', marginBottom: 10 }}>
               <strong style={{ color: 'var(--cyan)' }}>💡 Uzman Notu (Aylık vs Haftalık): </strong>
               <span>
                 Hisse ve ETF'lerde haftalık al-sat komisyon eritir ve testere piyasasında yanıltır (bilançolar çeyrekliktir). 
                 Bu nedenle profesyonel fonlar portföylerini <strong>her ayın 1'inde</strong> yeniden dengeler.
               </span>
+            </div>
+
+            {/* Kullanılabilir Alım Gücü (Serbest Nakit) Göstergesi */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '8px 12px', fontSize: 11, marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 14 }}>💼</span>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Mevcut Kullanılabilir Alım Gücü (Serbest Nakit): </span>
+                  <strong className="mono text-emerald" style={{ fontSize: 13 }}>
+                    ₺{fmt(portfolioSummary.buyingPowerTRY || 0)}
+                  </strong>
+                  <span className="mono text-muted" style={{ marginLeft: 6, fontSize: 11 }}>
+                    (${fmt(portfolioSummary.buyingPowerUSD || 0)} USD)
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="chip-btn"
+                onClick={onOpenCashModal}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 10.5, borderColor: 'rgba(16, 185, 129, 0.4)', color: 'var(--emerald)' }}
+              >
+                <span>💵 Serbest Nakit Güncelle</span>
+              </button>
             </div>
 
             {/* Rebalance Table */}
