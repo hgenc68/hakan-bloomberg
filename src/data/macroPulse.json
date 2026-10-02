@@ -22,8 +22,8 @@
   },
   "rates": {
     "tcmb": 37.00,
-    "tcmb_text": "10 Eylül PPK: Sabit • Sonraki: 22 Ekim",
-    "fed": "4.75 - 5.00",
+    "fed": "3.75 - 4.00",
+    "fed_text": "16 Eylül FOMC: %3.75 - %4.00 • Sonraki: 28 Ekim",
     "kur_kalkani": 82.4
   },
   "equities_perf": [

@@ -26,7 +26,7 @@ const SEED_NEWS = [
     id: 'seed-3',
     timeAgoMin: 42,
     source: 'Reuters',
-    title: 'Fed FOMC Karar Metni: Enflasyon göstergelerindeki dengelenme faiz indirim patikasını destekliyor; fonlama faizi %4.75-%5.00 bandında.',
+    title: 'Fed FOMC Karar Metni: Enflasyon ve istihdam göstergelerindeki dengelenme izlenirken politika faizi %3.75-%4.00 bandında korunuyor.',
     tag: 'Fed & Wall St',
     bull: true,
     link: 'https://www.reuters.com'
@@ -455,11 +455,16 @@ export default function MarketPulseTab() {
             </div>
 
             <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>FED FONLAMA FAİZİ</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                %{pulse?.rates?.fed || '4.75 - 5.00'}
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>FED FONLAMA FAİZİ</span>
+                <span className="nav-badge cyan" style={{ fontSize: 8.5, padding: '1px 6px' }}>FOMC</span>
               </div>
-              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Faiz İndirim Patikası</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                %{pulse?.rates?.fed || '3.75 - 4.00'}
+              </div>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
+                {pulse?.rates?.fed_text || '16 Eylül FOMC: %3.75 - %4.00 • Sonraki: 28 Ekim'}
+              </div>
             </div>
 
             <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>

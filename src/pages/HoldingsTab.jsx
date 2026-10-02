@@ -52,6 +52,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
   const [showRebalanceAssistant, setShowRebalanceAssistant] = useState(true);
   const [rebalancePeriod, setRebalancePeriod] = useState('monthly'); // 'monthly' or 'weekly'
   const [selectedSegment, setSelectedSegment] = useState('all'); // for 'all' mode: 'all', 'equity', 'shield', 'crypto'
+  const [tableSubMode, setTableSubMode] = useState('unified'); // 'unified' | 'financial' | 'rebalance'
+  const [expandedRebalanceId, setExpandedRebalanceId] = useState(null);
 
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
@@ -511,6 +513,47 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     });
   }, [equityHoldings, totalValAll, isTRY, usdtry]);
 
+  // Lookup map for fast O(1) rebalance item access
+  const rebalanceMap = useMemo(() => {
+    const map = {};
+    rebalanceList.forEach(item => {
+      map[item.id] = item;
+      if (item.ticker) map[item.ticker.toUpperCase()] = item;
+    });
+    return map;
+  }, [rebalanceList]);
+
+  // Model Rebalance Summary metrics for header strip
+  const rebalanceSummary = useMemo(() => {
+    let trimCount = 0;
+    let trimTicker = '';
+    let trimWeight = 0;
+    let accumCount = 0;
+    let accumTicker = '';
+    let accumScore = 0;
+    let holdCount = 0;
+
+    rebalanceList.forEach(item => {
+      if (item.action.startsWith('TRIM') || item.action === 'EXIT') {
+        trimCount++;
+        if (!trimTicker || item.weightPct > trimWeight) {
+          trimTicker = item.ticker;
+          trimWeight = item.weightPct;
+        }
+      } else if (item.action === 'ACCUMULATE') {
+        accumCount++;
+        if (!accumTicker || item.quantScore > accumScore) {
+          accumTicker = item.ticker;
+          accumScore = item.quantScore;
+        }
+      } else {
+        holdCount++;
+      }
+    });
+
+    return { trimCount, trimTicker, trimWeight, accumCount, accumTicker, accumScore, holdCount };
+  }, [rebalanceList]);
+
   // Sorted and Filtered Holdings based on active main tab
   const sortedHoldings = useMemo(() => {
     let list = [...holdings];
@@ -553,9 +596,17 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
           valB = b.changePct || 0;
           break;
         case 'val':
+        case 'weight':
           valA = isTRY ? (a.valTRY || 0) : (a.valUSD || 0);
           valB = isTRY ? (b.valTRY || 0) : (b.valUSD || 0);
           break;
+        case 'quant': {
+          const rA = rebalanceMap[a.id] || rebalanceMap[(a.ticker || '').toUpperCase()];
+          const rB = rebalanceMap[b.id] || rebalanceMap[(b.ticker || '').toUpperCase()];
+          valA = rA?.quantScore || 78;
+          valB = rB?.quantScore || 78;
+          break;
+        }
         case 'profit':
           valA = isTRY ? (a.profitTRY || 0) : (a.profitUSD || 0);
           valB = isTRY ? (b.profitTRY || 0) : (b.profitUSD || 0);
@@ -792,7 +843,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               </div>
 
               {/* Bar Chart Container */}
-              <div style={{ height: 210, width: '100%', marginBottom: 10 }}>
+              <div style={{ height: 185, width: '100%', marginBottom: 8 }}>
                 <Bar data={benchmarkBarData} options={benchmarkBarOptions} />
               </div>
 
@@ -860,7 +911,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               </div>
 
               {/* Radar Chart Container */}
-              <div style={{ height: 210, width: '100%', position: 'relative', margin: '4px 0' }}>
+              <div style={{ height: 185, width: '100%', position: 'relative', margin: '2px 0' }}>
                 <Radar data={snowflakeChartData} options={snowflakeChartOptions} />
               </div>
 
@@ -907,167 +958,157 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
           </div>
 
-          {/* 🤖 AY BAŞI KİŞİSEL REBALANCE & DENGELEME ASİSTANI (BIST, ABD & ETF) */}
-          <div className="card" style={{ marginBottom: 16, padding: 16, background: '#070a14', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: showRebalanceAssistant ? 12 : 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 6, background: 'rgba(0, 229, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
-                  <Briefcase size={18} />
+          {/* 🚀 AKILLI REBALANCE & SERBEST ALIM GÜCÜ KONTROL BARI */}
+          <div 
+            className="card rebalance-control-strip" 
+            style={{ 
+              marginBottom: 12, 
+              padding: '10px 14px', 
+              background: 'linear-gradient(135deg, rgba(7, 10, 20, 0.95), rgba(15, 23, 42, 0.95))', 
+              border: '1px solid rgba(0, 229, 255, 0.25)', 
+              borderRadius: 8,
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 10
+            }}
+          >
+            {/* Left: Alım Gücü & Sinyal Özet Rozetleri */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--emerald)' }}>
+                  <Briefcase size={15} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>🤖 KİŞİSEL PORTFÖY REBALANCE ASİSTANI (BIST, ABD & ETF)</span>
-                    <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>
-                      📅 {rebalancePeriod === 'monthly' ? 'Ekim 2026 Dengelemesi' : 'Haftalık Momentum'}
-                    </span>
+                  <div style={{ fontSize: 9.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', fontWeight: 700 }}>
+                    SERBEST ALIM GÜCÜ
                   </div>
-                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                    Sadece Hisse ve ETF pozisyonlarınız için Quant skoru, risk tavanı ve model portföy kriterlerine göre üretilen net aksiyonlar
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                    <strong className="mono text-emerald" style={{ fontSize: 13, fontWeight: 800 }}>
+                      ₺{fmt(portfolioSummary.buyingPowerTRY || 0)}
+                    </strong>
+                    <span className="mono text-muted" style={{ fontSize: 10 }}>
+                      (${fmt(portfolioSummary.buyingPowerUSD || 0)} USD)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={onOpenCashModal}
+                      className="chip-btn"
+                      style={{ fontSize: 9.5, padding: '1px 6px', marginLeft: 4, height: 18, color: 'var(--emerald)', borderColor: 'rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)' }}
+                      title="Nakit Giriş / Çıkış"
+                    >
+                      + Nakit
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* Period Selector */}
-                <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
-                  <button
-                    type="button"
-                    className={`chip-btn ${rebalancePeriod === 'monthly' ? 'active' : ''}`}
-                    onClick={() => setRebalancePeriod('monthly')}
-                    style={{ fontSize: 10, padding: '3px 8px' }}
-                    title="Kurumsal standart: Ay başında çeyreklik bilançolara göre dengelenir"
-                  >
-                    📅 Aylık (Önerilen)
-                  </button>
-                  <button
-                    type="button"
-                    className={`chip-btn ${rebalancePeriod === 'weekly' ? 'active' : ''}`}
-                    onClick={() => setRebalancePeriod('weekly')}
-                    style={{ fontSize: 10, padding: '3px 8px' }}
-                    title="Haftalık momentum ve aşırı alım/satım takibi"
-                  >
-                    ⚡ Haftalık
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  className="chip-btn"
-                  onClick={() => setShowRebalanceAssistant(prev => !prev)}
-                  style={{ fontSize: 10, padding: '4px 8px' }}
+              {/* Model Sinyalleri Rozetleri */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: 10, flexWrap: 'wrap' }}>
+                <span 
+                  className="nav-badge cyan" 
+                  style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  title="Ağırlık ve risk sınırları içerisinde korunan pozisyonlar"
                 >
-                  {showRebalanceAssistant ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
+                  🟢 {rebalanceSummary.holdCount} Dengeli
+                </span>
+
+                {rebalanceSummary.trimCount > 0 && (
+                  <span 
+                    className="nav-badge amber" 
+                    style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    title={`Model Tavanı Aşıldı: ${rebalanceSummary.trimTicker} %${rebalanceSummary.trimWeight.toFixed(1)}`}
+                  >
+                    ✂️ {rebalanceSummary.trimCount} Kâr Al ({rebalanceSummary.trimTicker})
+                  </span>
+                )}
+
+                {rebalanceSummary.accumCount > 0 && (
+                  <span 
+                    className="nav-badge emerald" 
+                    style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    title={`Yüksek Quant Skoru: ${rebalanceSummary.accumTicker} (${rebalanceSummary.accumScore.toFixed(0)})`}
+                  >
+                    ➕ {rebalanceSummary.accumCount} Biriktir ({rebalanceSummary.accumTicker})
+                  </span>
+                )}
               </div>
             </div>
 
-            {showRebalanceAssistant && (
-              <div>
-                {/* Neden Aylık Notu */}
-                <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 6, padding: '8px 12px', fontSize: 10.5, color: '#cbd5e1', marginBottom: 10 }}>
-                  <strong style={{ color: 'var(--cyan)' }}>💡 Uzman Notu (Aylık vs Haftalık): </strong>
-                  <span>
-                    Hisse ve ETF'lerde haftalık al-sat komisyon eritir ve testere piyasasında yanıltır (bilançolar çeyrekliktir). 
-                    Bu nedenle profesyonel fonlar portföylerini <strong>her ayın 1'inde</strong> yeniden dengeler.
-                  </span>
-                </div>
-
-                {/* Kullanılabilir Alım Gücü (Serbest Nakit) Göstergesi */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '8px 12px', fontSize: 11, marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 14 }}>💼</span>
-                    <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Mevcut Kullanılabilir Alım Gücü (Serbest Nakit): </span>
-                      <strong className="mono text-emerald" style={{ fontSize: 13 }}>
-                        ₺{fmt(portfolioSummary.buyingPowerTRY || 0)}
-                      </strong>
-                      <span className="mono text-muted" style={{ marginLeft: 6, fontSize: 11 }}>
-                        (${fmt(portfolioSummary.buyingPowerUSD || 0)} USD)
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="chip-btn"
-                    onClick={onOpenCashModal}
-                    style={{ fontSize: 10.5, padding: '4px 10px', background: 'rgba(16, 185, 129, 0.15)', borderColor: 'var(--emerald)', color: '#fff' }}
-                  >
-                    + Nakit Yatır / Çek
-                  </button>
-                </div>
-
-                {/* Rebalance Actions Table */}
-                <div className="table-responsive" style={{ maxHeight: 240, overflow: 'auto', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6 }}>
-                  <table className="terminal-table" style={{ fontSize: 11 }}>
-                    <thead>
-                      <tr>
-                        <th>Hisse / ETF</th>
-                        <th>Kategori</th>
-                        <th>Mevcut Ağırlık</th>
-                        <th>Quant Skoru</th>
-                        <th>Önerilen Aksiyon</th>
-                        <th>Gerekçe & Rehberlik</th>
-                        <th className="text-right">Hızlı İşlem</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rebalanceList.map(item => (
-                        <tr key={item.id}>
-                          <td>
-                            <strong className="mono" style={{ color: '#fff' }}>{item.ticker}</strong>
-                            <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>{item.name}</div>
-                          </td>
-                          <td>
-                            <span className="badge-type hisse" style={{ fontSize: 9.5 }}>{item.category}</span>
-                          </td>
-                          <td className="mono font-bold">
-                            %{item.weightPct.toFixed(1)}
-                          </td>
-                          <td>
-                            <span className="mono font-bold text-cyan">{item.quantScore.toFixed(1)}</span>
-                          </td>
-                          <td>
-                            <span className={`nav-badge ${item.badgeColor}`} style={{ fontSize: 9.5, padding: '2px 7px' }}>
-                              {item.actionTitle}
-                            </span>
-                          </td>
-                          <td style={{ fontSize: 10, color: '#94a3b8', maxWidth: 260 }}>
-                            {item.reason}
-                          </td>
-                          <td className="text-right">
-                            {item.action.startsWith('TRIM') && (
-                              <button
-                                type="button"
-                                className="btn-action-row sell"
-                                onClick={() => onOpenSellModal(item)}
-                                style={{ padding: '3px 8px', fontSize: 10 }}
-                                title="Ağırlık Azalt / Kısmi Satış"
-                              >
-                                Satış Yap ➔
-                              </button>
-                            )}
-                            {item.action === 'ACCUMULATE' && (
-                              <button
-                                type="button"
-                                className="chip-btn"
-                                onClick={() => {
-                                  if (onOpenAddModal) onOpenAddModal(item.ticker);
-                                }}
-                                style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--emerald)', border: '1px solid rgba(16,185,129,0.4)', padding: '3px 8px', borderRadius: 4, fontSize: 10 }}
-                                title="Yeni lot ekle"
-                              >
-                                Ekleme Yap ➔
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {/* Right: Periyot Seçimi + Tablo Görünüm Modu */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {/* Period Selector */}
+              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
+                <button
+                  type="button"
+                  className={`chip-btn ${rebalancePeriod === 'monthly' ? 'active' : ''}`}
+                  onClick={() => setRebalancePeriod('monthly')}
+                  style={{ fontSize: 9.5, padding: '3px 7px' }}
+                  title="Kurumsal standart: Ay başında çeyreklik bilançolara göre dengelenir"
+                >
+                  📅 Aylık
+                </button>
+                <button
+                  type="button"
+                  className={`chip-btn ${rebalancePeriod === 'weekly' ? 'active' : ''}`}
+                  onClick={() => setRebalancePeriod('weekly')}
+                  style={{ fontSize: 9.5, padding: '3px 7px' }}
+                  title="Haftalık momentum ve aşırı alım/satım takibi"
+                >
+                  ⚡ Haftalık
+                </button>
               </div>
-            )}
+
+              {/* View Sub-Mode Switcher */}
+              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: 6, padding: 2 }}>
+                <button
+                  type="button"
+                  className={`chip-btn ${tableSubMode === 'unified' ? 'active' : ''}`}
+                  onClick={() => setTableSubMode('unified')}
+                  style={{ 
+                    fontSize: 10, 
+                    padding: '3px 8px',
+                    background: tableSubMode === 'unified' ? 'var(--cyan)' : 'transparent',
+                    color: tableSubMode === 'unified' ? '#000' : 'var(--text-bright)',
+                    fontWeight: 800
+                  }}
+                  title="Finansal değerler ve Quant/Rebalance sinyallerini tek süper tabloda birleştirir"
+                >
+                  ✨ Birleşik Süper Tablo
+                </button>
+                <button
+                  type="button"
+                  className={`chip-btn ${tableSubMode === 'financial' ? 'active' : ''}`}
+                  onClick={() => setTableSubMode('financial')}
+                  style={{ 
+                    fontSize: 10, 
+                    padding: '3px 8px',
+                    background: tableSubMode === 'financial' ? 'var(--cyan)' : 'transparent',
+                    color: tableSubMode === 'financial' ? '#000' : 'var(--text-bright)',
+                    fontWeight: 700
+                  }}
+                  title="Klasik alım/satım ve kâr/zarar odaklı görünüm"
+                >
+                  📊 Finansal
+                </button>
+                <button
+                  type="button"
+                  className={`chip-btn ${tableSubMode === 'rebalance' ? 'active' : ''}`}
+                  onClick={() => setTableSubMode('rebalance')}
+                  style={{ 
+                    fontSize: 10, 
+                    padding: '3px 8px',
+                    background: tableSubMode === 'rebalance' ? 'var(--cyan)' : 'transparent',
+                    color: tableSubMode === 'rebalance' ? '#000' : 'var(--text-bright)',
+                    fontWeight: 700
+                  }}
+                  title="Model portföy ağırlıkları, quant skorları ve rehberlik metinleri"
+                >
+                  🤖 Rebalance & Sinyal
+                </button>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -1222,63 +1263,140 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
         <div className="table-responsive terminal-table-scroll" style={{ maxHeight: 'calc(100vh - 230px)', minHeight: '380px', overflow: 'auto' }}>
           <table className="terminal-table sticky-header-table">
             <thead>
-              <tr style={{ userSelect: 'none' }}>
-                <th onClick={() => handleSort('ticker')} style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <span>Varlık</span>
-                    {renderSortIndicator('ticker')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('type')} style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <span>Tür</span>
-                    {renderSortIndicator('type')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('shares')} className="text-right" style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>Adet</span>
-                    {renderSortIndicator('shares')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('cost')} className="text-right" style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>Ort. Maliyet</span>
-                    {renderSortIndicator('cost')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('price')} className="text-right" style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>Canlı Fiyat</span>
-                    {renderSortIndicator('price')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('change')} className="text-right" style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>24s Değişim & K/Z</span>
-                    {renderSortIndicator('change')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('val')} className="text-right" style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>Piyasa Değeri</span>
-                    {renderSortIndicator('val')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('profit')} className="text-right" style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>Kâr / Zarar</span>
-                    {renderSortIndicator('profit')}
-                  </div>
-                </th>
-                <th onClick={() => handleSort('return')} className="text-right" style={{ cursor: 'pointer' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                    <span>Getiri %</span>
-                    {renderSortIndicator('return')}
-                  </div>
-                </th>
-                <th className="text-right" style={{ minWidth: '150px' }}>İşlemler</th>
-              </tr>
+              {activeMainTab === 'equity' && tableSubMode === 'unified' && (
+                <tr style={{ userSelect: 'none' }}>
+                  <th onClick={() => handleSort('ticker')} style={{ cursor: 'pointer', minWidth: '150px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <span>Varlık & Tür</span>
+                      {renderSortIndicator('ticker')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('weight')} className="text-right" style={{ cursor: 'pointer', minWidth: '95px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Sepet Payı</span>
+                      {renderSortIndicator('weight')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('shares')} className="text-right" style={{ cursor: 'pointer', minWidth: '115px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Adet & Ort. Maliyet</span>
+                      {renderSortIndicator('shares')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('price')} className="text-right" style={{ cursor: 'pointer', minWidth: '110px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Canlı Fiyat (24s)</span>
+                      {renderSortIndicator('price')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('val')} className="text-right" style={{ cursor: 'pointer', minWidth: '105px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Piyasa Değeri</span>
+                      {renderSortIndicator('val')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('return')} className="text-right" style={{ cursor: 'pointer', minWidth: '110px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Net K/Z & Getiri</span>
+                      {renderSortIndicator('return')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('quant')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '160px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                      <span>Quant & Model Sinyali</span>
+                      {renderSortIndicator('quant')}
+                    </div>
+                  </th>
+                  <th className="text-right" style={{ minWidth: '120px' }}>Hızlı İşlem</th>
+                </tr>
+              )}
+
+              {activeMainTab === 'equity' && tableSubMode === 'rebalance' && (
+                <tr style={{ userSelect: 'none' }}>
+                  <th onClick={() => handleSort('ticker')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <span>Hisse / ETF</span>
+                      {renderSortIndicator('ticker')}
+                    </div>
+                  </th>
+                  <th>Kategori</th>
+                  <th onClick={() => handleSort('weight')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Portföy Payı</span>
+                      {renderSortIndicator('weight')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('quant')} className="text-center" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                      <span>Quant Skoru</span>
+                      {renderSortIndicator('quant')}
+                    </div>
+                  </th>
+                  <th className="text-center">Önerilen Aksiyon</th>
+                  <th>Gerekçe & Portföy Rehberliği</th>
+                  <th className="text-right" style={{ minWidth: '110px' }}>Hızlı İşlem</th>
+                </tr>
+              )}
+
+              {(activeMainTab === 'all' || (activeMainTab === 'equity' && tableSubMode === 'financial')) && (
+                <tr style={{ userSelect: 'none' }}>
+                  <th onClick={() => handleSort('ticker')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <span>Varlık</span>
+                      {renderSortIndicator('ticker')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('type')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <span>Tür</span>
+                      {renderSortIndicator('type')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('shares')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Adet</span>
+                      {renderSortIndicator('shares')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('cost')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Ort. Maliyet</span>
+                      {renderSortIndicator('cost')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('price')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Canlı Fiyat</span>
+                      {renderSortIndicator('price')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('change')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>24s Değişim & K/Z</span>
+                      {renderSortIndicator('change')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('val')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Piyasa Değeri</span>
+                      {renderSortIndicator('val')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('profit')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Kâr / Zarar</span>
+                      {renderSortIndicator('profit')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('return')} className="text-right" style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Getiri %</span>
+                      {renderSortIndicator('return')}
+                    </div>
+                  </th>
+                  <th className="text-right" style={{ minWidth: '150px' }}>İşlemler</th>
+                </tr>
+              )}
             </thead>
             <tbody>
               {displayedHoldings.map(h => {
@@ -1297,6 +1415,257 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 const displayedCost = isTRY ? (h.costTRY / (h.shares || 1)) : (h.costUSD / (h.shares || 1));
                 const altCost = isTRY ? (h.costUSD / (h.shares || 1)) : (h.costTRY / (h.shares || 1));
 
+                const reb = rebalanceMap[h.id] || rebalanceMap[(h.ticker || '').toUpperCase()];
+                const weightPct = reb?.weightPct || (((h.valTRY || 0) / totalValAll) * 100);
+
+                // ==========================================
+                // 1. UNIFIED SUPER TABLE VIEW (Hisse-ETF)
+                // ==========================================
+                if (activeMainTab === 'equity' && tableSubMode === 'unified') {
+                  return (
+                    <React.Fragment key={h.id}>
+                      <tr className="table-row">
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div className="ticker-cell">
+                              <strong className="ticker-symbol mono">{h.ticker}</strong>
+                              <span className="ticker-desc">{h.name || h.ticker}</span>
+                            </div>
+                            <span className={`badge-type ${h.type?.toLowerCase() || 'hisse'}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                              {reb?.category || h.type}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right">
+                          <div className="mono font-bold" style={{ fontSize: 12, color: weightPct > 15 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : '#f8fafc') }}>
+                            %{weightPct.toFixed(1)}
+                          </div>
+                          <div style={{ width: 55, height: 3.5, background: 'rgba(255,255,255,0.08)', borderRadius: 2, marginLeft: 'auto', marginTop: 3 }}>
+                            <div 
+                              style={{ 
+                                width: `${Math.min(100, weightPct * 5)}%`, 
+                                height: '100%', 
+                                background: weightPct > 15 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : 'var(--cyan)'), 
+                                borderRadius: 2 
+                              }} 
+                            />
+                          </div>
+                        </td>
+                        <td className="text-right mono">
+                          <div className="font-medium" style={{ fontSize: 12 }}>{fmtShares(h.shares)}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                            {sym}{fmt(displayedCost, 2)}
+                          </div>
+                        </td>
+                        <td className="text-right mono">
+                          <div className="font-bold text-bright" style={{ fontSize: 12 }}>
+                            {sym}{fmt(displayedPrice, 2)}
+                          </div>
+                          <div style={{ fontSize: 10, color: changeUp ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
+                            {changeUp ? '▲ +' : '▼ '}{Math.abs(h.changePct || 0).toFixed(2)}%
+                          </div>
+                        </td>
+                        <td className="text-right mono font-bold text-cyan" style={{ fontSize: 13 }}>
+                          {sym}{fmt(totalVal, 2)}
+                        </td>
+                        <td className="text-right mono">
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: isProfit ? 'var(--up)' : 'var(--down)' }}>
+                            {isProfit ? '+' : ''}{sym}{fmt(profitVal, 2)}
+                          </div>
+                          <span className={`return-badge ${isProfit ? 'up' : 'down'}`} style={{ fontSize: 9.5, padding: '1px 5px' }}>
+                            {isProfit ? '+' : ''}{fmt(h.returnPct, 1)}%
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedRebalanceId(expandedRebalanceId === h.id ? null : h.id)}
+                              className={`nav-badge ${reb?.badgeColor || 'cyan'}`}
+                              style={{ 
+                                fontSize: 10, 
+                                padding: '3px 8px', 
+                                cursor: 'pointer', 
+                                border: '1px solid currentColor',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                              title="Gerekçeyi ve rehberliği görmek için tıklayın"
+                            >
+                              <span>{reb?.actionTitle || '🛡️ TUT / KORU'}</span>
+                              <span style={{ opacity: 0.65, fontSize: 8.5 }}>{expandedRebalanceId === h.id ? '▲' : '▼'}</span>
+                            </button>
+                            <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
+                              Quant: <strong className="mono text-cyan">{reb?.quantScore?.toFixed(1) || '78.0'}</strong>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-right">
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="btn-action-row buy"
+                              onClick={() => onOpenAddModal && onOpenAddModal(h.ticker)}
+                              title="Ek alım yap"
+                              style={{ background: 'rgba(0, 229, 255, 0.12)', color: 'var(--cyan)', border: '1px solid rgba(0, 229, 255, 0.3)', padding: '3px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10 }}
+                            >
+                              <Plus size={11} />
+                              <span>Al</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-action-row sell"
+                              onClick={() => onOpenSellModal(h)}
+                              title="Kısmi Satış Yap (Kârı Deftere İşle)"
+                              style={{ padding: '3px 6px', fontSize: 10 }}
+                            >
+                              <ShoppingCart size={11} />
+                              <span>Sat</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-action-row edit"
+                              onClick={() => onOpenEditModal(h)}
+                              title="Düzenle"
+                              style={{ padding: '3px 5px' }}
+                            >
+                              <Edit3 size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-action-row delete"
+                              onClick={() => {
+                                if (window.confirm(`${h.ticker} pozisyonunu silmek istediğinize emin misiniz?`)) {
+                                  deleteHolding(h.id);
+                                }
+                              }}
+                              title="Sil"
+                              style={{ padding: '3px 5px' }}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expandable Rebalance Rationale Row */}
+                      {expandedRebalanceId === h.id && (
+                        <tr style={{ background: 'rgba(0, 229, 255, 0.04)', borderBottom: '1px solid rgba(0, 229, 255, 0.2)' }}>
+                          <td colSpan={8} style={{ padding: '10px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, maxWidth: '80%' }}>
+                                <span style={{ fontSize: 14 }}>💡</span>
+                                <div>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0' }}>
+                                    <strong style={{ color: 'var(--cyan)' }}>Model Analizi ({reb?.actionTitle}): </strong>
+                                    {reb?.reason}
+                                  </div>
+                                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                                    Kural: Tek varlık tavanı %7.5 (kritik üst sınır %15.0). Quant skoru ≥82 alım, &lt;65 model dışı bölgesidir.
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                {reb?.action?.startsWith('TRIM') && (
+                                  <button
+                                    type="button"
+                                    className="btn-action-row sell"
+                                    onClick={() => onOpenSellModal(h)}
+                                    style={{ padding: '3px 9px', fontSize: 10.5 }}
+                                  >
+                                    Kâr Al / Satış Yap ➔
+                                  </button>
+                                )}
+                                {reb?.action === 'ACCUMULATE' && (
+                                  <button
+                                    type="button"
+                                    className="chip-btn"
+                                    onClick={() => onOpenAddModal && onOpenAddModal(h.ticker)}
+                                    style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--emerald)', borderColor: 'var(--emerald)', padding: '3px 9px', fontSize: 10.5 }}
+                                  >
+                                    Yeni Lot Ekle ➔
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="chip-btn"
+                                  onClick={() => setExpandedRebalanceId(null)}
+                                  style={{ fontSize: 10, padding: '3px 8px' }}
+                                >
+                                  ✕ Kapat
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                }
+
+                // ==========================================
+                // 2. REBALANCE & SİNYAL TABLO GÖRÜNÜMÜ
+                // ==========================================
+                if (activeMainTab === 'equity' && tableSubMode === 'rebalance') {
+                  return (
+                    <tr key={h.id} className="table-row">
+                      <td>
+                        <div className="ticker-cell">
+                          <strong className="ticker-symbol mono">{h.ticker}</strong>
+                          <span className="ticker-desc">{h.name || h.ticker}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge-type hisse" style={{ fontSize: 9.5 }}>{reb?.category || h.type}</span>
+                      </td>
+                      <td className="text-right mono font-bold" style={{ color: weightPct > 15 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : '#f8fafc') }}>
+                        %{weightPct.toFixed(1)}
+                      </td>
+                      <td className="text-center mono font-bold text-cyan">
+                        {reb?.quantScore?.toFixed(1) || '78.0'}
+                      </td>
+                      <td className="text-center">
+                        <span className={`nav-badge ${reb?.badgeColor || 'cyan'}`} style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                          {reb?.actionTitle || '🛡️ TUT / KORU'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 10.5, color: '#cbd5e1', maxWidth: 320, lineHeight: 1.4 }}>
+                        {reb?.reason}
+                      </td>
+                      <td className="text-right">
+                        {reb?.action?.startsWith('TRIM') && (
+                          <button
+                            type="button"
+                            className="btn-action-row sell"
+                            onClick={() => onOpenSellModal(h)}
+                            style={{ padding: '3px 8px', fontSize: 10 }}
+                          >
+                            Satış Yap ➔
+                          </button>
+                        )}
+                        {reb?.action === 'ACCUMULATE' && (
+                          <button
+                            type="button"
+                            className="chip-btn"
+                            onClick={() => onOpenAddModal && onOpenAddModal(h.ticker)}
+                            style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--emerald)', border: '1px solid rgba(16,185,129,0.4)', padding: '3px 8px', borderRadius: 4, fontSize: 10 }}
+                          >
+                            Ekleme Yap ➔
+                          </button>
+                        )}
+                        {reb?.action === 'HOLD' && (
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Dengeli</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                }
+
+                // ==========================================
+                // 3. KLASİK FİNANSAL TABLO GÖRÜNÜMÜ (10 Sütun)
+                // ==========================================
                 return (
                   <tr key={h.id} className="table-row">
                     <td>
@@ -1476,6 +1845,91 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   ? '🎯 ÇEKİRDEK HİSSE & ETF TOPLAMI' 
                   : (selectedSegment === 'all' ? '🎯 GENEL KONSOLİDE PORTFÖY TOPLAMI' : `🎯 ${activeStat.shortLabel} TOPLAMI`);
 
+                // 1. Unified Footnote (8 columns)
+                if (isEqMode && tableSubMode === 'unified') {
+                  return (
+                    <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
+                      <td style={{ color: activeStat.color, paddingLeft: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+                          <span style={{ fontWeight: 900, fontSize: 12 }}>{label}</span>
+                          <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 7px', fontWeight: 800 }}>
+                            {displayedHoldings.length} Varlık
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right mono text-bright" style={{ fontWeight: 800 }}>
+                        %{activeStat.weightPct.toFixed(1)}
+                      </td>
+                      <td className="text-right mono text-muted" style={{ fontWeight: 800 }}>
+                        <div>{sym}{fmt(costVal, 2)}</div>
+                        <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 500 }}>Maliyet</div>
+                      </td>
+                      <td className="text-right mono">
+                        <span className={`change-pill ${activeStat.dayPLPct >= 0 ? 'up' : 'down'}`} style={{ fontSize: 9.5 }}>
+                          {activeStat.dayPLPct >= 0 ? '▲ +' : '▼ '}{Math.abs(activeStat.dayPLPct || 0).toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="text-right mono text-cyan" style={{ fontSize: 13, fontWeight: 900 }}>
+                        {sym}{fmt(totalVal, 2)}
+                      </td>
+                      <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
+                        <span className={isProf ? 'text-up' : 'text-down'}>
+                          {isProf ? '+' : ''}{sym}{fmt(profitVal, 2)}
+                        </span>
+                        <div style={{ marginTop: 2 }}>
+                          <span className={`return-badge ${activeStat.returnPct >= 0 ? 'up' : 'down'}`} style={{ fontSize: 9 }}>
+                            {activeStat.returnPct >= 0 ? '+' : ''}{fmt(activeStat.returnPct, 1)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-center">
+                        <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                          Quant: {weightedSnowflake.composite.toFixed(1)}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>
+                          HİSSE & ETF
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                // 2. Rebalance Footnote (7 columns)
+                if (isEqMode && tableSubMode === 'rebalance') {
+                  return (
+                    <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
+                      <td colSpan={2} style={{ color: activeStat.color, paddingLeft: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 900, fontSize: 12 }}>{label}</span>
+                          <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 7px' }}>
+                            {displayedHoldings.length} Varlık
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right mono text-bright">
+                        %{activeStat.weightPct.toFixed(1)}
+                      </td>
+                      <td className="text-center mono text-cyan">
+                        {weightedSnowflake.composite.toFixed(1)}
+                      </td>
+                      <td className="text-center">
+                        <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 7px' }}>
+                          Dengelenmiş
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        {rebalanceSummary.trimCount} kâr alım, {rebalanceSummary.accumCount} biriktirme adayı
+                      </td>
+                      <td className="text-right">
+                        <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Model Portföy</span>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                // 3. Classical Financial Footnote (10 columns)
                 return (
                   <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
                     <td colSpan={3} style={{ color: activeStat.color, letterSpacing: '0.4px', paddingLeft: 12 }}>
