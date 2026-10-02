@@ -22,6 +22,7 @@ import {
 import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
+import { getHealthColorTheme } from './RiskRadarTab';
 
 ChartJS.register(
   CategoryScale,
@@ -393,6 +394,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     return { fund, val, mom, tech, risk, composite };
   }, [equityHoldings, isTRY]);
 
+  const snowflakeTheme = getHealthColorTheme(weightedSnowflake.composite);
+
   const snowflakeChartData = {
     labels: ['Temel Bilanço', 'Değerleme', 'Momentum', 'Teknik Yapı', 'Risk Profil'],
     datasets: [
@@ -405,13 +408,13 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
           weightedSnowflake.tech,
           weightedSnowflake.risk
         ],
-        backgroundColor: 'rgba(0, 229, 255, 0.22)',
-        borderColor: '#00e5ff',
-        borderWidth: 2,
-        pointBackgroundColor: '#00e5ff',
+        backgroundColor: snowflakeTheme.bgRgba,
+        borderColor: snowflakeTheme.color,
+        borderWidth: 2.2,
+        pointBackgroundColor: snowflakeTheme.pointBg,
         pointBorderColor: '#ffffff',
         pointHoverBackgroundColor: '#ffffff',
-        pointHoverBorderColor: '#00e5ff',
+        pointHoverBorderColor: snowflakeTheme.color,
         pointRadius: 4
       }
     ]
@@ -817,19 +820,42 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
             </div>
 
             {/* Right Column: Weighted Portfolio Snowflake Radar */}
-            <div className="card" style={{ padding: 16, background: '#090d16', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 8, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div 
+              className="card" 
+              style={{ 
+                padding: 16, 
+                background: '#090d16', 
+                border: `1px solid ${snowflakeTheme.color}50`, 
+                boxShadow: `0 0 16px ${snowflakeTheme.color}18`, 
+                borderRadius: 8, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'space-between',
+                transition: 'all 0.3s ease'
+              }}
+            >
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <div style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Snowflake size={16} className="text-cyan" />
+                    <Snowflake size={16} style={{ color: snowflakeTheme.color }} />
                     <span>HİSSE & ETF SEPETİ KAR TANESİ RADARI</span>
                   </div>
-                  <span className="nav-badge emerald" style={{ fontSize: 9.5, fontWeight: 800 }}>
-                    {weightedSnowflake.composite.toFixed(1)} / 100 Puan
+                  <span 
+                    className="nav-badge" 
+                    style={{ 
+                      fontSize: 9.5, 
+                      fontWeight: 800, 
+                      background: `${snowflakeTheme.color}22`, 
+                      color: snowflakeTheme.color, 
+                      border: `1px solid ${snowflakeTheme.color}66`,
+                      padding: '3px 8px'
+                    }}
+                  >
+                    {snowflakeTheme.icon} {weightedSnowflake.composite.toFixed(1)} / 100 Puan
                   </span>
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 10 }}>
-                  Portföyünüzdeki hisselerin ağırlıklı ortalamasıyla hesaplanan 5-faktörlü kurumsal sağlık profili.
+                  Hisselerinizin ağırlıklı ortalama sağlık profili: <strong style={{ color: snowflakeTheme.color }}>{snowflakeTheme.label}</strong>
                 </div>
               </div>
 
@@ -839,26 +865,42 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               </div>
 
               {/* 5 Pillar Mini Scores Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, background: 'rgba(0,0,0,0.5)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, background: 'rgba(0,0,0,0.5)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center', marginBottom: 6 }}>
                 <div>
                   <div style={{ color: 'var(--text-muted)' }}>Temel</div>
-                  <strong className="mono text-cyan">{weightedSnowflake.fund}</strong>
+                  <strong className="mono" style={{ color: weightedSnowflake.fund >= 70 ? 'var(--cyan)' : 'var(--amber)' }}>{weightedSnowflake.fund}</strong>
                 </div>
                 <div>
                   <div style={{ color: 'var(--text-muted)' }}>Değerleme</div>
-                  <strong className="mono text-emerald">{weightedSnowflake.val}</strong>
+                  <strong className="mono" style={{ color: weightedSnowflake.val >= 70 ? 'var(--emerald)' : 'var(--amber)' }}>{weightedSnowflake.val}</strong>
                 </div>
                 <div>
                   <div style={{ color: 'var(--text-muted)' }}>Momentum</div>
-                  <strong className="mono text-gold">{weightedSnowflake.mom}</strong>
+                  <strong className="mono" style={{ color: weightedSnowflake.mom >= 70 ? 'var(--gold)' : 'var(--red)' }}>{weightedSnowflake.mom}</strong>
                 </div>
                 <div>
                   <div style={{ color: 'var(--text-muted)' }}>Teknik</div>
-                  <strong className="mono text-cyan">{weightedSnowflake.tech}</strong>
+                  <strong className="mono" style={{ color: weightedSnowflake.tech >= 70 ? 'var(--cyan)' : 'var(--red)' }}>{weightedSnowflake.tech}</strong>
                 </div>
                 <div>
                   <div style={{ color: 'var(--text-muted)' }}>Risk</div>
-                  <strong className="mono" style={{ color: '#a855f7' }}>{weightedSnowflake.risk}</strong>
+                  <strong className="mono" style={{ color: weightedSnowflake.risk >= 70 ? '#a855f7' : 'var(--red)' }}>{weightedSnowflake.risk}</strong>
+                </div>
+              </div>
+
+              {/* 4-Tier Color Legend Bar */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, background: 'rgba(0,0,0,0.5)', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center' }}>
+                <div style={{ color: '#ef4444', fontWeight: snowflakeTheme.status === 'critical' ? 900 : 500, background: snowflakeTheme.status === 'critical' ? 'rgba(239,68,68,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🔴 &lt;50 Zayıf
+                </div>
+                <div style={{ color: '#f59e0b', fontWeight: snowflakeTheme.status === 'warning' ? 900 : 500, background: snowflakeTheme.status === 'warning' ? 'rgba(245,158,11,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🟡 50-69 Orta
+                </div>
+                <div style={{ color: '#00e5ff', fontWeight: snowflakeTheme.status === 'healthy' ? 900 : 500, background: snowflakeTheme.status === 'healthy' ? 'rgba(0,229,255,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🔵 70-84 Sağlıklı
+                </div>
+                <div style={{ color: '#10b981', fontWeight: snowflakeTheme.status === 'excellent' ? 900 : 500, background: snowflakeTheme.status === 'excellent' ? 'rgba(16,185,129,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🟢 ≥85 Mükemmel
                 </div>
               </div>
             </div>
@@ -1436,19 +1478,27 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
                 return (
                   <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
-                    <td style={{ color: activeStat.color, letterSpacing: '0.4px' }}>
-                      {label}
-                    </td>
-                    <td>
-                      <span className="nav-badge" style={{ fontSize: 9, background: `${activeStat.color}22`, color: activeStat.color, border: `1px solid ${activeStat.color}55` }}>
-                        {displayedHoldings.length + (!isEqMode && (selectedSegment === 'all' || selectedSegment === 'shield') && ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0)} Varlık
-                      </span>
-                    </td>
-                    <td className="text-right mono text-muted">
-                      --
+                    <td colSpan={3} style={{ color: activeStat.color, letterSpacing: '0.4px', paddingLeft: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
+                        <span style={{ fontWeight: 900, fontSize: 12 }}>{label}</span>
+                        <span 
+                          className="nav-badge" 
+                          style={{ 
+                            fontSize: 9.5, 
+                            background: `${activeStat.color}22`, 
+                            color: activeStat.color, 
+                            border: `1px solid ${activeStat.color}55`,
+                            padding: '2px 8px',
+                            fontWeight: 800
+                          }}
+                        >
+                          {displayedHoldings.length + (!isEqMode && (selectedSegment === 'all' || selectedSegment === 'shield') && ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0)} Varlık
+                        </span>
+                      </div>
                     </td>
                     <td className="text-right mono text-muted" style={{ fontWeight: 800 }}>
-                      {sym}{fmt(costVal, 2)}
+                      <div>{sym}{fmt(costVal, 2)}</div>
+                      <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 500 }}>Top. Maliyet</div>
                     </td>
                     <td className="text-right mono text-muted">
                       --
