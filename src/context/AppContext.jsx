@@ -702,16 +702,43 @@ export const AppProvider = ({ children }) => {
           updated_at: new Date().toISOString()
         }, { merge: true });
 
+        // Optimistic UI state & cache update
+        setHoldings(prev => {
+          const updated = prev.map(h => {
+            if (h.id === targetId || (h.ticker || '').toUpperCase() === inputTicker) {
+              return {
+                ...h,
+                ...holdingData,
+                shares: newTotalShares,
+                avg_cost: Math.round(newWeightedCost * 10000) / 10000,
+                updated_at: new Date().toISOString()
+              };
+            }
+            return h;
+          });
+          try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
+
         const sym = holdingData.currency === 'USD' ? '$' : '₺';
         showToast(`${inputTicker} alımı işlendi! Yeni Toplam: ${newTotalShares.toLocaleString('tr-TR', { maximumFractionDigits: 6 })} adet (Yeni Ort. Maliyet: ${sym}${newWeightedCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })})`, '📈', 5000);
       } else {
         // Brand new asset
-        await setDoc(doc(db, 'holdings', docId), {
+        const newHoldingObj = {
           ...holdingData,
+          id: docId,
           ticker: inputTicker,
           shares: addedShares,
           avg_cost: addedPrice,
           updated_at: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'holdings', docId), newHoldingObj);
+
+        // Optimistic UI state & cache update
+        setHoldings(prev => {
+          const updated = [...prev, newHoldingObj];
+          try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+          return updated;
         });
         showToast(`${inputTicker} portföye başarıyla eklendi!`, '✅');
       }
@@ -731,6 +758,13 @@ export const AppProvider = ({ children }) => {
         avg_cost,
         updated_at: new Date().toISOString()
       }, { merge: true });
+
+      // Optimistic UI state & cache update
+      setHoldings(prev => {
+        const updated = prev.map(h => (h.id === docId || (h.ticker || '').toUpperCase() === (holdingData.ticker || docId).toUpperCase() ? { ...h, ...holdingData, shares, avg_cost } : h));
+        try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
       showToast(`${holdingData.ticker || docId} güncellendi!`, '✅');
     } catch (err) {
       console.error('updateHolding error:', err);
@@ -741,6 +775,13 @@ export const AppProvider = ({ children }) => {
   const deleteHolding = async (docId) => {
     try {
       await deleteDoc(doc(db, 'holdings', docId));
+
+      // Optimistic UI state & cache update
+      setHoldings(prev => {
+        const updated = prev.filter(h => h.id !== docId && (h.ticker || '').toUpperCase() !== docId.toUpperCase());
+        try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
       showToast(`Varlık başarıyla silindi!`, '🗑️');
     } catch (err) {
       console.error('deleteHolding error:', err);
@@ -797,13 +838,14 @@ export const AppProvider = ({ children }) => {
         note: `${holding.ticker} ${qty >= (holding.shares || 0) ? 'Tam' : 'Kısmi'} Satış (${sellCurrency})`
       };
 
-      // 1. Record in trade ledger
+      // 1. Record in trade ledger (Firestore)
       await setDoc(doc(db, 'trade_ledger', String(tradeId)), tradeItem);
 
-      // 2. Identify the holding document safely and update
+      // 2. Identify the holding document safely and calculate remaining shares
       const targetDocId = holding.id || (holding.ticker ? holding.ticker.replace(/[\/\.]/g, '_').toUpperCase() : null);
+      const remainingShares = Math.max(0, (Number(holding.shares) || 0) - qty);
+
       if (targetDocId) {
-        const remainingShares = Math.max(0, (holding.shares || 0) - qty);
         if (remainingShares <= 0.00001) {
           try {
             await deleteDoc(doc(db, 'holdings', targetDocId));
@@ -817,6 +859,35 @@ export const AppProvider = ({ children }) => {
           showToast(`${holding.ticker} kısmi satışı yapıldı (+₺${tradeItem.realized_pl_try.toLocaleString('tr-TR')})!`, '✅');
         }
       }
+
+      // 3. OPTIMISTIC IN-MEMORY & LOCAL STORAGE SYNC:
+      // Guarantee instant reactivity across all portfolio tables with zero latency!
+      setHoldings(prev => {
+        let updated;
+        if (remainingShares <= 0.00001) {
+          updated = prev.filter(h => h.id !== targetDocId && (h.ticker || '').toUpperCase() !== (holding.ticker || '').toUpperCase());
+        } else {
+          updated = prev.map(h => {
+            if (h.id === targetDocId || (h.ticker || '').toUpperCase() === (holding.ticker || '').toUpperCase()) {
+              return { ...h, shares: remainingShares, updated_at: new Date().toISOString() };
+            }
+            return h;
+          });
+        }
+        try {
+          localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      setTradeLedger(prev => {
+        const updated = [tradeItem, ...prev.filter(t => t.id !== tradeItem.id)];
+        try {
+          localStorage.setItem('bloomberg_cached_ledger', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
     } catch (err) {
       console.error('SellHolding error:', err);
       showToast(`Satış kaydedilirken hata oluştu: ${err.message}`, '⚠️');
@@ -825,6 +896,11 @@ export const AppProvider = ({ children }) => {
 
   const deleteTrade = async (tradeId) => {
     await deleteDoc(doc(db, 'trade_ledger', String(tradeId)));
+    setTradeLedger(prev => {
+      const updated = prev.filter(t => String(t.id) !== String(tradeId));
+      try { localStorage.setItem('bloomberg_cached_ledger', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
     showToast('İşlem kaydı silindi!', '🗑️');
   };
 
