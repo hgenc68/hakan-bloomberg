@@ -1,0 +1,335 @@
+{
+  "last_updated": "2026-10-02T13:00:00Z",
+  "methodology": {
+    "title": "Erken Aşama Asimetrik Büyüme & Değer Metodolojisi (Geleceğin NVDA & MU Adayları)",
+    "description": "Erken dönem Micron (MU) ve Nvidia (NVDA) gibi henüz ana akım tarafından tam fiyatlanmamış, kritik küresel teknoloji darboğazlarını çözen, devasa adreslenebilir pazar (TAM) önünde duran ve kurucu/içeriden liderlikle yönetilen ABD şirketlerini tespit eden kurumsal radar.",
+    "rules": [
+      {
+        "name": "Piyasa Değeri Tatlı Noktası",
+        "condition": "$1.5 Milyar - $35 Milyar",
+        "rationale": "Mega-cap şirketlerin (3T$) 10x-20x yapması neredeyse imkansızken, 5-15 milyar dolarlık kritik altyapı liderleri trilyonluk pazar dalgasıyla 100 milyar dolarlık devlere dönüşebilir."
+      },
+      {
+        "name": "Kritik Darboğaz Çözen Hendek (Moat)",
+        "condition": "Patentli IP / Kilit Tedarikçi Tekeli",
+        "rationale": "Sadece ürün satanlar değil; yapay zeka, çip veya veri merkezi ekosisteminin onsuz çalışamayacağı kilit altyapı bileşenini üretenler."
+      },
+      {
+        "name": "Finansal İvme & Rule of 40",
+        "condition": "Yıllık Gelir Büyümesi > %25-30, Brüt Marj > %50",
+        "rationale": "Satışları katlanan, brüt marjı yüksek ve nakit yakışı kontrol altında olan (en az 24 ay nakit pisti bulunan) şirketler."
+      },
+      {
+        "name": "Yönetim & Kurucu Faktörü",
+        "condition": "Kurucu CEO / İçeriden Sahiplik > %8-15",
+        "rationale": "Jensen Huang gibi şirketle birlikte yaşayan vizyoner liderler şirketlerini krizlerden büyüterek çıkarır."
+      }
+    ]
+  },
+  "stocks": [
+    {
+      "ticker": "VRT",
+      "name": "Vertiv Holdings Co",
+      "sector": "AI Altyapısı & Sıvı Soğutma",
+      "category": "ai_hardware",
+      "market_cap": "$32.4B",
+      "market_cap_num": 32.4,
+      "price": 86.45,
+      "target_price": 145.0,
+      "potential_upside": "+67.7%",
+      "bagger_potential": "3x - 5x",
+      "high_52w": 109.28,
+      "low_52w": 42.15,
+      "dist_52w_high": -20.9,
+      "conviction": "MUTLAKA AL",
+      "conviction_badge": "strong_buy",
+      "conviction_score": 94,
+      "recommended_alloc": "Portföyün %2.5 - %3.5'i (Çekirdek Büyüme)",
+      "analogy": "Yapay zekanın aşırı ısınma darboğazını çözen gizli tekel; tıpkı 2017'de GPU pazarını açan NVDA gibi.",
+      "thesis": "Yapay zeka GPU'ları (Nvidia Blackwell vb.) çip başına 1000-1200W güç tüketiyor. Geleneksel klimalı veri merkezleri artık yetersiz; doğrudan çipe sıvı soğutma (Direct-to-Chip Liquid Cooling) zorunlu hale geldi. Vertiv bu alanda pazar lideri ve Nvidia'nın resmi ortak mühendislik partneri.",
+      "moat": "CoolTera ve Liebert sıvı soğutma dağıtım üniteleri (CDU). 7.4 Milyar dolarlık rekor birikmiş sipariş (backlog) ve küresel veri merkezlerinin %40'ından fazlasında kurulu altyapı bağımlılığı.",
+      "financials": {
+        "revenue_growth_yoy": "+24.2%",
+        "gross_margin": "36.8%",
+        "operating_margin": "18.5%",
+        "fcf_runway": "Yıllık $1.1B+ Pozitif Nakit Akışı",
+        "insider_institutional_ownership": "%89.4 Kurumsal Destek"
+      },
+      "catalysts": [
+        "2025-2026 Blackwell ve Rubin mimarili sıvı soğutmalı sunucuların küresel sevkiyat patlaması",
+        "Amazon, Microsoft ve Google'ın 200+ milyar dolarlık CapEx veri merkezi bütçelerinin sıvı soğutmaya ayrılan payının 3 katına çıkması",
+        "Yüksek marjlı servis ve bakım anlaşmalarının tekrarlayan gelire dönüşmesi"
+      ],
+      "risks": [
+        "Genel küresel teknoloji CapEx harcamalarında olası geçici soğuma",
+        "Tedarik zincirinde pompa ve soğutma sıvısı hammadde gecikmeleri"
+      ]
+    },
+    {
+      "ticker": "ALAB",
+      "name": "Astera Labs Inc",
+      "sector": "AI Çip Bağlantıları & PCIe/CXL",
+      "category": "semiconductor",
+      "market_cap": "$12.8B",
+      "market_cap_num": 12.8,
+      "price": 82.50,
+      "target_price": 160.0,
+      "potential_upside": "+93.9%",
+      "bagger_potential": "5x - 10x",
+      "high_52w": 108.40,
+      "low_52w": 36.22,
+      "dist_52w_high": -23.9,
+      "conviction": "MUTLAKA AL",
+      "conviction_badge": "strong_buy",
+      "conviction_score": 96,
+      "recommended_alloc": "Portföyün %2.0 - %3.0'ı (Yüksek Asimetri)",
+      "analogy": "Yeni nesil Broadcom veya Marvell; GPU'lar arası veri tıkanıklığını çözen bağlantı çipi tekeli.",
+      "thesis": "Bir AI modelini eğitmek için 10.000+ GPU'nun birbirine sıfır gecikmeyle bağlanması gerekir. Veri yolları uzadıkça sinyal bozulur ve hız düşer. Astera Labs, Akıllı DSP (Retimer) ve CXL bellek denetleyici çipleriyle bu fiziksel engeli kaldıran tek uzman şirkettir.",
+      "moat": "Aries PCIe Retimer çiplerinde %85+ pazar payı. COSMOS yazılım paketi donanımla birlikte çalışarak bulut devlerinin çiplerden gerçek zamanlı telemetri almasını sağlıyor; donanım kopyalansa bile yazılım kilidi kırılması imkansız bir hendek yaratıyor.",
+      "financials": {
+        "revenue_growth_yoy": "+206.0%",
+        "gross_margin": "77.8%",
+        "operating_margin": "31.2%",
+        "fcf_runway": "$800M+ Net Nakit (Sıfır Borç)",
+        "insider_institutional_ownership": "Kurucular %18+, Kurumsal %76+"
+      },
+      "catalysts": [
+        "PCIe Gen 6 ve UALink konsorsiyumuna geçişte çip başına içerik değerinin (dollar content) %80 artması",
+        "Özel ASIC çipi üreten bulut devlerinin (Amazon Graviton/Trainium, Google TPU) Astera çiplerine mecbur kalması",
+        "Rule of 40 skorunun 95+ seviyesinde seyrederek yarıiletken sektörünün en karlı şirketlerinden birine dönüşmesi"
+      ],
+      "risks": [
+        "Halka arzı görece yeni olduğu için hisse kilit açılışı ve yüksek volatilite",
+        "Broadcom veya Marvell'ın doğrudan rekabet geliştirmeye çalışması"
+      ]
+    },
+    {
+      "ticker": "CAMT",
+      "name": "Camtek Ltd",
+      "sector": "HBM & Gelişmiş Paketleme Optik Denetim",
+      "category": "semiconductor",
+      "market_cap": "$4.8B",
+      "market_cap_num": 4.8,
+      "price": 105.12,
+      "target_price": 175.0,
+      "potential_upside": "+66.5%",
+      "bagger_potential": "3x - 6x",
+      "high_52w": 139.75,
+      "low_52w": 65.30,
+      "dist_52w_high": -24.8,
+      "conviction": "MUTLAKA AL",
+      "conviction_badge": "strong_buy",
+      "conviction_score": 92,
+      "recommended_alloc": "Portföyün %2.0 - %3.0'ı (Kritik Ekipman)",
+      "analogy": "Micron (MU) ve TSMC'nin bel kemiği; HBM bellek katmanlarını milimetrik denetleyen optik göz.",
+      "thesis": "Yüksek Bant Genişlikli Bellek (HBM3e ve HBM4), 12 ila 16 DRAM yongasının dikey mikronluk lehimlerle üst üste dizilmesiyle üretilir. Tek bir lehim hatası 50.000$'lık çipi çöpe atar. Camtek, bu katmanları 2D/3D optik olarak inceleyen dünyadaki 2 büyük oyuncudan biridir ve pazar payını hızla artırmaktadır.",
+      "moat": "HBM ve Chiplet denetiminde tescilli Eagle-T ve Hawk sistemleri. Micron, SK Hynix ve TSMC'nin onaylı tedarikçisi. Müşterinin üretim bandına entegre olduktan sonra ekipmanı değiştirmek imkansız derecede maliyetlidir.",
+      "financials": {
+        "revenue_growth_yoy": "+42.5%",
+        "gross_margin": "50.8%",
+        "operating_margin": "29.4%",
+        "fcf_runway": "$480M+ Nakit ve Sıfır Net Borç",
+        "insider_institutional_ownership": "%82.1 Kurumsal Sahiplik"
+      },
+      "catalysts": [
+        "HBM4 mimarisinde katman sayısının 16'ya çıkmasıyla muayene adım sayısının ikiye katlanması",
+        "Micron (MU) ve Samsung'un ABD fabrikalarındaki yeni HBM üretim bantlarının sipariş patlaması",
+        "Net kar marjının %30'u aşarak güçlü nakit üretimiyle temettü ve hisse geri alımı başlatılması"
+      ],
+      "risks": [
+        "İsrail merkezli operasyon nedeniyle olası bölgesel jeopolitik haber akışı baskısı",
+        "Yarıiletken döngüsünde bellek yatırımlarının olası dönemsel gecikmeleri"
+      ]
+    },
+    {
+      "ticker": "MRVL",
+      "name": "Marvell Technology Inc",
+      "sector": "Özel Bulut ASIC & Veri Merkezi Çipleri",
+      "category": "semiconductor",
+      "market_cap": "$68.2B",
+      "market_cap_num": 68.2,
+      "price": 78.90,
+      "target_price": 130.0,
+      "potential_upside": "+64.8%",
+      "bagger_potential": "2.5x - 4x",
+      "high_52w": 96.50,
+      "low_52w": 53.10,
+      "dist_52w_high": -18.2,
+      "conviction": "GÜÇLÜ AL",
+      "conviction_badge": "buy",
+      "conviction_score": 88,
+      "recommended_alloc": "Portföyün %2.0 - %3.0'ı (Büyük Altyapı)",
+      "analogy": "Nvidia tekelini kırmak isteyen teknoloji devlerinin arkasındaki gizli silikon fabrikası.",
+      "thesis": "Amazon, Google ve Microsoft, fahiş Nvidia GPU marjlarından kurtulmak için kendi özel çiplerini (ASIC) tasarlıyor. Ancak silikon tasarımı, die-to-die ara bağlantısı ve optik DSP uzmanlığına sahip değiller. Marvell bu devlerin özel AI çiplerini hayata geçiren birincil tasarım ve üretim ortağıdır.",
+      "moat": "Elektro-optik PAM4 DSP yongalarında dünya liderliği. Bulut devleriyle 5-7 yıllık mühendislik ortaklıkları ve tasarım kilitlenmeleri (Design Wins).",
+      "financials": {
+        "revenue_growth_yoy": "Veri Merkezi Segmenti +%92.0 YoY",
+        "gross_margin": "61.5%",
+        "operating_margin": "24.0%",
+        "fcf_runway": "$1.4B Yıllık Serbest Nakit Akışı",
+        "insider_institutional_ownership": "%88.5 Kurumsal Sahiplik"
+      },
+      "catalysts": [
+        "Amazon Trainium 2 ve Google TPU v6 özel çiplerinin 2025'te hacimli seri üretime girmesi",
+        "Veri merkezi içi optik ara bağlantılarda (800G/1.6T) liderliğin devamı",
+        "Geleneksel kurumsal ağ segmentindeki döngüsel toparlanmanın ek nakit yaratması"
+      ],
+      "risks": [
+        "Broadcom'un özel ASIC pazarında Amazon ve Google için de teklif vermesi",
+        "Geleneksel telekomünikasyon pazarındaki zayıflığın bir süre daha devam etmesi"
+      ]
+    },
+    {
+      "ticker": "POET",
+      "name": "POET Technologies Inc",
+      "sector": "Silikon Fotonik & Optik Motor (Optical Interposer)",
+      "category": "photonics",
+      "market_cap": "$465M",
+      "market_cap_num": 0.465,
+      "price": 3.82,
+      "target_price": 15.0,
+      "potential_upside": "+292.7%",
+      "bagger_potential": "10x - 20x",
+      "high_52w": 5.94,
+      "low_52w": 0.78,
+      "dist_52w_high": -35.7,
+      "conviction": "KADEMELİ BİRİKTİR",
+      "conviction_badge": "starter",
+      "conviction_score": 85,
+      "recommended_alloc": "Portföyün %1.0 - %1.5'i (Yüksek Risk / Asimetrik Roket)",
+      "analogy": "Erken dönem transistör devrimi; bakır kabloları tarihe gömüp çipleri doğrudan ışıkla konuşturan paradigma değişimi.",
+      "thesis": "Geleceğin AI süper bilgisayarlarında bakır kablolar elektrik direnci ve ısı nedeniyle fiziksel sınıra ulaştı. Gelecek kesinlikle Silikon Fotonik ve Işık (Optik) bağlantısında. POET'in geliştirdiği tescilli 'Optical Interposer', optik ve elektronik bileşenleri standart yarıiletken fabrikalarında lehim benzeri entegre ederek maliyeti %70, güç tüketimini %50 düşürüyor.",
+      "moat": "90'dan fazla küresel patentle korunan 'POET Optical Interposer' platformu. Ek lens veya karmaşık mikro-montaj gerektirmeden gofret (wafer) seviyesinde optik motor üretebilen dünyadaki tek teknoloji.",
+      "financials": {
+        "revenue_growth_yoy": "Ticarileşme Aşaması (Ön Gelir +%140)",
+        "gross_margin": "Tasarım Aşaması (>%60 Hedef)",
+        "operating_margin": "Geliştirme Evresi",
+        "fcf_runway": "18+ Ay Nakit Pisti (Borçsuz Sermaye Artırımı)",
+        "insider_institutional_ownership": "Kurucular ve Stratejik Fonlar %35+"
+      },
+      "catalysts": [
+        "Tier-1 modül üreticileri ve AI sunucu devleriyle 800G/1.6T optik motor seri üretim sözleşmeleri",
+        "Çip üstü optik (Co-Packaged Optics - CPO) standardı haline gelmesi durumunda dev yarıiletken şirketlerince primli satın alma (M&A) hedefi olması",
+        "İlk ticari sevkiyatların gelir tablosuna katlanarak yansıması"
+      ],
+      "risks": [
+        "Küçük piyasa değeri ve yüksek hisse volatilitesi",
+        "Büyük yarıiletken devlerinin üretim süreçlerine entegrasyon zamanlamasındaki olası ertelemeler"
+      ]
+    },
+    {
+      "ticker": "VKTX",
+      "name": "Viking Therapeutics Inc",
+      "sector": "Biyoteknoloji & Yeni Nesil GLP-1/GIP Obezite",
+      "category": "biotech",
+      "market_cap": "$6.4B",
+      "market_cap_num": 6.4,
+      "price": 58.70,
+      "target_price": 125.0,
+      "potential_upside": "+112.9%",
+      "bagger_potential": "4x - 8x",
+      "high_52w": 99.41,
+      "low_52w": 18.20,
+      "dist_52w_high": -40.9,
+      "conviction": "GÜÇLÜ AL",
+      "conviction_badge": "buy",
+      "conviction_score": 90,
+      "recommended_alloc": "Portföyün %1.5 - %2.5'i (Blockbuster İlaç Adayı)",
+      "analogy": "Eli Lilly ve Novo Nordisk'in 100 milyar dolarlık pazarındaki en güçlü meydan okuyucu; ilaç sektörünün erken dönem şampiyonu.",
+      "thesis": "Obezite ve metabolik hastalıklar önümüzdeki 10 yılın 150+ Milyar dolarlık en büyük sağlık pazarı. Viking'in öncü molekülü VK2735, hem haftalık deri altı enjeksiyon hem de günlük oral (hap) formunda klinik deneylerde Eli Lilly'nin Zepbound'undan daha hızlı kilo kaybı ve daha az gastrointestinal yan etki profili gösterdi.",
+      "moat": "Dual GLP-1 ve GIP reseptör agonisti patent havuzu. VK2735'in Faz 2 verilerinde 13 haftada %14.7 kilo kaybı ile sınıfının en iyisi (Best-in-Class) olma potansiyeli.",
+      "financials": {
+        "revenue_growth_yoy": "Klinik Aşama (R&D)",
+        "gross_margin": "Lisanslama Potansiyeli",
+        "operating_margin": "Klinik Geliştirme",
+        "fcf_runway": "$930M+ Nakit Rezervi (Faz 3'ü tamamen finanse edecek güçte, 3+ yıl nakit)",
+        "insider_institutional_ownership": "%84.5 Kurumsal Biyoteknoloji Fonları"
+      },
+      "catalysts": [
+        "VK2735 Faz 3 denemelerinin başlatılması ve oral (hap) formülasyonunun Faz 2 neticeleri",
+        "Büyük ilaç devlerinden birinin (Pfizer, AstraZeneca, Roche vb.) Viking'i 12-15 milyar dolar üzeri primle satın alması (M&A)",
+        "NASH (Karaciğer Yağlanması) alanındaki VK2809 molekülünün faz verileri"
+      ],
+      "risks": [
+        "Klinik deney fazlarında beklenmeyen biyolojik yan etki veya regülasyon gecikmeleri",
+        "Eli Lilly ve Novo Nordisk'in agresif fiyatlama ve pazar baskısı"
+      ]
+    },
+    {
+      "ticker": "RXRX",
+      "name": "Recursion Pharmaceuticals",
+      "sector": "Yapay Zeka Destekli Biyoteknoloji & İlaç Keşfi",
+      "category": "biotech",
+      "market_cap": "$2.3B",
+      "market_cap_num": 2.3,
+      "price": 7.45,
+      "target_price": 22.0,
+      "potential_upside": "+195.3%",
+      "bagger_potential": "5x - 12x",
+      "high_52w": 16.20,
+      "low_52w": 5.92,
+      "dist_52w_high": -54.0,
+      "conviction": "KADEMELİ BİRİKTİR",
+      "conviction_badge": "starter",
+      "conviction_score": 86,
+      "recommended_alloc": "Portföyün %1.0 - %2.0'ı (AI + Bio Sinerjisi)",
+      "analogy": "İlaç dünyasının Nvidia'sı; biyolojiyi dijitalleştirip molekül simülasyonu yapan süper bilgisayar platformu.",
+      "thesis": "Klasik ilaç keşfi ortalama 10-12 yıl ve 2 milyar dolar gerektirir ve deneylerin %90'ı çöpe gider. Recursion, Nvidia BioNeMo ve kendi BioHive-2 süper bilgisayarlarıyla laboratuvar deneylerini otomatikleştirip dijitalleştiriyor. Milyarlarca biyolojik ilişkiyi yapay zekayla tarayarak ilaç adayı bulma süresini 10 kat hızlandırıyor.",
+      "moat": "50+ petabaytlık dünyanın en büyük tescilli insan hücresel biyoloji veri tabanı (Phenomics). Nvidia doğrudan hissedarı ($50M yatırım), Roche ve Bayer ile 1.5 Milyar dolarlık çoklu ortaklık anlaşmaları.",
+      "financials": {
+        "revenue_growth_yoy": "Ortaklık Gelirleri +%34.0 YoY",
+        "gross_margin": "Lisanslama Modeli",
+        "operating_margin": "Geliştirme Fazı",
+        "fcf_runway": "$450M Nakit + Exscientia birleşmesiyle genişleyen nakit pisti (2+ yıl)",
+        "insider_institutional_ownership": "Nvidia, Baillie Gifford, Kurumsal %72+"
+      },
+      "catalysts": [
+        "Exscientia ile birleşmenin tamamlanmasıyla yapay zeka kimya ve biyoloji platformlarının tek çatı altında birleşmesi",
+        "Kendi klinik boru hattındaki Faz 2 onkoloji ve nadir hastalık deney sonuçları",
+        "Büyük ilaç şirketlerinden gelecek yeni kilometre taşı (milestone) ödemeleri"
+      ],
+      "risks": [
+        "Biyoteknoloji sektöründe AI ile keşfedilen ilk ilaçların nihai onay süreçlerinin piyasaca test ediliyor olması",
+        "Devam eden AR-GE harcamaları nedeniyle nakit yakışının izlenmesi gerekliliği"
+      ]
+    },
+    {
+      "ticker": "IONQ",
+      "name": "IonQ Inc",
+      "sector": "Ticari Kuantum Hesaplama & İyon Tuzağı",
+      "category": "quantum",
+      "market_cap": "$4.9B",
+      "market_cap_num": 4.9,
+      "price": 22.10,
+      "target_price": 50.0,
+      "potential_upside": "+126.2%",
+      "bagger_potential": "5x - 10x",
+      "high_52w": 38.50,
+      "low_52w": 6.88,
+      "dist_52w_high": -42.6,
+      "conviction": "KADEMELİ BİRİKTİR",
+      "conviction_badge": "starter",
+      "conviction_score": 87,
+      "recommended_alloc": "Portföyün %1.0 - %1.5'i (Yeni Hesaplama Çağı)",
+      "analogy": "1970'lerin başında ilk ticari mikroişlemcileri üreten Intel; kuantum çağının öncüsü.",
+      "thesis": "Klasik bilgisayarlar şifreleme, karmaşık kimya simülasyonları ve çok değişkenli optimizasyonda sınırlarına ulaşıyor. Kuantum hesaplama bir sonraki büyük paradigma. IonQ, rakipleri gibi mutlak sıfır (-273°C) dev soğutucular yerine oda sıcaklığında çalışan 'İyon Tuzağı' (Trapped Ion) teknolojisiyle en yüksek tutarlılık ve en düşük hata oranına sahip sistemleri üretiyor.",
+      "moat": "36 ve 64 Algoritmik Kübit (AQ) tescilli mimarisi. Amazon Braket, Microsoft Azure Quantum ve Google Cloud platformlarının tümünde ticari olarak kiralanan tek donanım. ABD Savunma Bakanlığı ve Hava Kuvvetleri ile $54M+ sözleşmeler.",
+      "financials": {
+        "revenue_growth_yoy": "+102.0% YoY Gelir Artışı",
+        "gross_margin": "Donanım & Bulut Kiralama %58",
+        "operating_margin": "Geliştirme Fazı",
+        "fcf_runway": "$380M+ Nakit ve Sıfır Borç (2.5+ yıl nakit pisti)",
+        "insider_institutional_ownership": "Kurucular ve Kurumsal Fonlar %65+"
+      },
+      "catalysts": [
+        "2025 yılı sonuna kadar 64 AQ kuantum üstünlüğü (Quantum Advantage) kilometre taşına ulaşılması",
+        "Hükümet ve savunma sanayiinden yeni çok yıllı kuantum şifreleme ve ağ sözleşmeleri",
+        "İlk ticari modüler kuantum veri merkezinin devreye alınması"
+      ],
+      "risks": [
+        "Kuantum teknolojisinin tam ticari yaygınlaşmasının 3-5 yıllık bir zaman ufkuna sahip olması",
+        "IBM ve Google gibi devlerin süper iletken kuantum alanındaki rekabeti"
+      ]
+    }
+  ]
+}
