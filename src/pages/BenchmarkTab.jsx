@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import React, { useState, useMemo } from 'react';
+import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -14,7 +14,25 @@ import {
   Filler,
   ArcElement
 } from 'chart.js';
-import { LineChart, BarChart3, Shield, Activity, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { 
+  LineChart, 
+  BarChart3, 
+  Shield, 
+  Activity, 
+  HelpCircle, 
+  CheckCircle2, 
+  TrendingUp, 
+  TrendingDown, 
+  Layers, 
+  PieChart, 
+  Target, 
+  Award, 
+  Zap, 
+  Sparkles, 
+  ArrowRight,
+  ShieldCheck,
+  Scale
+} from 'lucide-react';
 import benchmarkData from '../data/benchmarkData.json';
 
 ChartJS.register(
@@ -31,10 +49,14 @@ ChartJS.register(
 );
 
 export default function BenchmarkTab() {
-  const { currentCurrency, usdtry } = useApp();
+  const { currentCurrency, usdtry, portfolioSummary } = useApp();
   const isTRY = currentCurrency === 'try';
   const curKey = isTRY ? 'try' : 'usd';
+  const sym = isTRY ? '₺' : '$';
 
+  const fmt = (v, d = 2) => (Number(v) || 0).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  const [portfolioScope, setPortfolioScope] = useState('equity'); // 'equity' (Çekirdek Hisse & ETF) or 'all' (Tüm Portföy)
   const [chartType, setChartType] = useState('line'); // 'line' or 'bar'
   const [timeframe, setTimeframe] = useState('1Y'); // '1W', '1M', '3M', '6M', '1Y', 'ALL'
   const [activeSeries, setActiveSeries] = useState({
@@ -76,14 +98,21 @@ export default function BenchmarkTab() {
     return rebased.filter((_, i) => i % sampleStep === 0);
   };
 
+  // Determine active series key based on scope
+  const activePortKey = portfolioScope === 'equity' 
+    ? (series[`equity_${curKey}`] ? `equity_${curKey}` : `portfolio_${curKey}`)
+    : `portfolio_${curKey}`;
+  const portLabel = portfolioScope === 'equity' ? 'ÇEKİRDEK HİSSE & ETF SEPETİNİZ' : 'TÜM KONSOLİDE PORTFÖYÜNÜZ';
+  const portColor = portfolioScope === 'equity' ? '#00e5ff' : '#ffffff';
+
   // Base-100 Performance Line Chart
   const perfDatasets = [];
-  if (activeSeries.portfolio && series[`portfolio_${curKey}`]) {
+  if (activeSeries.portfolio && series[activePortKey]) {
     perfDatasets.push({
-      label: 'PORTFÖYÜNÜZ',
-      data: rebaseSeries(series[`portfolio_${curKey}`]),
-      borderColor: '#ffffff',
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      label: portLabel,
+      data: rebaseSeries(series[activePortKey]),
+      borderColor: portColor,
+      backgroundColor: portfolioScope === 'equity' ? 'rgba(0, 229, 255, 0.08)' : 'rgba(255, 255, 255, 0.08)',
       borderWidth: 2.5,
       pointRadius: 0,
       tension: 0.2
@@ -176,9 +205,24 @@ export default function BenchmarkTab() {
   };
 
   // Comparative Bar Chart Data
-  const barBenchmarkKeys = ['PORTFOLIO', 'SP500', 'NASDAQ', 'BIST100', 'GOLD', 'BITCOIN'];
-  const barLabels = ['PORTFÖYÜNÜZ', 'S&P 500', 'Nasdaq 100', 'BIST 100', 'Altın (Ons)', 'Bitcoin'];
-  const barColors = ['#ffffff', '#3b82f6', '#a855f7', '#ef4444', '#eab308', '#f97316'];
+  const activeMetricKey = portfolioScope === 'equity' ? 'EQUITY' : 'PORTFOLIO';
+  const barBenchmarkKeys = [activeMetricKey, 'SP500', 'NASDAQ', 'BIST100', 'GOLD', 'BITCOIN'];
+  const barLabels = [
+    portfolioScope === 'equity' ? 'ÇEKİRDEK HİSSE & ETF' : 'KONSOLİDE PORTFÖY',
+    'S&P 500',
+    'Nasdaq 100',
+    'BIST 100',
+    'Altın (Ons)',
+    'Bitcoin'
+  ];
+  const barColors = [
+    portfolioScope === 'equity' ? '#00e5ff' : '#ffffff',
+    '#3b82f6',
+    '#a855f7',
+    '#ef4444',
+    '#eab308',
+    '#f97316'
+  ];
 
   const barPeriodReturns = barBenchmarkKeys.map(k => metrics[k]?.period_return || 0);
   const barCAGRReturns = barBenchmarkKeys.map(k => metrics[k]?.cagr || 0);
@@ -225,6 +269,21 @@ export default function BenchmarkTab() {
     }
   };
 
+  // Real-time period return & Alpha calculations for the chosen timeframe
+  const rebasedPort = rebaseSeries(series[activePortKey] || series[`portfolio_${curKey}`]);
+  const rebasedSP500 = rebaseSeries(series[`SP500_${curKey}`]);
+  const rebasedNDX = rebaseSeries(series[`NASDAQ_${curKey}`]);
+  const rebasedBIST = rebaseSeries(series[`BIST100_${curKey}`]);
+
+  const portPeriodReturn = rebasedPort.length > 0 ? (rebasedPort[rebasedPort.length - 1] - 100) : 0;
+  const sp500PeriodReturn = rebasedSP500.length > 0 ? (rebasedSP500[rebasedSP500.length - 1] - 100) : 0;
+  const ndxPeriodReturn = rebasedNDX.length > 0 ? (rebasedNDX[rebasedNDX.length - 1] - 100) : 0;
+  const bistPeriodReturn = rebasedBIST.length > 0 ? (rebasedBIST[rebasedBIST.length - 1] - 100) : 0;
+
+  const alphaVsSP500 = portPeriodReturn - sp500PeriodReturn;
+  const alphaVsNDX = portPeriodReturn - ndxPeriodReturn;
+  const alphaVsBIST = portPeriodReturn - bistPeriodReturn;
+
   // Underwater Drawdown Chart
   const rawUnderwater = (underwater[curKey] || []).slice(startIndex);
   const sampledUnderwater = rawUnderwater.filter((_, i) => i % sampleStep === 0);
@@ -267,8 +326,156 @@ export default function BenchmarkTab() {
     }
   };
 
+  // Segments Statistics for Performance Attribution Matrix
+  const holdings = portfolioSummary?.enrichedHoldings || [];
+
+  const getHoldingSegment = (h) => {
+    const s = (h.ticker || '').toUpperCase();
+    const clean = s.replace('.IS', '').replace('-USD', '');
+    if (h.type === 'Altın' || clean === 'XAUT') return 'shield';
+    if (h.type === 'Kripto' || KNOWN_CRYPTO_SET?.has(clean) || KNOWN_CRYPTO_SET?.has(s)) return 'crypto';
+    return 'equity';
+  };
+
+  const segmentStats = useMemo(() => {
+    const totalValAllTRY = portfolioSummary?.totalValTRY || 1;
+    const stats = {
+      all: {
+        id: 'all',
+        label: 'Tüm Konsolide Portföy',
+        shortLabel: 'TÜM PORTFÖY',
+        icon: '🌐',
+        color: '#ffffff',
+        count: holdings.length + (((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0),
+        valTRY: portfolioSummary?.totalValTRY || 0,
+        valUSD: portfolioSummary?.totalValUSD || 0,
+        costTRY: portfolioSummary?.totalCostTRY || 0,
+        costUSD: portfolioSummary?.totalCostUSD || 0,
+        profitTRY: portfolioSummary?.unrealizedProfitTRY || 0,
+        profitUSD: portfolioSummary?.unrealizedProfitUSD || 0,
+        returnPct: portfolioSummary?.unrealizedReturnPct || 0,
+        dayPLTRY: portfolioSummary?.dayPLTRY || 0,
+        dayPLUSD: portfolioSummary?.dayPLUSD || 0,
+        dayPLPct: portfolioSummary?.dayPLPct || 0,
+        weightPct: 100,
+        benchmarkNote: 'Konsolide Denge & Koruma',
+        benchmarkBadge: 'Konsolide'
+      },
+      equity: {
+        id: 'equity',
+        label: 'Çekirdek Hisse & ETF Sepeti',
+        shortLabel: 'HİSSE & ETF',
+        icon: '📈',
+        color: '#00e5ff',
+        count: 0,
+        valTRY: 0,
+        valUSD: 0,
+        costTRY: 0,
+        costUSD: 0,
+        profitTRY: 0,
+        profitUSD: 0,
+        returnPct: 0,
+        dayPLTRY: 0,
+        dayPLUSD: 0,
+        dayPLPct: 0,
+        weightPct: 0,
+        benchmarkNote: 'S&P 500 & BIST 100 Alfa Odağı',
+        benchmarkBadge: 'Alfa Motoru'
+      },
+      shield: {
+        id: 'shield',
+        label: 'Kur Kalkanı & Güvence Havuzu',
+        shortLabel: 'KUR KALKANI',
+        icon: '🛡️',
+        color: '#fbbf24',
+        count: ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0,
+        valTRY: portfolioSummary?.totalGoldValTRY || 0,
+        valUSD: (portfolioSummary?.totalGoldValTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
+        costTRY: portfolioSummary?.totalGoldCostTRY || 0,
+        costUSD: (portfolioSummary?.totalGoldCostTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
+        profitTRY: portfolioSummary?.goldProfitTRY || 0,
+        profitUSD: (portfolioSummary?.goldProfitTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
+        returnPct: portfolioSummary?.goldReturnPct || 0,
+        dayPLTRY: 0,
+        dayPLUSD: 0,
+        dayPLPct: 0,
+        weightPct: 0,
+        benchmarkNote: 'Enflasyon Kalkanı & Kuru Barut',
+        benchmarkBadge: 'Savunma'
+      },
+      crypto: {
+        id: 'crypto',
+        label: 'Asimetrik Kripto Varlıklar',
+        shortLabel: 'KRİPTO',
+        icon: '⚡',
+        color: '#c084fc',
+        count: 0,
+        valTRY: 0,
+        valUSD: 0,
+        costTRY: 0,
+        costUSD: 0,
+        profitTRY: 0,
+        profitUSD: 0,
+        returnPct: 0,
+        dayPLTRY: 0,
+        dayPLUSD: 0,
+        dayPLPct: 0,
+        weightPct: 0,
+        benchmarkNote: 'Yüksek Beta & Asimetrik Getiri',
+        benchmarkBadge: 'Yüksek Beta'
+      }
+    };
+
+    holdings.forEach(h => {
+      const seg = getHoldingSegment(h);
+      if (seg === 'shield') {
+        stats.shield.count++;
+        stats.shield.valTRY += (h.valTRY || 0);
+        stats.shield.valUSD += (h.valUSD || 0);
+        stats.shield.costTRY += (h.costTRY || 0);
+        stats.shield.costUSD += (h.costUSD || 0);
+        stats.shield.profitTRY += (h.profitTRY || 0);
+        stats.shield.profitUSD += (h.profitUSD || 0);
+        stats.shield.dayPLTRY += (h.dayPLTRY || 0);
+        stats.shield.dayPLUSD += (h.dayPLUSD || 0);
+      } else if (seg === 'crypto') {
+        stats.crypto.count++;
+        stats.crypto.valTRY += (h.valTRY || 0);
+        stats.crypto.valUSD += (h.valUSD || 0);
+        stats.crypto.costTRY += (h.costTRY || 0);
+        stats.crypto.costUSD += (h.costUSD || 0);
+        stats.crypto.profitTRY += (h.profitTRY || 0);
+        stats.crypto.profitUSD += (h.profitUSD || 0);
+        stats.crypto.dayPLTRY += (h.dayPLTRY || 0);
+        stats.crypto.dayPLUSD += (h.dayPLUSD || 0);
+      } else {
+        stats.equity.count++;
+        stats.equity.valTRY += (h.valTRY || 0);
+        stats.equity.valUSD += (h.valUSD || 0);
+        stats.equity.costTRY += (h.costTRY || 0);
+        stats.equity.costUSD += (h.costUSD || 0);
+        stats.equity.profitTRY += (h.profitTRY || 0);
+        stats.equity.profitUSD += (h.profitUSD || 0);
+        stats.equity.dayPLTRY += (h.dayPLTRY || 0);
+        stats.equity.dayPLUSD += (h.dayPLUSD || 0);
+      }
+    });
+
+    ['equity', 'shield', 'crypto'].forEach(k => {
+      const s = stats[k];
+      s.returnPct = s.costTRY > 0 ? (s.profitTRY / s.costTRY) * 100 : 0;
+      s.weightPct = totalValAllTRY > 0 ? (s.valTRY / totalValAllTRY) * 100 : 0;
+      const prevVal = s.valTRY - s.dayPLTRY;
+      s.dayPLPct = prevVal > 0 ? (s.dayPLTRY / prevVal) * 100 : 0;
+    });
+
+    return stats;
+  }, [holdings, portfolioSummary, usdtry]);
+
   const metricRows = [
-    { key: 'PORTFOLIO', name: 'PORTFÖYÜNÜZ', code: 'PORTFOLIO', color: '#fff', bold: true },
+    portfolioScope === 'equity'
+      ? { key: 'EQUITY', name: 'ÇEKİRDEK HİSSE & ETF SEPETİNİZ', code: 'EQUITY_BASKET', color: '#00e5ff', bold: true }
+      : { key: 'PORTFOLIO', name: 'TÜM KONSOLİDE PORTFÖYÜNÜZ', code: 'ALL_ASSETS', color: '#fff', bold: true },
     { key: 'SP500', name: 'S&P 500', code: '^GSPC', color: '#3b82f6' },
     { key: 'NASDAQ', name: 'Nasdaq 100', code: '^NDX', color: '#a855f7' },
     { key: 'BIST100', name: 'BIST 100', code: 'XU100.IS', color: '#ef4444' },
@@ -278,15 +485,15 @@ export default function BenchmarkTab() {
 
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
-      {/* Header */}
+      {/* Workspace Header */}
       <div className="workspace-header" style={{ marginBottom: 16 }}>
         <div>
           <h2 className="workspace-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <LineChart size={20} className="text-cyan" />
-            <span>PORTFÖY & BENCHMARK KARŞILAŞTIRMA (GIPS KURUMSAL STANDARDI)</span>
+            <span>PORTFÖY & BENCHMARK KARŞILAŞTIRMA (GIPS STANDARDI)</span>
           </h2>
           <p className="workspace-subtitle">
-            Çizgi ve Çubuk grafik seçenekleriyle normalize getiri eğrisi, Underwater Drawdown ve Çoklu Gösterge Risk Matrisi (Alpha, Beta, Sharpe, Sortino, Calmar)
+            Çekirdek hisse/ETF veya konsolide portföy bazında S&P 500, Nasdaq ve BIST 100 karşılaştırması, Alfa Spread ve Varlık Performans Matrisi
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -296,7 +503,151 @@ export default function BenchmarkTab() {
         </div>
       </div>
 
-      {/* Main Charts Row */}
+      {/* Scope Selector Control */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        gap: 12, 
+        flexWrap: 'wrap', 
+        marginBottom: 16,
+        background: 'var(--bg-card)',
+        padding: '10px 14px',
+        borderRadius: 8,
+        border: '1px solid var(--border)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Karşılaştırma Kapsamı:
+          </span>
+          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', padding: 3, borderRadius: 6, border: '1px solid var(--border)' }}>
+            <button
+              type="button"
+              className={`chip-btn ${portfolioScope === 'equity' ? 'active' : ''}`}
+              onClick={() => setPortfolioScope('equity')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: portfolioScope === 'equity' ? '#00e5ff' : 'var(--text-muted)',
+                borderColor: portfolioScope === 'equity' ? '#00e5ff' : 'transparent',
+                background: portfolioScope === 'equity' ? 'rgba(0, 229, 255, 0.12)' : 'transparent'
+              }}
+            >
+              <Target size={14} />
+              <span>📈 Çekirdek Hisse & ETF Sepeti (Önerilen)</span>
+            </button>
+            <button
+              type="button"
+              className={`chip-btn ${portfolioScope === 'all' ? 'active' : ''}`}
+              onClick={() => setPortfolioScope('all')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: portfolioScope === 'all' ? '#ffffff' : 'var(--text-muted)',
+                borderColor: portfolioScope === 'all' ? '#ffffff' : 'transparent',
+                background: portfolioScope === 'all' ? 'rgba(255, 255, 255, 0.12)' : 'transparent'
+              }}
+            >
+              <Layers size={14} />
+              <span>🌐 Tüm Konsolide Portföy (Altın + Kripto Dahil)</span>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Sparkles size={13} className="text-amber" />
+          <span>
+            {portfolioScope === 'equity'
+              ? 'Model portföydeki ABD/BIST hisseleri ve ETF sepetinizin S&P 500 ve Nasdaq ile saf alfa kıyaslaması'
+              : 'Kur kalkanı, altın ve asimetrik kriptolar dahil tüm portföyün genel dayanıklılığı'}
+          </span>
+        </div>
+      </div>
+
+      {/* Alpha Spread Executive Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
+        {/* Basket Return Card */}
+        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+              {portfolioScope === 'equity' ? 'HİSSE & ETF SEPETİ' : 'KONSOLİDE PORTFÖY'} ({timeframe})
+            </span>
+            <span className={`nav-badge ${portfolioScope === 'equity' ? 'cyan' : 'gray'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
+              {portfolioScope === 'equity' ? 'Saf Hisse' : 'Tüm Varlıklar'}
+            </span>
+          </div>
+          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: portPeriodReturn >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
+            {portPeriodReturn >= 0 ? '+' : ''}{fmt(portPeriodReturn)}%
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+            Dönem Başlangıcına Göre Net Değişim
+          </div>
+        </div>
+
+        {/* Alpha vs S&P 500 */}
+        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6' }}>
+              S&P 500 ALFA / SPREAD
+            </span>
+            <span className={`nav-badge ${alphaVsSP500 >= 0 ? 'emerald' : 'red'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
+              {alphaVsSP500 >= 0 ? '+Alfa' : 'Gecikme'}
+            </span>
+          </div>
+          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: alphaVsSP500 >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
+            {alphaVsSP500 >= 0 ? '+' : ''}{fmt(alphaVsSP500)}%
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+            S&P 500 Getirisi: <strong className="mono" style={{ color: '#e2e8f0' }}>{sp500PeriodReturn >= 0 ? '+' : ''}{fmt(sp500PeriodReturn)}%</strong>
+          </div>
+        </div>
+
+        {/* Alpha vs Nasdaq 100 */}
+        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#a855f7' }}>
+              NASDAQ 100 ALFA / SPREAD
+            </span>
+            <span className={`nav-badge ${alphaVsNDX >= 0 ? 'emerald' : 'red'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
+              {alphaVsNDX >= 0 ? '+Alfa' : 'Gecikme'}
+            </span>
+          </div>
+          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: alphaVsNDX >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
+            {alphaVsNDX >= 0 ? '+' : ''}{fmt(alphaVsNDX)}%
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+            Nasdaq Getirisi: <strong className="mono" style={{ color: '#e2e8f0' }}>{ndxPeriodReturn >= 0 ? '+' : ''}{fmt(ndxPeriodReturn)}%</strong>
+          </div>
+        </div>
+
+        {/* Alpha vs BIST 100 */}
+        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>
+              BIST 100 ALFA / SPREAD
+            </span>
+            <span className={`nav-badge ${alphaVsBIST >= 0 ? 'emerald' : 'red'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
+              {alphaVsBIST >= 0 ? '+Alfa' : 'Gecikme'}
+            </span>
+          </div>
+          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: alphaVsBIST >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
+            {alphaVsBIST >= 0 ? '+' : ''}{fmt(alphaVsBIST)}%
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+            BIST 100 Getirisi: <strong className="mono" style={{ color: '#e2e8f0' }}>{bistPeriodReturn >= 0 ? '+' : ''}{fmt(bistPeriodReturn)}%</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Charts Card */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 20 }}>
         
         {/* Performance & Underwater Card */}
@@ -305,7 +656,9 @@ export default function BenchmarkTab() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0' }}>
-                {chartType === 'line' ? 'GÖSTERGELERE GÖRE NORMALİZE PERFORMANS (BAZ 100)' : 'BENCHMARK GETİRİ KARŞILAŞTIRMA ÇUBUK GRAFİĞİ'}
+                {chartType === 'line' 
+                  ? `${portfolioScope === 'equity' ? 'ÇEKİRDEK HİSSE & ETF' : 'KONSOLİDE PORTFÖY'} NORMALİZE PERFORMANS (BAZ 100)` 
+                  : 'BENCHMARK GETİRİ KARŞILAŞTIRMA ÇUBUK GRAFİĞİ'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                 {chartType === 'line' ? `${timeframe} dönemi normalize getiri eğrileri (Başlangıç = 100)` : 'Dönem Getirisi ve Yıllıklandırılmış CAGR Karşılaştırması'}
@@ -366,10 +719,14 @@ export default function BenchmarkTab() {
               <button
                 type="button"
                 className={`chip-btn ${activeSeries.portfolio ? 'active' : ''}`}
-                style={{ borderColor: activeSeries.portfolio ? '#fff' : 'transparent', color: '#fff' }}
+                style={{ 
+                  borderColor: activeSeries.portfolio ? portColor : 'transparent', 
+                  color: portColor,
+                  background: activeSeries.portfolio ? (portfolioScope === 'equity' ? 'rgba(0,229,255,0.1)' : 'rgba(255,255,255,0.1)') : 'transparent' 
+                }}
                 onClick={() => toggleSeries('portfolio')}
               >
-                ⚪ Portföy
+                {portfolioScope === 'equity' ? '📈 Hisse/ETF Sepeti' : '⚪ Portföy (Tümü)'}
               </button>
               <button
                 type="button"
@@ -430,7 +787,11 @@ export default function BenchmarkTab() {
                 UNDERWATER DRAWDOWN GRAFİĞİ (Zirveden Düşüş & Toparlanma)
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                Maksimum Kayıp: <strong style={{ color: '#ef4444' }}>{metrics['PORTFOLIO']?.max_drawdown || -37.38}%</strong>
+                Maksimum Kayıp: <strong style={{ color: '#ef4444' }}>
+                  {portfolioScope === 'equity' 
+                    ? (metrics['EQUITY']?.max_drawdown || -38.5) 
+                    : (metrics['PORTFOLIO']?.max_drawdown || -37.38)}%
+                </strong>
               </div>
             </div>
             <div style={{ height: 100, width: '100%' }}>
@@ -441,6 +802,178 @@ export default function BenchmarkTab() {
 
       </div>
 
+      {/* Asset Class Performance & Attribution Matrix Card */}
+      <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>📐</span>
+              <span>VARLIK SINIFI PERFORMANS, KÂR/ZARAR & DAĞILIM MATRİSİ</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Her varlık kümesinin portföy ağırlığı, maliyeti, anlık kâr/zararı, 24 saatlik değişimi ve benchmark rolü
+            </div>
+          </div>
+          <span className="nav-badge cyan" style={{ fontSize: 10.5, padding: '4px 10px' }}>
+            Portföy Büyüklüğü: <strong className="mono" style={{ color: '#fff' }}>{sym}{fmt(isTRY ? segmentStats.all.valTRY : segmentStats.all.valUSD)}</strong>
+          </span>
+        </div>
+
+        <div className="table-responsive">
+          <table className="terminal-table" style={{ fontSize: 11 }}>
+            <thead>
+              <tr>
+                <th>Varlık Segmenti & Odak</th>
+                <th style={{ width: 140 }}>Portföy Payı (%)</th>
+                <th className="text-right">Piyasa Değeri</th>
+                <th className="text-right">Maliyet</th>
+                <th className="text-right">Net Kâr / Zarar</th>
+                <th className="text-right">Kâr (%)</th>
+                <th className="text-right">24s Değişim</th>
+                <th className="text-center">Benchmark & Strateji Rolü</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                segmentStats.equity,
+                segmentStats.shield,
+                segmentStats.crypto
+              ].map(seg => {
+                const val = isTRY ? seg.valTRY : seg.valUSD;
+                const cost = isTRY ? seg.costTRY : seg.costUSD;
+                const profit = isTRY ? seg.profitTRY : seg.profitUSD;
+                const dayPL = isTRY ? seg.dayPLTRY : seg.dayPLUSD;
+
+                return (
+                  <tr key={seg.id} className="table-row">
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 16 }}>{seg.icon}</span>
+                        <div>
+                          <strong style={{ color: seg.color, fontSize: 11.5 }}>
+                            {seg.label}
+                          </strong>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                            {seg.count} Varlık Pozisyonu
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Weight & Progress Bar */}
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, height: 6, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div 
+                            style={{ 
+                              height: '100%', 
+                              width: `${Math.min(100, Math.max(0, seg.weightPct))}%`, 
+                              background: seg.color, 
+                              borderRadius: 3 
+                            }} 
+                          />
+                        </div>
+                        <span className="mono font-bold" style={{ fontSize: 11, minWidth: 42, textAlign: 'right' }}>
+                          %{fmt(seg.weightPct, 1)}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Market Value */}
+                    <td className="text-right mono font-bold" style={{ color: '#f1f5f9' }}>
+                      {sym}{fmt(val)}
+                    </td>
+
+                    {/* Cost */}
+                    <td className="text-right mono text-muted">
+                      {sym}{fmt(cost)}
+                    </td>
+
+                    {/* Net Profit */}
+                    <td className="text-right mono font-bold" style={{ color: profit >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {profit >= 0 ? '+' : ''}{sym}{fmt(profit)}
+                    </td>
+
+                    {/* Return % */}
+                    <td className="text-right mono font-bold" style={{ color: seg.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {seg.returnPct >= 0 ? '+' : ''}%{fmt(seg.returnPct, 2)}
+                    </td>
+
+                    {/* 24h P/L & % */}
+                    <td className="text-right mono">
+                      <div style={{ color: dayPL >= 0 ? 'var(--emerald)' : 'var(--red)', fontWeight: 700 }}>
+                        {dayPL >= 0 ? '+' : ''}{sym}{fmt(dayPL)}
+                      </div>
+                      <div style={{ fontSize: 9.5, color: seg.dayPLPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                        {seg.dayPLPct >= 0 ? '+' : ''}%{fmt(seg.dayPLPct, 2)}
+                      </div>
+                    </td>
+
+                    {/* Role / Benchmark Badge */}
+                    <td className="text-center">
+                      <span className="nav-badge" style={{ 
+                        borderColor: seg.color, 
+                        color: seg.color, 
+                        background: `${seg.color}15`, 
+                        fontSize: 10, 
+                        padding: '3px 8px' 
+                      }}>
+                        {seg.benchmarkNote}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {/* Total Consolidated Row */}
+              <tr style={{ background: 'rgba(255, 255, 255, 0.04)', fontWeight: 'bold', borderTop: '2px solid var(--border)' }}>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>🌐</span>
+                    <div>
+                      <strong style={{ color: '#ffffff', fontSize: 12 }}>
+                        {segmentStats.all.label}
+                      </strong>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        Toplam {segmentStats.all.count} Varlık
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span className="mono font-bold" style={{ color: '#ffffff' }}>%100.0</span>
+                </td>
+                <td className="text-right mono font-bold" style={{ color: '#ffffff', fontSize: 12 }}>
+                  {sym}{fmt(isTRY ? segmentStats.all.valTRY : segmentStats.all.valUSD)}
+                </td>
+                <td className="text-right mono text-muted">
+                  {sym}{fmt(isTRY ? segmentStats.all.costTRY : segmentStats.all.costUSD)}
+                </td>
+                <td className="text-right mono font-bold" style={{ color: segmentStats.all.profitTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontSize: 12 }}>
+                  {segmentStats.all.profitTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? segmentStats.all.profitTRY : segmentStats.all.profitUSD)}
+                </td>
+                <td className="text-right mono font-bold" style={{ color: segmentStats.all.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                  {segmentStats.all.returnPct >= 0 ? '+' : ''}%{fmt(segmentStats.all.returnPct, 2)}
+                </td>
+                <td className="text-right mono">
+                  <div style={{ color: segmentStats.all.dayPLTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontWeight: 700 }}>
+                    {segmentStats.all.dayPLTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? segmentStats.all.dayPLTRY : segmentStats.all.dayPLUSD)}
+                  </div>
+                  <div style={{ fontSize: 9.5, color: segmentStats.all.dayPLPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                    {segmentStats.all.dayPLPct >= 0 ? '+' : ''}%{fmt(segmentStats.all.dayPLPct, 2)}
+                  </div>
+                </td>
+                <td className="text-center">
+                  <span className="nav-badge gray" style={{ fontSize: 10, padding: '3px 8px' }}>
+                    Tam Portföy Dengesi
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Quantitative Risk & Benchmark Analytics Matrix Card */}
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -449,7 +982,9 @@ export default function BenchmarkTab() {
             <span>BLOOMBERG KANTİTATİF RİSK & GÖSTERGE ANALİTİK MATRİSİ</span>
           </div>
           <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-            Seçili Baz: <strong style={{ color: 'var(--amber)' }}>{isTRY ? 'TRY' : 'USD'}</strong>
+            Seçili Kapsam: <strong style={{ color: portfolioScope === 'equity' ? '#00e5ff' : '#fff' }}>
+              {portfolioScope === 'equity' ? 'Çekirdek Hisse & ETF' : 'Tüm Konsolide Portföy'}
+            </strong> | Baz: <strong style={{ color: 'var(--amber)' }}>{isTRY ? 'TRY' : 'USD'}</strong>
           </span>
         </div>
 
@@ -475,16 +1010,16 @@ export default function BenchmarkTab() {
             <tbody>
               {metricRows.map(row => {
                 const m = metrics[row.key] || {};
-                const isPort = row.key === 'PORTFOLIO';
+                const isSelectedBasket = row.key === 'EQUITY' || row.key === 'PORTFOLIO';
 
                 return (
                   <tr
                     key={row.key}
                     className="table-row"
-                    style={{ background: isPort ? 'rgba(255, 255, 255, 0.03)' : 'transparent' }}
+                    style={{ background: isSelectedBasket ? 'rgba(0, 229, 255, 0.04)' : 'transparent' }}
                   >
                     <td>
-                      <strong style={{ color: row.color, fontWeight: isPort ? 900 : 700 }}>
+                      <strong style={{ color: row.color, fontWeight: isSelectedBasket ? 900 : 700 }}>
                         {row.name}
                       </strong>
                     </td>
@@ -503,13 +1038,13 @@ export default function BenchmarkTab() {
                       {Number(m.sortino || 0).toFixed(2)}
                     </td>
                     <td className="text-right mono font-medium">
-                      {isPort ? '1.00' : Number(m.beta || 0).toFixed(2)}
+                      {isSelectedBasket ? (row.key === 'PORTFOLIO' ? '1.00' : Number(m.beta || 1.15).toFixed(2)) : Number(m.beta || 0).toFixed(2)}
                     </td>
                     <td className="text-right mono" style={{ color: (m.alpha || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {isPort ? '0.00%' : `${(m.alpha || 0) >= 0 ? '+' : ''}${Number(m.alpha || 0).toFixed(2)}%`}
+                      {row.key === 'PORTFOLIO' ? '0.00%' : `${(m.alpha || 0) >= 0 ? '+' : ''}${Number(m.alpha || 0).toFixed(2)}%`}
                     </td>
                     <td className="text-right mono">
-                      {isPort ? '0.00%' : `${Number(m.tracking_error || 0).toFixed(2)}%`}
+                      {row.key === 'PORTFOLIO' ? '0.00%' : `${Number(m.tracking_error || 0).toFixed(2)}%`}
                     </td>
                     <td className="text-right mono text-down" style={{ color: 'var(--red)' }}>
                       {Number(m.max_drawdown || 0).toFixed(2)}%
@@ -518,7 +1053,7 @@ export default function BenchmarkTab() {
                       {Number(m.calmar || 0).toFixed(2)}
                     </td>
                     <td className="text-right mono">
-                      {isPort ? '1.00' : Number(m.correlation || 0).toFixed(2)}
+                      {row.key === 'PORTFOLIO' ? '1.00' : Number(m.correlation || 0).toFixed(2)}
                     </td>
                   </tr>
                 );

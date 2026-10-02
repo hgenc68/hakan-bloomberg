@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
-import { Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, ArrowRight, ShieldCheck, PieChart, Layers } from 'lucide-react';
 import stocksData from '../data/stocksData.json';
 
 export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal }) {
@@ -94,6 +94,151 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
     return list;
   }, [holdings, search, sortKey, sortDir, isTRY]);
+
+  const [selectedSegment, setSelectedSegment] = useState('all'); // 'all', 'equity', 'shield', 'crypto'
+
+  const getHoldingSegment = (h) => {
+    const sym = (h.ticker || '').toUpperCase();
+    const clean = sym.replace('.IS', '').replace('-USD', '');
+    if (h.type === 'Altın' || clean === 'XAUT') return 'shield';
+    if (h.type === 'Kripto' || KNOWN_CRYPTO_SET.has(clean) || KNOWN_CRYPTO_SET.has(sym)) return 'crypto';
+    return 'equity';
+  };
+
+  const segmentStats = useMemo(() => {
+    const totalValAllTRY = portfolioSummary?.totalValTRY || 1;
+    const stats = {
+      all: {
+        id: 'all',
+        label: 'Tüm Konsolide Portföy',
+        shortLabel: 'TÜMÜ',
+        icon: '🌐',
+        color: '#00e5ff',
+        count: holdings.length + (((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0),
+        valTRY: portfolioSummary?.totalValTRY || 0,
+        valUSD: portfolioSummary?.totalValUSD || 0,
+        costTRY: portfolioSummary?.totalCostTRY || 0,
+        costUSD: portfolioSummary?.totalCostUSD || 0,
+        profitTRY: portfolioSummary?.unrealizedProfitTRY || 0,
+        profitUSD: portfolioSummary?.unrealizedProfitUSD || 0,
+        returnPct: portfolioSummary?.unrealizedReturnPct || 0,
+        dayPLTRY: portfolioSummary?.dayPLTRY || 0,
+        dayPLUSD: portfolioSummary?.dayPLUSD || 0,
+        dayPLPct: portfolioSummary?.dayPLPct || 0,
+        weightPct: 100
+      },
+      equity: {
+        id: 'equity',
+        label: 'Çekirdek Hisse & ETF Sepeti',
+        shortLabel: 'HİSSE & ETF',
+        icon: '📈',
+        color: '#38bdf8',
+        count: 0,
+        valTRY: 0,
+        valUSD: 0,
+        costTRY: 0,
+        costUSD: 0,
+        profitTRY: 0,
+        profitUSD: 0,
+        returnPct: 0,
+        dayPLTRY: 0,
+        dayPLUSD: 0,
+        dayPLPct: 0,
+        weightPct: 0
+      },
+      shield: {
+        id: 'shield',
+        label: 'Kur Kalkanı & Güvence Havuzu',
+        shortLabel: 'KUR KALKANI',
+        icon: '🛡️',
+        color: '#fbbf24',
+        count: ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0,
+        valTRY: portfolioSummary?.totalGoldValTRY || 0,
+        valUSD: (portfolioSummary?.totalGoldValTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
+        costTRY: portfolioSummary?.totalGoldCostTRY || 0,
+        costUSD: (portfolioSummary?.totalGoldCostTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
+        profitTRY: portfolioSummary?.goldProfitTRY || 0,
+        profitUSD: (portfolioSummary?.goldProfitTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
+        returnPct: portfolioSummary?.goldReturnPct || 0,
+        dayPLTRY: 0,
+        dayPLUSD: 0,
+        dayPLPct: 0,
+        weightPct: 0
+      },
+      crypto: {
+        id: 'crypto',
+        label: 'Asimetrik Kripto Varlıklar',
+        shortLabel: 'KRİPTO',
+        icon: '⚡',
+        color: '#c084fc',
+        count: 0,
+        valTRY: 0,
+        valUSD: 0,
+        costTRY: 0,
+        costUSD: 0,
+        profitTRY: 0,
+        profitUSD: 0,
+        returnPct: 0,
+        dayPLTRY: 0,
+        dayPLUSD: 0,
+        dayPLPct: 0,
+        weightPct: 0
+      }
+    };
+
+    holdings.forEach(h => {
+      const seg = getHoldingSegment(h);
+      if (seg === 'shield') {
+        stats.shield.count++;
+        stats.shield.valTRY += (h.valTRY || 0);
+        stats.shield.valUSD += (h.valUSD || 0);
+        stats.shield.costTRY += (h.costTRY || 0);
+        stats.shield.costUSD += (h.costUSD || 0);
+        stats.shield.profitTRY += (h.profitTRY || 0);
+        stats.shield.profitUSD += (h.profitUSD || 0);
+        stats.shield.dayPLTRY += (h.dayPLTRY || 0);
+        stats.shield.dayPLUSD += (h.dayPLUSD || 0);
+      } else if (seg === 'crypto') {
+        stats.crypto.count++;
+        stats.crypto.valTRY += (h.valTRY || 0);
+        stats.crypto.valUSD += (h.valUSD || 0);
+        stats.crypto.costTRY += (h.costTRY || 0);
+        stats.crypto.costUSD += (h.costUSD || 0);
+        stats.crypto.profitTRY += (h.profitTRY || 0);
+        stats.crypto.profitUSD += (h.profitUSD || 0);
+        stats.crypto.dayPLTRY += (h.dayPLTRY || 0);
+        stats.crypto.dayPLUSD += (h.dayPLUSD || 0);
+      } else {
+        stats.equity.count++;
+        stats.equity.valTRY += (h.valTRY || 0);
+        stats.equity.valUSD += (h.valUSD || 0);
+        stats.equity.costTRY += (h.costTRY || 0);
+        stats.equity.costUSD += (h.costUSD || 0);
+        stats.equity.profitTRY += (h.profitTRY || 0);
+        stats.equity.profitUSD += (h.profitUSD || 0);
+        stats.equity.dayPLTRY += (h.dayPLTRY || 0);
+        stats.equity.dayPLUSD += (h.dayPLUSD || 0);
+      }
+    });
+
+    ['equity', 'shield', 'crypto'].forEach(k => {
+      const s = stats[k];
+      s.returnPct = s.costTRY > 0 ? (s.profitTRY / s.costTRY) * 100 : 0;
+      s.weightPct = totalValAllTRY > 0 ? (s.valTRY / totalValAllTRY) * 100 : 0;
+      const prevVal = s.valTRY - s.dayPLTRY;
+      s.dayPLPct = prevVal > 0 ? (s.dayPLTRY / prevVal) * 100 : 0;
+    });
+
+    return stats;
+  }, [holdings, portfolioSummary, usdtry]);
+
+  const displayedHoldings = useMemo(() => {
+    let list = sortedHoldings;
+    if (selectedSegment !== 'all') {
+      list = list.filter(h => getHoldingSegment(h) === selectedSegment);
+    }
+    return list;
+  }, [sortedHoldings, selectedSegment]);
 
   const totalValAll = portfolioSummary?.totalValTRY || 1;
   const equityHoldings = useMemo(() => {
@@ -339,6 +484,109 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
         )}
       </div>
 
+      {/* 📊 Portföy Varlık Segmentleri & Dinamik Tahsis Paneli */}
+      <div className="card segment-selector-card" style={{ background: '#080d1a', border: '1px solid rgba(0, 229, 255, 0.22)', borderRadius: 8, padding: '14px 16px', marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-bright)', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <PieChart size={15} style={{ color: 'var(--cyan)' }} />
+              PORTFÖY VARLIK SEGMENTLERİ & DAĞILIM
+            </span>
+            <span style={{ fontSize: 10, background: 'rgba(0, 229, 255, 0.12)', color: 'var(--cyan)', border: '1px solid rgba(0, 229, 255, 0.3)', padding: '2px 7px', borderRadius: 4, fontWeight: 700 }}>
+              DİNAMİK FİLTRE
+            </span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Seçili Görünüm: <strong style={{ color: segmentStats[selectedSegment]?.color || 'var(--cyan)' }}>{segmentStats[selectedSegment]?.label}</strong>
+          </div>
+        </div>
+
+        {/* Görsel Katmanlı Tahsis Çubuğu (Allocation Bar) */}
+        <div style={{ width: '100%', height: 10, background: '#040711', borderRadius: 5, overflow: 'hidden', display: 'flex', marginBottom: 12, border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div
+            title={`Çekirdek Hisse & ETF: %${segmentStats.equity.weightPct.toFixed(1)}`}
+            onClick={() => setSelectedSegment(selectedSegment === 'equity' ? 'all' : 'equity')}
+            style={{ width: `${Math.max(2, segmentStats.equity.weightPct)}%`, background: 'linear-gradient(90deg, #0284c7, #38bdf8)', cursor: 'pointer', transition: 'all 0.3s ease' }}
+          />
+          <div
+            title={`Kur Kalkanı & Nakit: %${segmentStats.shield.weightPct.toFixed(1)}`}
+            onClick={() => setSelectedSegment(selectedSegment === 'shield' ? 'all' : 'shield')}
+            style={{ width: `${Math.max(2, segmentStats.shield.weightPct)}%`, background: 'linear-gradient(90deg, #d97706, #fbbf24)', cursor: 'pointer', transition: 'all 0.3s ease' }}
+          />
+          <div
+            title={`Kripto Varlıklar: %${segmentStats.crypto.weightPct.toFixed(1)}`}
+            onClick={() => setSelectedSegment(selectedSegment === 'crypto' ? 'all' : 'crypto')}
+            style={{ width: `${Math.max(2, segmentStats.crypto.weightPct)}%`, background: 'linear-gradient(90deg, #7c3aed, #c084fc)', cursor: 'pointer', transition: 'all 0.3s ease' }}
+          />
+        </div>
+
+        {/* 4 İnteraktif Segment Seçim Kartı */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
+          {[
+            { id: 'all', stat: segmentStats.all, desc: 'Tüm hisse, fon, kalkan ve kriptolar' },
+            { id: 'equity', stat: segmentStats.equity, desc: 'ABD, BIST ve Tematik ETF sepeti' },
+            { id: 'shield', stat: segmentStats.shield, desc: 'Fiziki/Banka altın ve nakit tamponu' },
+            { id: 'crypto', stat: segmentStats.crypto, desc: 'Yüksek beta asimetrik fırsatlar' }
+          ].map(({ id, stat, desc }) => {
+            const isSel = selectedSegment === id;
+            const val = isTRY ? stat.valTRY : stat.valUSD;
+            const profit = isTRY ? stat.profitTRY : stat.profitUSD;
+            const dayPL = isTRY ? stat.dayPLTRY : stat.dayPLUSD;
+
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSelectedSegment(id)}
+                style={{
+                  textAlign: 'left',
+                  background: isSel ? 'rgba(0, 229, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                  border: isSel ? `1.5px solid ${stat.color}` : '1px solid rgba(255, 255, 255, 0.07)',
+                  borderRadius: 6,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: isSel ? `0 0 14px ${stat.color}33` : 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: isSel ? stat.color : 'var(--text-bright)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span>{stat.icon}</span>
+                    <span>{stat.shortLabel}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>({stat.count})</span>
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: isSel ? `${stat.color}25` : 'rgba(255,255,255,0.05)', color: stat.color }}>
+                    %{stat.weightPct.toFixed(1)}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 }}>
+                  <span className="mono" style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc' }}>
+                    {sym}{fmt(val, 0)}
+                  </span>
+                  {id !== 'all' ? (
+                    <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: profit >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                      {profit >= 0 ? '+' : ''}{sym}{fmt(profit, 0)} ({fmt(stat.returnPct, 1)}%)
+                    </span>
+                  ) : (
+                    <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: dayPL >= 0 ? 'var(--up)' : 'var(--down)' }}>
+                      24s: {dayPL >= 0 ? '+' : ''}{sym}{fmt(dayPL, 0)}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ fontSize: 9.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {desc}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Top Action Bar */}
       <div className="table-action-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div className="search-box" style={{ width: 340 }}>
@@ -354,7 +602,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
         <div className="action-btns" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            Toplam <strong>{sortedHoldings.length}</strong> pozisyon listeleniyor
+            <strong>{displayedHoldings.length}</strong> pozisyon listeleniyor {selectedSegment !== 'all' && `(${segmentStats[selectedSegment]?.shortLabel})`}
           </span>
           <button
             type="button"
@@ -431,7 +679,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               </tr>
             </thead>
             <tbody>
-              {sortedHoldings.map(h => {
+              {displayedHoldings.map(h => {
                 const isProfit = (isTRY ? h.profitTRY : h.profitUSD) >= 0;
                 const profitVal = isTRY ? h.profitTRY : h.profitUSD;
                 const totalVal = isTRY ? h.valTRY : h.valUSD;
@@ -565,7 +813,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               })}
 
               {/* Sentetik Gram Altın Satırı */}
-              {((portfolioSummary?.totalGrams) || 0) > 0 && (
+              {((portfolioSummary?.totalGrams) || 0) > 0 && (selectedSegment === 'all' || selectedSegment === 'shield') && (
                 <tr className="table-row synthetic-gold">
                   <td>
                     <div className="ticker-cell">
@@ -611,51 +859,74 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               )}
             </tbody>
 
-            {/* Grand Total Summary Row */}
+            {/* Grand Total Summary Row (Segment-Aware) */}
             <tfoot>
-              <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
-                <td style={{ color: 'var(--cyan)', letterSpacing: '0.4px' }}>
-                  🎯 GENEL PORTFÖY TOPLAMI
-                </td>
-                <td>
-                  <span className="nav-badge cyan" style={{ fontSize: 9 }}>{sortedHoldings.length} Varlık</span>
-                </td>
-                <td className="text-right mono text-muted">
-                  --
-                </td>
-                <td className="text-right mono text-muted" style={{ fontWeight: 800 }}>
-                  {sym}{fmt(isTRY ? portfolioSummary?.totalCostTRY : portfolioSummary?.totalCostUSD, 2)}
-                </td>
-                <td className="text-right mono text-muted">
-                  --
-                </td>
-                <td className="text-right mono">
-                  <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                    <span className={`change-pill ${(portfolioSummary?.dayPLPct || 0) >= 0 ? 'up' : 'down'}`}>
-                      {(portfolioSummary?.dayPLPct || 0) >= 0 ? '▲ +' : '▼ '}{Math.abs(portfolioSummary?.dayPLPct || 0).toFixed(2)}%
-                    </span>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: ((isTRY ? portfolioSummary?.dayPLTRY : portfolioSummary?.dayPLUSD) || 0) >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                      {((isTRY ? portfolioSummary?.dayPLTRY : portfolioSummary?.dayPLUSD) || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? portfolioSummary?.dayPLTRY : portfolioSummary?.dayPLUSD, 2)}
-                    </span>
-                  </div>
-                </td>
-                <td className="text-right mono text-cyan" style={{ fontSize: 13, fontWeight: 900 }}>
-                  {sym}{fmt(isTRY ? portfolioSummary?.totalValTRY : portfolioSummary?.totalValUSD, 2)}
-                </td>
-                <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
-                  <span className={((isTRY ? portfolioSummary?.unrealizedProfitTRY : portfolioSummary?.unrealizedProfitUSD) || 0) >= 0 ? 'text-up' : 'text-down'}>
-                    {((isTRY ? portfolioSummary?.unrealizedProfitTRY : portfolioSummary?.unrealizedProfitUSD) || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? portfolioSummary?.unrealizedProfitTRY : portfolioSummary?.unrealizedProfitUSD, 2)}
-                  </span>
-                </td>
-                <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
-                  <span className={`return-badge ${(portfolioSummary?.unrealizedReturnPct || 0) >= 0 ? 'up' : 'down'}`}>
-                    {(portfolioSummary?.unrealizedReturnPct || 0) >= 0 ? '+' : ''}{fmt(portfolioSummary?.unrealizedReturnPct, 2)}%
-                  </span>
-                </td>
-                <td className="text-right">
-                  <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>Aktif Portföy</span>
-                </td>
-              </tr>
+              {(() => {
+                const activeStat = segmentStats[selectedSegment] || segmentStats.all;
+                const costVal = isTRY ? activeStat.costTRY : activeStat.costUSD;
+                const totalVal = isTRY ? activeStat.valTRY : activeStat.valUSD;
+                const profitVal = isTRY ? activeStat.profitTRY : activeStat.profitUSD;
+                const dayPLVal = isTRY ? activeStat.dayPLTRY : activeStat.dayPLUSD;
+                const isProf = profitVal >= 0;
+                const isDayUp = dayPLVal >= 0;
+
+                const labelMap = {
+                  all: '🎯 GENEL PORTFÖY TOPLAMI',
+                  equity: '🎯 ÇEKİRDEK HİSSE & ETF TOPLAMI',
+                  shield: '🎯 KUR KALKANI & NAKİT TOPLAMI',
+                  crypto: '🎯 KRİPTO VARLIKLAR TOPLAMI'
+                };
+
+                return (
+                  <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
+                    <td style={{ color: activeStat.color, letterSpacing: '0.4px' }}>
+                      {labelMap[selectedSegment] || '🎯 PORTFÖY TOPLAMI'}
+                    </td>
+                    <td>
+                      <span className="nav-badge" style={{ fontSize: 9, background: `${activeStat.color}22`, color: activeStat.color, border: `1px solid ${activeStat.color}55` }}>
+                        {displayedHoldings.length + ((selectedSegment === 'all' || selectedSegment === 'shield') && ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0)} Varlık
+                      </span>
+                    </td>
+                    <td className="text-right mono text-muted">
+                      --
+                    </td>
+                    <td className="text-right mono text-muted" style={{ fontWeight: 800 }}>
+                      {sym}{fmt(costVal, 2)}
+                    </td>
+                    <td className="text-right mono text-muted">
+                      --
+                    </td>
+                    <td className="text-right mono">
+                      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <span className={`change-pill ${activeStat.dayPLPct >= 0 ? 'up' : 'down'}`}>
+                          {activeStat.dayPLPct >= 0 ? '▲ +' : '▼ '}{Math.abs(activeStat.dayPLPct || 0).toFixed(2)}%
+                        </span>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: isDayUp ? 'var(--up)' : 'var(--down)' }}>
+                          {isDayUp ? '+' : ''}{sym}{fmt(dayPLVal, 2)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="text-right mono text-cyan" style={{ fontSize: 13, fontWeight: 900 }}>
+                      {sym}{fmt(totalVal, 2)}
+                    </td>
+                    <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
+                      <span className={isProf ? 'text-up' : 'text-down'}>
+                        {isProf ? '+' : ''}{sym}{fmt(profitVal, 2)}
+                      </span>
+                    </td>
+                    <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
+                      <span className={`return-badge ${activeStat.returnPct >= 0 ? 'up' : 'down'}`}>
+                        {activeStat.returnPct >= 0 ? '+' : ''}{fmt(activeStat.returnPct, 2)}%
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <span className="nav-badge" style={{ fontSize: 9.5, background: `${activeStat.color}22`, color: activeStat.color, border: `1px solid ${activeStat.color}55` }}>
+                        {activeStat.shortLabel}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })()}
             </tfoot>
           </table>
         </div>
