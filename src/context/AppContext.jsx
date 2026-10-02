@@ -71,7 +71,12 @@ const TICKER_MAP = {
   'ABBV': 'ABBV',
   'TSM': 'TSM',
   'NVDA': 'NVDA',
-  'XOM': 'XOM'
+  'XOM': 'XOM',
+  'VRT': 'VRT',
+  'ALAB': 'ALAB',
+  'CAMT': 'CAMT',
+  'MRVL': 'MRVL',
+  'POET': 'POET'
 };
 
 // Known crypto tickers to ensure classification consistency
@@ -106,7 +111,12 @@ const DEFAULT_INITIAL_QUOTES = {
   'FROTO.IS': { symbol: 'FROTO.IS', price: 1040.0, currency: 'TRY', changePct: 0.4 },
   'THYAO.IS': { symbol: 'THYAO.IS', price: 312.0, currency: 'TRY', changePct: 0.6 },
   'QQQ': { symbol: 'QQQ', price: 495.0, currency: 'USD', changePct: 0.5 },
-  'SPY': { symbol: 'SPY', price: 580.0, currency: 'USD', changePct: 0.3 }
+  'SPY': { symbol: 'SPY', price: 580.0, currency: 'USD', changePct: 0.3 },
+  'VRT': { symbol: 'VRT', price: 86.45, currency: 'USD', changePct: 1.25 },
+  'ALAB': { symbol: 'ALAB', price: 82.50, currency: 'USD', changePct: 2.10 },
+  'CAMT': { symbol: 'CAMT', price: 105.12, currency: 'USD', changePct: 1.40 },
+  'MRVL': { symbol: 'MRVL', price: 74.20, currency: 'USD', changePct: 0.85 },
+  'POET': { symbol: 'POET', price: 4.85, currency: 'USD', changePct: 3.20 }
 };
 
 export const AppProvider = ({ children }) => {
