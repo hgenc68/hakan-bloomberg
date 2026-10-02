@@ -161,26 +161,38 @@ export default async function handler(req, res) {
         const closes = (json?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [])
           .filter(c => typeof c === 'number' && !isNaN(c));
         
-        // Yahoo Finance provides official 24h regularMarketChangePercent
+        // Prioritize Yahoo Finance's official regularMarketChangePercent
         let changePct = (meta.regularMarketChangePercent !== undefined && meta.regularMarketChangePercent !== null)
           ? Number(meta.regularMarketChangePercent)
           : null;
 
-        // Accurate prior day close (yesterday, NOT 5 days ago!)
         let prevClose = meta.previousClose;
-        if (!prevClose && closes.length >= 2) {
-          prevClose = closes[closes.length - 2];
-        }
 
-        if (changePct === null) {
+        if (changePct !== null && !isNaN(changePct)) {
+          // If official changePct is provided, derive or verify prevClose strictly matching it
+          if (!prevClose && currentPrice > 0) {
+            prevClose = currentPrice / (1 + changePct / 100);
+          }
+        } else if (prevClose) {
           changePct = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
-        } else if (!prevClose && changePct !== 0 && currentPrice) {
-          prevClose = currentPrice / (1 + changePct / 100);
-        } else if (!prevClose) {
+        } else if (closes.length >= 2) {
+          prevClose = closes[closes.length - 2];
+          changePct = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
+        } else {
           prevClose = currentPrice;
+          changePct = 0;
         }
 
-        const change = currentPrice - prevClose;
+        let change = currentPrice - prevClose;
+
+        // Safety Invariant: The signs of change and changePct must never diverge!
+        if (changePct > 0 && change < 0) {
+          change = Math.abs(change);
+          prevClose = currentPrice - change;
+        } else if (changePct < 0 && change > 0) {
+          change = -Math.abs(change);
+          prevClose = currentPrice - change;
+        }
 
         const quoteObj = {
           symbol: upper,

@@ -348,16 +348,29 @@ export const AppProvider = ({ children }) => {
                 : null;
 
               let prev = meta.previousClose;
-              if (!prev && closes.length >= 2) {
+              if (changePct !== null && !isNaN(changePct)) {
+                if (!prev && p > 0) {
+                  prev = p / (1 + changePct / 100);
+                }
+              } else if (prev) {
+                changePct = prev > 0 ? ((p - prev) / prev) * 100 : 0;
+              } else if (closes.length >= 2) {
                 prev = closes[closes.length - 2];
+                changePct = prev > 0 ? ((p - prev) / prev) * 100 : 0;
+              } else {
+                prev = p;
+                changePct = 0;
               }
 
-              if (changePct === null) {
-                changePct = prev > 0 ? ((p - prev) / prev) * 100 : 0;
-              } else if (!prev && changePct !== 0 && p) {
-                prev = p / (1 + changePct / 100);
-              } else if (!prev) {
-                prev = p;
+              let change = p - prev;
+
+              // Enforce sign harmony
+              if (changePct > 0 && change < 0) {
+                change = Math.abs(change);
+                prev = p - change;
+              } else if (changePct < 0 && change > 0) {
+                change = -Math.abs(change);
+                prev = p - change;
               }
 
               const quoteObj = {
@@ -365,7 +378,7 @@ export const AppProvider = ({ children }) => {
                 resolvedSymbol: cleanS,
                 price: p,
                 previousClose: prev,
-                change: p - prev,
+                change: change,
                 changePct: changePct,
                 currency: meta.currency || (cleanS.endsWith('.IS') ? 'TRY' : 'USD')
               };
@@ -496,15 +509,29 @@ export const AppProvider = ({ children }) => {
       const profitUSD = valUSD - costUSD;
       const returnPct = costTRY > 0 ? (profitTRY / costTRY) * 100 : 0;
 
-      // True 24-hour day change
+      // True 24-hour day change calculation (Guaranteed sign harmony with changePct)
       let dayPLTRY = 0;
       let dayPLUSD = 0;
-      if (prevClose > 0 && livePrice > 0) {
+      if (livePrice > 0 && (h.shares || 0) > 0) {
+        let changePerShare = 0;
+        if (prevClose > 0 && Math.abs(livePrice - prevClose) > 0.000001) {
+          changePerShare = livePrice - prevClose;
+        } else if (changePct !== 0) {
+          changePerShare = livePrice * (changePct / 100) / (1 + changePct / 100);
+        }
+
+        // Safety Invariant: The sign of changePerShare and changePct must never diverge!
+        if (changePct > 0 && changePerShare < 0) {
+          changePerShare = Math.abs(changePerShare);
+        } else if (changePct < 0 && changePerShare > 0) {
+          changePerShare = -Math.abs(changePerShare);
+        }
+
         if (quoteCurrency === 'USD') {
-          dayPLUSD = (h.shares || 0) * (livePrice - prevClose);
+          dayPLUSD = (h.shares || 0) * changePerShare;
           dayPLTRY = dayPLUSD * usdtry;
         } else {
-          dayPLTRY = (h.shares || 0) * (livePrice - prevClose);
+          dayPLTRY = (h.shares || 0) * changePerShare;
           dayPLUSD = usdtry > 0 ? (dayPLTRY / usdtry) : 0;
         }
       }

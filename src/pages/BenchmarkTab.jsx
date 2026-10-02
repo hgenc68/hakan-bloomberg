@@ -827,9 +827,9 @@ export default function BenchmarkTab() {
                 <th style={{ width: 140 }}>Portföy Payı (%)</th>
                 <th className="text-right">Piyasa Değeri</th>
                 <th className="text-right">Maliyet</th>
-                <th className="text-right">Net Kâr / Zarar</th>
-                <th className="text-right">Kâr (%)</th>
                 <th className="text-right">24s Değişim</th>
+                <th className="text-right">Toplam Net Kâr / Zarar</th>
+                <th className="text-right">Toplam Kâr (%)</th>
                 <th className="text-center">Benchmark & Strateji Rolü</th>
               </tr>
             </thead>
@@ -889,17 +889,7 @@ export default function BenchmarkTab() {
                       {sym}{fmt(cost)}
                     </td>
 
-                    {/* Net Profit */}
-                    <td className="text-right mono font-bold" style={{ color: profit >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {profit >= 0 ? '+' : ''}{sym}{fmt(profit)}
-                    </td>
-
-                    {/* Return % */}
-                    <td className="text-right mono font-bold" style={{ color: seg.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {seg.returnPct >= 0 ? '+' : ''}%{fmt(seg.returnPct, 2)}
-                    </td>
-
-                    {/* 24h P/L & % */}
+                    {/* 24h P/L & % (Moved to left) */}
                     <td className="text-right mono">
                       <div style={{ color: dayPL >= 0 ? 'var(--emerald)' : 'var(--red)', fontWeight: 700 }}>
                         {dayPL >= 0 ? '+' : ''}{sym}{fmt(dayPL)}
@@ -907,6 +897,16 @@ export default function BenchmarkTab() {
                       <div style={{ fontSize: 9.5, color: seg.dayPLPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
                         {seg.dayPLPct >= 0 ? '+' : ''}%{fmt(seg.dayPLPct, 2)}
                       </div>
+                    </td>
+
+                    {/* Total Net Profit */}
+                    <td className="text-right mono font-bold" style={{ color: profit >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {profit >= 0 ? '+' : ''}{sym}{fmt(profit)}
+                    </td>
+
+                    {/* Total Return % */}
+                    <td className="text-right mono font-bold" style={{ color: seg.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {seg.returnPct >= 0 ? '+' : ''}%{fmt(seg.returnPct, 2)}
                     </td>
 
                     {/* Role / Benchmark Badge */}
@@ -949,12 +949,6 @@ export default function BenchmarkTab() {
                 <td className="text-right mono text-muted">
                   {sym}{fmt(isTRY ? segmentStats.all.costTRY : segmentStats.all.costUSD)}
                 </td>
-                <td className="text-right mono font-bold" style={{ color: segmentStats.all.profitTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontSize: 12 }}>
-                  {segmentStats.all.profitTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? segmentStats.all.profitTRY : segmentStats.all.profitUSD)}
-                </td>
-                <td className="text-right mono font-bold" style={{ color: segmentStats.all.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                  {segmentStats.all.returnPct >= 0 ? '+' : ''}%{fmt(segmentStats.all.returnPct, 2)}
-                </td>
                 <td className="text-right mono">
                   <div style={{ color: segmentStats.all.dayPLTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontWeight: 700 }}>
                     {segmentStats.all.dayPLTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? segmentStats.all.dayPLTRY : segmentStats.all.dayPLUSD)}
@@ -962,6 +956,12 @@ export default function BenchmarkTab() {
                   <div style={{ fontSize: 9.5, color: segmentStats.all.dayPLPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
                     {segmentStats.all.dayPLPct >= 0 ? '+' : ''}%{fmt(segmentStats.all.dayPLPct, 2)}
                   </div>
+                </td>
+                <td className="text-right mono font-bold" style={{ color: segmentStats.all.profitTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontSize: 12 }}>
+                  {segmentStats.all.profitTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? segmentStats.all.profitTRY : segmentStats.all.profitUSD)}
+                </td>
+                <td className="text-right mono font-bold" style={{ color: segmentStats.all.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                  {segmentStats.all.returnPct >= 0 ? '+' : ''}%{fmt(segmentStats.all.returnPct, 2)}
                 </td>
                 <td className="text-center">
                   <span className="nav-badge gray" style={{ fontSize: 10, padding: '3px 8px' }}>
