@@ -968,18 +968,214 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <Bar data={qualtrimChartData} options={qualtrimChartOptions} />
           </div>
 
-          {/* Valuation Corridor Bar */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
-              🎯 DEĞERLEME KORİDORU (GRAHAM vs PİYASA vs ANALİST HEDEFİ)
-            </div>
-            <div style={{ display: 'flex', height: 24, borderRadius: 4, overflow: 'hidden', fontSize: 10, fontWeight: 800, textAlign: 'center', lineHeight: '24px' }}>
-              <div style={{ flex: 1, background: '#ef4444', color: '#fff' }}>Graham: {currencySym}{(curPrice * 0.95).toFixed(0)}</div>
-              <div style={{ flex: 1, background: '#00e5ff', color: '#000', border: '1.5px solid #fff' }}>Canlı: {currencySym}{curPrice.toFixed(0)}</div>
-              <div style={{ flex: 1, background: '#10b981', color: '#fff' }}>DCF: {currencySym}{Number(simFairValRounded).toFixed(0)}</div>
-              <div style={{ flex: 1, background: '#eab308', color: '#000' }}>Analist: {currencySym}{(curPrice * 1.22).toFixed(0)}</div>
-            </div>
-          </div>
+          {/* Valuation Corridor Bar & Horizontal Scale */}
+          {(() => {
+            const analystTarget = dcfData?.analyst_target || Math.round((curPrice * 1.25) * 100) / 100;
+            const minCorridor = Math.min(curPrice, simFairValRounded, analystTarget) * 0.75;
+            const maxCorridor = Math.max(curPrice, simFairValRounded, analystTarget) * 1.25;
+            const corridorSpan = maxCorridor - minCorridor > 0 ? (maxCorridor - minCorridor) : 1;
+
+            const dcfPosPct = Math.max(8, Math.min(92, ((simFairValRounded - minCorridor) / corridorSpan) * 100));
+            const targetPosPct = Math.max(8, Math.min(92, ((analystTarget - minCorridor) / corridorSpan) * 100));
+            const curPosPct = Math.max(8, Math.min(92, ((curPrice - minCorridor) / corridorSpan) * 100));
+
+            const isBelowDCF = curPrice < simFairValRounded;
+            const isBelowTarget = curPrice < analystTarget;
+
+            let corridorStatus = { label: 'MAKUL / BÜYÜME KORİDORUNDA', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.4)' };
+            if (isBelowDCF) {
+              corridorStatus = { label: `GÜVENLİK MARJI (DCF ALTI: +%${Math.abs(marginOfSafety)})`, color: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.4)' };
+            } else if (!isBelowTarget) {
+              corridorStatus = { label: 'DOYGUN / PRİMLİ BÖLGE', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)' };
+            }
+
+            return (
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                {/* Header & Status Badge */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>📐</span>
+                      <span>DEĞERLEME KORİDORU & FİYAT SKALASI</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                      DCF Nakit Tabanı ile Analist 12A Hedefi arasındaki risk-getiri konumu
+                    </div>
+                  </div>
+
+                  <span 
+                    className="nav-badge" 
+                    style={{ 
+                      background: corridorStatus.bg, 
+                      color: corridorStatus.color, 
+                      border: `1px solid ${corridorStatus.border}`, 
+                      padding: '3px 8px', 
+                      fontSize: 10, 
+                      fontWeight: 800 
+                    }}
+                  >
+                    {corridorStatus.label}
+                  </span>
+                </div>
+
+                {/* 3 Metric Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+                  {/* DCF Base */}
+                  <div style={{ background: 'rgba(0, 229, 255, 0.05)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: 6, padding: '8px 10px' }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--cyan)' }}>
+                      💎 DCF İÇSEL DEĞERİ
+                    </div>
+                    <div className="mono font-bold" style={{ fontSize: 14, color: '#fff' }}>
+                      {currencySym}{fmt(simFairValRounded)}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                      Nakit Akış Tabanı
+                    </div>
+                  </div>
+
+                  {/* Current Price */}
+                  <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: '#e2e8f0' }}>
+                      📍 CANLI PİYASA FİYATI
+                    </div>
+                    <div className="mono font-bold" style={{ fontSize: 15, color: '#f8fafc' }}>
+                      {currencySym}{fmt(curPrice)}
+                    </div>
+                    <div style={{ fontSize: 9, color: isBelowDCF ? 'var(--emerald)' : 'var(--amber)', fontWeight: 700 }}>
+                      {isBelowDCF ? `DCF'e %${Math.abs(marginOfSafety)} İskontolu` : `DCF'e %${Math.abs(marginOfSafety)} Primli`}
+                    </div>
+                  </div>
+
+                  {/* Analyst Target */}
+                  <div style={{ background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '8px 10px', textAlign: 'right' }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--gold)' }}>
+                      🎯 ANALİST HEDEFİ (12A)
+                    </div>
+                    <div className="mono font-bold text-gold" style={{ fontSize: 14 }}>
+                      {currencySym}{fmt(analystTarget)}
+                    </div>
+                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                      Konsensüs Tavanı
+                    </div>
+                  </div>
+                </div>
+
+                {/* Horizontal Gradient Scale Track with Needle & Pins */}
+                <div style={{ position: 'relative', margin: '22px 8px 18px 8px' }}>
+                  {/* Track Bar */}
+                  <div style={{ 
+                    height: 12, 
+                    borderRadius: 6, 
+                    background: 'linear-gradient(90deg, #10b981 0%, #00e5ff 35%, #3b82f6 60%, #f59e0b 85%, #ef4444 100%)', 
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    position: 'relative',
+                    overflow: 'visible'
+                  }}>
+                    {/* DCF Pin */}
+                    <div 
+                      style={{ 
+                        position: 'absolute', 
+                        left: `${dcfPosPct}%`, 
+                        top: -5, 
+                        bottom: -5, 
+                        width: 2, 
+                        background: '#00e5ff', 
+                        boxShadow: '0 0 8px #00e5ff', 
+                        zIndex: 10 
+                      }} 
+                      title={`DCF İçsel Değeri: ${currencySym}${fmt(simFairValRounded)}`}
+                    >
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: -16, 
+                        left: -12, 
+                        fontSize: 8.5, 
+                        fontWeight: 800, 
+                        color: 'var(--cyan)', 
+                        background: '#070a13', 
+                        padding: '1px 3px', 
+                        borderRadius: 3, 
+                        border: '1px solid rgba(0, 229, 255, 0.4)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        DCF
+                      </div>
+                    </div>
+
+                    {/* Analyst Target Pin */}
+                    <div 
+                      style={{ 
+                        position: 'absolute', 
+                        left: `${targetPosPct}%`, 
+                        top: -5, 
+                        bottom: -5, 
+                        width: 2, 
+                        background: '#f59e0b', 
+                        boxShadow: '0 0 8px #f59e0b', 
+                        zIndex: 10 
+                      }} 
+                      title={`Analist Hedefi: ${currencySym}${fmt(analystTarget)}`}
+                    >
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: -16, 
+                        left: -14, 
+                        fontSize: 8.5, 
+                        fontWeight: 800, 
+                        color: 'var(--gold)', 
+                        background: '#070a13', 
+                        padding: '1px 3px', 
+                        borderRadius: 3, 
+                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        HEDEF
+                      </div>
+                    </div>
+
+                    {/* Current Price Needle / Pointer */}
+                    <div 
+                      style={{ 
+                        position: 'absolute', 
+                        left: `${curPosPct}%`, 
+                        top: -7, 
+                        bottom: -7, 
+                        width: 10, 
+                        borderRadius: 5, 
+                        background: '#ffffff', 
+                        border: '2px solid #00e5ff', 
+                        boxShadow: '0 0 14px rgba(255, 255, 255, 0.9)', 
+                        zIndex: 20,
+                        transform: 'translateX(-50%)',
+                        cursor: 'pointer'
+                      }}
+                      title={`Canlı Fiyat: ${currencySym}${fmt(curPrice)}`}
+                    >
+                      {/* Downward triangle arrow indicator */}
+                      <div style={{
+                        position: 'absolute',
+                        top: -6,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: 0,
+                        height: 0,
+                        borderLeft: '4px solid transparent',
+                        borderRight: '4px solid transparent',
+                        borderTop: '5px solid #ffffff'
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Sub-labels underneath track */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: 'var(--text-muted)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ color: 'var(--emerald)' }}>◀ Fırsat (Güvenlik Marjı)</span>
+                    <span style={{ color: '#38bdf8' }}>Makul Büyüme Koridoru</span>
+                    <span style={{ color: 'var(--amber)' }}>Doygun / Primli Bölge ▶</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
       </div>
