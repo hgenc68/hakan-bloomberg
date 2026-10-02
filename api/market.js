@@ -78,6 +78,77 @@ function resolveSymbol(raw) {
   return upper;
 }
 
+async function fetchMarketNews() {
+  try {
+    const trPromise = fetch('https://news.google.com/rss/search?q=(BIST+OR+TCMB+OR+borsa+OR+enflasyon)+when:3d&hl=tr&gl=TR&ceid=TR:tr', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    }).then(r => r.text()).catch(() => '');
+
+    const globalPromise = fetch('https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+stocks+OR+crypto)+when:2d&hl=en-US&gl=US&ceid=US:en', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    }).then(r => r.text()).catch(() => '');
+
+    const [trXml, globalXml] = await Promise.all([trPromise, globalPromise]);
+
+    function parseXmlItems(xml, defaultCategory) {
+      if (!xml) return [];
+      const itemMatches = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+      return itemMatches.slice(0, 10).map((item, idx) => {
+        let title = (item.match(/<title>(.*?)<\/title>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+        const link = (item.match(/<link>(.*?)<\/link>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+        const pubDate = (item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '').trim();
+        let source = (item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+
+        const dashIdx = title.lastIndexOf(' - ');
+        if (dashIdx > 0) {
+          if (!source) source = title.substring(dashIdx + 3).trim();
+          title = title.substring(0, dashIdx).trim();
+        }
+
+        const lower = (title + ' ' + (source || '')).toLowerCase();
+        let tag = defaultCategory;
+        if (lower.includes('bist') || lower.includes('borsa') || lower.includes('thyao') || lower.includes('eregl') || lower.includes('asels') || lower.includes('kap')) {
+          tag = 'BIST & KAP';
+        } else if (lower.includes('tcmb') || lower.includes('merkez bank') || lower.includes('faiz') || lower.includes('enflasyon') || lower.includes('şimşek') || lower.includes('tüik')) {
+          tag = 'TCMB & Makro';
+        } else if (lower.includes('nvidia') || lower.includes('chip') || lower.includes('çip') || lower.includes('ai') || lower.includes('yapay zeka') || lower.includes('tsmc') || lower.includes('semiconductor')) {
+          tag = 'Teknoloji & AI';
+        } else if (lower.includes('bitcoin') || lower.includes('kripto') || lower.includes('crypto') || lower.includes('altın') || lower.includes('gold') || lower.includes('petrol')) {
+          tag = 'Kripto & Emtia';
+        } else if (lower.includes('fed') || lower.includes('fomc') || lower.includes('powell') || lower.includes('wall st') || lower.includes('s&p')) {
+          tag = 'Fed & Wall St';
+        }
+
+        const bearishWords = ['düştü', 'geriledi', 'kayıp', 'baskı', 'satıcılı', 'risk', 'çöktü', 'alarm', 'slump', 'falls', 'tumbles', 'drop', 'warning'];
+        const bull = !bearishWords.some(w => lower.includes(w));
+
+        return {
+          id: `${defaultCategory.replace(/\s+/g, '')}-${idx}-${Date.now()}`,
+          title,
+          link,
+          source: source || 'Piyasa',
+          pubDate,
+          tag,
+          bull
+        };
+      }).filter(n => n.title.length > 5);
+    }
+
+    const trItems = parseXmlItems(trXml, 'BIST & TCMB');
+    const globalItems = parseXmlItems(globalXml, 'Fed & Küresel');
+
+    const combined = [];
+    const maxLen = Math.max(trItems.length, globalItems.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (trItems[i]) combined.push(trItems[i]);
+      if (globalItems[i]) combined.push(globalItems[i]);
+    }
+    return combined;
+  } catch (err) {
+    return [];
+  }
+}
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -92,7 +163,21 @@ export default async function handler(req, res) {
 
   const { symbols, type } = req.query;
 
-  // Handle pulse request (Fear & Greed, VIX, etc.)
+  // Handle dedicated news request
+  if (type === 'news') {
+    try {
+      const news = await fetchMarketNews();
+      return res.status(200).json({
+        status: 'success',
+        news,
+        timestamp: Date.now()
+      });
+    } catch (err) {
+      return res.status(500).json({ status: 'error', message: err.message });
+    }
+  }
+
+  // Handle pulse request (Fear & Greed, VIX, news, etc.)
   if (type === 'pulse') {
     try {
       let fearGreed = { score: 35, rating: 'fear', previousClose: 33 };
@@ -121,10 +206,17 @@ export default async function handler(req, res) {
         }
       } catch (e) {}
 
+      // Fetch fresh news in parallel or background
+      let news = [];
+      try {
+        news = await fetchMarketNews();
+      } catch (e) {}
+
       return res.status(200).json({
         status: 'success',
         fearGreed,
         vix,
+        news,
         timestamp: Date.now()
       });
     } catch (err) {

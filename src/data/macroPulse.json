@@ -18,7 +18,13 @@
   },
   "inflation": {
     "usa": 2.28,
-    "turkey": 58.9
+    "turkey": 31.51
+  },
+  "rates": {
+    "tcmb": 37.00,
+    "tcmb_text": "10 Eylül PPK: Sabit • Sonraki: 22 Ekim",
+    "fed": "4.75 - 5.00",
+    "kur_kalkani": 82.4
   },
   "equities_perf": [
     {

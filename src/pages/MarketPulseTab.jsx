@@ -1,20 +1,134 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Globe, TrendingUp, TrendingDown, Activity, AlertTriangle, Newspaper, Flame, ShieldCheck } from 'lucide-react';
+import { Globe, TrendingUp, TrendingDown, Activity, AlertTriangle, Newspaper, Flame, ShieldCheck, RefreshCw, ExternalLink } from 'lucide-react';
 import macroPulseData from '../data/macroPulse.json';
+
+const SEED_NEWS = [
+  {
+    id: 'seed-1',
+    timeAgoMin: 14,
+    source: 'TCMB / PPK',
+    title: 'TCMB Para Politikası Kurulu: Politika faizi %37.00 seviyesinde sabit tutuldu. Bir sonraki faiz kararı 22 Ekim 2026 PPK toplantısında açıklanacak.',
+    tag: 'TCMB & Makro',
+    bull: true,
+    link: 'https://www.tcmb.gov.tr'
+  },
+  {
+    id: 'seed-2',
+    timeAgoMin: 28,
+    source: 'Bloomberght',
+    title: 'Borsa İstanbul BIST 100 endeksi 12.250 direncini test ediyor; yabancı sermaye girişleri teknoloji ve ihracatçı şirketleri destekliyor.',
+    tag: 'BIST & KAP',
+    bull: true,
+    link: 'https://www.bloomberght.com'
+  },
+  {
+    id: 'seed-3',
+    timeAgoMin: 42,
+    source: 'Reuters',
+    title: 'Fed FOMC Karar Metni: Enflasyon göstergelerindeki dengelenme faiz indirim patikasını destekliyor; fonlama faizi %4.75-%5.00 bandında.',
+    tag: 'Fed & Wall St',
+    bull: true,
+    link: 'https://www.reuters.com'
+  },
+  {
+    id: 'seed-4',
+    timeAgoMin: 58,
+    source: 'TÜİK',
+    title: 'Yıllık enflasyon Ağustos ayında %31.51 olarak gerçekleşti. Eylül ayı resmi TÜFE verisi 5 Ekim Pazartesi günü açıklanacak.',
+    tag: 'TCMB & Makro',
+    bull: true,
+    link: 'https://www.tuik.gov.tr'
+  },
+  {
+    id: 'seed-5',
+    timeAgoMin: 76,
+    source: 'Bloomberg',
+    title: 'TSMC & Nvidia: Yeni nesil Blackwell mimarisi yapay zeka çip sevkiyat kapasitesi rekor küresel veri merkezi talebiyle genişletildi.',
+    tag: 'Teknoloji & AI',
+    bull: true,
+    link: 'https://www.bloomberg.com'
+  },
+  {
+    id: 'seed-6',
+    timeAgoMin: 98,
+    source: 'KAP',
+    title: 'THYAO: 2026 yılı 3. çeyrek yolcu doluluk oranları, uluslararası hat genişlemeleri ve filo modernizasyon raporu KAP\'a bildirildi.',
+    tag: 'BIST & KAP',
+    bull: true,
+    link: 'https://www.kap.org.tr'
+  },
+  {
+    id: 'seed-7',
+    timeAgoMin: 125,
+    source: 'CoinDesk',
+    title: 'Bitcoin kurumsal rezerv alımları ve spot ETF girişleriyle güçlü duruşunu korurken, dijital varlık piyasasında likidite artışı izleniyor.',
+    tag: 'Kripto & Emtia',
+    bull: true,
+    link: 'https://www.coindesk.com'
+  },
+  {
+    id: 'seed-8',
+    timeAgoMin: 160,
+    source: 'Foreks',
+    title: 'Altın (Ons) 2.650$ üzerinde güçlü seyrini sürdürüyor; merkez bankaları rezerv çeşitlendirme alımları devam ediyor.',
+    tag: 'Kripto & Emtia',
+    bull: true,
+    link: 'https://www.foreks.com'
+  }
+];
 
 export default function MarketPulseTab() {
   const { marketQuotes, usdtry, currentCurrency } = useApp();
   const [pulse, setPulse] = useState(macroPulseData);
+  const [newsItems, setNewsItems] = useState(() => {
+    const now = Date.now();
+    return SEED_NEWS.map(n => ({
+      ...n,
+      timeMs: now - n.timeAgoMin * 60 * 1000
+    }));
+  });
+  const [newsFilter, setNewsFilter] = useState('ALL');
+  const [isRefreshingNews, setIsRefreshingNews] = useState(false);
+  const [isLiveNewsActive, setIsLiveNewsActive] = useState(false);
+  const [lastNewsUpdated, setLastNewsUpdated] = useState(null);
 
-  // Attempt live refresh of pulse via API
-  useEffect(() => {
-    async function loadLivePulse() {
-      try {
-        const res = await fetch('/api/market?type=pulse');
-        if (res.ok) {
-          const j = await res.json();
-          if (j.status === 'success' && j.fearGreed) {
+  // Helper for dynamic relative time
+  const formatTimeAgo = (dateInput) => {
+    if (!dateInput) return 'Az önce';
+    const time = typeof dateInput === 'number' ? dateInput : new Date(dateInput).getTime();
+    if (isNaN(time)) return 'Az önce';
+    const diffSec = Math.max(0, Math.floor((Date.now() - time) / 1000));
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHours = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMin < 2) return 'Az önce';
+    if (diffMin < 60) return `${diffMin} dk önce`;
+    if (diffHours < 24) return `${diffHours} sa önce`;
+    if (diffDays === 1) return 'Dün';
+    return `${diffDays} gün önce`;
+  };
+
+  // Helper for category badge styling
+  const getTagBadgeStyle = (tag = '') => {
+    if (tag.includes('BIST')) return { bg: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: 'rgba(56, 189, 248, 0.3)' };
+    if (tag.includes('TCMB') || tag.includes('Makro')) return { bg: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: 'rgba(234, 179, 8, 0.3)' };
+    if (tag.includes('Fed') || tag.includes('Wall St')) return { bg: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: 'rgba(168, 85, 247, 0.3)' };
+    if (tag.includes('Teknoloji') || tag.includes('AI')) return { bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' };
+    if (tag.includes('Kripto') || tag.includes('Emtia')) return { bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: 'rgba(16, 185, 129, 0.3)' };
+    return { bg: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' };
+  };
+
+  // Live refresh of pulse & news via API
+  const fetchPulseAndNews = async (showLoading = false) => {
+    if (showLoading) setIsRefreshingNews(true);
+    try {
+      const res = await fetch('/api/market?type=pulse');
+      if (res.ok) {
+        const j = await res.json();
+        if (j.status === 'success') {
+          if (j.fearGreed) {
             setPulse(prev => ({
               ...prev,
               fear_greed_score: Math.round(j.fearGreed.score || prev.fear_greed_score),
@@ -25,10 +139,33 @@ export default function MarketPulseTab() {
               }
             }));
           }
+          if (Array.isArray(j.news) && j.news.length > 0) {
+            const mapped = j.news.map(item => ({
+              ...item,
+              timeMs: item.pubDate ? new Date(item.pubDate).getTime() : Date.now()
+            }));
+            setNewsItems(mapped);
+            setIsLiveNewsActive(true);
+            setLastNewsUpdated(new Date());
+          }
         }
-      } catch (err) {}
+      }
+    } catch (err) {
+      console.warn('Live pulse/news fetch error:', err);
+    } finally {
+      if (showLoading) {
+        setTimeout(() => setIsRefreshingNews(false), 400);
+      }
     }
-    loadLivePulse();
+  };
+
+  useEffect(() => {
+    fetchPulseAndNews(false);
+    // Auto-refresh every 3 minutes
+    const interval = setInterval(() => {
+      fetchPulseAndNews(false);
+    }, 180000);
+    return () => clearInterval(interval);
   }, []);
 
   const fgScore = pulse?.fear_greed_score || 35;
@@ -73,16 +210,15 @@ export default function MarketPulseTab() {
     { name: 'Dolar / TL', symbol: 'USDTRY=X', price: usdtry || 49.03, today: marketQuotes['USDTRY=X']?.changePct || 0.12, d5: 0.45, m1: 1.85, ytd: 18.40, y1: 32.10 }
   ];
 
-  const newsItems = [
-    { time: '14:10', source: 'Bloomberg', title: 'Fed FOMC Karar Metni: Enflasyon göstergelerindeki dengelenme faiz indirim patikasını destekliyor; istihdam piyasası yakından izleniyor.', tag: 'Fed & Makro', bull: true },
-    { time: '13:45', source: 'KAP', title: 'THYAO: 2026 yılı 3. çeyrek yolcu doluluk oranları ve filo genişleme raporu açıklandı.', tag: 'BIST Havacılık', bull: true },
-    { time: '13:20', source: 'Reuters', title: 'TCMB Para Politikası Kurulu: Aylık enflasyon ana eğiliminde kalıcı düşüş sağlanana kadar sıkı para politikası duruşu korunacak.', tag: 'TCMB / Faiz', bull: false },
-    { time: '12:55', source: 'Bloomberg', title: 'TSM & NVDA: Yeni nesil yapay zeka çip mimarileri için sipariş teslimat takvimi rekor küresel taleple öne çekildi.', tag: 'Yarı İletken', bull: true },
-    { time: '12:30', source: 'KAP', title: 'EREGL: Yüksek katma değerli yeşil çelik tesisi yatırımı ve Sanayi Bakanlığı teşvik belgesi onayı tamamlandı.', tag: 'BIST Sanayi', bull: true },
-    { time: '11:50', source: 'CoinDesk', title: 'Bitcoin 83.000$ üzerinde konsolide olurken kurumsal ETF girişleri ve rezerv çeşitlendirme stratejileri rekor seviyede.', tag: 'Kripto / ETF', bull: true },
-    { time: '11:15', source: 'Foreks', title: 'ABD Truflation bağımsız zincir üstü enflasyon metriği yıllık %2.25 bandında resmi hedefe yakınsadı.', tag: 'Enflasyon', bull: true },
-    { time: '10:40', source: 'Foreks', title: 'BIST 100: Kurumsal yabancı girişleri ve teknoloji hisselerindeki güçlü bilanço beklentisiyle yükseliş trendi korunuyor.', tag: 'BIST 100', bull: true }
-  ];
+  const filteredNews = newsItems.filter(item => {
+    if (newsFilter === 'ALL') return true;
+    if (newsFilter === 'BIST') return item.tag?.includes('BIST');
+    if (newsFilter === 'TCMB') return item.tag?.includes('TCMB') || item.tag?.includes('Makro');
+    if (newsFilter === 'FED') return item.tag?.includes('Fed') || item.tag?.includes('Wall St');
+    if (newsFilter === 'TECH') return item.tag?.includes('Teknoloji') || item.tag?.includes('AI');
+    if (newsFilter === 'CRYPTO') return item.tag?.includes('Kripto') || item.tag?.includes('Emtia');
+    return true;
+  });
 
   return (
     <div className="tab-pane active" style={{ animation: 'fadeIn 0.25s ease' }}>
@@ -303,22 +439,48 @@ export default function MarketPulseTab() {
             </div>
           </div>
 
-          {/* Macro Rates Summary Card */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {/* Macro Rates Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>TCMB POLİTİKA FAİZİ</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--amber)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>%50.00</div>
-              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Sıkılaştırma / Dezenflasyon</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>TCMB POLİTİKA FAİZİ</span>
+                <span className="nav-badge emerald" style={{ fontSize: 8.5, padding: '1px 6px' }}>GÜNCEL</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--amber)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                %{pulse?.rates?.tcmb ? Number(pulse.rates.tcmb).toFixed(2) : '37.00'}
+              </div>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
+                {pulse?.rates?.tcmb_text || '10 Eylül PPK: Sabit • Sonraki: 22 Ekim'}
+              </div>
             </div>
+
             <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>FED FONLAMA FAİZİ</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>%4.75 - %5.00</div>
-              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Faiz İndirim Döngüsü</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                %{pulse?.rates?.fed || '4.75 - 5.00'}
+              </div>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Faiz İndirim Patikası</div>
             </div>
+
+            <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>TÜİK YILLIK TÜFE</span>
+                <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>AĞUSTOS</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                %{pulse?.inflation?.turkey ? Number(pulse.inflation.turkey).toFixed(2) : '31.51'}
+              </div>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
+                Eylül Verisi: 5 Ekim Pazartesi
+              </div>
+            </div>
+
             <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>DOĞAL KUR KALKANI</div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>%82.4</div>
-              <div style={{ fontSize: 9.5, color: 'var(--emerald)' }}>🛡️ Tam Korumalı Zırh</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                %{pulse?.rates?.kur_kalkani ? Number(pulse.rates.kur_kalkani).toFixed(1) : '82.4'}
+              </div>
+              <div style={{ fontSize: 9.5, color: 'var(--emerald)' }}>🛡️ Döviz / Altın Zırhı</div>
             </div>
           </div>
 
@@ -328,45 +490,167 @@ export default function MarketPulseTab() {
 
       {/* Live Financial & KAP News Feed Card */}
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Newspaper size={16} className="text-cyan" />
-            <span>CANLI FİNANS & KAP HABER AKIŞI</span>
-            <span className="nav-badge cyan" style={{ fontSize: 9, padding: '1px 6px' }}>GERÇEK ZAMANLI</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Newspaper size={16} className="text-cyan" />
+              <span>CANLI FİNANS & KAP HABER AKIŞI</span>
+            </div>
+            <span className={`nav-badge ${isLiveNewsActive ? 'emerald' : 'cyan'}`} style={{ fontSize: 9, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: isLiveNewsActive ? '#10b981' : '#38bdf8', display: 'inline-block' }} />
+              {isLiveNewsActive ? 'CANLI RSS / API AKTİF' : 'GÜNCEL AKIŞ'}
+            </span>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            BIST & Küresel Piyasa Gelişmeleri
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {lastNewsUpdated && (
+              <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                Son Güncelleme: {lastNewsUpdated.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            )}
+            <button
+              onClick={() => fetchPulseAndNews(true)}
+              disabled={isRefreshingNews}
+              className="btn btn-secondary"
+              style={{
+                fontSize: 11,
+                padding: '5px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#0c101d',
+                border: '1px solid var(--border)',
+                cursor: isRefreshingNews ? 'wait' : 'pointer',
+                borderRadius: 4,
+                color: '#e2e8f0'
+              }}
+            >
+              <RefreshCw size={12} style={{ animation: isRefreshingNews ? 'spin 1s linear infinite' : 'none' }} />
+              <span>{isRefreshingNews ? 'Yenileniyor...' : 'Canlı Akışı Yenile'}</span>
+            </button>
           </div>
         </div>
 
+        {/* Category Filters */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {[
+            { id: 'ALL', label: 'Tümü' },
+            { id: 'BIST', label: 'BIST & KAP' },
+            { id: 'TCMB', label: 'TCMB & Makro' },
+            { id: 'FED', label: 'Fed & Wall St' },
+            { id: 'TECH', label: 'Teknoloji & AI' },
+            { id: 'CRYPTO', label: 'Kripto & Emtia' }
+          ].map(f => {
+            const isSel = newsFilter === f.id;
+            const count = newsItems.filter(item => {
+              if (f.id === 'ALL') return true;
+              if (f.id === 'BIST') return item.tag?.includes('BIST');
+              if (f.id === 'TCMB') return item.tag?.includes('TCMB') || item.tag?.includes('Makro');
+              if (f.id === 'FED') return item.tag?.includes('Fed') || item.tag?.includes('Wall St');
+              if (f.id === 'TECH') return item.tag?.includes('Teknoloji') || item.tag?.includes('AI');
+              if (f.id === 'CRYPTO') return item.tag?.includes('Kripto') || item.tag?.includes('Emtia');
+              return true;
+            }).length;
+
+            return (
+              <button
+                key={f.id}
+                onClick={() => setNewsFilter(f.id)}
+                style={{
+                  fontSize: 11,
+                  fontWeight: isSel ? 700 : 500,
+                  padding: '4px 11px',
+                  borderRadius: 20,
+                  background: isSel ? 'var(--cyan)' : '#090d16',
+                  color: isSel ? '#000' : 'var(--text-muted)',
+                  border: isSel ? '1px solid var(--cyan)' : '1px solid var(--border)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                <span>{f.label}</span>
+                <span style={{
+                  fontSize: 9,
+                  padding: '1px 5px',
+                  borderRadius: 10,
+                  background: isSel ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.08)',
+                  color: isSel ? '#000' : 'var(--text-muted)',
+                  fontWeight: 800
+                }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* News Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 10 }}>
-          {newsItems.map((n, i) => (
-            <div
-              key={i}
-              style={{
-                background: '#090d16',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                padding: '10px 12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{n.time}</span>
-                  <span className={`nav-badge ${n.bull ? 'emerald' : 'amber'}`} style={{ fontSize: 9, padding: '0px 6px' }}>
-                    {n.source}
-                  </span>
+          {filteredNews.map((n, i) => {
+            const badgeStyle = getTagBadgeStyle(n.tag);
+            const timeAgo = formatTimeAgo(n.timeMs || n.pubDate);
+            return (
+              <a
+                key={n.id || i}
+                href={n.link || '#'}
+                target={n.link ? '_blank' : '_self'}
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: 'none',
+                  background: '#090d16',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  padding: '11px 13px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  transition: 'border-color 0.15s ease, transform 0.15s ease',
+                  cursor: n.link ? 'pointer' : 'default'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.transform = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                      ⏱️ {timeAgo}
+                    </span>
+                    <span className={`nav-badge ${n.bull ? 'emerald' : 'amber'}`} style={{ fontSize: 8.5, padding: '0px 6px' }}>
+                      {n.source}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span
+                      style={{
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        padding: '1px 7px',
+                        borderRadius: 3,
+                        background: badgeStyle.bg,
+                        color: badgeStyle.color,
+                        border: `1px solid ${badgeStyle.border}`
+                      }}
+                    >
+                      {n.tag}
+                    </span>
+                    {n.link && <ExternalLink size={11} style={{ color: 'var(--text-muted)' }} />}
+                  </div>
                 </div>
-                <span style={{ fontSize: 10, color: 'var(--cyan)', fontWeight: 700 }}>#{n.tag}</span>
-              </div>
-              <div style={{ fontSize: 11.5, color: '#e2e8f0', lineHeight: 1.4, fontWeight: 500 }}>
-                {n.title}
-              </div>
-            </div>
-          ))}
+                <div style={{ fontSize: 12, color: '#e2e8f0', lineHeight: 1.45, fontWeight: 500 }}>
+                  {n.title}
+                </div>
+              </a>
+            );
+          })}
         </div>
       </div>
     </div>
