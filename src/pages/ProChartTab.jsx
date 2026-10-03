@@ -577,6 +577,12 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
            ['BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 'TCELL', 'PETKM', 'TTKOM', 'ENKAI', 'KOZAL', 'SASA', 'HEKTS', 'KONTR'].includes(cleanActiveTicker);
   }, [cleanActiveTicker]);
 
+  // Direct TradingView web link (opens symbol with full Pine Editor on tradingview.com)
+  const tvExternalUrl = useMemo(() => {
+    const sym = getTradingViewSymbol(currentSymbol);
+    return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(sym)}`;
+  }, [currentSymbol]);
+
   // Find portfolio items directly from user's current holdings
   const portfolioItems = useMemo(() => {
     const allHoldings = portfolioSummary?.allHoldings || [];
@@ -1089,6 +1095,30 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           >
             <span>📐 EMA 50 & Auto Fib</span>
           </button>
+
+          {/* 🌐 TradingView Web Site Link (Pine Editor) */}
+          <a
+            href={tvExternalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="chip-btn"
+            style={{ 
+              fontSize: 10, 
+              padding: '4px 9px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 4,
+              background: 'rgba(59, 130, 246, 0.12)',
+              borderColor: 'rgba(59, 130, 246, 0.45)',
+              color: '#93c5fd',
+              textDecoration: 'none',
+              fontWeight: 600
+            }}
+            title="TradingView resmi sitesinde aç (En altta Pine Düzenleyici sekmesi yer alır)"
+          >
+            <ExternalLink size={12} />
+            <span>TradingView'de Aç</span>
+          </a>
 
           {/* ⛶ Real True Fullscreen Button */}
           <button
@@ -1880,17 +1910,52 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 </div>
               </div>
 
-              {/* Instructions Box */}
-              <div style={{ background: 'rgba(30, 41, 59, 0.5)', border: '1px solid rgba(0, 229, 255, 0.2)', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--cyan)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>🚀 Nasıl Eklenir? (TradingView Adımları)</span>
+              {/* Instructions Box with Explanations */}
+              <div style={{ background: 'rgba(30, 41, 59, 0.65)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: 8, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--cyan)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>📌 Neden Bizim Grafiğin Altında Pine Düzenleyici Yok?</span>
+                  </div>
+                  <a
+                    href={tvExternalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chip-btn"
+                    style={{
+                      fontSize: 11,
+                      padding: '4px 12px',
+                      background: 'rgba(59, 130, 246, 0.25)',
+                      borderColor: '#60a5fa',
+                      color: '#fff',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <ExternalLink size={13} />
+                    <span>TradingView'de Aç & Kodu Ekle</span>
+                  </a>
                 </div>
-                <ol style={{ margin: 0, paddingLeft: 18, fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.6 }}>
-                  <li>Aşağıdaki <strong>"📋 Kodu Kopyala"</strong> butonuna basın.</li>
-                  <li>Grafiğinizin altındaki <strong>"Pine Düzenleyici" (Pine Editor)</strong> sekmesine tıklayın.</li>
-                  <li>Varsayılan metni silip bu kodu yapıştırın ve <strong>"Grafiğe Ekle" (Add to chart)</strong> butonuna basın.</li>
-                  <li>İndikatör adının yanındaki <strong>⚙️ (Ayarlar)</strong> simgesine tıklayarak EMA ve Fibonacci parametrelerini dilediğiniz gibi özelleştirin.</li>
-                </ol>
+
+                <div style={{ fontSize: 10.5, color: '#e2e8f0', lineHeight: 1.55 }}>
+                  TradingView, dış sitelere gömülen widget pencerelerinde (lisans ve hesap güvenliği gereği) alt kısımdaki <strong>"Pine Düzenleyici"</strong> sekmesini bilerek sunmaz. Pine Düzenleyici yalnızca resmi <strong>tradingview.com</strong> web sitesinde yer alır.
+                </div>
+
+                <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 8 }}>
+                  <strong style={{ fontSize: 11, color: '#fbbf24' }}>💡 2 Farklı Kullanım Seçeneğiniz:</strong>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.6 }}>
+                    <li>
+                      <strong>1. Yol (Resmi TradingView'e Eklemek):</strong> Aşağıdaki <em>"📋 Kodu Kopyala"</em> butonuna basın. Ardından yukarıdaki <em>"TradingView'de Aç & Kodu Ekle"</em> butonuna tıklayın. Açılan sitenin en altındaki <strong>"Pine Düzenleyici" (Pine Editor)</strong> sekmesine kodu yapıştırıp <strong>"Grafiğe Ekle"</strong> deyin.
+                    </li>
+                    <li>
+                      <strong>2. Yol (Bizim Terminalimizde Doğrudan Kullanmak):</strong>
+                      <br />• <strong>EMA 50 için:</strong> Göstergeler çubuğumuzdaki <strong>"+ EMA"</strong> butonuna basmanız yeterlidir.
+                      <br />• <strong>Fibonacci için:</strong> Grafiğimizin sol dikey araç çubuğundaki <strong>3. sıradaki simgeye (veya Alt + F kısayoluna)</strong> tıklayarak dilediğiniz dip ve tepeye anında TradingView'in profesyonel Fibonacci aracını çekebilirsiniz! Çizgiye çift tıklayarak renkleri ve seviyeleri özelleştirebilirsiniz.
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               {/* Code Box with Copy Button */}
