@@ -13,7 +13,8 @@ import {
   Briefcase,
   Wallet,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Radio
 } from 'lucide-react';
 
 export default function Sidebar({ collapsed, onToggle }) {
@@ -30,6 +31,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   const portfolioTabs = [
     { id: 'overview', label: 'Portföy (Özet)', icon: BarChart3, category: 'Varlık' },
     { id: 'holdings', label: 'Pozisyonlar', icon: ListFilter, badge: `${holdingsCount}`, badgeColor: 'amber', category: 'Varlık' },
+    { id: 'broadcast_studio', label: 'Yayın Stüdyosu', icon: Radio, badge: 'PROMPTER', badgeColor: 'rose', category: 'Medya' },
     { id: 'pro_chart', label: 'Teknik Pro Grafik', icon: LineChart, badge: 'TV', badgeColor: 'cyan', category: 'Analiz' },
     { id: 'shield', label: 'Kur Kalkanı', icon: ShieldCheck, badge: 'Zırh', badgeColor: 'gold', category: 'Koruma' },
     { id: 'benchmark', label: 'Benchmark', icon: LineChart, badge: 'GIPS', badgeColor: 'cyan', category: 'Analiz' },

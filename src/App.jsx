@@ -16,6 +16,7 @@ import TradeLedgerTab from './pages/TradeLedgerTab';
 import ManageTab from './pages/ManageTab';
 import PotentialStocksTab from './pages/PotentialStocksTab';
 import ProChartTab from './pages/ProChartTab';
+import BroadcastStudioTab from './pages/BroadcastStudioTab';
 import {
   AddHoldingModal,
   SellHoldingModal,
@@ -101,6 +102,8 @@ function MainTerminal() {
               onSelectTicker={(t) => setSelectedStockTicker(t)}
             />
           )}
+
+          {activeTab === 'broadcast_studio' && <BroadcastStudioTab />}
 
           {activeTab === 'market' && <MarketPulseTab />}
 
