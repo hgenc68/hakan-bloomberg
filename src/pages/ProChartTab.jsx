@@ -19,8 +19,14 @@ import {
   TrendingUp,
   TrendingDown,
   Info,
-  Maximize2
+  Maximize2,
+  Minimize2,
+  Sliders,
+  AlertTriangle,
+  BarChart3,
+  X
 } from 'lucide-react';
+import { Line, Bar } from 'react-chartjs-2';
 import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
 
@@ -66,15 +72,26 @@ export function getTradingViewSymbol(ticker) {
     return `BIST:${clean}`;
   }
 
-  // NYSE / AMEX Known Symbols
-  const nyseKnown = ['TSM', 'ABBV', 'XOM', 'SPY', 'DIA', 'KO', 'DIS', 'NKE', 'JNJ', 'PFE', 'UNH', 'JPM', 'V', 'MA', 'WMT'];
+  // ETFs (Clean symbols or verified exchanges)
+  if (clean === 'SPCX') return 'SPCX';
+  if (clean === 'CUSD') return 'AMEX:CUSD';
+  if (clean === 'DRAM') return 'DRAM';
+  if (clean === 'SOXX') return 'NASDAQ:SOXX';
+  if (clean === 'SMH') return 'NASDAQ:SMH';
+  if (clean === 'QQQ') return 'NASDAQ:QQQ';
+  if (clean === 'SPY') return 'AMEX:SPY';
+  if (clean === 'IWM') return 'AMEX:IWM';
+  if (clean === 'TLT') return 'NASDAQ:TLT';
+  if (clean === 'GLD') return 'AMEX:GLD';
+  if (clean === 'URA') return 'AMEX:URA';
+  if (clean === 'XLE') return 'AMEX:XLE';
+  if (clean === 'XLK') return 'AMEX:XLK';
+  if (clean === 'BOTZ') return 'NASDAQ:BOTZ';
+
+  // NYSE Known Symbols
+  const nyseKnown = ['TSM', 'ABBV', 'XOM', 'DIA', 'KO', 'DIS', 'NKE', 'JNJ', 'PFE', 'UNH', 'JPM', 'V', 'MA', 'WMT'];
   if (nyseKnown.includes(clean)) {
     return `NYSE:${clean}`;
-  }
-
-  const amexKnown = ['SPCX', 'SPY', 'IVV', 'VOO', 'GLD', 'SLV', 'GDX', 'XLE', 'XLF', 'XLK', 'URA'];
-  if (amexKnown.includes(clean)) {
-    return `AMEX:${clean}`;
   }
 
   // Default to NASDAQ for US tech / growth equities
@@ -84,23 +101,24 @@ export function getTradingViewSymbol(ticker) {
 // Preset Watchlists Catalog
 const PRESET_WATCHLISTS = {
   us_stocks: [
-    { ticker: 'NVDA', name: 'Nvidia Corp', desc: 'AI Çip & Veri Merkezi Mimarı', tv: 'NASDAQ:NVDA' },
+    { ticker: 'NVDA', name: 'Nvidia Corp', desc: 'AI Çip & Veri Merkezi Lideri', tv: 'NASDAQ:NVDA' },
     { ticker: 'TSM', name: 'TSMC', desc: 'Küresel Çip Dökümhane Tekeli', tv: 'NYSE:TSM' },
-    { ticker: 'ABBV', name: 'AbbVie Inc', desc: 'Biyofarma & Sağlam Temettü', tv: 'NYSE:ABBV' },
+    { ticker: 'ABBV', name: 'AbbVie Inc', desc: 'Biyofarma & Temettü Devi', tv: 'NYSE:ABBV' },
     { ticker: 'XOM', name: 'Exxon Mobil', desc: 'Entegre Enerji & Nakit Akışı', tv: 'NYSE:XOM' },
     { ticker: 'AAPL', name: 'Apple Inc', desc: 'Tüketici Elektroniği & Ekosistem', tv: 'NASDAQ:AAPL' },
     { ticker: 'MSFT', name: 'Microsoft Corp', desc: 'Bulut Bilişim & Kurumsal AI', tv: 'NASDAQ:MSFT' },
-    { ticker: 'GOOGL', name: 'Alphabet Inc', desc: 'Arama Motoru, Bulut & Yapay Zeka', tv: 'NASDAQ:GOOGL' },
+    { ticker: 'GOOGL', name: 'Alphabet Inc', desc: 'Arama Motoru, Bulut & AI', tv: 'NASDAQ:GOOGL' },
     { ticker: 'AMZN', name: 'Amazon.com', desc: 'E-Ticaret & AWS Bulut Lideri', tv: 'NASDAQ:AMZN' },
     { ticker: 'META', name: 'Meta Platforms', desc: 'Sosyal Ağlar & Llama AI', tv: 'NASDAQ:META' },
-    { ticker: 'AMD', name: 'Advanced Micro Devices', desc: 'x86 CPU & MI300 AI Hızlandırıcı', tv: 'NASDAQ:AMD' },
-    { ticker: 'PLTR', name: 'Palantir Technologies', desc: 'Savunma & Kurumsal AI İşletim Sistemi', tv: 'NASDAQ:PLTR' },
+    { ticker: 'AMD', name: 'Advanced Micro Devices', desc: 'x86 CPU & MI300 Hızlandırıcı', tv: 'NASDAQ:AMD' },
+    { ticker: 'PLTR', name: 'Palantir Technologies', desc: 'Savunma & Kurumsal AI Sistemi', tv: 'NASDAQ:PLTR' },
     { ticker: 'AVGO', name: 'Broadcom Inc', desc: 'Özel AI ASIC & Ağ Donanımları', tv: 'NASDAQ:AVGO' },
     { ticker: 'TSLA', name: 'Tesla Inc', desc: 'Elektrikli Araç, FSD & Otonomi', tv: 'NASDAQ:TSLA' }
   ],
   etf: [
-    { ticker: 'SPCX', name: 'CrossingBridge Pre-Merger SPAC', desc: 'Doğal Nakit Kalkanı & Getiri Sepeti', tv: 'AMEX:SPCX' },
-    { ticker: 'DRAM', name: 'First Trust SkyBridge Crypto & Tech', desc: 'Yüksek Beta Kripto & Teknoloji', tv: 'NASDAQ:DRAM' },
+    { ticker: 'SPCX', name: 'CrossingBridge SPAC (CUSD)', desc: 'Nakit Kalkanı & Getiri Sepeti', tv: 'SPCX' },
+    { ticker: 'CUSD', name: 'CrossingBridge Ultra-Short', desc: 'SPCX Fonunun Yeni Resmi Tickerı', tv: 'AMEX:CUSD' },
+    { ticker: 'DRAM', name: 'Roundhill Memory & Tech ETF', desc: 'Yarı İletken Bellek Endeksi', tv: 'DRAM' },
     { ticker: 'SOXX', name: 'iShares Semiconductor ETF', desc: 'ABD Yarı İletken Sanayi Endeksi', tv: 'NASDAQ:SOXX' },
     { ticker: 'SMH', name: 'VanEck Semiconductor ETF', desc: 'Ağırlıklı Yarı İletken Sepeti', tv: 'NASDAQ:SMH' },
     { ticker: 'QQQ', name: 'Invesco QQQ Trust', desc: 'Nasdaq 100 Teknoloji Devleri', tv: 'NASDAQ:QQQ' },
@@ -115,7 +133,7 @@ const PRESET_WATCHLISTS = {
   bist: [
     { ticker: 'BYDNR.IS', name: 'Baydöner Restoranları', desc: 'Gıda & Hızlı Tüketim Zinciri', tv: 'BIST:BYDNR' },
     { ticker: 'TUPRS.IS', name: 'Tüpraş Rafinerileri', desc: 'Stratejik Rafinaj & Temettü Devi', tv: 'BIST:TUPRS' },
-    { ticker: 'THYAO.IS', name: 'Türk Hava Yolları', desc: 'Küresel Havacılık & Yolcu Büyümesi', tv: 'BIST:THYAO' },
+    { ticker: 'THYAO.IS', name: 'Türk Hava Yolları', desc: 'Küresel Havacılık & Yolcu Lideri', tv: 'BIST:THYAO' },
     { ticker: 'ASELS.IS', name: 'Aselsan Savunma', desc: 'Savunma Sanayi & İleri Teknoloji', tv: 'BIST:ASELS' },
     { ticker: 'EREGL.IS', name: 'Ereğli Demir Çelik', desc: 'Sanayi Lokomotifi Çelik Üreticisi', tv: 'BIST:EREGL' },
     { ticker: 'KCHOL.IS', name: 'Koç Holding', desc: 'Sanayi, Enerji, Finans & Otomotiv', tv: 'BIST:KCHOL' },
@@ -162,9 +180,11 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   });
 
   // Watchlist Active Category
-  const [activeCategory, setActiveCategory] = useState('portfolio'); // 'portfolio', 'us_stocks', 'etf', 'bist', 'crypto', 'macro', 'custom'
+  const [activeCategory, setActiveCategory] = useState('portfolio');
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [hideHud, setHideHud] = useState(false);
+  const [chartEngineMode, setChartEngineMode] = useState('tv'); // 'tv' (TradingView) | 'native' (Bloomberg Canvas)
   const [customTickers, setCustomTickers] = useState(() => {
     try {
       const saved = localStorage.getItem('custom_watchlist_tickers');
@@ -174,6 +194,38 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     }
   });
   const [newTickerInput, setNewTickerInput] = useState('');
+
+  // Fullscreen State & Ref
+  const chartWrapperRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Toggle true browser fullscreen
+  const toggleFullscreen = () => {
+    if (!chartWrapperRef.current) return;
+    if (!document.fullscreenElement) {
+      chartWrapperRef.current.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(err => {
+        console.warn('Fullscreen error:', err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      }).catch(err => {
+        console.warn('Exit fullscreen error:', err);
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Persist custom tickers
   useEffect(() => {
@@ -211,8 +263,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const portfolioItems = useMemo(() => {
     const list = portfolioSummary?.enrichedHoldings || [];
     return list.map(h => {
-      const isUS = h.currency === 'USD' || h.isHoldingUSD || Number(h.cost_rate) > 1.5;
-      const clean = (h.ticker || '').toUpperCase();
       return {
         ticker: h.ticker,
         name: h.name || h.ticker,
@@ -260,6 +310,25 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     });
   }, [currentSymbol, portfolioSummary?.enrichedHoldings]);
 
+  // Check if symbol is a BIST stock
+  const isBistStock = useMemo(() => {
+    const clean = currentSymbol.toUpperCase();
+    return clean.endsWith('.IS') || clean.startsWith('BIST:') || [
+      'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
+      'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 'TCELL'
+    ].includes(clean.replace('.IS', '').replace('BIST:', ''));
+  }, [currentSymbol]);
+
+  const cleanBistTicker = useMemo(() => {
+    return currentSymbol.replace('.IS', '').replace('BIST:', '').toUpperCase();
+  }, [currentSymbol]);
+
+  // Native stock data (for Bloomberg canvas fallback)
+  const nativeStockData = useMemo(() => {
+    const clean = currentSymbol.replace('.IS', '').replace('BIST:', '').toUpperCase();
+    return stocksData[clean] || stocksData[currentSymbol] || null;
+  }, [currentSymbol]);
+
   // Quant score lookup for the active symbol
   const activeQuantInfo = useMemo(() => {
     const cleanCurrent = currentSymbol.replace('.IS', '').replace('BIST:', '').replace('NASDAQ:', '').replace('NYSE:', '').replace('AMEX:', '').replace('BINANCE:', '').replace('CRYPTOCAP:', '').replace('CAPITALCOM:', '').replace('CBOE:', '').replace('TVC:', '').replace('OANDA:', '').replace('FX_IDC:', '').toUpperCase();
@@ -272,11 +341,13 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     };
   }, [currentSymbol]);
 
-  // TradingView Widget Injection in container
+  // TradingView Widget Injection
   const containerId = 'tradingview_pro_chart_embed';
   const scriptId = 'tradingview-widget-script';
 
   useEffect(() => {
+    if (chartEngineMode !== 'tv') return;
+
     let isMounted = true;
 
     const initWidget = () => {
@@ -296,7 +367,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           theme: 'dark',
           style: '1', // Candlestick
           locale: 'tr',
-          toolbar_bg: '#080c16',
+          toolbar_bg: '#040711',
           enable_publishing: false,
           hide_side_toolbar: false, // FULL DRAWING TOOLS on left!
           allow_symbol_change: true,
@@ -330,16 +401,100 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return () => {
       isMounted = false;
     };
-  }, [currentSymbol]);
+  }, [currentSymbol, chartEngineMode]);
+
+  // Native Candlestick/Bar Chart Data for BIST / Local Fallback
+  const nativeChartData = useMemo(() => {
+    if (!nativeStockData?.candlestick?.candles) return null;
+    const candles = nativeStockData.candlestick.candles.slice(-60); // Last 60 days
+    return {
+      labels: candles.map(c => c.time),
+      datasets: [
+        {
+          type: 'line',
+          label: 'Kapanış Fiyatı',
+          data: candles.map(c => c.close),
+          borderColor: '#00e5ff',
+          backgroundColor: 'rgba(0, 229, 255, 0.08)',
+          borderWidth: 2,
+          pointRadius: 1,
+          tension: 0.1,
+          yAxisID: 'y'
+        },
+        {
+          type: 'line',
+          label: 'SMA 20',
+          data: candles.map(c => c.sma20),
+          borderColor: '#f59e0b',
+          borderWidth: 1.5,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          yAxisID: 'y'
+        },
+        {
+          type: 'line',
+          label: 'SMA 50',
+          data: candles.map(c => c.sma50),
+          borderColor: '#a855f7',
+          borderWidth: 1.5,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          yAxisID: 'y'
+        },
+        {
+          type: 'bar',
+          label: 'Hacim',
+          data: candles.map(c => c.volume),
+          backgroundColor: candles.map(c => c.close >= c.open ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'),
+          yAxisID: 'yVolume'
+        }
+      ]
+    };
+  }, [nativeStockData]);
+
+  const nativeChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: { color: '#94a3b8', font: { size: 10.5 } }
+      },
+      tooltip: {
+        backgroundColor: '#0f172a',
+        titleColor: '#e2e8f0',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        ticks: { color: '#94a3b8', font: { size: 9.5 } }
+      },
+      y: {
+        position: 'right',
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        ticks: { color: '#00e5ff', font: { size: 10 } }
+      },
+      yVolume: {
+        position: 'left',
+        grid: { display: false },
+        ticks: { display: false },
+        min: 0
+      }
+    }
+  };
 
   return (
-    <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 10 }}>
       
       {/* 🌟 Top Pro Header Bar */}
       <div 
         className="card" 
         style={{ 
-          padding: '12px 18px', 
+          padding: '10px 16px', 
           background: 'linear-gradient(135deg, rgba(8, 12, 22, 0.95), rgba(15, 23, 42, 0.95))', 
           border: '1px solid rgba(0, 229, 255, 0.25)', 
           borderRadius: 8,
@@ -347,28 +502,29 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: 12
+          gap: 10
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(0, 229, 255, 0.12)', border: '1px solid rgba(0, 229, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
-            <LineChart size={19} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(0, 229, 255, 0.12)', border: '1px solid rgba(0, 229, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
+            <LineChart size={18} />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 13.5, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>PRO GRAFİK & TEKNİK ANALİZ İSTASYONU</span>
-              <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>
-                CANLI TRADINGVIEW ENGINE
+              <span className="nav-badge cyan" style={{ fontSize: 9 }}>
+                {chartEngineMode === 'tv' ? 'TRADINGVIEW ENGINE' : 'BLOOMBERG NATIVE'}
               </span>
             </div>
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-              Tam Teşekküllü Çizim Araçları • Sınırsız İndikatörler • Otomatik Portföy Entegrasyonu & Sınırsız İzleme Listeleri
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+              Çizim Araçları • Sınırsız İndikatör • Portföy Maliyet Çizgileri & Sınırsız İzleme Listeleri
             </div>
           </div>
         </div>
 
-        {/* Quick Ticker Chips & Watchlist Toggle */}
+        {/* Quick Shortcuts, Engine Toggle, Fullscreen & Watchlist Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          
           {/* Quick Shortcuts */}
           <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
             {[
@@ -390,8 +546,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 }}
                 className={`chip-btn ${currentSymbol === item.sym ? 'active' : ''}`}
                 style={{ 
-                  fontSize: 10, 
-                  padding: '3px 8px',
+                  fontSize: 9.5, 
+                  padding: '3px 7px',
                   fontWeight: currentSymbol === item.sym ? 800 : 600
                 }}
               >
@@ -400,100 +556,230 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             ))}
           </div>
 
+          {/* Engine Mode Toggle (If native data available) */}
+          {nativeStockData && (
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: 6, padding: 2 }}>
+              <button
+                type="button"
+                className={`chip-btn ${chartEngineMode === 'tv' ? 'active' : ''}`}
+                onClick={() => setChartEngineMode('tv')}
+                style={{ fontSize: 9.5, padding: '3px 7px' }}
+                title="TradingView canlı motoru"
+              >
+                ⚡ TV
+              </button>
+              <button
+                type="button"
+                className={`chip-btn ${chartEngineMode === 'native' ? 'active' : ''}`}
+                onClick={() => setChartEngineMode('native')}
+                style={{ fontSize: 9.5, padding: '3px 7px' }}
+                title="Bloomberg terminali dahili mum grafiği"
+              >
+                📈 Yerel
+              </button>
+            </div>
+          )}
+
+          {/* ⛶ Real True Fullscreen Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="chip-btn"
+            style={{ 
+              fontSize: 10, 
+              padding: '4px 9px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 4,
+              background: 'rgba(0, 229, 255, 0.1)',
+              borderColor: 'var(--cyan)',
+              color: 'var(--cyan)',
+              fontWeight: 700
+            }}
+            title="Grafiği tüm ekrana yay (F11 / Native Fullscreen)"
+          >
+            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            <span>{isFullscreen ? 'Küçült' : '⛶ Tam Ekran'}</span>
+          </button>
+
           {/* Toggle Watchlist Sidebar Button */}
           <button
             type="button"
             onClick={() => setSidebarOpen(prev => !prev)}
             className="chip-btn"
             style={{ 
-              fontSize: 10.5, 
-              padding: '5px 10px', 
+              fontSize: 10, 
+              padding: '4px 8px', 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 5,
+              gap: 4,
               background: sidebarOpen ? 'rgba(0, 229, 255, 0.12)' : 'transparent',
               borderColor: sidebarOpen ? 'var(--cyan)' : 'rgba(255,255,255,0.1)'
             }}
-            title={sidebarOpen ? 'İzleme Listesini Gizle (Tam Ekran Grafik)' : 'İzleme Listesini Aç'}
+            title={sidebarOpen ? 'İzleme Listesini Gizle (Geniş Grafik)' : 'İzleme Listesini Aç'}
           >
             <Layers size={13} className="text-cyan" />
-            <span>{sidebarOpen ? 'Listeyi Gizle' : 'İzleme Listesi (Watchlist)'}</span>
+            <span>{sidebarOpen ? 'Listeyi Kapat' : 'İzleme Listesi'}</span>
           </button>
         </div>
       </div>
 
-      {/* 🚀 Active Holding Overlay HUD (If selected ticker is in portfolio) */}
-      {activeHolding && (
+      {/* 🚀 Active Holding Overlay HUD (Slim, Non-overlapping Strip) */}
+      {activeHolding && !hideHud && (
         <div 
           className="card" 
           style={{ 
-            padding: '10px 16px', 
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(6, 78, 59, 0.15))', 
-            border: '1px solid rgba(16, 185, 129, 0.35)', 
-            borderRadius: 8,
+            padding: '7px 14px', 
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 78, 59, 0.18))', 
+            border: '1px solid rgba(16, 185, 129, 0.4)', 
+            borderRadius: 6,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 12
+            gap: 8,
+            marginBottom: 2,
+            position: 'relative',
+            zIndex: 10
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 18 }}>💼</span>
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.4px' }}>
-                BU VARLIK PORTFÖYÜNÜZDE MEVCUT
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                <strong className="mono text-bright" style={{ fontSize: 13.5 }}>
-                  {activeHolding.ticker}
-                </strong>
-                <span className="mono font-bold text-emerald" style={{ fontSize: 12 }}>
-                  {activeHolding.shares} Lot
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  Ort. Maliyet: <strong className="mono text-bright">{activeHolding.currency === 'TRY' ? '₺' : '$'}{fmt(activeHolding.costTRY ? (activeHolding.costTRY / (activeHolding.shares || 1)) : 0, 2)}</strong>
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  Piyasa Değeri: <strong className="mono text-cyan">{sym}{fmt(isTRY ? activeHolding.valTRY : activeHolding.valUSD, 2)}</strong>
-                </span>
-                <span style={{ fontSize: 11, color: (activeHolding.profitTRY || 0) >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>
-                  Net K/Z: {(activeHolding.profitTRY || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? activeHolding.profitTRY : activeHolding.profitUSD, 2)} ({fmt(activeHolding.returnPct, 2)}%)
-                </span>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 14 }}>💼</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>
+                PORTFÖYÜNÜZDE MEVCUT:
+              </span>
+              <strong className="mono text-bright" style={{ fontSize: 12.5 }}>
+                {activeHolding.ticker}
+              </strong>
+              <span className="mono font-bold text-emerald" style={{ fontSize: 11.5 }}>
+                {activeHolding.shares} Lot
+              </span>
+              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                Maliyet: <strong className="mono text-bright">{activeHolding.currency === 'TRY' ? '₺' : '$'}{fmt(activeHolding.costTRY ? (activeHolding.costTRY / (activeHolding.shares || 1)) : 0, 2)}</strong>
+              </span>
+              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                Değer: <strong className="mono text-cyan">{sym}{fmt(isTRY ? activeHolding.valTRY : activeHolding.valUSD, 2)}</strong>
+              </span>
+              <span style={{ fontSize: 10.5, color: (activeHolding.profitTRY || 0) >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>
+                K/Z: {(activeHolding.profitTRY || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? activeHolding.profitTRY : activeHolding.profitUSD, 2)} ({fmt(activeHolding.returnPct, 2)}%)
+              </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {activeQuantInfo.quantScore && (
-              <span className="nav-badge emerald" style={{ fontSize: 10, padding: '3px 8px' }}>
-                Quant Skoru: {activeQuantInfo.quantScore.toFixed(1)} / 100
+              <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 7px' }}>
+                Quant: {activeQuantInfo.quantScore.toFixed(1)}
               </span>
             )}
             <button
               type="button"
               className="btn-action-row buy"
               onClick={() => onOpenAddModal && onOpenAddModal(activeHolding.ticker)}
-              style={{ fontSize: 11, padding: '4px 10px' }}
+              style={{ fontSize: 10, padding: '3px 8px' }}
             >
-              + Ek Alım Yap
+              + Al
             </button>
             <button
               type="button"
               className="btn-action-row sell"
               onClick={() => onOpenSellModal && onOpenSellModal(activeHolding)}
-              style={{ fontSize: 11, padding: '4px 10px' }}
+              style={{ fontSize: 10, padding: '3px 8px' }}
             >
-              - Kısmi Satış Yap
+              - Sat
+            </button>
+            <button
+              type="button"
+              onClick={() => setHideHud(true)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'flex' }}
+              title="Şeridi Gizle"
+            >
+              <X size={13} />
             </button>
           </div>
         </div>
       )}
 
+      {/* 🇹🇷 BIST Symbol Warning & 1-Click Launch Bar */}
+      {isBistStock && chartEngineMode === 'tv' && (
+        <div 
+          style={{ 
+            background: 'rgba(245, 158, 11, 0.1)', 
+            border: '1px solid rgba(245, 158, 11, 0.35)', 
+            borderRadius: 6, 
+            padding: '7px 12px', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: 8,
+            marginBottom: 2
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>🇹🇷</span>
+            <div>
+              <strong style={{ color: 'var(--amber)', fontSize: 11 }}>BIST Resmi Veri Bildirimi: </strong>
+              <span style={{ fontSize: 10.5, color: '#e2e8f0' }}>
+                Borsa İstanbul lisans kuralı gereği, TradingView harici sitelerde BIST grafiklerini sınırlandırır.
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {nativeStockData && (
+              <button
+                type="button"
+                className="chip-btn"
+                onClick={() => setChartEngineMode('native')}
+                style={{ fontSize: 10, padding: '3px 8px', borderColor: 'var(--cyan)', color: 'var(--cyan)' }}
+              >
+                📈 Terminal Yerel Grafiğinde Göster
+              </button>
+            )}
+            <a
+              href={`https://tr.tradingview.com/chart/?symbol=BIST:${cleanBistTicker}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+              style={{
+                fontSize: 10,
+                padding: '3px 10px',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                background: 'linear-gradient(135deg, #d97706, #f59e0b)',
+                color: '#000',
+                fontWeight: 800
+              }}
+            >
+              <ExternalLink size={11} />
+              <span>TradingView'da Tam Aç ➔</span>
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* 📊 Main Workspace: Chart (Left) + Sınırsız Watchlist Sidebar (Right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: sidebarOpen ? '1fr 340px' : '1fr', gap: 12, alignItems: 'stretch' }}>
+      <div 
+        ref={chartWrapperRef}
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: (!isFullscreen && sidebarOpen) ? '1fr 340px' : '1fr', 
+          gap: 12, 
+          alignItems: 'stretch',
+          position: isFullscreen ? 'fixed' : 'relative',
+          inset: isFullscreen ? 0 : 'auto',
+          zIndex: isFullscreen ? 99999 : 1,
+          background: isFullscreen ? '#040711' : 'transparent',
+          padding: isFullscreen ? 14 : 0,
+          width: isFullscreen ? '100vw' : '100%',
+          height: isFullscreen ? '100vh' : 'auto'
+        }}
+      >
         
-        {/* Left: The Official TradingView Advanced Real-Time Chart Container */}
+        {/* Left: The Official TradingView Advanced Chart / Native Canvas Container */}
         <div 
           className="card" 
           style={{ 
@@ -501,76 +787,142 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             background: '#040711', 
             border: '1px solid var(--border)', 
             borderRadius: 8, 
-            overflow: 'hidden',
-            minHeight: 'calc(100vh - 270px)',
-            height: 'calc(100vh - 270px)',
+            minHeight: isFullscreen ? 'calc(100vh - 30px)' : 720,
+            height: isFullscreen ? 'calc(100vh - 30px)' : 'calc(100vh - 210px)',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            position: 'relative'
           }}
         >
-          <div 
-            id={containerId} 
-            style={{ width: '100%', height: '100%', minHeight: 620, flex: 1 }} 
-          />
+          {/* Fullscreen Floating Exit Button */}
+          {isFullscreen && (
+            <div style={{ position: 'absolute', top: 10, right: 14, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(8,12,22,0.9)', padding: '4px 10px', borderRadius: 6, border: '1px solid var(--cyan)' }}>
+              <span className="mono font-bold text-cyan" style={{ fontSize: 11 }}>{currentSymbol}</span>
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="chip-btn"
+                style={{ fontSize: 10, padding: '2px 8px', background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
+              >
+                ✕ Tam Ekrandan Çık (ESC)
+              </button>
+            </div>
+          )}
+
+          {/* 1. TRADINGVIEW WIDGET ENGINE */}
+          {chartEngineMode === 'tv' && (
+            <div 
+              id={containerId} 
+              style={{ width: '100%', height: '100%', minHeight: 700, flex: 1 }} 
+            />
+          )}
+
+          {/* 2. BLOOMBERG NATIVE CANVAS ENGINE (For BIST / Offline Fallback) */}
+          {chartEngineMode === 'native' && nativeChartData && (
+            <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div>
+                  <strong className="mono" style={{ fontSize: 16, color: 'var(--cyan)' }}>
+                    {nativeStockData.ticker} - {nativeStockData.candlestick?.name}
+                  </strong>
+                  <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+                    Canlı Fiyat: <strong>₺{fmt(nativeStockData.candlestick?.current_price, 2)}</strong> ({fmt(nativeStockData.candlestick?.day_change_pct, 2)}%)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="chip-btn"
+                  onClick={() => setChartEngineMode('tv')}
+                  style={{ fontSize: 10, padding: '3px 8px' }}
+                >
+                  ⚡ TradingView Motoruna Dön
+                </button>
+              </div>
+              <div style={{ flex: 1, minHeight: 600 }}>
+                <Line data={nativeChartData} options={nativeChartOptions} />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right: Sınırsız Watchlist Yöneticisi */}
-        {sidebarOpen && (
+        {/* Right: Sınırsız Watchlist Yöneticisi (Hidden when in Fullscreen) */}
+        {!isFullscreen && sidebarOpen && (
           <div 
             className="card" 
             style={{ 
-              padding: '14px', 
+              padding: '12px', 
               background: '#080c16', 
               border: '1px solid var(--border)', 
               borderRadius: 8, 
               display: 'flex', 
               flexDirection: 'column',
-              maxHeight: 'calc(100vh - 270px)',
+              minHeight: 720,
+              height: 'calc(100vh - 210px)',
               overflow: 'hidden'
             }}
           >
             {/* Watchlist Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={{ fontWeight: 800, fontSize: 12.5, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Star size={15} className="text-gold" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontWeight: 800, fontSize: 12, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Star size={14} className="text-gold" />
                 <span>İZLEME LİSTELERİ</span>
               </div>
-              <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>
+              <span className="nav-badge cyan" style={{ fontSize: 9 }}>
                 {currentWatchlistItems.length} Varlık
               </span>
             </div>
 
-            {/* Category Segmented Buttons Bar */}
-            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 6, marginBottom: 8, scrollbarWidth: 'none' }}>
+            {/* 🔽 1. Downward Dropdown Category Selector (Solves Horizontal Cutoff) */}
+            <div style={{ marginBottom: 6 }}>
+              <select
+                value={activeCategory}
+                onChange={(e) => setActiveCategory(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: '#040711',
+                  border: '1px solid rgba(0, 229, 255, 0.35)',
+                  borderRadius: 6,
+                  color: 'var(--cyan)',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="portfolio">💼 Portföyüm ({portfolioItems.length} Varlık - Otomatik)</option>
+                <option value="us_stocks">📈 ABD Hisse ({PRESET_WATCHLISTS.us_stocks.length} Varlık)</option>
+                <option value="etf">🏛️ ETF Sepeti ({PRESET_WATCHLISTS.etf.length} Varlık)</option>
+                <option value="bist">🇹🇷 BIST 100 ({PRESET_WATCHLISTS.bist.length} Varlık)</option>
+                <option value="crypto">⚡ Kripto & TOTAL3 ({PRESET_WATCHLISTS.crypto.length} Varlık)</option>
+                <option value="macro">🌐 Genel Makro & Emtia ({PRESET_WATCHLISTS.macro.length} Varlık)</option>
+                <option value="custom">⭐ Özel Listem ({customTickers.length} Varlık)</option>
+              </select>
+            </div>
+
+            {/* 🔽 2. Quick 4-Pill Shortcut Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, marginBottom: 8 }}>
               {[
-                { id: 'portfolio', label: '💼 Portföyüm', count: portfolioItems.length },
-                { id: 'us_stocks', label: '📈 ABD Hisse', count: PRESET_WATCHLISTS.us_stocks.length },
-                { id: 'etf', label: '🏛️ ETF', count: PRESET_WATCHLISTS.etf.length },
-                { id: 'bist', label: '🇹🇷 BIST 100', count: PRESET_WATCHLISTS.bist.length },
-                { id: 'crypto', label: '⚡ Kripto & TOTAL3', count: PRESET_WATCHLISTS.crypto.length },
-                { id: 'macro', label: '🌐 Makro & Emtia', count: PRESET_WATCHLISTS.macro.length },
-                { id: 'custom', label: '⭐ Özel Listem', count: customTickers.length }
-              ].map(cat => (
+                { id: 'portfolio', label: '💼 Portföy' },
+                { id: 'us_stocks', label: '📈 ABD' },
+                { id: 'crypto', label: '⚡ Kripto' },
+                { id: 'custom', label: '⭐ Özel' }
+              ].map(p => (
                 <button
-                  key={cat.id}
+                  key={p.id}
                   type="button"
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`chip-btn ${activeCategory === cat.id ? 'active' : ''}`}
-                  style={{ 
-                    fontSize: 10, 
-                    padding: '3px 7px', 
-                    whiteSpace: 'nowrap',
-                    fontWeight: activeCategory === cat.id ? 800 : 500
-                  }}
+                  onClick={() => setActiveCategory(p.id)}
+                  className={`chip-btn ${activeCategory === p.id ? 'active' : ''}`}
+                  style={{ fontSize: 9, padding: '2px 4px', textAlign: 'center' }}
                 >
-                  {cat.label} ({cat.count})
+                  {p.label}
                 </button>
               ))}
             </div>
 
             {/* Search Filter within Category */}
             <div style={{ position: 'relative', marginBottom: 8 }}>
-              <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Search size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 type="text"
                 placeholder="Bu listede ara (Sembol, Ad)..."
@@ -578,8 +930,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ 
                   width: '100%', 
-                  padding: '6px 8px 6px 28px', 
-                  fontSize: 11, 
+                  padding: '5px 8px 5px 26px', 
+                  fontSize: 10.5, 
                   background: 'rgba(0,0,0,0.4)', 
                   border: '1px solid rgba(255,255,255,0.08)', 
                   borderRadius: 6,
@@ -599,7 +951,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   style={{ 
                     flex: 1, 
                     padding: '5px 8px', 
-                    fontSize: 10.5, 
+                    fontSize: 10, 
                     background: 'rgba(0,0,0,0.5)', 
                     border: '1px solid rgba(0, 229, 255, 0.3)', 
                     borderRadius: 4, 
@@ -609,16 +961,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ fontSize: 10, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 3 }}
+                  style={{ fontSize: 9.5, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 3 }}
                 >
-                  <Plus size={12} />
+                  <Plus size={11} />
                   <span>Ekle</span>
                 </button>
               </form>
             )}
 
             {/* Scrollable Watchlist Items List */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 2 }}>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, paddingRight: 2 }}>
               {currentWatchlistItems.map((item) => {
                 const isSelected = currentSymbol === item.ticker || getTradingViewSymbol(currentSymbol) === item.tv;
                 const isHolding = portfolioSummary?.enrichedHoldings?.some(h => (h.ticker || '').toUpperCase() === item.ticker.toUpperCase());
@@ -634,8 +986,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      padding: '8px 10px',
-                      borderRadius: 6,
+                      padding: '7px 9px',
+                      borderRadius: 5,
                       background: isSelected ? 'rgba(0, 229, 255, 0.12)' : 'rgba(255,255,255,0.02)',
                       border: isSelected ? '1px solid var(--cyan)' : '1px solid rgba(255,255,255,0.05)',
                       cursor: 'pointer',
@@ -643,23 +995,23 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                     }}
                   >
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <strong className="mono" style={{ color: isSelected ? 'var(--cyan)' : '#f8fafc', fontSize: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <strong className="mono" style={{ color: isSelected ? 'var(--cyan)' : '#f8fafc', fontSize: 11.5 }}>
                           {item.ticker}
                         </strong>
                         {isHolding && (
-                          <span className="badge-type hisse" style={{ fontSize: 8.5, padding: '1px 5px' }}>
+                          <span className="badge-type hisse" style={{ fontSize: 8, padding: '1px 4px' }}>
                             Portföyde
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                      <div style={{ fontSize: 9, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {item.name}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <span className="mono" style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                      <span className="mono" style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>
                         {item.tv.split(':')[0]}
                       </span>
                       {activeCategory === 'custom' && (
@@ -672,7 +1024,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                           style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2 }}
                           title="Listeden Kaldır"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={11} />
                         </button>
                       )}
                     </div>
@@ -688,9 +1040,9 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             </div>
 
             {/* Watchlist Footer Note */}
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: 9.5, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>💡 Tıklayarak grafiğe aktarın</span>
-              <span className="text-cyan font-bold">{currentSymbol}</span>
+            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: 9, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>💡 Tıkla ➔ Grafiğe Al</span>
+              <span className="text-cyan font-bold mono">{currentSymbol}</span>
             </div>
           </div>
         )}
