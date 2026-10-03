@@ -24,7 +24,6 @@ import {
 import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
-import NativeProChart from '../components/NativeProChart';
 
 // Single, All-in-One Pine Script v6: EMA 50 + Fully Customizable Dynamic Auto Fibonacci
 export const EMA50_AUTOFIB_PINE = `//@version=6
@@ -301,7 +300,7 @@ export function getTradingViewSymbol(ticker) {
 
 // Available indicator studies list for TradingView
 const AVAILABLE_STUDIES = [
-  { id: 'STD;EMA', name: 'EMA', fullName: 'Üstel Hareketli Ortalama' },
+  { id: 'STD;EMA', name: 'EMA 50', fullName: 'Üstel Hareketli Ortalama (50 Periyot)' },
   { id: 'STD;RSI', name: 'RSI', fullName: 'Göreceli Güç Endeksi' },
   { id: 'STD;MACD', name: 'MACD', fullName: 'MACD Momentum' },
   { id: 'STD;Bollinger_Bands', name: 'Bollinger', fullName: 'Bollinger Bantları' },
@@ -392,38 +391,6 @@ const PRESET_WATCHLISTS = {
   ]
 };
 
-class ChartErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error, errorInfo) {
-    console.error('ChartErrorBoundary caught error:', error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: 24, textAlign: 'center', color: '#f87171', background: '#0a101f', borderRadius: 8, margin: 20 }}>
-          <p style={{ fontWeight: 'bold', fontSize: 13 }}>⚠️ Yerel grafik motorunda bir hata oluştu.</p>
-          <p style={{ fontSize: 11, color: '#94a3b8' }}>TradingView motoruna geçebilirsiniz.</p>
-          <button 
-            type="button" 
-            onClick={() => { this.setState({ hasError: false }); this.props.onFallback && this.props.onFallback(); }}
-            className="chip-btn active"
-            style={{ marginTop: 10, padding: '6px 14px', background: 'var(--cyan)', color: '#040711', fontWeight: 700 }}
-          >
-            🌐 TradingView Motoruna Geç
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedTicker, onSelectTicker }) {
   const { portfolioSummary, currentCurrency, usdtry, marketQuotes } = useApp();
   const isTRY = currentCurrency === 'try';
@@ -483,15 +450,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const [chartInterval, setChartInterval] = useState(() => {
     try { return localStorage.getItem('pro_chart_interval') || 'D'; } catch { return 'D'; }
   });
-
-  // Chart Engine Mode: 'native' (Zero Limit Lightweight Charts + EMA 50 + Auto Fib) vs 'tv' (TradingView Embed)
-  const [chartEngine, setChartEngine] = useState(() => {
-    try { return localStorage.getItem('pro_chart_engine') || 'native'; } catch { return 'native'; }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem('pro_chart_engine', chartEngine); } catch(e) {}
-  }, [chartEngine]);
 
   // Custom User Watchlist Tickers
   const [customTickers, setCustomTickers] = useState(() => {
@@ -1024,7 +982,12 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           allow_symbol_change: true,
           save_image: true,
           container_id: containerId,
-          studies: activeStudies
+          studies: activeStudies,
+          studies_overrides: {
+            "moving average exponential.length": 50,
+            "moving average exponential.plot.color": "#2962FF",
+            "moving average exponential.plot.linewidth": 2
+          }
         });
       } catch (err) {
         console.warn('TradingView widget initialization error:', err);
@@ -1047,7 +1010,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return () => {
       isMounted = false;
     };
-  }, [currentSymbol, activeStudies, chartInterval, chartEngine]);
+  }, [currentSymbol, activeStudies, chartInterval]);
 
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1157,42 +1120,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             <ExternalLink size={12} />
             <span>TradingView'de Aç</span>
           </a>
-
-          {/* ⚡ Grafik Motoru Seçici (Yerel Pro Motor vs TradingView) */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: 2, border: '1px solid rgba(0, 229, 255, 0.35)' }}>
-            <button
-              type="button"
-              onClick={() => setChartEngine('native')}
-              className={`chip-btn ${chartEngine === 'native' ? 'active' : ''}`}
-              style={{ 
-                fontSize: 10, 
-                padding: '4px 9px', 
-                fontWeight: chartEngine === 'native' ? 800 : 500,
-                borderColor: chartEngine === 'native' ? 'var(--cyan)' : 'transparent',
-                background: chartEngine === 'native' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
-                color: chartEngine === 'native' ? 'var(--cyan)' : '#94a3b8'
-              }}
-              title="Sıfır kota sınırlaması, kendi grafiğimizde yerel çalışan EMA 50 & Dinamik Auto Fibonacci motoru"
-            >
-              ⚡ Yerel Pro Motor (EMA 50 & Fib)
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartEngine('tv')}
-              className={`chip-btn ${chartEngine === 'tv' ? 'active' : ''}`}
-              style={{ 
-                fontSize: 10, 
-                padding: '4px 9px', 
-                fontWeight: chartEngine === 'tv' ? 800 : 500,
-                borderColor: chartEngine === 'tv' ? 'var(--cyan)' : 'transparent',
-                background: chartEngine === 'tv' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
-                color: chartEngine === 'tv' ? 'var(--cyan)' : '#94a3b8'
-              }}
-              title="Orijinal TradingView gömülü widget'ına geç"
-            >
-              🌐 TradingView
-            </button>
-          </div>
 
           {/* ⛶ Real True Fullscreen Button */}
           <button
@@ -1620,24 +1547,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   📐 EMA 50 & Fib
                 </button>
 
-                {/* Engine Switcher in Fullscreen */}
-                <button
-                  type="button"
-                  onClick={() => setChartEngine(prev => prev === 'native' ? 'tv' : 'native')}
-                  className="chip-btn"
-                  style={{
-                    fontSize: 9.5,
-                    padding: '3px 8px',
-                    borderColor: 'var(--cyan)',
-                    color: 'var(--cyan)',
-                    background: chartEngine === 'native' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
-                    fontWeight: 700
-                  }}
-                  title="Motoru Değiştir (Yerel Pro Motor / TradingView)"
-                >
-                  {chartEngine === 'native' ? '⚡ Yerel Motor' : '🌐 TradingView'}
-                </button>
-
                 <button
                   type="button"
                   onClick={toggleFullscreen}
@@ -1651,23 +1560,10 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             </div>
           )}
 
-          {/* CHART ENGINE: NATIVE PRO MOTOR (ZERO LIMIT / EMA 50 + AUTO FIB) vs TRADINGVIEW WIDGET */}
-          <div style={{ display: chartEngine === 'native' ? 'flex' : 'none', width: '100%', height: '100%', minHeight: 700, flex: 1, paddingTop: isFullscreen ? 44 : 0, flexDirection: 'column' }}>
-            <ChartErrorBoundary onFallback={() => setChartEngine('tv')}>
-              <NativeProChart
-                symbol={currentSymbol}
-                currency={buyZoneAnalysis.hasHolding && activeHolding?.type?.includes('BIST') ? 'TRY' : 'USD'}
-                livePrice={buyZoneAnalysis.livePrice}
-                dayChangePct={activeHolding?.returnPct}
-                chartInterval={chartInterval}
-              />
-            </ChartErrorBoundary>
-          </div>
-
+          {/* TRADINGVIEW PRO CHART WIDGET */}
           <div 
             id={containerId} 
             style={{ 
-              display: chartEngine === 'tv' ? 'block' : 'none',
               width: '100%', 
               height: '100%', 
               minHeight: 700, 
