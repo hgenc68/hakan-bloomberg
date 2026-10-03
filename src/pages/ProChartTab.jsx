@@ -266,7 +266,16 @@ export function getTradingViewSymbol(ticker) {
   const bistKnown = [
     'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
     'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 
-    'TCELL', 'PETKM', 'TTKOM', 'ENKAI', 'KOZAL', 'SASA', 'HEKTS', 'KONTR'
+    'TCELL', 'PETKM', 'TTKOM', 'ENKAI', 'KOZAL', 'SASA', 'HEKTS', 'KONTR',
+    'AGROT', 'AHGAZ', 'AKCNS', 'AKFGY', 'AKFYE', 'ALARK', 'ALBRK', 'ALFAS', 'ARCLK', 
+    'ARDYZ', 'BERA', 'BFREN', 'BRSAN', 'BRYAT', 'BSOKE', 'BTCIM', 'CANTE', 'CCOLA', 
+    'CIMSA', 'CWENE', 'DOAS', 'DOHOL', 'ECILC', 'ECZYT', 'EGEEN', 'EKGYO', 'ENERY', 
+    'ENJSA', 'EUPWR', 'EUREN', 'GESAN', 'GLYHO', 'GOLTS', 'GSDHO', 'GUBRF', 'GWIND', 
+    'HALKB', 'IPEKE', 'ISDMR', 'ISGYO', 'ISMEN', 'IZMDC', 'KARSN', 'KAYSE', 'KCAER', 
+    'KMPUR', 'KONYA', 'KORDS', 'KOZAA', 'KRDMD', 'MAVI', 'MGROS', 'MIATK', 'ODAS', 
+    'OTKAR', 'OYAKC', 'PASEU', 'PENTA', 'QUAGR', 'REEDR', 'SDTTR', 'SKBNK', 'SMRTG', 
+    'SOKM', 'TABGD', 'TARKM', 'TATEN', 'TAVHL', 'TKFEN', 'TOASO', 'TRGYO', 'TSKB', 
+    'TTRAK', 'ULKER', 'VAKBN', 'VESBE', 'VESTL', 'YEOTK', 'YYLGD', 'ZOREN'
   ];
   if (bistKnown.includes(clean)) {
     return `BIST:${clean}`;
@@ -392,7 +401,7 @@ const PRESET_WATCHLISTS = {
 };
 
 export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedTicker, onSelectTicker }) {
-  const { portfolioSummary, currentCurrency, usdtry, marketQuotes } = useApp();
+  const { portfolioSummary, holdings, currentCurrency, usdtry, marketQuotes } = useApp();
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
@@ -460,6 +469,39 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       return ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'];
     }
   });
+
+  // Manually added tickers specifically to Portfolio watchlist
+  const [manualPortfolioTickers, setManualPortfolioTickers] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pro_chart_manual_portfolio_tickers');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('pro_chart_manual_portfolio_tickers', JSON.stringify(manualPortfolioTickers));
+    } catch (e) {}
+  }, [manualPortfolioTickers]);
+
+  // Hidden tickers in Portfolio watchlist (if user clicks remove/hide on a holding)
+  const [hiddenPortfolioTickers, setHiddenPortfolioTickers] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pro_chart_hidden_portfolio_tickers');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('pro_chart_hidden_portfolio_tickers', JSON.stringify(hiddenPortfolioTickers));
+    } catch (e) {}
+  }, [hiddenPortfolioTickers]);
+
   const [newTickerInput, setNewTickerInput] = useState('');
 
   // User-Configured Active Indicators for TradingView Embed
@@ -545,15 +587,54 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     }
   }, [selectedTicker]);
 
-  // Handle adding custom ticker
-  const handleAddCustomTicker = (e) => {
+  // Handle adding ticker to either Portfolio tab or Custom tab
+  const handleAddTicker = (e) => {
     e?.preventDefault();
     if (!newTickerInput.trim()) return;
     const clean = newTickerInput.trim().toUpperCase();
-    if (!customTickers.includes(clean)) {
-      setCustomTickers(prev => [...prev, clean]);
+
+    if (activeCategory === 'portfolio') {
+      // If was previously hidden, unhide it
+      if (hiddenPortfolioTickers.includes(clean)) {
+        setHiddenPortfolioTickers(prev => prev.filter(t => t !== clean));
+      } else if (!manualPortfolioTickers.includes(clean)) {
+        setManualPortfolioTickers(prev => [...prev, clean]);
+      }
+    } else {
+      if (!customTickers.includes(clean)) {
+        setCustomTickers(prev => [...prev, clean]);
+      }
     }
     setNewTickerInput('');
+  };
+
+  // Handle removing ticker
+  const handleRemoveTicker = (item) => {
+    const clean = (item.ticker || '').toUpperCase().trim();
+    if (activeCategory === 'portfolio') {
+      if (item.isManual) {
+        setManualPortfolioTickers(prev => prev.filter(t => t !== clean));
+      } else {
+        const raw = (item.rawTicker || '').toUpperCase().trim();
+        setHiddenPortfolioTickers(prev => [...new Set([...prev, clean, raw])]);
+      }
+    } else if (activeCategory === 'custom') {
+      setCustomTickers(prev => prev.filter(t => t !== clean));
+    }
+  };
+
+  // Handle quick-adding ticker from presets (us_stocks, bist, crypto, etf) to Custom Watchlist
+  const handleQuickAddTicker = (tickerToAdd) => {
+    const clean = (tickerToAdd || '').toUpperCase().trim();
+    if (clean && !customTickers.includes(clean)) {
+      setCustomTickers(prev => [...prev, clean]);
+    }
+  };
+
+  // Reset portfolio watchlist (restore hidden holdings)
+  const handleResetPortfolioWatchlist = () => {
+    setHiddenPortfolioTickers([]);
+    setManualPortfolioTickers([]);
   };
 
   const handleRemoveCustomTicker = (tickerToRemove) => {
@@ -568,9 +649,24 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return s.trim().toUpperCase();
   }, [currentSymbol]);
 
+  // Check if active symbol is a BIST stock
   const isBistStock = useMemo(() => {
-    return cleanActiveTicker.endsWith('.IS') || 
-           ['BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 'TCELL', 'PETKM', 'TTKOM', 'ENKAI', 'KOZAL', 'SASA', 'HEKTS', 'KONTR'].includes(cleanActiveTicker);
+    const rawClean = cleanActiveTicker.replace('.IS', '');
+    const bistList = [
+      'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
+      'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 
+      'TCELL', 'PETKM', 'TTKOM', 'ENKAI', 'KOZAL', 'SASA', 'HEKTS', 'KONTR',
+      'AGROT', 'AHGAZ', 'AKCNS', 'AKFGY', 'AKFYE', 'ALARK', 'ALBRK', 'ALFAS', 'ARCLK', 
+      'ARDYZ', 'BERA', 'BFREN', 'BRSAN', 'BRYAT', 'BSOKE', 'BTCIM', 'CANTE', 'CCOLA', 
+      'CIMSA', 'CWENE', 'DOAS', 'DOHOL', 'ECILC', 'ECZYT', 'EGEEN', 'EKGYO', 'ENERY', 
+      'ENJSA', 'EUPWR', 'EUREN', 'GESAN', 'GLYHO', 'GOLTS', 'GSDHO', 'GUBRF', 'GWIND', 
+      'HALKB', 'IPEKE', 'ISDMR', 'ISGYO', 'ISMEN', 'IZMDC', 'KARSN', 'KAYSE', 'KCAER', 
+      'KMPUR', 'KONYA', 'KORDS', 'KOZAA', 'KRDMD', 'MAVI', 'MGROS', 'MIATK', 'ODAS', 
+      'OTKAR', 'OYAKC', 'PASEU', 'PENTA', 'QUAGR', 'REEDR', 'SDTTR', 'SKBNK', 'SMRTG', 
+      'SOKM', 'TABGD', 'TARKM', 'TATEN', 'TAVHL', 'TKFEN', 'TOASO', 'TRGYO', 'TSKB', 
+      'TTRAK', 'ULKER', 'VAKBN', 'VESBE', 'VESTL', 'YEOTK', 'YYLGD', 'ZOREN'
+    ];
+    return cleanActiveTicker.endsWith('.IS') || bistList.includes(rawClean);
   }, [cleanActiveTicker]);
 
   // Direct TradingView web link (opens symbol with full Pine Editor on tradingview.com)
@@ -581,36 +677,105 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Find portfolio items directly from user's current holdings
   const portfolioItems = useMemo(() => {
-    const allHoldings = portfolioSummary?.allHoldings || [];
-    if (!allHoldings.length) {
-      return [
-        { ticker: 'SPCX', name: 'Space Exploration Tech Corp', desc: 'Portföy ABD Hissesi • 2.22 Lot', tv: 'SPCX', isHolding: true, type: 'ABD Hisse' },
-        { ticker: 'DRAM', name: 'D-RAM Bellek Teknoloji ETF', desc: 'Portföy Fonu • 5.00 Lot', tv: 'DRAM', isHolding: true, type: 'ETF' },
-        { ticker: 'CUSD', name: 'Coinbase USD Yield ETF', desc: 'Nakit Getiri Fonu', tv: 'AMEX:CUSD', isHolding: true, type: 'ETF' },
-        { ticker: 'BYDNR.IS', name: 'Baydöner Restoranları', desc: 'Portföy BIST Hissesi • 10.00 Lot', tv: 'BIST:BYDNR', isHolding: true, type: 'BIST 100' },
-        { ticker: 'TUPRS.IS', name: 'Tüpraş Rafineri', desc: 'Portföy Temettü • 1.00 Lot', tv: 'BIST:TUPRS', isHolding: true, type: 'BIST 100' },
-        { ticker: 'LDOUSDT', name: 'Lido DAO Token', desc: 'Portföy Kripto • 50.00 Lot', tv: 'BINANCE:LDOUSDT', isHolding: true, type: 'Kripto' },
-        { ticker: 'BIOUSDT', name: 'Bio Protocol', desc: 'Portföy DeSci • 500.00 Lot', tv: 'MEXC:BIO_USDT', isHolding: true, type: 'Kripto' }
-      ];
+    const activeHoldings = (portfolioSummary?.enrichedHoldings && portfolioSummary.enrichedHoldings.length > 0)
+      ? portfolioSummary.enrichedHoldings
+      : (holdings && holdings.length > 0 ? holdings : []);
+
+    const items = [];
+
+    // 1) Add all active holdings from actual portfolio
+    if (activeHoldings.length > 0) {
+      activeHoldings.forEach(h => {
+        const rawTicker = (h.ticker || '').toUpperCase().trim();
+        if (!rawTicker) return;
+
+        // Skip if hidden by user
+        if (hiddenPortfolioTickers.includes(rawTicker)) return;
+
+        let clean = rawTicker;
+        if (h.clean_ticker) {
+          clean = h.clean_ticker.toUpperCase().trim();
+        } else if (h.type === 'Hisse' && h.currency === 'TRY' && !clean.endsWith('.IS')) {
+          clean = `${clean}.IS`;
+        }
+
+        if (hiddenPortfolioTickers.includes(clean)) return;
+
+        const tvSym = getTradingViewSymbol(clean || rawTicker);
+        const shares = Number(h.shares || 0);
+        const costBasis = Number(h.avg_cost ?? h.costBasis ?? h.avgPrice ?? 0);
+        const curr = (h.currency === 'TRY' || clean.endsWith('.IS')) ? '₺' : '$';
+        const price = Number(h.livePrice ?? h.currentPrice ?? h.current_price ?? 0);
+        const retPct = Number(h.returnPct ?? 0);
+
+        items.push({
+          ticker: clean,
+          rawTicker,
+          name: h.name || clean,
+          desc: `${shares > 0 ? fmt(shares, shares < 1 ? 4 : 2) + ' Lot • ' : ''}Maliyet: ${curr}${fmt(costBasis, 2)}`,
+          tv: tvSym,
+          isHolding: true,
+          type: h.type || 'Portföy',
+          shares,
+          avgPrice: costBasis,
+          currentPrice: price,
+          returnPct: retPct,
+          isManual: false
+        });
+      });
     }
 
-    return allHoldings.map(h => {
-      const symRaw = (h.ticker || '').toUpperCase();
-      let tvSym = getTradingViewSymbol(symRaw);
-      return {
-        ticker: symRaw,
-        name: h.name || symRaw,
-        desc: `${h.shares || 0} Lot • Ort. Maliyet: ${h.currency === 'TRY' ? '₺' : '$'}${fmt(h.costBasis || h.avgPrice || 0, 2)}`,
-        tv: tvSym,
+    // 2) If physical gold is in portfolio (totalGrams > 0)
+    if (portfolioSummary?.totalGrams > 0 && !hiddenPortfolioTickers.includes('XAUUSD')) {
+      items.push({
+        ticker: 'XAUUSD',
+        rawTicker: 'XAUUSD',
+        name: 'Gram Altın (Fiziki)',
+        desc: `${fmt(portfolioSummary.totalGrams, 2)} Gr • Portföy Fiziki Altın`,
+        tv: 'OANDA:XAUUSD',
         isHolding: true,
-        type: h.type || 'Portföy',
-        shares: h.shares,
-        avgPrice: h.avgPrice || h.costBasis,
-        currentPrice: h.currentPrice,
-        returnPct: h.returnPct
-      };
+        type: 'Altın',
+        shares: portfolioSummary.totalGrams,
+        currentPrice: portfolioSummary.gramGoldPrice || 0,
+        returnPct: portfolioSummary.goldReturnPct || 0,
+        isManual: false
+      });
+    }
+
+    // 3) Fallback if portfolio is completely empty
+    if (items.length === 0 && (!activeHoldings || activeHoldings.length === 0)) {
+      items.push(
+        { ticker: 'SPCX', rawTicker: 'SPCX', name: 'Space Exploration Tech Corp', desc: 'Portföy ABD Hissesi • 2.22 Lot', tv: 'SPCX', isHolding: true, type: 'ABD Hisse', isManual: false },
+        { ticker: 'BYDNR.IS', rawTicker: 'BYDNR', name: 'Baydöner Restoranları', desc: 'Portföy BIST Hissesi • 10.00 Lot', tv: 'BIST:BYDNR', isHolding: true, type: 'BIST 100', isManual: false },
+        { ticker: 'DRAM', rawTicker: 'DRAM', name: 'D-RAM Bellek Teknoloji ETF', desc: 'Portföy Fonu • 5.00 Lot', tv: 'DRAM', isHolding: true, type: 'ETF', isManual: false },
+        { ticker: 'ETH-USD', rawTicker: 'ETH-USD', name: 'Ethereum', desc: 'Portföy Kripto Varlığı', tv: 'BINANCE:ETHUSDT', isHolding: true, type: 'Kripto', isManual: false },
+        { ticker: 'BTC-USD', rawTicker: 'BTC-USD', name: 'Bitcoin', desc: 'Portföy Kripto Varlığı', tv: 'BINANCE:BTCUSDT', isHolding: true, type: 'Kripto', isManual: false },
+        { ticker: 'LDO-USD', rawTicker: 'LDO', name: 'Lido DAO Token', desc: 'Portföy Kripto Varlığı', tv: 'BINANCE:LDOUSDT', isHolding: true, type: 'Kripto', isManual: false },
+        { ticker: 'BIO34812-USD', rawTicker: 'BIO', name: 'Bio Protocol', desc: 'Portföy Kripto Varlığı', tv: 'MEXC:BIO_USDT', isHolding: true, type: 'Kripto', isManual: false }
+      );
+    }
+
+    // 4) Add user's manual portfolio tickers
+    manualPortfolioTickers.forEach(t => {
+      const cleanT = t.toUpperCase().trim();
+      if (!items.some(it => it.ticker.toUpperCase() === cleanT || it.rawTicker?.toUpperCase() === cleanT)) {
+        const tv = getTradingViewSymbol(cleanT);
+        const name = stocksData[cleanT]?.name || potentialStocksData[cleanT]?.name || cleanT;
+        items.push({
+          ticker: cleanT,
+          rawTicker: cleanT,
+          name,
+          desc: 'Manuel Eklenen Varlık',
+          tv,
+          isHolding: false,
+          type: 'Manuel',
+          isManual: true
+        });
+      }
     });
-  }, [portfolioSummary]);
+
+    return items;
+  }, [portfolioSummary, holdings, manualPortfolioTickers, hiddenPortfolioTickers]);
 
   // Live Price and +/- % Change lookup
   const getItemPriceAndChange = (item) => {
@@ -757,16 +922,24 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Find user's holding data if they own this stock
   const activeHolding = useMemo(() => {
-    const all = portfolioSummary?.allHoldings || [];
-    return all.find(h => (h.ticker || '').toUpperCase() === cleanActiveTicker) || null;
-  }, [portfolioSummary, cleanActiveTicker]);
+    const rawClean = cleanActiveTicker.replace('.IS', '');
+    const all = (portfolioSummary?.enrichedHoldings && portfolioSummary.enrichedHoldings.length > 0)
+      ? portfolioSummary.enrichedHoldings
+      : (holdings || []);
+    return all.find(h => {
+      const hTicker = (h.ticker || '').toUpperCase().trim();
+      const hClean = (h.clean_ticker || hTicker).replace('.IS', '').toUpperCase().trim();
+      return hTicker === cleanActiveTicker || hClean === cleanActiveTicker || hClean === rawClean || hTicker === rawClean;
+    }) || null;
+  }, [portfolioSummary, holdings, cleanActiveTicker]);
 
   // Portfolio Buy Zone & Valuation Analysis
   const buyZoneAnalysis = useMemo(() => {
-    const sData = stocksData[cleanActiveTicker] || potentialStocksData[cleanActiveTicker];
+    const rawClean = cleanActiveTicker.replace('.IS', '');
+    const sData = stocksData[cleanActiveTicker] || stocksData[rawClean] || potentialStocksData[cleanActiveTicker] || potentialStocksData[rawClean];
     const hasHolding = !!activeHolding;
-    const holdingCost = activeHolding ? (activeHolding.avgPrice || activeHolding.costBasis || 0) : null;
-    const holdingCurrency = activeHolding ? activeHolding.currency : (sData?.currency || 'USD');
+    const holdingCost = activeHolding ? (activeHolding.avgPrice || activeHolding.costBasis || activeHolding.avg_cost || 0) : null;
+    const holdingCurrency = activeHolding ? activeHolding.currency : (sData?.currency || (isBistStock ? 'TRY' : 'USD'));
     const symMark = holdingCurrency === 'TRY' ? '₺' : '$';
 
     const livePrice = activeHolding?.currentPrice || sData?.price?.current || 100;
@@ -1560,6 +1733,64 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             </div>
           )}
 
+          {/* 🇹🇷 BIST Veri Lisansı Kuralı & Doğrudan TradingView Açma Bildirimi */}
+          {isBistStock && (
+            <div 
+              style={{ 
+                margin: '8px 10px 4px 10px',
+                padding: '8px 14px',
+                background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.16), rgba(15, 23, 42, 0.95))',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 10
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🇹🇷</span>
+                <div>
+                  <div style={{ fontSize: 11.5, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>Borsa İstanbul (BIST) Veri Kuralı</span>
+                    <span style={{ fontSize: 9.5, padding: '1px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}>
+                      {cleanActiveTicker.replace('.IS', '')}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 1 }}>
+                    Borsa İstanbul'un veri lisansı kuralı nedeniyle gömülü widget'lar kısıtlanmaktadır. Hissenin anlık grafiğini, tüm derinliğini ve göstergelerini kesintisiz açmak için:
+                  </div>
+                </div>
+              </div>
+
+              <a
+                href={tvExternalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="chip-btn"
+                style={{
+                  fontSize: 11,
+                  padding: '6px 14px',
+                  background: '#ef4444',
+                  borderColor: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  borderRadius: 6,
+                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.35)'
+                }}
+                title="Resmi TradingView sayfasında tüm araçlar ve Pine düzenleyiciyle aç"
+              >
+                <ExternalLink size={13} />
+                <span>{cleanActiveTicker.replace('.IS', '')} Grafiğini TradingView'de Aç ↗</span>
+              </a>
+            </div>
+          )}
+
           {/* TRADINGVIEW PRO CHART WIDGET */}
           <div 
             id={containerId} 
@@ -1668,12 +1899,12 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               />
             </div>
 
-            {/* Custom Ticker Add Bar (Only when 'custom' is active) */}
-            {activeCategory === 'custom' && (
-              <form onSubmit={handleAddCustomTicker} style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+            {/* Ticker Add Bar (Available for both 'portfolio' and 'custom') */}
+            {(activeCategory === 'custom' || activeCategory === 'portfolio') && (
+              <form onSubmit={handleAddTicker} style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 <input
                   type="text"
-                  placeholder="Sembol ekle (Örn: PLTR, THYAO.IS)..."
+                  placeholder={activeCategory === 'portfolio' ? "Portföye sembol ekle (Örn: PLTR, THYAO)..." : "Özel listeye ekle (Örn: PLTR, THYAO)..."}
                   value={newTickerInput}
                   onChange={(e) => setNewTickerInput(e.target.value)}
                   style={{ 
@@ -1695,6 +1926,24 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   <span>Ekle</span>
                 </button>
               </form>
+            )}
+
+            {/* If items in portfolio are hidden or added, show reset shortcut */}
+            {activeCategory === 'portfolio' && (hiddenPortfolioTickers.length > 0 || manualPortfolioTickers.length > 0) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, padding: '2px 4px', fontSize: 9, color: 'var(--text-muted)' }}>
+                <span>
+                  {manualPortfolioTickers.length > 0 ? `+${manualPortfolioTickers.length} manuel` : ''}
+                  {hiddenPortfolioTickers.length > 0 ? ` • ${hiddenPortfolioTickers.length} gizli` : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetPortfolioWatchlist}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--cyan)', cursor: 'pointer', fontSize: 9, textDecoration: 'underline' }}
+                  title="Tüm gizlenen portföy varlıklarını geri yükle"
+                >
+                  Listeyi Sıfırla
+                </button>
+              </div>
             )}
 
             {/* Scrollable Watchlist Items List WITH LIVE PRICES & +/- % CHANGE */}
@@ -1779,17 +2028,40 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                         </span>
                       )}
 
-                      {activeCategory === 'custom' && (
+                      {/* Delete / Remove Action for custom or portfolio */}
+                      {(activeCategory === 'custom' || activeCategory === 'portfolio') && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRemoveCustomTicker(item.ticker);
+                            handleRemoveTicker(item);
                           }}
                           style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, marginTop: 2 }}
-                          title="Listeden Kaldır"
+                          title={activeCategory === 'portfolio' && !item.isManual ? "Portföy izleme listesinden gizle" : "Listeden kaldır"}
                         >
                           <Trash2 size={11} />
+                        </button>
+                      )}
+
+                      {/* Quick Add Star for Preset Categories (us_stocks, bist, crypto, etf, macro) */}
+                      {activeCategory !== 'custom' && activeCategory !== 'portfolio' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickAddTicker(item.ticker);
+                          }}
+                          style={{ 
+                            background: 'transparent', 
+                            border: 'none', 
+                            color: customTickers.includes(item.ticker.toUpperCase()) ? '#fbbf24' : '#64748b', 
+                            cursor: 'pointer', 
+                            padding: 2, 
+                            marginTop: 2 
+                          }}
+                          title={customTickers.includes(item.ticker.toUpperCase()) ? "Özel listenizde kayıtlı" : "Özel listeme ekle"}
+                        >
+                          <Star size={11} fill={customTickers.includes(item.ticker.toUpperCase()) ? "#fbbf24" : "none"} />
                         </button>
                       )}
                     </div>
