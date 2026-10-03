@@ -49,10 +49,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   // Active slide index (0 to 8)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
-  // Cross-window synchronization for OBS Pop-out
+  // Cross-window synchronization for OBS Pop-out (4-Way Redundant Engine)
   const syncChannelRef = useRef(null);
 
   useEffect(() => {
+    // 1. BroadcastChannel Listener
     let bc = null;
     try {
       bc = new BroadcastChannel('broadcast_studio_obs_sync');
@@ -64,31 +65,78 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       };
     } catch (e) {}
 
+    // 2. Direct Window Message Listener
+    const handleWindowMsg = (e) => {
+      if (e.data && e.data.type === 'CHANGE_SLIDE' && typeof e.data.slideIndex === 'number') {
+        setCurrentSlideIndex(e.data.slideIndex);
+      }
+    };
+    window.addEventListener('message', handleWindowMsg);
+
+    // 3. Storage Event Listener with timestamp payload
     const handleStorage = (e) => {
-      if (e.key === 'broadcast_studio_synced_slide' && e.newValue !== null) {
-        const idx = parseInt(e.newValue, 10);
-        if (!isNaN(idx)) setCurrentSlideIndex(idx);
+      if (e.key === 'broadcast_studio_synced_slide' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (typeof parsed.slideIndex === 'number') {
+            setCurrentSlideIndex(parsed.slideIndex);
+          }
+        } catch {
+          const idx = parseInt(e.newValue, 10);
+          if (!isNaN(idx)) setCurrentSlideIndex(idx);
+        }
       }
     };
     window.addEventListener('storage', handleStorage);
 
+    // 4. Background Heartbeat Polling (Solves Chrome background tab throttling / occlusion freezing)
+    let heartbeat = null;
     if (isObsPopout) {
       document.title = 'Hakan Genç Finans - OBS Canlı Slayt (1080p)';
+      heartbeat = setInterval(() => {
+        try {
+          const raw = localStorage.getItem('broadcast_studio_synced_slide');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed.slideIndex === 'number' && parsed.slideIndex !== currentSlideIndex) {
+              setCurrentSlideIndex(parsed.slideIndex);
+            }
+          }
+        } catch (e) {}
+      }, 200);
     }
 
     return () => {
       if (bc) bc.close();
+      window.removeEventListener('message', handleWindowMsg);
       window.removeEventListener('storage', handleStorage);
+      if (heartbeat) clearInterval(heartbeat);
     };
-  }, [isObsPopout]);
+  }, [isObsPopout, currentSlideIndex]);
 
   const changeSlide = (idx) => {
     setCurrentSlideIndex(idx);
+
+    // 1. Direct window communication (if popup reference exists)
+    try {
+      if (window.obsPopoutWindow && !window.obsPopoutWindow.closed) {
+        window.obsPopoutWindow.postMessage({ type: 'CHANGE_SLIDE', slideIndex: idx }, '*');
+      }
+    } catch (e) {}
+
+    // 2. BroadcastChannel broadcast
     try {
       if (syncChannelRef.current) {
-        syncChannelRef.current.postMessage({ type: 'CHANGE_SLIDE', slideIndex: idx });
+        syncChannelRef.current.postMessage({ type: 'CHANGE_SLIDE', slideIndex: idx, time: Date.now() });
+      } else {
+        const bc = new BroadcastChannel('broadcast_studio_obs_sync');
+        bc.postMessage({ type: 'CHANGE_SLIDE', slideIndex: idx, time: Date.now() });
       }
-      localStorage.setItem('broadcast_studio_synced_slide', idx.toString());
+    } catch (e) {}
+
+    // 3. LocalStorage persistence with timestamp guaranteeing new event
+    try {
+      localStorage.setItem('broadcast_studio_synced_slide', JSON.stringify({ slideIndex: idx, time: Date.now() }));
     } catch (e) {}
   };
 
@@ -1497,7 +1545,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
             type="button"
             onClick={() => {
               const popoutUrl = `${window.location.origin}${window.location.pathname}?obs_popout=1`;
-              window.open(popoutUrl, 'HakanGencFinans_OBS_Window', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
+              const win = window.open(popoutUrl, 'HakanGencFinans_OBS_Window', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
+              if (win) {
+                window.obsPopoutWindow = win;
+              }
             }}
             className="chip-btn"
             style={{ 
