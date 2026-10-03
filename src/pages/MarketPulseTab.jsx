@@ -367,11 +367,14 @@ export default function MarketPulseTab() {
             </div>
 
             <div style={{ background: '#0b0f19', border: '1px solid var(--border)', borderRadius: 4, padding: 10, textAlign: 'center' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>TRUFLATION (ABD)</div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: '#38bdf8', margin: '4px 0 2px 0', fontFamily: 'var(--font-mono)' }}>
-                {pulse?.inflation?.usa || 2.28}%
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+                <span>TRUFLATION (ABD)</span>
+                <span className="nav-badge cyan" style={{ fontSize: 8, padding: '1px 5px' }}>CANLI</span>
               </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Gerçek Zamanlı Öncü Enflasyon</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#38bdf8', margin: '4px 0 2px 0', fontFamily: 'var(--font-mono)' }}>
+                %{pulse?.inflation?.usa ? Number(pulse.inflation.usa).toFixed(2) : '2.77'}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Gerçek Zamanlı Öncü TÜFE</div>
             </div>
           </div>
 
