@@ -24,11 +24,15 @@ import {
   Sliders,
   AlertTriangle,
   BarChart3,
-  X
+  X,
+  Target,
+  Check,
+  Percent
 } from 'lucide-react';
 import { Line, Bar } from 'react-chartjs-2';
 import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
+import benchmarkData from '../data/benchmarkData.json';
 
 // Helper to convert any market ticker into TradingView compatible symbol string
 export function getTradingViewSymbol(ticker) {
@@ -58,6 +62,13 @@ export function getTradingViewSymbol(ticker) {
   if (clean === 'BTC' || clean === 'BTCUSDT' || clean === 'BTC-USD') return 'BINANCE:BTCUSDT';
   if (clean === 'ETH' || clean === 'ETHUSDT' || clean === 'ETH-USD') return 'BINANCE:ETHUSDT';
   if (clean === 'SOL' || clean === 'SOLUSDT' || clean === 'SOL-USD') return 'BINANCE:SOLUSDT';
+  if (clean === 'LDO' || clean === 'LDOUSDT' || clean === 'LDO-USD') return 'BINANCE:LDOUSDT';
+  if (clean === 'BIO' || clean === 'BIOUSDT' || clean === 'BIO-USD' || clean === 'BIO34812-USD') return 'MEXC:BIO_USDT';
+  if (clean === 'SUI' || clean === 'SUIUSDT' || clean === 'SUI-USD' || clean === 'SUI20947-USD') return 'BINANCE:SUIUSDT';
+  if (clean === 'OP' || clean === 'OPUSDT' || clean === 'OP-USD') return 'BINANCE:OPUSDT';
+  if (clean === 'ARKM' || clean === 'ARKMUSDT' || clean === 'ARKM-USD') return 'BINANCE:ARKMUSDT';
+  if (clean === 'DOGE' || clean === 'DOGEUSDT' || clean === 'DOGE-USD') return 'BINANCE:DOGEUSDT';
+  if (clean === 'XAUT' || clean === 'XAUT-USD') return 'BITFINEX:XAUTUSD';
 
   // BIST 100 Equities
   if (clean.endsWith('.IS')) {
@@ -72,7 +83,7 @@ export function getTradingViewSymbol(ticker) {
     return `BIST:${clean}`;
   }
 
-  // ETFs (Clean symbols or verified exchanges)
+  // Stocks & ETFs with clean symbols or verified exchanges
   if (clean === 'SPCX') return 'SPCX';
   if (clean === 'CUSD') return 'AMEX:CUSD';
   if (clean === 'DRAM') return 'DRAM';
@@ -89,7 +100,7 @@ export function getTradingViewSymbol(ticker) {
   if (clean === 'BOTZ') return 'NASDAQ:BOTZ';
 
   // NYSE Known Symbols
-  const nyseKnown = ['TSM', 'ABBV', 'XOM', 'DIA', 'KO', 'DIS', 'NKE', 'JNJ', 'PFE', 'UNH', 'JPM', 'V', 'MA', 'WMT'];
+  const nyseKnown = ['TSM', 'ABBV', 'XOM', 'VRT', 'DIA', 'KO', 'DIS', 'NKE', 'JNJ', 'PFE', 'UNH', 'JPM', 'V', 'MA', 'WMT'];
   if (nyseKnown.includes(clean)) {
     return `NYSE:${clean}`;
   }
@@ -98,11 +109,23 @@ export function getTradingViewSymbol(ticker) {
   return `NASDAQ:${clean}`;
 }
 
-// Preset Watchlists Catalog
+// Available indicator studies list
+const AVAILABLE_STUDIES = [
+  { id: 'STD;EMA', name: 'EMA', fullName: 'Üstel Hareketli Ortalama' },
+  { id: 'STD;RSI', name: 'RSI', fullName: 'Göreceli Güç Endeksi' },
+  { id: 'STD;MACD', name: 'MACD', fullName: 'MACD Momentum' },
+  { id: 'STD;Bollinger_Bands', name: 'Bollinger', fullName: 'Bollinger Bantları' },
+  { id: 'STD;VWAP', name: 'VWAP', fullName: 'Hacim Ağırlıklı Ort.' }
+];
+
+// Preset Watchlists Catalog with user's core holdings integrated
 const PRESET_WATCHLISTS = {
   us_stocks: [
+    { ticker: 'SPCX', name: 'Space Exploration Tech Corp', desc: 'Portföy Çekirdek ABD Hissesi • 2.22 Lot', tv: 'SPCX', isHolding: true },
     { ticker: 'NVDA', name: 'Nvidia Corp', desc: 'AI Çip & Veri Merkezi Lideri', tv: 'NASDAQ:NVDA' },
     { ticker: 'TSM', name: 'TSMC', desc: 'Küresel Çip Dökümhane Tekeli', tv: 'NYSE:TSM' },
+    { ticker: 'VRT', name: 'Vertiv Holdings Co', desc: 'AI Sıvı Soğutma Altyapı Tekeli', tv: 'NYSE:VRT' },
+    { ticker: 'ALAB', name: 'Astera Labs Inc', desc: 'AI Çip PCIe/CXL Bağlantı Lideri', tv: 'NASDAQ:ALAB' },
     { ticker: 'ABBV', name: 'AbbVie Inc', desc: 'Biyofarma & Temettü Devi', tv: 'NYSE:ABBV' },
     { ticker: 'XOM', name: 'Exxon Mobil', desc: 'Entegre Enerji & Nakit Akışı', tv: 'NYSE:XOM' },
     { ticker: 'AAPL', name: 'Apple Inc', desc: 'Tüketici Elektroniği & Ekosistem', tv: 'NASDAQ:AAPL' },
@@ -112,13 +135,11 @@ const PRESET_WATCHLISTS = {
     { ticker: 'META', name: 'Meta Platforms', desc: 'Sosyal Ağlar & Llama AI', tv: 'NASDAQ:META' },
     { ticker: 'AMD', name: 'Advanced Micro Devices', desc: 'x86 CPU & MI300 Hızlandırıcı', tv: 'NASDAQ:AMD' },
     { ticker: 'PLTR', name: 'Palantir Technologies', desc: 'Savunma & Kurumsal AI Sistemi', tv: 'NASDAQ:PLTR' },
-    { ticker: 'AVGO', name: 'Broadcom Inc', desc: 'Özel AI ASIC & Ağ Donanımları', tv: 'NASDAQ:AVGO' },
     { ticker: 'TSLA', name: 'Tesla Inc', desc: 'Elektrikli Araç, FSD & Otonomi', tv: 'NASDAQ:TSLA' }
   ],
   etf: [
-    { ticker: 'SPCX', name: 'CrossingBridge SPAC (CUSD)', desc: 'Nakit Kalkanı & Getiri Sepeti', tv: 'SPCX' },
-    { ticker: 'CUSD', name: 'CrossingBridge Ultra-Short', desc: 'SPCX Fonunun Yeni Resmi Tickerı', tv: 'AMEX:CUSD' },
-    { ticker: 'DRAM', name: 'Roundhill Memory & Tech ETF', desc: 'Yarı İletken Bellek Endeksi', tv: 'DRAM' },
+    { ticker: 'DRAM', name: 'Roundhill Memory & Tech ETF', desc: 'Portföyünüzün ETF Varlığı • 3.50 Lot', tv: 'DRAM', isHolding: true },
+    { ticker: 'CUSD', name: 'CrossingBridge Ultra-Short', desc: 'Ultra Kısa Vadeli Tahvil & Getiri Sepeti', tv: 'AMEX:CUSD' },
     { ticker: 'SOXX', name: 'iShares Semiconductor ETF', desc: 'ABD Yarı İletken Sanayi Endeksi', tv: 'NASDAQ:SOXX' },
     { ticker: 'SMH', name: 'VanEck Semiconductor ETF', desc: 'Ağırlıklı Yarı İletken Sepeti', tv: 'NASDAQ:SMH' },
     { ticker: 'QQQ', name: 'Invesco QQQ Trust', desc: 'Nasdaq 100 Teknoloji Devleri', tv: 'NASDAQ:QQQ' },
@@ -131,7 +152,7 @@ const PRESET_WATCHLISTS = {
     { ticker: 'XLK', name: 'Technology Select Sector SPDR', desc: 'S&P 500 Teknoloji Sektörü', tv: 'AMEX:XLK' }
   ],
   bist: [
-    { ticker: 'BYDNR.IS', name: 'Baydöner Restoranları', desc: 'Gıda & Hızlı Tüketim Zinciri', tv: 'BIST:BYDNR' },
+    { ticker: 'BYDNR.IS', name: 'Baydöner Restoranları', desc: 'Portföy BIST Hisseniz • 5,358 Lot • Maliyet: ₺37.63', tv: 'BIST:BYDNR', isHolding: true },
     { ticker: 'TUPRS.IS', name: 'Tüpraş Rafinerileri', desc: 'Stratejik Rafinaj & Temettü Devi', tv: 'BIST:TUPRS' },
     { ticker: 'THYAO.IS', name: 'Türk Hava Yolları', desc: 'Küresel Havacılık & Yolcu Lideri', tv: 'BIST:THYAO' },
     { ticker: 'ASELS.IS', name: 'Aselsan Savunma', desc: 'Savunma Sanayi & İleri Teknoloji', tv: 'BIST:ASELS' },
@@ -147,13 +168,18 @@ const PRESET_WATCHLISTS = {
     { ticker: 'TCELL.IS', name: 'Turkcell İletişim', desc: 'Telekomünikasyon & Dijital Servisler', tv: 'BIST:TCELL' }
   ],
   crypto: [
+    { ticker: 'BTCUSDT', name: 'Bitcoin (Portföyde)', desc: 'Portföy Kripto • 0.0039 Lot • Maliyet: ₺2.77M', tv: 'BINANCE:BTCUSDT', isHolding: true },
+    { ticker: 'ETHUSDT', name: 'Ethereum (Portföyde)', desc: 'Portföy Kripto • 0.143 Lot • Maliyet: ₺82.75K', tv: 'BINANCE:ETHUSDT', isHolding: true },
+    { ticker: 'LDOUSDT', name: 'Lido DAO (Portföyde)', desc: 'Portföy Kripto • 140.5 Lot • Maliyet: ₺48.04', tv: 'BINANCE:LDOUSDT', isHolding: true },
+    { ticker: 'SUIUSDT', name: 'SUI Network (Portföyde)', desc: 'Portföy Kripto • 52 Lot • Maliyet: ₺143.76', tv: 'BINANCE:SUIUSDT', isHolding: true },
+    { ticker: 'OPUSDT', name: 'Optimism (Portföyde)', desc: 'Portföy Kripto • 252 Lot • Maliyet: ₺32.34', tv: 'BINANCE:OPUSDT', isHolding: true },
+    { ticker: 'ARKMUSDT', name: 'Arkham (Portföyde)', desc: 'Portföy Kripto • 150.5 Lot • Maliyet: ₺27.06', tv: 'BINANCE:ARKMUSDT', isHolding: true },
+    { ticker: 'DOGEUSDT', name: 'Dogecoin (Portföyde)', desc: 'Portföy Kripto • 309 Lot • Maliyet: ₺12.51', tv: 'BINANCE:DOGEUSDT', isHolding: true },
     { ticker: 'TOTAL', name: 'Kripto Toplam Piyasa Değeri', desc: 'Tüm Kripto Ekosisteminin Toplam Hacmi', tv: 'CRYPTOCAP:TOTAL' },
     { ticker: 'TOTAL2', name: 'Toplam Piyasa (BTC Hariç)', desc: 'Bitcoin Hariç Tüm Ekosistem Büyüklüğü', tv: 'CRYPTOCAP:TOTAL2' },
     { ticker: 'TOTAL3', name: 'Altcoin Sezon Barometresi', desc: 'BTC & ETH Hariç Tüm Altcoinler', tv: 'CRYPTOCAP:TOTAL3' },
     { ticker: 'OTHERS', name: 'Diğer Küçük/Orta Altcoinler', desc: 'Top 10 Hariç Asimetrik Fırsat Endeksi', tv: 'CRYPTOCAP:OTHERS' },
     { ticker: 'TOTALDEFI', name: 'DeFi Ekosistem Toplamı', desc: 'Merkeziyetsiz Finans Protokol Büyüklüğü', tv: 'CRYPTOCAP:TOTALDEFI' },
-    { ticker: 'BTCUSDT', name: 'Bitcoin / Tether', desc: 'Dijital Altın & Rezerv Varlık', tv: 'BINANCE:BTCUSDT' },
-    { ticker: 'ETHUSDT', name: 'Ethereum / Tether', desc: 'Akıllı Kontratlar & L2 Ana Ağı', tv: 'BINANCE:ETHUSDT' },
     { ticker: 'SOLUSDT', name: 'Solana / Tether', desc: 'Yüksek Hızlı Monolitik Blokzincir', tv: 'BINANCE:SOLUSDT' }
   ],
   macro: [
@@ -168,7 +194,7 @@ const PRESET_WATCHLISTS = {
 };
 
 export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedTicker, onSelectTicker }) {
-  const { portfolioSummary, currentCurrency } = useApp();
+  const { portfolioSummary, currentCurrency, usdtry } = useApp();
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
@@ -176,7 +202,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Current active symbol on chart
   const [currentSymbol, setCurrentSymbol] = useState(() => {
-    return selectedTicker || 'NVDA';
+    return selectedTicker || 'SPCX';
   });
 
   // Watchlist Active Category
@@ -188,12 +214,41 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const [customTickers, setCustomTickers] = useState(() => {
     try {
       const saved = localStorage.getItem('custom_watchlist_tickers');
-      return saved ? JSON.parse(saved) : ['PLTR', 'THYAO.IS', 'SOXX', 'TOTAL3'];
+      return saved ? JSON.parse(saved) : ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'];
     } catch {
-      return ['PLTR', 'THYAO.IS', 'SOXX', 'TOTAL3'];
+      return ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'];
     }
   });
   const [newTickerInput, setNewTickerInput] = useState('');
+
+  // User-Configured Active Indicators (Studies) with LocalStorage persistence
+  // Default to ONLY 2 indicators (EMA and RSI) to leave free quota room for user in TradingView!
+  const [activeStudies, setActiveStudies] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pro_chart_active_studies');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return ['STD;EMA', 'STD;RSI'];
+  });
+
+  // Toggle study on/off and persist
+  const toggleStudy = (studyId) => {
+    setActiveStudies(prev => {
+      let next;
+      if (prev.includes(studyId)) {
+        next = prev.filter(s => s !== studyId);
+      } else {
+        next = [...prev, studyId];
+      }
+      try {
+        localStorage.setItem('pro_chart_active_studies', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   // Fullscreen State & Ref
   const chartWrapperRef = useRef(null);
@@ -259,16 +314,39 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     setCustomTickers(prev => prev.filter(t => t !== tickerToRemove));
   };
 
-  // Synchronize holdings dynamically from portfolio
+  // Robust Portfolio Items: Merges active Firestore holdings with benchmarkData fallback
   const portfolioItems = useMemo(() => {
-    const list = portfolioSummary?.enrichedHoldings || [];
+    const list = (portfolioSummary?.enrichedHoldings && portfolioSummary.enrichedHoldings.length > 0)
+      ? portfolioSummary.enrichedHoldings
+      : (benchmarkData?.holdings || []);
+
     return list.map(h => {
+      const symIcon = h.currency === 'TRY' ? '₺' : '$';
+      const costPerShare = Number(h.avg_cost) || (h.costTRY ? (h.costTRY / (Number(h.shares) || 1)) : 0);
+      const isHoldingTRY = h.currency === 'TRY';
+      const currentPr = isHoldingTRY ? (h.livePriceTRY || h.current_price || 0) : (h.livePriceUSD || h.current_price || 0);
+      const retPct = h.returnPct !== undefined ? h.returnPct : (costPerShare > 0 ? ((currentPr - costPerShare) / costPerShare * 100) : 0);
+
+      let typeBadge = 'Hisse';
+      if (h.type === 'ETF' || h.ticker === 'DRAM') typeBadge = 'ETF';
+      else if (h.type === 'Kripto' || h.ticker.includes('-USD') || ['BTC', 'ETH', 'LDO', 'BIO', 'SUI', 'OP', 'ARKM', 'DOGE'].includes(h.ticker.replace('-USD', ''))) typeBadge = 'Kripto';
+      else if (h.type === 'Altın' || h.ticker.includes('XAUT')) typeBadge = 'Altın';
+      else if (h.ticker.endsWith('.IS') || h.ticker === 'BYDNR') typeBadge = 'BIST';
+
       return {
         ticker: h.ticker,
-        name: h.name || h.ticker,
-        desc: `${h.shares} Lot • Maliyet: ${h.currency === 'TRY' ? '₺' : '$'}${fmt(h.costTRY ? (h.costTRY / (h.shares || 1)) : 0, 2)}`,
+        cleanTicker: h.clean_ticker || h.ticker,
+        name: h.name || (h.ticker === 'SPCX' ? 'Space Exploration Tech Corp' : h.ticker),
+        type: typeBadge,
+        shares: Number(h.shares) || 0,
+        avgCost: costPerShare,
+        currentPrice: currentPr,
+        returnPct: retPct,
+        currency: h.currency || (h.ticker.endsWith('.IS') ? 'TRY' : 'USD'),
+        desc: `${h.shares} Lot • Maliyet: ${symIcon}${fmt(costPerShare, 2)} • K/Z: ${retPct >= 0 ? '+' : ''}${fmt(retPct, 2)}%`,
         tv: getTradingViewSymbol(h.ticker),
-        holding: h
+        holding: h,
+        isHolding: true
       };
     });
   }, [portfolioSummary?.enrichedHoldings]);
@@ -301,14 +379,32 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return items;
   }, [activeCategory, portfolioItems, customTickers, searchQuery]);
 
+  // Clean identifier for active symbol
+  const cleanActiveTicker = useMemo(() => {
+    return currentSymbol
+      .replace('.IS', '')
+      .replace('BIST:', '')
+      .replace('NASDAQ:', '')
+      .replace('NYSE:', '')
+      .replace('AMEX:', '')
+      .replace('BINANCE:', '')
+      .replace('CRYPTOCAP:', '')
+      .replace('CAPITALCOM:', '')
+      .replace('CBOE:', '')
+      .replace('TVC:', '')
+      .replace('OANDA:', '')
+      .replace('FX_IDC:', '')
+      .replace('-USD', '')
+      .toUpperCase();
+  }, [currentSymbol]);
+
   // Check if currentSymbol is in the user's holdings
   const activeHolding = useMemo(() => {
-    const cleanCurrent = currentSymbol.replace('.IS', '').replace('BIST:', '').replace('NASDAQ:', '').replace('NYSE:', '').replace('AMEX:', '').replace('BINANCE:', '').replace('CRYPTOCAP:', '').replace('CAPITALCOM:', '').replace('CBOE:', '').replace('TVC:', '').replace('OANDA:', '').replace('FX_IDC:', '').toUpperCase();
-    return portfolioSummary?.enrichedHoldings?.find(h => {
-      const hTicker = (h.ticker || '').toUpperCase().replace('.IS', '');
-      return hTicker === cleanCurrent;
-    });
-  }, [currentSymbol, portfolioSummary?.enrichedHoldings]);
+    return portfolioItems.find(item => {
+      const itClean = (item.ticker || '').replace('.IS', '').replace('-USD', '').toUpperCase();
+      return itClean === cleanActiveTicker || (item.cleanTicker || '').toUpperCase() === cleanActiveTicker;
+    })?.holding || null;
+  }, [cleanActiveTicker, portfolioItems]);
 
   // Check if symbol is a BIST stock
   const isBistStock = useMemo(() => {
@@ -316,30 +412,106 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return clean.endsWith('.IS') || clean.startsWith('BIST:') || [
       'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
       'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 'TCELL'
-    ].includes(clean.replace('.IS', '').replace('BIST:', ''));
-  }, [currentSymbol]);
-
-  const cleanBistTicker = useMemo(() => {
-    return currentSymbol.replace('.IS', '').replace('BIST:', '').toUpperCase();
-  }, [currentSymbol]);
+    ].includes(cleanActiveTicker);
+  }, [currentSymbol, cleanActiveTicker]);
 
   // Native stock data (for Bloomberg canvas fallback)
   const nativeStockData = useMemo(() => {
-    const clean = currentSymbol.replace('.IS', '').replace('BIST:', '').toUpperCase();
-    return stocksData[clean] || stocksData[currentSymbol] || null;
-  }, [currentSymbol]);
+    return stocksData[cleanActiveTicker] || stocksData[currentSymbol] || null;
+  }, [cleanActiveTicker, currentSymbol]);
 
-  // Quant score lookup for the active symbol
-  const activeQuantInfo = useMemo(() => {
-    const cleanCurrent = currentSymbol.replace('.IS', '').replace('BIST:', '').replace('NASDAQ:', '').replace('NYSE:', '').replace('AMEX:', '').replace('BINANCE:', '').replace('CRYPTOCAP:', '').replace('CAPITALCOM:', '').replace('CBOE:', '').replace('TVC:', '').replace('OANDA:', '').replace('FX_IDC:', '').toUpperCase();
-    const sData = stocksData[cleanCurrent];
-    const potData = potentialStocksData?.stocks?.find(s => s.ticker === cleanCurrent);
+  // Comprehensive Buy Zone & Valuation Analysis for Current Symbol
+  const buyZoneAnalysis = useMemo(() => {
+    const sData = stocksData[cleanActiveTicker];
+    const potData = potentialStocksData?.stocks?.find(s => s.ticker === cleanActiveTicker);
+
+    const hasHolding = !!activeHolding;
+    const holdingCost = hasHolding ? (activeHolding.avg_cost || (activeHolding.costTRY ? (activeHolding.costTRY / (activeHolding.shares || 1)) : 0)) : null;
+    const holdingCurrency = activeHolding ? (activeHolding.currency || (activeHolding.ticker.endsWith('.IS') ? 'TRY' : 'USD')) : null;
+    const symMark = holdingCurrency === 'TRY' ? '₺' : '$';
+
+    const fairValue = potData?.target_price || sData?.dcf?.fair_value || sData?.analysis?.pillars?.valuation?.target_price || null;
+    const quantScore = sData?.analysis?.quant_score || potData?.conviction_score || null;
+    const low52w = potData?.low_52w || sData?.candlestick?.low_52w || null;
+
+    let livePrice = 0;
+    if (activeHolding) {
+      livePrice = holdingCurrency === 'TRY' 
+        ? (activeHolding.livePriceTRY || activeHolding.current_price || holdingCost || 0)
+        : (activeHolding.livePriceUSD || activeHolding.current_price || holdingCost || 0);
+    } else if (potData) {
+      livePrice = potData.price || 0;
+    } else if (sData) {
+      livePrice = sData.candlestick?.current_price || 0;
+    }
+
+    // Determine Ideal Buy Zone bounds
+    let buyZoneMin = 0;
+    let buyZoneMax = 0;
+    let zoneStatus = 'neutral';
+    let zoneBadge = '🟡 İNCELEME BÖLGESİ';
+    let zoneColor = '#f59e0b';
+    let zoneAdvice = '';
+
+    if (hasHolding && holdingCost > 0) {
+      // For existing holdings, ideal buy zone is under cost or within accumulation range
+      buyZoneMin = holdingCost * 0.88;
+      buyZoneMax = holdingCost * 1.05;
+
+      const diffPct = ((livePrice - holdingCost) / holdingCost) * 100;
+      if (diffPct < -5) {
+        zoneStatus = 'discount_buy';
+        zoneBadge = '🟢 İSKONTOLU ALIM BÖLGESİ';
+        zoneColor = '#10b981';
+        zoneAdvice = `Maliyetinizin %${Math.abs(diffPct).toFixed(1)} altında iskontolu işlem görüyor. Ortalama düşürmek ve pozisyon artırmak için cazip bölge.`;
+      } else if (diffPct <= 10) {
+        zoneStatus = 'accumulation';
+        zoneBadge = '🟡 AKÜMÜLASYON / BİRİKTİRME BÖLGESİ';
+        zoneColor = '#00e5ff';
+        zoneAdvice = `Maliyetinize yakın (%${diffPct.toFixed(1)}) seyrediyor. Kademeli biriktirme veya pozisyon koruma bölgesi.`;
+      } else {
+        zoneStatus = 'profit_run';
+        zoneBadge = '🔵 KÂR TAŞIMA / REBALANCE BÖLGESİ';
+        zoneColor = '#38bdf8';
+        zoneAdvice = `Maliyetinizin %${diffPct.toFixed(1)} üzerinde kârda seyrediyor. Kâr koruma veya hedef rebalance satışı düşünülebilir.`;
+      }
+    } else if (fairValue > 0) {
+      buyZoneMin = low52w || (fairValue * 0.70);
+      buyZoneMax = fairValue * 0.95;
+
+      if (livePrice > 0 && livePrice < fairValue) {
+        const upside = ((fairValue - livePrice) / livePrice) * 100;
+        zoneStatus = 'undervalued';
+        zoneBadge = '🟢 ADİL DEĞER ALTI ALIM FIRSATI';
+        zoneColor = '#10b981';
+        zoneAdvice = `Hedef/Adil değerin (%${upside.toFixed(1)} potansiyel) altında. Güçlü değerleme koridorunda.`;
+      } else {
+        zoneStatus = 'fair';
+        zoneBadge = '🔴 HEDEF / DİRENÇ BÖLGESİ';
+        zoneColor = '#ef4444';
+        zoneAdvice = `Fiyat adil değer seviyesine ulaşmış. Yeni alım için geri çekilmeler beklenebilir.`;
+      }
+    } else {
+      zoneAdvice = 'Teknik analiz göstergeleri ve destek direnç çizgileriyle alım seviyeleri takip edilebilir.';
+    }
+
     return {
-      quantScore: sData?.analysis?.quant_score || potData?.conviction_score || null,
-      fairValue: potData?.target_price || null,
-      notes: potData?.catalysts?.[0] || sData?.company?.sector || null
+      hasHolding,
+      holdingCost,
+      holdingCurrency,
+      symMark,
+      livePrice,
+      fairValue,
+      quantScore,
+      low52w,
+      buyZoneMin,
+      buyZoneMax,
+      zoneStatus,
+      zoneBadge,
+      zoneColor,
+      zoneAdvice
     };
-  }, [currentSymbol]);
+  }, [cleanActiveTicker, activeHolding]);
 
   // TradingView Widget Injection
   const containerId = 'tradingview_pro_chart_embed';
@@ -369,16 +541,12 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           locale: 'tr',
           toolbar_bg: '#040711',
           enable_publishing: false,
-          hide_side_toolbar: false, // FULL DRAWING TOOLS on left!
+          hide_side_toolbar: false, // FULL DRAWING TOOLS on left
           allow_symbol_change: true,
           save_image: true,
           container_id: containerId,
-          studies: [
-            'STD;EMA',
-            'STD;RSI',
-            'STD;MACD',
-            'STD;Bollinger_Bands'
-          ]
+          // Respect user-configured active studies!
+          studies: activeStudies
         });
       } catch (err) {
         console.warn('TradingView widget initialization error:', err);
@@ -401,7 +569,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return () => {
       isMounted = false;
     };
-  }, [currentSymbol, chartEngineMode]);
+  }, [currentSymbol, chartEngineMode, activeStudies]);
 
   // Native Candlestick/Bar Chart Data for BIST / Local Fallback
   const nativeChartData = useMemo(() => {
@@ -517,24 +685,24 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </span>
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-              Çizim Araçları • Sınırsız İndikatör • Portföy Maliyet Çizgileri & Sınırsız İzleme Listeleri
+              Çizim Araçları • Sınırsız İndikatör & Kota Kontrolü • Alım Bölgeleri & Entegre Portföy
             </div>
           </div>
         </div>
 
-        {/* Quick Shortcuts, Engine Toggle, Fullscreen & Watchlist Buttons */}
+        {/* Quick Shortcuts, Indicators, Fullscreen & Watchlist Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           
           {/* Quick Shortcuts */}
           <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
             {[
-              { label: 'NVDA', sym: 'NVDA' },
               { label: 'SPCX', sym: 'SPCX' },
+              { label: 'NVDA', sym: 'NVDA' },
+              { label: 'DRAM', sym: 'DRAM' },
               { label: 'BYDNR', sym: 'BYDNR.IS' },
               { label: 'BTC', sym: 'BTCUSDT' },
               { label: 'TOTAL3', sym: 'TOTAL3' },
               { label: 'DXY', sym: 'DXY' },
-              { label: 'BRENT', sym: 'BRENT' },
               { label: 'US10Y', sym: 'US10Y' }
             ].map(item => (
               <button
@@ -624,71 +792,164 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         </div>
       </div>
 
-      {/* 🚀 Active Holding Overlay HUD (Slim, Non-overlapping Strip) */}
-      {activeHolding && !hideHud && (
+      {/* ⚡ Interactive Indicator Manager Bar (Fixes Bollingers Re-opening & Free Plan Quota) */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: 8, 
+          padding: '6px 14px', 
+          background: 'rgba(15, 23, 42, 0.65)', 
+          border: '1px solid rgba(255,255,255,0.08)', 
+          borderRadius: 6 
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Sliders size={12} className="text-cyan" />
+            <span>AKTİF İNDİKATÖRLER:</span>
+          </span>
+          {AVAILABLE_STUDIES.map(st => {
+            const isActive = activeStudies.includes(st.id);
+            return (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => toggleStudy(st.id)}
+                className={`chip-btn ${isActive ? 'active' : ''}`}
+                style={{ 
+                  fontSize: 10, 
+                  padding: '3px 8px',
+                  fontWeight: isActive ? 700 : 500,
+                  borderColor: isActive ? 'var(--cyan)' : 'rgba(255,255,255,0.1)'
+                }}
+                title={`${st.fullName} (Aç/Kapat)`}
+              >
+                {isActive ? '✓ ' : '+ '}{st.name}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+          <span 
+            className={`nav-badge ${activeStudies.length <= 2 ? 'emerald' : activeStudies.length === 3 ? 'amber' : 'rose'}`}
+            style={{ fontSize: 9.5, padding: '2px 7px' }}
+            title="TradingView ücretsiz kotası genelde 3 göstergedir. 2 gösterge açıkken manuel 1 gösterge daha ekleyebilirsiniz."
+          >
+            {activeStudies.length}/3 Kotası ({Math.max(0, 3 - activeStudies.length)} Boş Slot)
+          </span>
+          <span style={{ fontSize: 9.5 }}>💡 İndikatör tercihiniz tüm hisse geçişlerinde korunur.</span>
+        </div>
+      </div>
+
+      {/* 🎯 PORTFÖY ALIM BÖLGESİ & MALİYET ANALİZİ HUD */}
+      {!hideHud && (
         <div 
           className="card" 
           style={{ 
-            padding: '7px 14px', 
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 78, 59, 0.18))', 
-            border: '1px solid rgba(16, 185, 129, 0.4)', 
+            padding: '8px 14px', 
+            background: buyZoneAnalysis.hasHolding
+              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 78, 59, 0.22))' 
+              : 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8))', 
+            border: buyZoneAnalysis.hasHolding 
+              ? '1px solid rgba(16, 185, 129, 0.45)' 
+              : '1px solid rgba(0, 229, 255, 0.25)', 
             borderRadius: 6,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 8,
+            gap: 10,
             marginBottom: 2,
             position: 'relative',
             zIndex: 10
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 14 }}>💼</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>
-                PORTFÖYÜNÜZDE MEVCUT:
-              </span>
-              <strong className="mono text-bright" style={{ fontSize: 12.5 }}>
-                {activeHolding.ticker}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 16 }}>{buyZoneAnalysis.hasHolding ? '💼' : '🎯'}</span>
+            
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+              <strong className="mono text-bright" style={{ fontSize: 13 }}>
+                {cleanActiveTicker}
               </strong>
-              <span className="mono font-bold text-emerald" style={{ fontSize: 11.5 }}>
-                {activeHolding.shares} Lot
+              
+              {buyZoneAnalysis.hasHolding && (
+                <>
+                  <span className="badge-type hisse" style={{ fontSize: 8.5 }}>
+                    Portföyde ({buyZoneAnalysis.hasHolding ? `${activeHolding.shares} Lot` : ''})
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Alım Maliyetiniz: <strong className="mono text-bright">{buyZoneAnalysis.symMark}{fmt(buyZoneAnalysis.holdingCost, 2)}</strong>
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Canlı: <strong className="mono text-cyan">{buyZoneAnalysis.symMark}{fmt(buyZoneAnalysis.livePrice, 2)}</strong>
+                  </span>
+                  {activeHolding.returnPct !== undefined && (
+                    <span style={{ fontSize: 11, color: activeHolding.returnPct >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>
+                      K/Z: {activeHolding.returnPct >= 0 ? '+' : ''}{fmt(activeHolding.returnPct, 2)}%
+                    </span>
+                  )}
+                </>
+              )}
+
+              {/* Buy Zone Status Badge */}
+              <span 
+                className="nav-badge" 
+                style={{ 
+                  fontSize: 9.5, 
+                  padding: '2px 8px', 
+                  backgroundColor: `${buyZoneAnalysis.zoneColor}22`,
+                  borderColor: buyZoneAnalysis.zoneColor,
+                  color: buyZoneAnalysis.zoneColor,
+                  fontWeight: 700
+                }}
+              >
+                {buyZoneAnalysis.zoneBadge}
               </span>
-              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                Maliyet: <strong className="mono text-bright">{activeHolding.currency === 'TRY' ? '₺' : '$'}{fmt(activeHolding.costTRY ? (activeHolding.costTRY / (activeHolding.shares || 1)) : 0, 2)}</strong>
-              </span>
-              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                Değer: <strong className="mono text-cyan">{sym}{fmt(isTRY ? activeHolding.valTRY : activeHolding.valUSD, 2)}</strong>
-              </span>
-              <span style={{ fontSize: 10.5, color: (activeHolding.profitTRY || 0) >= 0 ? 'var(--up)' : 'var(--down)', fontWeight: 700 }}>
-                K/Z: {(activeHolding.profitTRY || 0) >= 0 ? '+' : ''}{sym}{fmt(isTRY ? activeHolding.profitTRY : activeHolding.profitUSD, 2)} ({fmt(activeHolding.returnPct, 2)}%)
-              </span>
+
+              {/* Fair Value or Target Price if present */}
+              {buyZoneAnalysis.fairValue && (
+                <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                  Hedef/Adil Değer: <strong className="mono text-gold">{buyZoneAnalysis.symMark}{fmt(buyZoneAnalysis.fairValue, 2)}</strong>
+                </span>
+              )}
+            </div>
+
+            {/* Strategic Advice Subtext */}
+            <div style={{ width: '100%', fontSize: 10, color: 'var(--text-muted)', marginTop: -2, paddingLeft: 26 }}>
+              <span>{buyZoneAnalysis.zoneAdvice}</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {activeQuantInfo.quantScore && (
+            {buyZoneAnalysis.quantScore && (
               <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 7px' }}>
-                Quant: {activeQuantInfo.quantScore.toFixed(1)}
+                Quant: {buyZoneAnalysis.quantScore.toFixed(0)}
               </span>
             )}
             <button
               type="button"
               className="btn-action-row buy"
-              onClick={() => onOpenAddModal && onOpenAddModal(activeHolding.ticker)}
-              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => onOpenAddModal && onOpenAddModal(cleanActiveTicker)}
+              style={{ fontSize: 10, padding: '3px 9px' }}
+              title="Bu varlıktan ek alım yap"
             >
-              + Al
+              + Alım Yap
             </button>
-            <button
-              type="button"
-              className="btn-action-row sell"
-              onClick={() => onOpenSellModal && onOpenSellModal(activeHolding)}
-              style={{ fontSize: 10, padding: '3px 8px' }}
-            >
-              - Sat
-            </button>
+            {buyZoneAnalysis.hasHolding && (
+              <button
+                type="button"
+                className="btn-action-row sell"
+                onClick={() => onOpenSellModal && onOpenSellModal(activeHolding)}
+                style={{ fontSize: 10, padding: '3px 9px' }}
+                title="Kısmi kâr veya satış yap"
+              >
+                - Kâr Sat
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setHideHud(true)}
@@ -738,7 +999,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </button>
             )}
             <a
-              href={`https://tr.tradingview.com/chart/?symbol=BIST:${cleanBistTicker}`}
+              href={`https://tr.tradingview.com/chart/?symbol=BIST:${cleanActiveTicker}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary"
@@ -766,7 +1027,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         ref={chartWrapperRef}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: (!isFullscreen && sidebarOpen) ? '1fr 340px' : '1fr', 
+          gridTemplateColumns: sidebarOpen ? '1fr 340px' : '1fr', 
           gap: 12, 
           alignItems: 'stretch',
           position: isFullscreen ? 'fixed' : 'relative',
@@ -787,25 +1048,108 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             background: '#040711', 
             border: '1px solid var(--border)', 
             borderRadius: 8, 
-            minHeight: isFullscreen ? 'calc(100vh - 30px)' : 720,
-            height: isFullscreen ? 'calc(100vh - 30px)' : 'calc(100vh - 210px)',
+            minHeight: isFullscreen ? 'calc(100vh - 28px)' : 720,
+            height: isFullscreen ? 'calc(100vh - 28px)' : 'calc(100vh - 210px)',
             display: 'flex',
             flexDirection: 'column',
             position: 'relative'
           }}
         >
-          {/* Fullscreen Floating Exit Button */}
+          {/* 🌟 Fullscreen Interactive Top Floating Toolbar (Enables Stock & Indicator Switching without exiting fullscreen) */}
           {isFullscreen && (
-            <div style={{ position: 'absolute', top: 10, right: 14, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(8,12,22,0.9)', padding: '4px 10px', borderRadius: 6, border: '1px solid var(--cyan)' }}>
-              <span className="mono font-bold text-cyan" style={{ fontSize: 11 }}>{currentSymbol}</span>
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="chip-btn"
-                style={{ fontSize: 10, padding: '2px 8px', background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
-              >
-                ✕ Tam Ekrandan Çık (ESC)
-              </button>
+            <div 
+              style={{ 
+                position: 'absolute', 
+                top: 10, 
+                left: 14, 
+                right: 14, 
+                zIndex: 9999, 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                background: 'rgba(8, 12, 22, 0.95)', 
+                padding: '6px 12px', 
+                borderRadius: 8, 
+                border: '1px solid rgba(0, 229, 255, 0.35)',
+                backdropFilter: 'blur(8px)',
+                flexWrap: 'wrap',
+                gap: 8
+              }}
+            >
+              {/* Active Ticker & Quick Switches */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="mono font-bold text-cyan" style={{ fontSize: 13 }}>
+                  {cleanActiveTicker}
+                </span>
+                {buyZoneAnalysis.hasHolding && (
+                  <span className="badge-type hisse" style={{ fontSize: 9 }}>
+                    Maliyet: {buyZoneAnalysis.symMark}{fmt(buyZoneAnalysis.holdingCost, 2)} ({activeHolding.shares} Lot)
+                  </span>
+                )}
+                <div style={{ display: 'inline-flex', gap: 4 }}>
+                  {['SPCX', 'NVDA', 'BYDNR.IS', 'DRAM', 'BTCUSDT', 'TOTAL3'].map(symCode => (
+                    <button
+                      key={symCode}
+                      type="button"
+                      onClick={() => {
+                        setCurrentSymbol(symCode);
+                        if (onSelectTicker) onSelectTicker(symCode);
+                      }}
+                      className={`chip-btn ${currentSymbol === symCode ? 'active' : ''}`}
+                      style={{ fontSize: 9, padding: '2px 6px' }}
+                    >
+                      {symCode.replace('.IS', '').replace('USDT', '')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Indicator Controls & Exit Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'inline-flex', gap: 4 }}>
+                  {AVAILABLE_STUDIES.map(st => {
+                    const isActive = activeStudies.includes(st.id);
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => toggleStudy(st.id)}
+                        className={`chip-btn ${isActive ? 'active' : ''}`}
+                        style={{ fontSize: 9, padding: '2px 6px' }}
+                      >
+                        {isActive ? '✓ ' : '+ '}{st.name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(prev => !prev)}
+                  className="chip-btn"
+                  style={{ 
+                    fontSize: 9.5, 
+                    padding: '3px 8px', 
+                    background: sidebarOpen ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+                    borderColor: 'var(--cyan)',
+                    color: 'var(--cyan)'
+                  }}
+                  title="Tam ekranda yan paneldeki tüm hisseleri açıp kapatın"
+                >
+                  <Layers size={11} style={{ marginRight: 3 }} />
+                  <span>{sidebarOpen ? 'Listeyi Gizle' : 'Listeyi Aç'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="chip-btn"
+                  style={{ fontSize: 9.5, padding: '3px 9px', background: '#ef4444', color: '#fff', borderColor: '#ef4444', fontWeight: 700 }}
+                  title="Tam Ekrandan Çık (ESC)"
+                >
+                  ✕ Çık (ESC)
+                </button>
+              </div>
             </div>
           )}
 
@@ -813,13 +1157,19 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           {chartEngineMode === 'tv' && (
             <div 
               id={containerId} 
-              style={{ width: '100%', height: '100%', minHeight: 700, flex: 1 }} 
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                minHeight: 700, 
+                flex: 1, 
+                paddingTop: isFullscreen ? 44 : 0 
+              }} 
             />
           )}
 
           {/* 2. BLOOMBERG NATIVE CANVAS ENGINE (For BIST / Offline Fallback) */}
           {chartEngineMode === 'native' && nativeChartData && (
-            <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', paddingTop: isFullscreen ? 50 : 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div>
                   <strong className="mono" style={{ fontSize: 16, color: 'var(--cyan)' }}>
@@ -845,8 +1195,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           )}
         </div>
 
-        {/* Right: Sınırsız Watchlist Yöneticisi (Hidden when in Fullscreen) */}
-        {!isFullscreen && sidebarOpen && (
+        {/* Right: Sınırsız Watchlist Yöneticisi (Works in BOTH Fullscreen and Normal modes) */}
+        {sidebarOpen && (
           <div 
             className="card" 
             style={{ 
@@ -856,8 +1206,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               borderRadius: 8, 
               display: 'flex', 
               flexDirection: 'column',
-              minHeight: 720,
-              height: 'calc(100vh - 210px)',
+              minHeight: isFullscreen ? 'calc(100vh - 28px)' : 720,
+              height: isFullscreen ? 'calc(100vh - 28px)' : 'calc(100vh - 210px)',
               overflow: 'hidden'
             }}
           >
@@ -872,7 +1222,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </span>
             </div>
 
-            {/* 🔽 1. Downward Dropdown Category Selector (Solves Horizontal Cutoff) */}
+            {/* 🔽 1. Downward Dropdown Category Selector */}
             <div style={{ marginBottom: 6 }}>
               <select
                 value={activeCategory}
@@ -890,10 +1240,10 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   outline: 'none'
                 }}
               >
-                <option value="portfolio">💼 Portföyüm ({portfolioItems.length} Varlık - Otomatik)</option>
-                <option value="us_stocks">📈 ABD Hisse ({PRESET_WATCHLISTS.us_stocks.length} Varlık)</option>
-                <option value="etf">🏛️ ETF Sepeti ({PRESET_WATCHLISTS.etf.length} Varlık)</option>
-                <option value="bist">🇹🇷 BIST 100 ({PRESET_WATCHLISTS.bist.length} Varlık)</option>
+                <option value="portfolio">💼 Portföyüm ({portfolioItems.length} Varlık - Tam Liste)</option>
+                <option value="us_stocks">📈 ABD Hisse (SPCX, NVDA, TSM, VRT... {PRESET_WATCHLISTS.us_stocks.length})</option>
+                <option value="etf">🏛️ ETF Sepeti (DRAM, SOXX, QQQ... {PRESET_WATCHLISTS.etf.length})</option>
+                <option value="bist">🇹🇷 BIST 100 (BYDNR, TUPRS, THYAO... {PRESET_WATCHLISTS.bist.length})</option>
                 <option value="crypto">⚡ Kripto & TOTAL3 ({PRESET_WATCHLISTS.crypto.length} Varlık)</option>
                 <option value="macro">🌐 Genel Makro & Emtia ({PRESET_WATCHLISTS.macro.length} Varlık)</option>
                 <option value="custom">⭐ Özel Listem ({customTickers.length} Varlık)</option>
@@ -934,8 +1284,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   fontSize: 10.5, 
                   background: 'rgba(0,0,0,0.4)', 
                   border: '1px solid rgba(255,255,255,0.08)', 
-                  borderRadius: 6,
-                  color: '#fff'
+                  borderRadius: 6, 
+                  color: '#fff' 
                 }}
               />
             </div>
@@ -970,10 +1320,10 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             )}
 
             {/* Scrollable Watchlist Items List */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3, paddingRight: 2 }}>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 2 }}>
               {currentWatchlistItems.map((item) => {
                 const isSelected = currentSymbol === item.ticker || getTradingViewSymbol(currentSymbol) === item.tv;
-                const isHolding = portfolioSummary?.enrichedHoldings?.some(h => (h.ticker || '').toUpperCase() === item.ticker.toUpperCase());
+                const isUserHolding = item.isHolding || portfolioItems.some(h => (h.ticker || '').toUpperCase() === (item.ticker || '').toUpperCase());
 
                 return (
                   <div
@@ -987,26 +1337,39 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '7px 9px',
-                      borderRadius: 5,
-                      background: isSelected ? 'rgba(0, 229, 255, 0.12)' : 'rgba(255,255,255,0.02)',
-                      border: isSelected ? '1px solid var(--cyan)' : '1px solid rgba(255,255,255,0.05)',
+                      borderRadius: 6,
+                      background: isSelected 
+                        ? 'rgba(0, 229, 255, 0.12)' 
+                        : isUserHolding 
+                        ? 'rgba(16, 185, 129, 0.04)' 
+                        : 'rgba(255,255,255,0.02)',
+                      border: isSelected 
+                        ? '1px solid var(--cyan)' 
+                        : isUserHolding 
+                        ? '1px solid rgba(16, 185, 129, 0.25)' 
+                        : '1px solid rgba(255,255,255,0.05)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <strong className="mono" style={{ color: isSelected ? 'var(--cyan)' : '#f8fafc', fontSize: 11.5 }}>
+                        <strong className="mono" style={{ color: isSelected ? 'var(--cyan)' : isUserHolding ? '#34d399' : '#f8fafc', fontSize: 11.5 }}>
                           {item.ticker}
                         </strong>
-                        {isHolding && (
+                        {isUserHolding && (
                           <span className="badge-type hisse" style={{ fontSize: 8, padding: '1px 4px' }}>
                             Portföyde
                           </span>
                         )}
+                        {item.type && activeCategory === 'portfolio' && (
+                          <span className="mono" style={{ fontSize: 8, color: 'var(--text-muted)' }}>
+                            [{item.type}]
+                          </span>
+                        )}
                       </div>
-                      <div style={{ fontSize: 9, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-                        {item.name}
+                      <div style={{ fontSize: 9.5, color: isUserHolding ? '#94a3b8' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                        {item.desc || item.name}
                       </div>
                     </div>
 
@@ -1042,7 +1405,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             {/* Watchlist Footer Note */}
             <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: 9, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>💡 Tıkla ➔ Grafiğe Al</span>
-              <span className="text-cyan font-bold mono">{currentSymbol}</span>
+              <span className="text-cyan font-bold mono">{cleanActiveTicker}</span>
             </div>
           </div>
         )}

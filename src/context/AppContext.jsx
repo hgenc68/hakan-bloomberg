@@ -8,6 +8,7 @@ import {
   deleteDoc,
   updateDoc
 } from 'firebase/firestore';
+import benchmarkData from '../data/benchmarkData.json';
 
 const AppContext = createContext();
 
@@ -129,7 +130,7 @@ export const AppProvider = ({ children }) => {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {}
-    return [];
+    return (benchmarkData?.holdings && benchmarkData.holdings.length > 0) ? benchmarkData.holdings : [];
   });
 
   const [goldPurchases, setGoldPurchases] = useState(() => {
