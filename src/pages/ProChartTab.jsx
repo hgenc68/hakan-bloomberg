@@ -392,6 +392,38 @@ const PRESET_WATCHLISTS = {
   ]
 };
 
+class ChartErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('ChartErrorBoundary caught error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24, textAlign: 'center', color: '#f87171', background: '#0a101f', borderRadius: 8, margin: 20 }}>
+          <p style={{ fontWeight: 'bold', fontSize: 13 }}>⚠️ Yerel grafik motorunda bir hata oluştu.</p>
+          <p style={{ fontSize: 11, color: '#94a3b8' }}>TradingView motoruna geçebilirsiniz.</p>
+          <button 
+            type="button" 
+            onClick={() => { this.setState({ hasError: false }); this.props.onFallback && this.props.onFallback(); }}
+            className="chip-btn active"
+            style={{ marginTop: 10, padding: '6px 14px', background: 'var(--cyan)', color: '#040711', fontWeight: 700 }}
+          >
+            🌐 TradingView Motoruna Geç
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedTicker, onSelectTicker }) {
   const { portfolioSummary, currentCurrency, usdtry, marketQuotes } = useApp();
   const isTRY = currentCurrency === 'try';
@@ -1015,7 +1047,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return () => {
       isMounted = false;
     };
-  }, [currentSymbol, activeStudies, chartInterval]);
+  }, [currentSymbol, activeStudies, chartInterval, chartEngine]);
 
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1620,8 +1652,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           )}
 
           {/* CHART ENGINE: NATIVE PRO MOTOR (ZERO LIMIT / EMA 50 + AUTO FIB) vs TRADINGVIEW WIDGET */}
-          {chartEngine === 'native' ? (
-            <div style={{ width: '100%', height: '100%', minHeight: 700, flex: 1, paddingTop: isFullscreen ? 44 : 0 }}>
+          <div style={{ display: chartEngine === 'native' ? 'flex' : 'none', width: '100%', height: '100%', minHeight: 700, flex: 1, paddingTop: isFullscreen ? 44 : 0, flexDirection: 'column' }}>
+            <ChartErrorBoundary onFallback={() => setChartEngine('tv')}>
               <NativeProChart
                 symbol={currentSymbol}
                 currency={buyZoneAnalysis.hasHolding && activeHolding?.type?.includes('BIST') ? 'TRY' : 'USD'}
@@ -1629,19 +1661,20 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 dayChangePct={activeHolding?.returnPct}
                 chartInterval={chartInterval}
               />
-            </div>
-          ) : (
-            <div 
-              id={containerId} 
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                minHeight: 700, 
-                flex: 1, 
-                paddingTop: isFullscreen ? 44 : 0 
-              }} 
-            />
-          )}
+            </ChartErrorBoundary>
+          </div>
+
+          <div 
+            id={containerId} 
+            style={{ 
+              display: chartEngine === 'tv' ? 'block' : 'none',
+              width: '100%', 
+              height: '100%', 
+              minHeight: 700, 
+              flex: 1, 
+              paddingTop: isFullscreen ? 44 : 0 
+            }} 
+          />
         </div>
 
         {/* Right: Sınırsız Watchlist Yöneticisi WITH LIVE PRICES & +/- % CHANGE */}
