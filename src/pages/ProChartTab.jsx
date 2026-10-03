@@ -40,6 +40,12 @@ import benchmarkData from '../data/benchmarkData.json';
 
 import hknPineRaw from '../data/hkn_toolkit_fibo.pine?raw';
 import HknCandlestickCanvas from '../components/HknCandlestickCanvas';
+import { 
+  LAZYBEAR_SQUEEZE_MOMENTUM_PINE,
+  LONESTAR_WAVETREND_PINE,
+  SUPPORT_RESISTANCE_PINE,
+  AUTO_FIBONACCI_PINE
+} from '../data/pineScripts';
 
 // Full, 100% complete and tested Pine Script v6 Source for Hkn Toolkit Fibo
 export const HKN_PINE_SCRIPT_V6 = hknPineRaw;
@@ -316,20 +322,139 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [hideHud, setHideHud] = useState(false);
   const [showPineModal, setShowPineModal] = useState(false);
+  const [selectedPineScriptTab, setSelectedPineScriptTab] = useState('all');
   const [copiedPine, setCopiedPine] = useState(false);
+
+  // Indicator Elevator / Drawer Modal Toggle
+  const [showIndicatorElevator, setShowIndicatorElevator] = useState(false);
 
   // Engine Modes: 'tv' (TradingView Embed) | 'hkn' (Bloomberg Native with Hkn Toolkit Fibo)
   const [chartEngineMode, setChartEngineMode] = useState('tv');
 
-  // Chart Display Toggles for Hkn Toolkit Fibo & TradingView
-  const [chartType, setChartType] = useState('candle'); // 'candle' | 'line'
-  const [showVwap, setShowVwap] = useState(true);
-  const [showEma, setShowEma] = useState(true);
-  const [showFib, setShowFib] = useState(true);
-  const [showSR, setShowSR] = useState(true);
-  const [chartInterval, setChartInterval] = useState('D'); // '15', '60', '240', 'D', 'W'
+  // Chart Display Toggles for Hkn Toolkit Fibo & TradingView (100% Persisted!)
+  const [chartType, setChartType] = useState(() => {
+    try { return localStorage.getItem('hkn_chart_type') || 'candle'; } catch { return 'candle'; }
+  });
+  const [showVwap, setShowVwap] = useState(() => {
+    try { const s = localStorage.getItem('hkn_show_vwap'); return s !== null ? JSON.parse(s) : true; } catch { return true; }
+  });
+  const [showEma, setShowEma] = useState(() => {
+    try { const s = localStorage.getItem('hkn_show_ema'); return s !== null ? JSON.parse(s) : true; } catch { return true; }
+  });
+  const [showFib, setShowFib] = useState(() => {
+    try { const s = localStorage.getItem('hkn_show_fib'); return s !== null ? JSON.parse(s) : true; } catch { return true; }
+  });
+  const [showSR, setShowSR] = useState(() => {
+    try { const s = localStorage.getItem('hkn_show_sr'); return s !== null ? JSON.parse(s) : true; } catch { return true; }
+  });
+  const [chartInterval, setChartInterval] = useState(() => {
+    try { return localStorage.getItem('pro_chart_interval') || 'D'; } catch { return 'D'; }
+  });
 
-  // Oscillator Panel Size in Hkn Native Mode (Persisted in LocalStorage!)
+  // Oscillator Display Mode in Hkn Native Engine: 'rsi_wt' (Default) | 'squeeze' | 'combo'
+  const [oscillatorMode, setOscillatorMode] = useState(() => {
+    try { return localStorage.getItem('hkn_osc_mode') || 'rsi_wt'; } catch { return 'rsi_wt'; }
+  });
+
+  const setOscillatorModePersisted = (mode) => {
+    setOscillatorMode(mode);
+    try { localStorage.setItem('hkn_osc_mode', mode); } catch(e) {}
+  };
+
+  useEffect(() => {
+    try { localStorage.setItem('hkn_chart_type', chartType); } catch(e) {}
+  }, [chartType]);
+  useEffect(() => {
+    try { localStorage.setItem('hkn_show_vwap', JSON.stringify(showVwap)); } catch(e) {}
+  }, [showVwap]);
+  useEffect(() => {
+    try { localStorage.setItem('hkn_show_ema', JSON.stringify(showEma)); } catch(e) {}
+  }, [showEma]);
+  useEffect(() => {
+    try { localStorage.setItem('hkn_show_fib', JSON.stringify(showFib)); } catch(e) {}
+  }, [showFib]);
+  useEffect(() => {
+    try { localStorage.setItem('hkn_show_sr', JSON.stringify(showSR)); } catch(e) {}
+  }, [showSR]);
+  useEffect(() => {
+    try { localStorage.setItem('pro_chart_interval', chartInterval); } catch(e) {}
+  }, [chartInterval]);
+  useEffect(() => {
+    try { localStorage.setItem('hkn_osc_mode', oscillatorMode); } catch(e) {}
+  }, [oscillatorMode]);
+
+  // User Customizable Indicator Settings (100% Persisted in LocalStorage!)
+  const [indicatorSettings, setIndicatorSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pro_chart_indicator_custom_settings');
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return {
+      sqzBBPeriod: 20,
+      sqzBBMult: 2.0,
+      sqzKCPeriod: 20,
+      sqzKCMult: 1.5,
+      wtN1: 10,
+      wtN2: 21,
+      wtOB: 60,
+      wtOS: -60,
+      srPivotSpan: 3,
+      srAtrWidth: 0.35,
+      fibLen: 10,
+      rsiPeriod: 24
+    };
+  });
+
+  const updateIndicatorSetting = (key, val) => {
+    setIndicatorSettings(prev => {
+      const next = { ...prev, [key]: val };
+      try {
+        localStorage.setItem('pro_chart_indicator_custom_settings', JSON.stringify(next));
+      } catch(e) {}
+      return next;
+    });
+  };
+
+  // Exact Pixel Height of Lower Oscillator Panel (PERMANENTLY PERSISTED!)
+  // Ensures that when the user resizes/narrows the panel, it NEVER resets on stock change!
+  const [oscHeight, setOscHeight] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pro_chart_osc_height');
+      if (saved) {
+        const p = Number(saved);
+        if (!isNaN(p) && p >= 85 && p <= 450) return p;
+      }
+    } catch(e) {}
+    return 175;
+  });
+  const [isDraggingOsc, setIsDraggingOsc] = useState(false);
+
+  const handleStartResize = (e) => {
+    e.preventDefault();
+    setIsDraggingOsc(true);
+    const startY = e.clientY;
+    const startH = oscHeight;
+
+    const onMouseMove = (moveEvt) => {
+      const deltaY = startY - moveEvt.clientY; // dragging up increases height
+      const newH = Math.max(90, Math.min(420, startH + deltaY));
+      setOscHeight(newH);
+      try {
+        localStorage.setItem('pro_chart_osc_height', String(newH));
+      } catch(e) {}
+    };
+
+    const onMouseUp = () => {
+      setIsDraggingOsc(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Oscillator Size Preset Switcher
   const [oscillatorSize, setOscillatorSize] = useState(() => {
     try {
       return localStorage.getItem('hkn_osc_size') || 'normal';
@@ -418,10 +543,24 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     };
   }, []);
 
+  // Get Active Pine Script text according to selected tab
+  const getActivePineScript = () => {
+    switch (selectedPineScriptTab) {
+      case 'lazybear': return LAZYBEAR_SQUEEZE_MOMENTUM_PINE;
+      case 'lonestar': return LONESTAR_WAVETREND_PINE;
+      case 'sr': return SUPPORT_RESISTANCE_PINE;
+      case 'fibo': return AUTO_FIBONACCI_PINE;
+      case 'all':
+      default:
+        return HKN_PINE_SCRIPT_V6;
+    }
+  };
+
   // Copy Pine Script to Clipboard
   const handleCopyPineScript = () => {
+    const textToCopy = getActivePineScript();
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(HKN_PINE_SCRIPT_V6).then(() => {
+      navigator.clipboard.writeText(textToCopy).then(() => {
         setCopiedPine(true);
         setTimeout(() => setCopiedPine(false), 3500);
       });
@@ -988,8 +1127,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     };
   }, [currentSymbol, chartEngineMode, activeStudies, chartInterval]);
 
-  // Oscillator Display Mode in Hkn Native Engine: 'rsi_wt' (Default - identical to TV reference) | 'squeeze' | 'combo'
-  const [oscillatorMode, setOscillatorMode] = useState('rsi_wt');
+
 
   // Dynamic Real Candlestick Data fetched for any active stock/crypto
   const [dynamicCandles, setDynamicCandles] = useState(null);
@@ -1113,16 +1251,19 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     const ema100 = calcEMA(closes, 100);
     const ema200 = calcEMA(closes, 200);
 
-    // 2) RSI (24)
-    const rsi24 = calcRSI(closes, 24);
+    // 2) RSI (Customizable Period, default 24)
+    const rsiPeriod = indicatorSettings.rsiPeriod || 24;
+    const rsi24 = calcRSI(closes, rsiPeriod);
 
-    // 3) WaveTrend (WT1 & WT2)
+    // 3) WaveTrend (Lonestar Parameters: wtN1=10, wtN2=21)
+    const wtN1 = indicatorSettings.wtN1 || 10;
+    const wtN2 = indicatorSettings.wtN2 || 21;
     const ap = windowCandles.map((c, i) => (highs[i] + lows[i] + c.close) / 3);
-    const esa = calcEMA(ap, 10);
+    const esa = calcEMA(ap, wtN1);
     const diff = ap.map((v, i) => Math.abs(v - esa[i]));
-    const d_ema = calcEMA(diff, 10);
+    const d_ema = calcEMA(diff, wtN1);
     const ci = ap.map((v, i) => (d_ema[i] ? (v - esa[i]) / (0.015 * d_ema[i]) : 0));
-    const tci = calcEMA(ci, 21);
+    const tci = calcEMA(ci, wtN2);
     const wt1 = tci.map(v => (v + 100) / 2);
     const wt2 = [];
     for (let i = 0; i < wt1.length; i++) {
@@ -1187,14 +1328,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     const curAtr = atr14[atr14.length - 1] || (curClose * 0.02);
 
     const detectedZones = [];
-    const pSpan = 3;
+    const pSpan = indicatorSettings.srPivotSpan || 3;
+    const atrMultiplier = indicatorSettings.srAtrWidth || 0.35;
+
     for (let i = pSpan; i < windowCandles.length - pSpan; i++) {
       let isPH = true, isPL = true;
       for (let j = 1; j <= pSpan; j++) {
         if (highs[i] < highs[i - j] || highs[i] < highs[i + j]) isPH = false;
         if (lows[i] > lows[i - j] || lows[i] > lows[i + j]) isPL = false;
       }
-      const zW = (atr14[i] || curAtr) * 0.35;
+      const zW = (atr14[i] || curAtr) * atrMultiplier;
       if (isPH) {
         detectedZones.push({
           type: 'resistance',
@@ -1233,11 +1376,15 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     const nearestSupport = supports.length > 0 ? Math.max(...supports.map(s => s.mid)) : f618;
 
     // 6) Squeeze Momentum (John Carter / LazyBear)
-    const sqzLen = 20;
-    const sma20 = calcSMA(closes, sqzLen);
-    const stdev20 = calcStdev(closes, sqzLen);
-    const upperBB = sma20.map((b, i) => b + 2.0 * stdev20[i]);
-    const lowerBB = sma20.map((b, i) => b - 2.0 * stdev20[i]);
+    const sqzLenBB = indicatorSettings.sqzBBPeriod || 20;
+    const sqzMultBB = indicatorSettings.sqzBBMult || 2.0;
+    const sqzLenKC = indicatorSettings.sqzKCPeriod || 20;
+    const sqzMultKC = indicatorSettings.sqzKCMult || 1.5;
+
+    const sma20 = calcSMA(closes, sqzLenBB);
+    const stdev20 = calcStdev(closes, sqzLenBB);
+    const upperBB = sma20.map((b, i) => b + sqzMultBB * stdev20[i]);
+    const lowerBB = sma20.map((b, i) => b - sqzMultBB * stdev20[i]);
 
     const tr = closes.map((c, i) => {
       if (i === 0) return (highs[0] || c) - (lows[0] || c);
@@ -1246,16 +1393,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       const prevC = closes[i - 1];
       return Math.max(h - l, Math.abs(h - prevC), Math.abs(l - prevC));
     });
-    const trSMA = calcSMA(tr, sqzLen);
-    const upperKC = sma20.map((b, i) => b + 1.5 * trSMA[i]);
-    const lowerKC = sma20.map((b, i) => b - 1.5 * trSMA[i]);
+    const trSMA = calcSMA(tr, sqzLenKC);
+    const upperKC = sma20.map((b, i) => b + sqzMultKC * trSMA[i]);
+    const lowerKC = sma20.map((b, i) => b - sqzMultKC * trSMA[i]);
 
-    // Squeeze Status: BB inside KC
+    // Squeeze Status: BB inside KC (Sıkışma Noktaları)
     const squeezeOn = closes.map((_, i) => lowerBB[i] > lowerKC[i] && upperBB[i] < upperKC[i]);
 
-    // Linear Regression Momentum
+    // Linear Regression Momentum (LazyBear Formülü)
     const diffSqz = closes.map((c, i) => {
-      const startIdx = Math.max(0, i - sqzLen + 1);
+      const startIdx = Math.max(0, i - sqzLenKC + 1);
       let hh = highs[startIdx] || c;
       let ll = lows[startIdx] || c;
       for (let j = startIdx; j <= i; j++) {
@@ -1266,7 +1413,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       return c - mid;
     });
 
-    const sqzMom = calcLinReg(diffSqz, sqzLen);
+    const sqzMom = calcLinReg(diffSqz, sqzLenKC);
 
     // Histogram Colors & Squeeze Dots
     const sqzHistColors = sqzMom.map((v, i) => {
@@ -1322,7 +1469,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       lastMom,
       lastRSI
     };
-  }, [dynamicCandles, nativeStockData, buyZoneAnalysis]);
+  }, [dynamicCandles, nativeStockData, buyZoneAnalysis, indicatorSettings]);
 
   // ChartJS Data: Upper Price & Hkn Toolkit Fibo Levels + S/R
   const hknPriceChartData = useMemo(() => {
@@ -1845,6 +1992,17 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               🧹 Kotayı Boşalt (0 İndikatör)
             </button>
 
+            {/* 🎛️ İndikatör Asansörü (Ayarlar) */}
+            <button
+              type="button"
+              onClick={() => setShowIndicatorElevator(true)}
+              className="chip-btn"
+              style={{ fontSize: 9.5, padding: '2px 8px', borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
+              title="Destek/Direnç, WaveTrend, Squeeze, Auto Fibo ve diğer indikatörlerin parametrelerini ayarla"
+            >
+              🎛️ İndikatör Asansörü (Ayarlar)
+            </button>
+
             {/* ⏱️ Zaman Dilimi Seçici (VWAP'ın TradingView'de çalışabilmesi için 1S/4S desteği) */}
             <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)', marginLeft: 4 }}>
               {[
@@ -1914,6 +2072,15 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               title="3 EMA, Auto Fibo, S/R, RSI, WaveTrend ve Squeeze Momentum'un tümünü aynı anda sınırsız açar"
             >
               🌟 Hkn Toolkit Motoruna Geç (0 Kota)
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowIndicatorElevator(true)}
+              className="chip-btn"
+              style={{ fontSize: 9.5, padding: '3px 8px', borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
+              title="Destek/Direnç, WaveTrend, Squeeze, Auto Fibo parametrelerini özelleştir"
+            >
+              🎛️ İndikatör Ayarları
             </button>
             <button
               type="button"
@@ -2209,6 +2376,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
                 <button
                   type="button"
+                  onClick={() => setShowIndicatorElevator(true)}
+                  className="chip-btn"
+                  style={{ fontSize: 9.5, padding: '3px 8px', borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
+                  title="İndikatör parametrelerini düzenle"
+                >
+                  🎛️ Ayarlar
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setSidebarOpen(prev => !prev)}
                   className="chip-btn"
                   style={{ 
@@ -2336,7 +2513,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
                     <button
                       type="button"
-                      onClick={() => setOscillatorMode('rsi_wt')}
+                      onClick={() => setOscillatorModePersisted('rsi_wt')}
                       className={`chip-btn ${oscillatorMode === 'rsi_wt' ? 'active' : ''}`}
                       style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: oscillatorMode === 'rsi_wt' ? 700 : 500 }}
                       title="Sadece RSI 24 ve WaveTrend osilatörlerini gösterir (Referans görselinizle birebir aynı)"
@@ -2345,7 +2522,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                     </button>
                     <button
                       type="button"
-                      onClick={() => setOscillatorMode('squeeze')}
+                      onClick={() => setOscillatorModePersisted('squeeze')}
                       className={`chip-btn ${oscillatorMode === 'squeeze' ? 'active' : ''}`}
                       style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: oscillatorMode === 'squeeze' ? 700 : 500 }}
                       title="Sadece John Carter Squeeze Momentum ve Sıkışma Noktalarını gösterir"
@@ -2354,7 +2531,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                     </button>
                     <button
                       type="button"
-                      onClick={() => setOscillatorMode('combo')}
+                      onClick={() => setOscillatorModePersisted('combo')}
                       className={`chip-btn ${oscillatorMode === 'combo' ? 'active' : ''}`}
                       style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: oscillatorMode === 'combo' ? 700 : 500 }}
                       title="WaveTrend + RSI + Squeeze Momentum'un tümünü 50 denge seviyesinde birlikte gösterir"
@@ -2386,6 +2563,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       </button>
                     ))}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowIndicatorElevator(true)}
+                    className="chip-btn"
+                    style={{ fontSize: 9, padding: '3px 8px', borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
+                    title="Destek/Direnç, WaveTrend, Squeeze, Auto Fibo ve EMA ayarlarını özelleştir"
+                  >
+                    🎛️ İndikatör Asansörü (Ayarlar)
+                  </button>
 
                   <button
                     type="button"
@@ -2426,9 +2613,33 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 />
               </div>
 
+              {/* 📏 İNTERAKTİF BOYUTLANDIRICI SÜRÜKLEME ÇUBUĞU (KULLANICI NE AYARLADIYSA ASLA BOZULMAZ!) */}
+              {oscillatorSize !== 'hidden' && (
+                <div 
+                  onMouseDown={handleStartResize}
+                  style={{
+                    height: 10,
+                    cursor: 'row-resize',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: isDraggingOsc ? 'rgba(0, 229, 255, 0.45)' : 'rgba(255, 255, 255, 0.05)',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: 4,
+                    transition: 'background 0.15s ease',
+                    userSelect: 'none',
+                    margin: '2px 0'
+                  }}
+                  title="Aşağı/Yukarı sürükleyerek alt panelin yüksekliğini ayarlayın (Hisse değiştirseniz de asla bozulmaz!)"
+                >
+                  <div style={{ width: 48, height: 3, borderRadius: 2, background: isDraggingOsc ? 'var(--cyan)' : 'rgba(255, 255, 255, 0.35)' }} />
+                </div>
+              )}
+
               {/* Lower Sub-Panel: RSI (24) + WaveTrend + Squeeze Momentum with Persistent Height */}
               {oscillatorSize !== 'hidden' && (
-                <div style={{ height: oscHeightPixels, minHeight: oscHeightPixels, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, position: 'relative' }}>
+                <div style={{ height: oscHeight, minHeight: oscHeight, paddingTop: 4, position: 'relative' }}>
                   <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span className="text-cyan">
@@ -2700,7 +2911,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
       </div>
 
-      {/* 🌟 HKN TOOLKIT FIBO PINE SCRIPT V6 MODAL */}
+      {/* 🌟 HKN TOOLKIT FIBO & MODULAR PINE SCRIPT V6 MODAL */}
       {showPineModal && (
         <div 
           style={{ 
@@ -2720,7 +2931,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             className="card" 
             style={{ 
               width: '100%', 
-              maxWidth: 780, 
+              maxWidth: 820, 
               maxHeight: '90vh', 
               background: '#090d16', 
               border: '1px solid var(--gold)', 
@@ -2736,9 +2947,15 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Terminal size={18} className="text-gold" />
                 <div>
-                  <strong style={{ fontSize: 13, color: '#f8fafc' }}>Hkn Toolkit Fibo (Pine Script v6)</strong>
+                  <strong style={{ fontSize: 13, color: '#f8fafc' }}>
+                    {selectedPineScriptTab === 'all' && 'Hkn Toolkit Fibo (Hepsi Bir Arada - Pine Script v6)'}
+                    {selectedPineScriptTab === 'lazybear' && 'Squeeze Momentum [LazyBear] (Pine Script v6)'}
+                    {selectedPineScriptTab === 'lonestar' && 'WaveTrend Oscillator [Lonestar] (Pine Script v6)'}
+                    {selectedPineScriptTab === 'sr' && 'Ayarlanabilir Destek & Direnç Bölgeleri (Pine Script v6)'}
+                    {selectedPineScriptTab === 'fibo' && 'Otomatik Fibonacci & Golden Zone (Pine Script v6)'}
+                  </strong>
                   <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                    VWAP (Mavi) + 3 EMA + S/R Destek/Direnç + Auto Fibo + RSI 24 + WaveTrend + Squeeze Momentum
+                    TradingView Pine Editörü'ne yapıştırıp tek tıkla çalıştırabileceğiniz hazır kodlar
                   </div>
                 </div>
               </div>
@@ -2751,24 +2968,83 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </button>
             </div>
 
-            {/* Why All-in-One Indicator solves TradingView limits */}
-            <div style={{ padding: '12px 18px', background: 'rgba(245, 158, 11, 0.08)', borderBottom: '1px solid rgba(245, 158, 11, 0.2)', fontSize: 11, color: '#f8fafc', lineHeight: 1.5 }}>
-              <strong style={{ color: 'var(--gold)' }}>💡 TradingView Kota Sırrı: </strong>
-              TradingView ücretsiz planda 2-3 ayrı indikatör hakkı verir. Bu araçların hepsini ayrı ayrı eklerseniz kota hemen dolar. 
-              <strong> Ancak bu kod tek bir Pine Script olduğu için TradingView bunu TEK BİR İNDİKATÖR (1/3) olarak sayar!</strong> Böylece tüm göstergeleri tek kotada ücretsiz kullanabilirsiniz.
+            {/* Script Selection Tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.4)', padding: '6px 12px', gap: 6, overflowX: 'auto' }}>
+              {[
+                { id: 'all', label: '🌟 Hkn Toolkit (Hepsi Bir Arada)' },
+                { id: 'lazybear', label: '🎯 Squeeze Momentum [LazyBear]' },
+                { id: 'lonestar', label: '🌊 WaveTrend [Lonestar]' },
+                { id: 'sr', label: '🧱 Destek & Direnç (S/R)' },
+                { id: 'fibo', label: '📐 Otomatik Fibonacci' }
+              ].map(tab => {
+                const isActive = selectedPineScriptTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSelectedPineScriptTab(tab.id)}
+                    className={`chip-btn ${isActive ? 'active' : ''}`}
+                    style={{
+                      fontSize: 10,
+                      padding: '5px 10px',
+                      fontWeight: isActive ? 800 : 500,
+                      borderColor: isActive ? 'var(--gold)' : 'rgba(255,255,255,0.1)',
+                      color: isActive ? 'var(--gold)' : '#94a3b8',
+                      background: isActive ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Information Banner */}
+            <div style={{ padding: '10px 18px', background: 'rgba(245, 158, 11, 0.08)', borderBottom: '1px solid rgba(245, 158, 11, 0.2)', fontSize: 11, color: '#f8fafc', lineHeight: 1.5 }}>
+              {selectedPineScriptTab === 'all' && (
+                <>
+                  <strong style={{ color: 'var(--gold)' }}>💡 TradingView Kota Sırrı (Hepsi Bir Arada): </strong>
+                  TradingView ücretsiz planda sadece 2-3 ayrı göstergeye izin verir. Bu kod tüm araçları (VWAP, 3 EMA, S/R Kutuları, Auto Fibo, RSI 24, WaveTrend, Squeeze) tek script içinde birleştirir ve <strong>TEK BİR İNDİKATÖR (1/3)</strong> kotası harcar!
+                </>
+              )}
+              {selectedPineScriptTab === 'lazybear' && (
+                <>
+                  <strong style={{ color: 'var(--gold)' }}>🎯 Squeeze Momentum [LazyBear]: </strong>
+                  John Carter'ın orijinal TTM Squeeze formülü. Bollinger Bantları Keltner Kanallarının içine girdiğinde siyah noktalar (sıkışma) başlar. Kırıldığında 4-renkli doğrusal regresyon histogramı volatilite patlamasını gösterir.
+                </>
+              )}
+              {selectedPineScriptTab === 'lonestar' && (
+                <>
+                  <strong style={{ color: 'var(--gold)' }}>🌊 WaveTrend Oscillator [Lonestar]: </strong>
+                  Orijinal WaveTrend algoritması. WT1 (Hızlı) ve WT2 (Yavaş) eğrilerinin kesişimleri, aşırı alım (+60) / aşırı satım (-60) referans hatları ve sinyal çemberleri içerir.
+                </>
+              )}
+              {selectedPineScriptTab === 'sr' && (
+                <>
+                  <strong style={{ color: 'var(--gold)' }}>🧱 Ayarlanabilir Destek & Direnç Bölgeleri: </strong>
+                  Tepe ve dip pivotlarından hesaplanan dinamik destek ve direnç kutuları. Somon direnç ve turkuaz destek şeffaf bantları çizer.
+                </>
+              )}
+              {selectedPineScriptTab === 'fibo' && (
+                <>
+                  <strong style={{ color: 'var(--gold)' }}>📐 Otomatik Fibonacci & Golden Zone: </strong>
+                  Son swing dalgasının en yüksek ve en düşük noktalarını dinamik tespit eder; Golden Zone (0.50 - 0.618) alanını altın rengi dolguyla vurgular.
+                </>
+              )}
             </div>
 
             {/* 3 Step Guide */}
-            <div style={{ padding: '10px 18px', display: 'flex', gap: 10, background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 10.5, color: '#cbd5e1' }}>
-              <div style={{ flex: 1 }}><strong>1. Kopyala:</strong> Aşağıdaki sarı butona basarak kodu panoya kopyalayın.</div>
-              <div style={{ flex: 1 }}><strong>2. Pine Editör:</strong> TradingView'da alt sekmedeki 'Pine Editörü'ne yapıştırın.</div>
-              <div style={{ flex: 1 }}><strong>3. Grafiğe Ekle:</strong> 'Grafiğe Ekle' butonuna basarak kaydedin.</div>
+            <div style={{ padding: '8px 18px', display: 'flex', gap: 10, background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 10, color: '#cbd5e1' }}>
+              <div style={{ flex: 1 }}><strong>1. Kopyala:</strong> Sarı butona basarak kodu panoya kopyalayın.</div>
+              <div style={{ flex: 1 }}><strong>2. Pine Editör:</strong> TradingView'da alttaki 'Pine Editörü' sekmesine yapıştırın.</div>
+              <div style={{ flex: 1 }}><strong>3. Grafiğe Ekle:</strong> 'Grafiğe Ekle' butonuna basarak anında çalıştırın.</div>
             </div>
 
             {/* Code Box */}
             <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#040711' }}>
               <pre style={{ margin: 0, fontFamily: 'Consolas, monospace', fontSize: 11, color: '#38bdf8', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                {HKN_PINE_SCRIPT_V6}
+                {getActivePineScript()}
               </pre>
             </div>
 
@@ -2796,6 +3072,460 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   Kapat
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🎛️ İNDİKATÖRLER ASANSÖRÜ (AYARLAR & KİŞİSELLEŞTİRME MODALI) */}
+      {showIndicatorElevator && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(0,0,0,0.85)', 
+            backdropFilter: 'blur(6px)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 999999, 
+            padding: 16 
+          }}
+          onClick={() => setShowIndicatorElevator(false)}
+        >
+          <div 
+            className="card" 
+            style={{ 
+              width: '100%', 
+              maxWidth: 750, 
+              maxHeight: '90vh', 
+              background: '#090d16', 
+              border: '1px solid var(--cyan)', 
+              borderRadius: 10, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              overflow: 'hidden' 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0, 229, 255, 0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Sliders size={18} className="text-cyan" />
+                <div>
+                  <strong style={{ fontSize: 13, color: '#f8fafc' }}>İndikatörler Asansörü (Teknik Analiz Ayarları)</strong>
+                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                    Destek/Direnç, WaveTrend, Squeeze Momentum, Auto Fibo ve diğer indikatör parametrelerini özelleştirin
+                  </div>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowIndicatorElevator(false)} 
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Persistence & Info Notice */}
+            <div style={{ padding: '9px 18px', background: 'rgba(16, 185, 129, 0.08)', borderBottom: '1px solid rgba(16, 185, 129, 0.2)', fontSize: 10.5, color: '#34d399', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>💾 <strong>Kalıcı Ayarlar:</strong> Yaptığınız tüm değişiklikler anında kaydedilir; hisse değiştirdiğinizde veya ekranı yenilediğinizde ASLA sıfırlanmaz.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIndicatorSettings({
+                    sqzBBPeriod: 20,
+                    sqzBBMult: 2.0,
+                    sqzKCPeriod: 20,
+                    sqzKCMult: 1.5,
+                    wtN1: 10,
+                    wtN2: 21,
+                    wtOB: 60,
+                    wtOS: -60,
+                    srPivotSpan: 3,
+                    srAtrWidth: 0.35,
+                    fibLen: 10,
+                    rsiPeriod: 24
+                  });
+                  localStorage.removeItem('pro_chart_indicator_custom_settings');
+                }}
+                className="chip-btn"
+                style={{ fontSize: 9.5, padding: '2px 8px', borderColor: 'rgba(255,255,255,0.2)', color: '#e2e8f0' }}
+              >
+                ↺ Varsayılanlara Sıfırla
+              </button>
+            </div>
+
+            {/* Scrollable Settings Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              
+              {/* 1. Destek & Direnç (S/R Pivot) Ayarları */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>🧱</span>
+                    <strong style={{ fontSize: 11.5, color: '#f8fafc' }}>Ayarlanabilir Destek & Direnç (S/R) Bölgeleri</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSR(prev => !prev)}
+                    className={`chip-btn ${showSR ? 'active' : ''}`}
+                    style={{ fontSize: 9.5, padding: '2px 8px' }}
+                  >
+                    {showSR ? '✓ Aktif' : '✕ Kapalı'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Pivot Çubuk Hassasiyeti (Length):</span>
+                      <strong className="mono text-cyan">{indicatorSettings.srPivotSpan || 3}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={2}
+                      max={12}
+                      step={1}
+                      value={indicatorSettings.srPivotSpan || 3}
+                      onChange={(e) => updateIndicatorSetting('srPivotSpan', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
+                      <span>2 (Hassas / Sık)</span>
+                      <span>12 (Geniş / Güçlü)</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Kutu Kalınlığı (ATR Çarpanı):</span>
+                      <strong className="mono text-cyan">{(indicatorSettings.srAtrWidth || 0.35).toFixed(2)}x</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.10}
+                      max={1.00}
+                      step={0.05}
+                      value={indicatorSettings.srAtrWidth || 0.35}
+                      onChange={(e) => updateIndicatorSetting('srAtrWidth', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
+                      <span>0.10 (İnce Çizgi)</span>
+                      <span>1.00 (Geniş Bölge)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 8, fontSize: 9.5, color: '#94a3b8', lineHeight: 1.4 }}>
+                  • Direnç kutuları <span style={{ color: '#f87171' }}>Somon rengi</span>, Destek kutuları <span style={{ color: '#2dd4bf' }}>Turkuaz rengi</span> şeffaf bloklar olarak mumların arkasında çizilir.
+                </div>
+              </div>
+
+              {/* 2. WaveTrend [Lonestar] Ayarları */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>🌊</span>
+                    <strong style={{ fontSize: 11.5, color: '#f8fafc' }}>WaveTrend Osilatörü [Lonestar]</strong>
+                  </div>
+                  <div style={{ display: 'inline-flex', gap: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setOscillatorModePersisted('rsi_wt')}
+                      className={`chip-btn ${oscillatorMode === 'rsi_wt' ? 'active' : ''}`}
+                      style={{ fontSize: 8.5, padding: '2px 6px' }}
+                    >
+                      RSI+WT
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOscillatorModePersisted('combo')}
+                      className={`chip-btn ${oscillatorMode === 'combo' ? 'active' : ''}`}
+                      style={{ fontSize: 8.5, padding: '2px 6px' }}
+                    >
+                      Kombo
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Kanal Uzunluğu (Channel Length - n1):</span>
+                      <strong className="mono text-cyan">{indicatorSettings.wtN1 || 10}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={6}
+                      max={25}
+                      step={1}
+                      value={indicatorSettings.wtN1 || 10}
+                      onChange={(e) => updateIndicatorSetting('wtN1', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
+                      <span>6 (Hızlı Dalga)</span>
+                      <span>25 (Pürüzsüz)</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Ortalama Uzunluğu (Average Length - n2):</span>
+                      <strong className="mono text-cyan">{indicatorSettings.wtN2 || 21}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={40}
+                      step={1}
+                      value={indicatorSettings.wtN2 || 21}
+                      onChange={(e) => updateIndicatorSetting('wtN2', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
+                      <span>10 (Dinamik)</span>
+                      <span>40 (Gecikmeli)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 8, fontSize: 9.5, color: '#94a3b8', lineHeight: 1.4 }}>
+                  • <span style={{ color: '#34d399' }}>WT1 (Yeşil - Hızlı)</span> ve <span style={{ color: '#f87171' }}>WT2 (Kırmızı - Yavaş)</span> eğrilerinin kesişimi dip ve tepe dönüş sinyallerini üretir.
+                </div>
+              </div>
+
+              {/* 3. Squeeze Momentum [LazyBear] Ayarları */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>🎯</span>
+                    <strong style={{ fontSize: 11.5, color: '#f8fafc' }}>Squeeze Momentum [LazyBear / John Carter]</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOscillatorModePersisted('squeeze')}
+                    className={`chip-btn ${oscillatorMode === 'squeeze' ? 'active' : ''}`}
+                    style={{ fontSize: 8.5, padding: '2px 8px' }}
+                  >
+                    {oscillatorMode === 'squeeze' ? '✓ Saf Squeeze Modu' : 'Squeeze Moduna Geç'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Bollinger Bant Uzunluğu (BB):</span>
+                      <strong className="mono text-cyan">{indicatorSettings.sqzBBPeriod || 20}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={40}
+                      step={1}
+                      value={indicatorSettings.sqzBBPeriod || 20}
+                      onChange={(e) => updateIndicatorSetting('sqzBBPeriod', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Bollinger Çarpanı (StdDev):</span>
+                      <strong className="mono text-cyan">{(indicatorSettings.sqzBBMult || 2.0).toFixed(1)}x</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={1.0}
+                      max={3.0}
+                      step={0.1}
+                      value={indicatorSettings.sqzBBMult || 2.0}
+                      onChange={(e) => updateIndicatorSetting('sqzBBMult', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Keltner Kanal Uzunluğu (KC):</span>
+                      <strong className="mono text-cyan">{indicatorSettings.sqzKCPeriod || 20}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={40}
+                      step={1}
+                      value={indicatorSettings.sqzKCPeriod || 20}
+                      onChange={(e) => updateIndicatorSetting('sqzKCPeriod', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Keltner Çarpanı (ATR):</span>
+                      <strong className="mono text-cyan">{(indicatorSettings.sqzKCMult || 1.5).toFixed(1)}x</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={1.0}
+                      max={2.5}
+                      step={0.1}
+                      value={indicatorSettings.sqzKCMult || 1.5}
+                      onChange={(e) => updateIndicatorSetting('sqzKCMult', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 8, fontSize: 9.5, color: '#94a3b8', lineHeight: 1.4 }}>
+                  • <span style={{ color: '#fbbf24' }}>Sarı/Siyah Noktalar:</span> BB Keltner içine girdiğinde patlama öncesi Sıkışma (Squeeze) başlar. <span style={{ color: '#34d399' }}>Yeşil Noktalar:</span> Volatilite serbest kalır ve trend başlar.
+                </div>
+              </div>
+
+              {/* 4. Otomatik Fibonacci & Golden Zone */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>📐</span>
+                    <strong style={{ fontSize: 11.5, color: '#f8fafc' }}>Otomatik Fibonacci & Golden Zone</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFib(prev => !prev)}
+                    className={`chip-btn ${showFib ? 'active' : ''}`}
+                    style={{ fontSize: 9.5, padding: '2px 8px' }}
+                  >
+                    {showFib ? '✓ Aktif' : '✕ Kapalı'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Swing Geriye Bakış Çubuk Sayısı:</span>
+                      <strong className="mono text-gold">{indicatorSettings.fibLen || 10}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={35}
+                      step={1}
+                      value={indicatorSettings.fibLen || 10}
+                      onChange={(e) => updateIndicatorSetting('fibLen', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--gold)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
+                      <span>5 (Kısa Vade Swing)</span>
+                      <span>35 (Makro Dalga)</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 10, color: '#e2e8f0' }}>
+                      <strong>🌟 Golden Zone (0.50 - 0.618):</strong>
+                    </div>
+                    <div style={{ fontSize: 9.5, color: 'var(--gold)' }}>
+                      Fibo 0.50 ve 0.618 seviyeleri arası altın alım alanı olarak vurgulanır.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. VWAP, 3 EMA ve RSI Ayarları */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 14 }}>🔵</span>
+                    <strong style={{ fontSize: 11.5, color: '#f8fafc' }}>VWAP, 3 EMA ve RSI Ayarları</strong>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowVwap(prev => !prev)}
+                      className={`chip-btn ${showVwap ? 'active' : ''}`}
+                      style={{ fontSize: 8.5, padding: '2px 6px' }}
+                    >
+                      {showVwap ? '✓ VWAP' : '+ VWAP'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowEma(prev => !prev)}
+                      className={`chip-btn ${showEma ? 'active' : ''}`}
+                      style={{ fontSize: 8.5, padding: '2px 6px' }}
+                    >
+                      {showEma ? '✓ 3 EMA' : '+ 3 EMA'}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>RSI Periyodu (Varsayılan 24):</span>
+                      <strong className="mono text-cyan">{indicatorSettings.rsiPeriod || 24}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={7}
+                      max={35}
+                      step={1}
+                      value={indicatorSettings.rsiPeriod || 24}
+                      onChange={(e) => updateIndicatorSetting('rsiPeriod', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
+                      <span>7 (Hızlı)</span>
+                      <span>14 (Klasik)</span>
+                      <span>24 (Hkn Özel)</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                      <span>Alt Panel Yüksekliği (Pixel):</span>
+                      <strong className="mono text-cyan">{oscHeight} px</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={90}
+                      max={400}
+                      step={5}
+                      value={oscHeight}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setOscHeight(val);
+                        try { localStorage.setItem('pro_chart_osc_height', String(val)); } catch(e){}
+                      }}
+                      style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
+                      <span>90px (Çok Dar)</span>
+                      <span>175px (Orta)</span>
+                      <span>400px (Geniş)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.5)' }}>
+              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                Tüm değişiklikler anlık olarak grafiğe ve yerel belleğe yansıtıldı.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowIndicatorElevator(false)}
+                className="btn-primary"
+                style={{ fontSize: 11, padding: '6px 18px', fontWeight: 800 }}
+              >
+                Tamam (Kaydet & Kapat)
+              </button>
             </div>
           </div>
         </div>
