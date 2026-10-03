@@ -30,6 +30,17 @@ import {
 function MainTerminal() {
   const { activeTab, setActiveTab, loading, toast } = useApp();
 
+  // Standalone OBS Pop-out Mode (Clean 16:9 Presentation for OBS Window Capture)
+  const isObsPopout = typeof window !== 'undefined' && window.location.search.includes('obs_popout=1');
+
+  if (isObsPopout) {
+    return (
+      <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, background: '#040711', overflow: 'hidden' }}>
+        <BroadcastStudioTab isObsPopout={true} />
+      </div>
+    );
+  }
+
   // Sidebar collapse state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {

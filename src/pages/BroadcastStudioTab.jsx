@@ -43,11 +43,54 @@ import {
 import macroPulseData from '../data/macroPulse.json';
 import latestQuotesData from '../data/latestQuotes.json';
 
-export default function BroadcastStudioTab() {
+export default function BroadcastStudioTab({ isObsPopout = false }) {
   const { marketQuotes, usdtry, fetchMarketData } = useApp();
 
   // Active slide index (0 to 8)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  // Cross-window synchronization for OBS Pop-out
+  const syncChannelRef = useRef(null);
+
+  useEffect(() => {
+    let bc = null;
+    try {
+      bc = new BroadcastChannel('broadcast_studio_obs_sync');
+      syncChannelRef.current = bc;
+      bc.onmessage = (e) => {
+        if (e.data && e.data.type === 'CHANGE_SLIDE' && typeof e.data.slideIndex === 'number') {
+          setCurrentSlideIndex(e.data.slideIndex);
+        }
+      };
+    } catch (e) {}
+
+    const handleStorage = (e) => {
+      if (e.key === 'broadcast_studio_synced_slide' && e.newValue !== null) {
+        const idx = parseInt(e.newValue, 10);
+        if (!isNaN(idx)) setCurrentSlideIndex(idx);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    if (isObsPopout) {
+      document.title = 'Hakan Genç Finans - OBS Canlı Slayt (1080p)';
+    }
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [isObsPopout]);
+
+  const changeSlide = (idx) => {
+    setCurrentSlideIndex(idx);
+    try {
+      if (syncChannelRef.current) {
+        syncChannelRef.current.postMessage({ type: 'CHANGE_SLIDE', slideIndex: idx });
+      }
+      localStorage.setItem('broadcast_studio_synced_slide', idx.toString());
+    } catch (e) {}
+  };
 
   // View Mode: 'split' (Slide + Prompter), 'slides_only' (16:9 Presentation for recording), 'prompter_only' (Teleprompter)
   const [viewMode, setViewMode] = useState('split');
@@ -522,15 +565,15 @@ export default function BroadcastStudioTab() {
       if (isEditingScript) return;
       if (e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault();
-        setCurrentSlideIndex(prev => (prev < slides.length - 1 ? prev + 1 : 0));
+        changeSlide(currentSlideIndex < slides.length - 1 ? currentSlideIndex + 1 : 0);
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        setCurrentSlideIndex(prev => (prev > 0 ? prev - 1 : slides.length - 1));
+        changeSlide(currentSlideIndex > 0 ? currentSlideIndex - 1 : slides.length - 1);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [slides.length, isEditingScript]);
+  }, [slides.length, isEditingScript, currentSlideIndex]);
 
   // Fullscreen Presentation Mode
   const togglePresentationFullscreen = () => {
@@ -558,244 +601,10 @@ export default function BroadcastStudioTab() {
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
-  return (
-    <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      
-      {/* 🌟 Top Studio Header Bar */}
-      <div 
-        className="card" 
-        style={{ 
-          padding: '12px 18px', 
-          background: 'linear-gradient(135deg, rgba(8, 12, 22, 0.98), rgba(15, 23, 42, 0.95))', 
-          border: '1px solid rgba(244, 63, 94, 0.35)', 
-          borderRadius: 8,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fb7185' }}>
-            <Radio size={20} className="animate-pulse" />
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 13.5, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>YAYIN & BRİFİNG STÜDYOSU</span>
-              <span className="nav-badge rose" style={{ fontSize: 9.5, padding: '2px 7px', background: 'rgba(244, 63, 94, 0.2)', color: '#fda4af', border: '1px solid rgba(244, 63, 94, 0.4)' }}>
-                YOUTUBE PROMPTER • 16:9 GRAFİK SLAYT
-              </span>
-            </div>
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>
-              Makrodan Mikroya 9 Slaytlık TV Brifingi • Doğrulanmış Canlı Veriler • Doğal Neden-Sonuç Metni
-            </div>
-          </div>
-        </div>
 
-        {/* Studio Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          
-          {/* View Mode Switcher */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
-            <button
-              type="button"
-              onClick={() => setViewMode('split')}
-              className={`chip-btn ${viewMode === 'split' ? 'active' : ''}`}
-              style={{ fontSize: 10, padding: '4px 9px', fontWeight: viewMode === 'split' ? 700 : 500 }}
-              title="Sol panelde görsel slayt, sağ panelde prompter metni"
-            >
-              <Layers size={11} style={{ marginRight: 4 }} />
-              <span>Bölünmüş Mod</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('slides_only')}
-              className={`chip-btn ${viewMode === 'slides_only' ? 'active' : ''}`}
-              style={{ fontSize: 10, padding: '4px 9px', fontWeight: viewMode === 'slides_only' ? 700 : 500 }}
-              title="Yalnızca 16:9 görsel slaytları göster (Ekran kaydı için)"
-            >
-              <Video size={11} style={{ marginRight: 4 }} />
-              <span>Sadece Slayt</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('prompter_only')}
-              className={`chip-btn ${viewMode === 'prompter_only' ? 'active' : ''}`}
-              style={{ fontSize: 10, padding: '4px 9px', fontWeight: viewMode === 'prompter_only' ? 700 : 500 }}
-              title="Yalnızca büyük konuşma metnini göster"
-            >
-              <Mic size={11} style={{ marginRight: 4 }} />
-              <span>Prompter Ekranı</span>
-            </button>
-          </div>
-
-          {/* Refresh Button */}
-          <button
-            type="button"
-            onClick={handleRefreshAll}
-            disabled={isRefreshing}
-            className="chip-btn"
-            style={{ 
-              fontSize: 10, 
-              padding: '5px 11px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 5, 
-              borderColor: isRefreshing ? 'var(--cyan)' : 'rgba(255,255,255,0.2)', 
-              color: isRefreshing ? 'var(--cyan)' : '#f8fafc', 
-              fontWeight: 700 
-            }}
-            title="Tüm piyasa verilerini ve göstergelerini canlı olarak yeniler"
-          >
-            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-            <span>{isRefreshing ? 'Yenileniyor...' : 'Verileri Yenile'}</span>
-          </button>
-
-          {/* Live Timestamp Badge */}
-          <span style={{ fontSize: 9.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4, padding: '0 4px' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} className="animate-pulse" />
-            <span>{lastRefreshedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} TSİ</span>
-          </span>
-
-          {/* Copy Full Word Document Button */}
-          <button
-            type="button"
-            onClick={handleCopyAll}
-            className="btn-primary"
-            style={{ 
-              fontSize: 10.5, 
-              padding: '5px 12px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 5,
-              background: copiedAll ? '#10b981' : 'linear-gradient(135deg, #e11d48, #be123c)',
-              borderColor: copiedAll ? '#10b981' : '#f43f5e',
-              fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(225, 29, 72, 0.3)'
-            }}
-            title="Tüm slaytların konuşma metnini başlıklarıyla birlikte panoya kopyalar"
-          >
-            {copiedAll ? <Check size={13} /> : <Copy size={13} />}
-            <span>{copiedAll ? 'Word Metni Kopyalandı!' : 'Word Metnini Kopyala'}</span>
-          </button>
-
-          {/* Direct Word .doc Download Button */}
-          <button
-            type="button"
-            onClick={handleDownloadWordDoc}
-            className="chip-btn"
-            style={{ fontSize: 10, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, borderColor: '#38bdf8', color: '#38bdf8', fontWeight: 700 }}
-            title="Tüm yayını Microsoft Word (.doc) belgesi olarak bilgisayarınıza indirir"
-          >
-            <Download size={12} />
-            <span>Word İndir (.doc)</span>
-          </button>
-
-          {/* Fullscreen Button */}
-          <button
-            type="button"
-            onClick={togglePresentationFullscreen}
-            className="chip-btn"
-            style={{ fontSize: 10, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
-            title="Slaytları 16:9 tam ekran sunum moduna al"
-          >
-            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            <span>{isFullscreen ? 'Küçült' : '⛶ Tam Ekran'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 🧭 Slide Selector Navigation Pills */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 6, 
-          overflowX: 'auto', 
-          padding: '6px 2px',
-          scrollbarWidth: 'none'
-        }}
-      >
-        {slides.map((s, idx) => {
-          const isActive = currentSlideIndex === idx;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setCurrentSlideIndex(idx)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 6,
-                background: isActive ? 'rgba(244, 63, 94, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-                border: `1px solid ${isActive ? '#f43f5e' : 'rgba(255, 255, 255, 0.08)'}`,
-                color: isActive ? '#fecdd3' : '#94a3b8',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span 
-                style={{ 
-                  width: 18, 
-                  height: 18, 
-                  borderRadius: '50%', 
-                  background: isActive ? '#f43f5e' : 'rgba(255,255,255,0.1)', 
-                  color: isActive ? '#fff' : '#cbd5e1',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 10,
-                  fontWeight: 800
-                }}
-              >
-                {s.id}
-              </span>
-              <span style={{ fontSize: 10.5, fontWeight: isActive ? 800 : 600 }}>
-                {s.title.split('&')[0].trim()}
-              </span>
-              <span style={{ fontSize: 8.5, color: isActive ? '#fda4af' : '#64748b' }}>
-                ({s.durationEst})
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 🎬 Main Workspace Layout (Slide + Prompter) */}
-      <div 
-        ref={presentationContainerRef}
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: viewMode === 'split' ? 'minmax(600px, 1.45fr) minmax(360px, 1fr)' : '1fr', 
-          gap: 14,
-          alignItems: 'stretch',
-          background: isFullscreen ? '#040711' : 'transparent',
-          padding: isFullscreen ? 16 : 0,
-          borderRadius: 8
-        }}
-      >
-        
-        {/* ========================================================================= */}
-        {/* 📺 LEFT: 16:9 PRESENTATION SLIDE DISPLAY                                  */}
-        {/* ========================================================================= */}
-        {viewMode !== 'prompter_only' && (
-          <div 
-            style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              background: 'linear-gradient(145deg, #070c18, #0b1329)', 
-              border: '1px solid rgba(255, 255, 255, 0.1)', 
-              borderRadius: 10, 
-              overflow: 'hidden',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
-              position: 'relative',
-              minHeight: isFullscreen ? 'calc(100vh - 32px)' : 640
-            }}
-          >
+  // Reusable 16:9 Slide Presentation Renderer (Shared between tab view & standalone OBS pop-out)
+  const renderSlideContent = (isPopout = false) => (
+    <>
             {/* Slide Top TV Watermark Bar */}
             <div 
               style={{ 
@@ -1493,8 +1302,19 @@ export default function BroadcastStudioTab() {
                 )}
               </div>
 
-              {/* Slide Bottom Bar with Presenter Controls */}
-              <div 
+              {/* Conditional Footer: Broadcast Watermark for OBS, Presenter Controls for Studio */}
+              {isPopout ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid rgba(255, 255, 255, 0.06)', fontSize: 11, color: '#64748b' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }} className="animate-pulse" />
+                    <span>CANLI PİYASA AKIŞI • RESMİ KORİDORLAR VE GÖSTERGELER</span>
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#94a3b8' }}>
+                    HAKAN GENÇ FİNANS • OBS CANLI SLAYT (1080p)
+                  </div>
+                </div>
+              ) : (
+                <div 
                 style={{ 
                   marginTop: 18, 
                   paddingTop: 12, 
@@ -1507,7 +1327,7 @@ export default function BroadcastStudioTab() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <button
                     type="button"
-                    onClick={() => setCurrentSlideIndex(prev => Math.max(0, prev - 1))}
+                    onClick={() => changeSlide(Math.max(0, currentSlideIndex - 1))}
                     disabled={currentSlideIndex === 0}
                     className="chip-btn"
                     style={{ fontSize: 10, padding: '5px 10px', opacity: currentSlideIndex === 0 ? 0.4 : 1 }}
@@ -1518,7 +1338,7 @@ export default function BroadcastStudioTab() {
 
                   <button
                     type="button"
-                    onClick={() => setCurrentSlideIndex(prev => Math.min(slides.length - 1, prev + 1))}
+                    onClick={() => changeSlide(Math.min(slides.length - 1, currentSlideIndex + 1))}
                     disabled={currentSlideIndex === slides.length - 1}
                     className="chip-btn"
                     style={{ fontSize: 10, padding: '5px 10px', opacity: currentSlideIndex === slides.length - 1 ? 0.4 : 1 }}
@@ -1533,7 +1353,309 @@ export default function BroadcastStudioTab() {
                 </div>
               </div>
 
+              )}
+
             </div>
+    </>
+  );
+
+  // Standalone OBS Pop-out Window (Clean 1080p 16:9 Slide Display with ZERO UI clutter)
+  if (isObsPopout) {
+    return (
+      <div 
+        style={{ 
+          width: '100vw', 
+          height: '100vh', 
+          background: '#040711', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          overflow: 'hidden', 
+          padding: 0, 
+          margin: 0 
+        }}
+      >
+        <div 
+          style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            background: 'linear-gradient(145deg, #070c18, #0b1329)', 
+            border: 'none', 
+            borderRadius: 0, 
+            overflow: 'hidden', 
+            position: 'relative' 
+          }}
+        >
+          {renderSlideContent(true)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      
+      {/* 🌟 Top Studio Header Bar */}
+      <div 
+        className="card" 
+        style={{ 
+          padding: '12px 18px', 
+          background: 'linear-gradient(135deg, rgba(8, 12, 22, 0.98), rgba(15, 23, 42, 0.95))', 
+          border: '1px solid rgba(244, 63, 94, 0.35)', 
+          borderRadius: 8,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(244, 63, 94, 0.15)', border: '1px solid rgba(244, 63, 94, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fb7185' }}>
+            <Radio size={20} className="animate-pulse" />
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 13.5, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>YAYIN & BRİFİNG STÜDYOSU</span>
+              <span className="nav-badge rose" style={{ fontSize: 9.5, padding: '2px 7px', background: 'rgba(244, 63, 94, 0.2)', color: '#fda4af', border: '1px solid rgba(244, 63, 94, 0.4)' }}>
+                YOUTUBE PROMPTER • 16:9 GRAFİK SLAYT
+              </span>
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>
+              Makrodan Mikroya 9 Slaytlık TV Brifingi • Doğrulanmış Canlı Veriler • Doğal Neden-Sonuç Metni
+            </div>
+          </div>
+        </div>
+
+        {/* Studio Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          
+          {/* View Mode Switcher */}
+          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <button
+              type="button"
+              onClick={() => setViewMode('split')}
+              className={`chip-btn ${viewMode === 'split' ? 'active' : ''}`}
+              style={{ fontSize: 10, padding: '4px 9px', fontWeight: viewMode === 'split' ? 700 : 500 }}
+              title="Sol panelde görsel slayt, sağ panelde prompter metni"
+            >
+              <Layers size={11} style={{ marginRight: 4 }} />
+              <span>Bölünmüş Mod</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('slides_only')}
+              className={`chip-btn ${viewMode === 'slides_only' ? 'active' : ''}`}
+              style={{ fontSize: 10, padding: '4px 9px', fontWeight: viewMode === 'slides_only' ? 700 : 500 }}
+              title="Yalnızca 16:9 görsel slaytları göster (Ekran kaydı için)"
+            >
+              <Video size={11} style={{ marginRight: 4 }} />
+              <span>Sadece Slayt</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('prompter_only')}
+              className={`chip-btn ${viewMode === 'prompter_only' ? 'active' : ''}`}
+              style={{ fontSize: 10, padding: '4px 9px', fontWeight: viewMode === 'prompter_only' ? 700 : 500 }}
+              title="Yalnızca büyük konuşma metnini göster"
+            >
+              <Mic size={11} style={{ marginRight: 4 }} />
+              <span>Prompter Ekranı</span>
+            </button>
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={handleRefreshAll}
+            disabled={isRefreshing}
+            className="chip-btn"
+            style={{ 
+              fontSize: 10, 
+              padding: '5px 11px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              borderColor: isRefreshing ? 'var(--cyan)' : 'rgba(255,255,255,0.2)', 
+              color: isRefreshing ? 'var(--cyan)' : '#f8fafc', 
+              fontWeight: 700 
+            }}
+            title="Tüm piyasa verilerini ve göstergelerini canlı olarak yeniler"
+          >
+            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+            <span>{isRefreshing ? 'Yenileniyor...' : 'Verileri Yenile'}</span>
+          </button>
+
+          {/* Live Timestamp Badge */}
+          <span style={{ fontSize: 9.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4, padding: '0 4px' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} className="animate-pulse" />
+            <span>{lastRefreshedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} TSİ</span>
+          </span>
+
+          {/* OBS Clean Window Pop-out Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const popoutUrl = `${window.location.origin}${window.location.pathname}?obs_popout=1`;
+              window.open(popoutUrl, 'HakanGencFinans_OBS_Window', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
+            }}
+            className="chip-btn"
+            style={{ 
+              fontSize: 10, 
+              padding: '5px 11px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              borderColor: '#c084fc', 
+              color: '#c084fc', 
+              fontWeight: 700,
+              background: 'rgba(192, 132, 252, 0.1)'
+            }}
+            title="OBS için tam netlikte (1080p) temiz yayın penceresi açar. Ana ekranınızda prompter metnini okurken slaytlar OBS ile eşzamanlı değişir."
+          >
+            <Video size={12} />
+            <span>🎥 OBS Temiz Pencere</span>
+          </button>
+
+          {/* Copy Full Word Document Button */}
+          <button
+            type="button"
+            onClick={handleCopyAll}
+            className="btn-primary"
+            style={{ 
+              fontSize: 10.5, 
+              padding: '5px 12px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 5,
+              background: copiedAll ? '#10b981' : 'linear-gradient(135deg, #e11d48, #be123c)',
+              borderColor: copiedAll ? '#10b981' : '#f43f5e',
+              fontWeight: 700,
+              boxShadow: '0 2px 8px rgba(225, 29, 72, 0.3)'
+            }}
+            title="Tüm slaytların konuşma metnini başlıklarıyla birlikte panoya kopyalar"
+          >
+            {copiedAll ? <Check size={13} /> : <Copy size={13} />}
+            <span>{copiedAll ? 'Word Metni Kopyalandı!' : 'Word Metnini Kopyala'}</span>
+          </button>
+
+          {/* Direct Word .doc Download Button */}
+          <button
+            type="button"
+            onClick={handleDownloadWordDoc}
+            className="chip-btn"
+            style={{ fontSize: 10, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, borderColor: '#38bdf8', color: '#38bdf8', fontWeight: 700 }}
+            title="Tüm yayını Microsoft Word (.doc) belgesi olarak bilgisayarınıza indirir"
+          >
+            <Download size={12} />
+            <span>Word İndir (.doc)</span>
+          </button>
+
+          {/* Fullscreen Button */}
+          <button
+            type="button"
+            onClick={togglePresentationFullscreen}
+            className="chip-btn"
+            style={{ fontSize: 10, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
+            title="Slaytları 16:9 tam ekran sunum moduna al"
+          >
+            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            <span>{isFullscreen ? 'Küçült' : '⛶ Tam Ekran'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 🧭 Slide Selector Navigation Pills */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 6, 
+          overflowX: 'auto', 
+          padding: '6px 2px',
+          scrollbarWidth: 'none'
+        }}
+      >
+        {slides.map((s, idx) => {
+          const isActive = currentSlideIndex === idx;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => changeSlide(idx)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 6,
+                background: isActive ? 'rgba(244, 63, 94, 0.2)' : 'rgba(15, 23, 42, 0.6)',
+                border: `1px solid ${isActive ? '#f43f5e' : 'rgba(255, 255, 255, 0.08)'}`,
+                color: isActive ? '#fecdd3' : '#94a3b8',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span 
+                style={{ 
+                  width: 18, 
+                  height: 18, 
+                  borderRadius: '50%', 
+                  background: isActive ? '#f43f5e' : 'rgba(255,255,255,0.1)', 
+                  color: isActive ? '#fff' : '#cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 10,
+                  fontWeight: 800
+                }}
+              >
+                {s.id}
+              </span>
+              <span style={{ fontSize: 10.5, fontWeight: isActive ? 800 : 600 }}>
+                {s.title.split('&')[0].trim()}
+              </span>
+              <span style={{ fontSize: 8.5, color: isActive ? '#fda4af' : '#64748b' }}>
+                ({s.durationEst})
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 🎬 Main Workspace Layout (Slide + Prompter) */}
+      <div 
+        ref={presentationContainerRef}
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: viewMode === 'split' ? 'minmax(600px, 1.45fr) minmax(360px, 1fr)' : '1fr', 
+          gap: 14,
+          alignItems: 'stretch',
+          background: isFullscreen ? '#040711' : 'transparent',
+          padding: isFullscreen ? 16 : 0,
+          borderRadius: 8
+        }}
+      >
+        
+        {/* ========================================================================= */}
+        {/* 📺 LEFT: 16:9 PRESENTATION SLIDE DISPLAY                                  */}
+        {/* ========================================================================= */}
+        {viewMode !== 'prompter_only' && (
+          <div 
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              background: 'linear-gradient(145deg, #070c18, #0b1329)', 
+              border: '1px solid rgba(255, 255, 255, 0.1)', 
+              borderRadius: 10, 
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+              position: 'relative',
+              minHeight: isFullscreen ? 'calc(100vh - 32px)' : 640
+            }}
+          >
+            {renderSlideContent(false)}
           </div>
         )}
 
