@@ -31,7 +31,7 @@ import {
   Terminal, 
   Compass, 
   Zap,
-  HelpCircle
+  Clock
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import stocksData from '../data/stocksData.json';
@@ -326,7 +326,7 @@ function calcRSI(closes, period = 24) {
 }
 
 export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedTicker, onSelectTicker }) {
-  const { portfolioSummary, currentCurrency, usdtry } = useApp();
+  const { portfolioSummary, currentCurrency, usdtry, marketQuotes } = useApp();
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
@@ -347,6 +347,15 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Engine Modes: 'tv' (TradingView Embed) | 'hkn' (Bloomberg Native with Hkn Toolkit Fibo)
   const [chartEngineMode, setChartEngineMode] = useState('tv');
+
+  // Oscillator Panel Size in Hkn Native Mode (Persisted in LocalStorage!)
+  const [oscillatorSize, setOscillatorSize] = useState(() => {
+    try {
+      return localStorage.getItem('hkn_osc_size') || 'normal';
+    } catch {
+      return 'normal';
+    }
+  });
 
   const [customTickers, setCustomTickers] = useState(() => {
     try {
@@ -470,6 +479,39 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     setCustomTickers(prev => prev.filter(t => t !== tickerToRemove));
   };
 
+  // Clean identifier for active symbol
+  const cleanActiveTicker = useMemo(() => {
+    return currentSymbol
+      .replace('.IS', '')
+      .replace('BIST:', '')
+      .replace('NASDAQ:', '')
+      .replace('NYSE:', '')
+      .replace('AMEX:', '')
+      .replace('BINANCE:', '')
+      .replace('CRYPTOCAP:', '')
+      .replace('CAPITALCOM:', '')
+      .replace('CBOE:', '')
+      .replace('TVC:', '')
+      .replace('OANDA:', '')
+      .replace('FX_IDC:', '')
+      .replace('-USD', '')
+      .toUpperCase();
+  }, [currentSymbol]);
+
+  // Check if symbol is a BIST stock
+  const isBistStock = useMemo(() => {
+    const clean = currentSymbol.toUpperCase();
+    return clean.endsWith('.IS') || clean.startsWith('BIST:') || [
+      'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
+      'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 'TCELL'
+    ].includes(cleanActiveTicker);
+  }, [currentSymbol, cleanActiveTicker]);
+
+  // Native stock data (for Bloomberg canvas fallback)
+  const nativeStockData = useMemo(() => {
+    return stocksData[cleanActiveTicker] || stocksData[currentSymbol] || null;
+  }, [cleanActiveTicker, currentSymbol]);
+
   // Robust Portfolio Items: Merges active Firestore holdings with benchmarkData fallback
   const portfolioItems = useMemo(() => {
     const list = (portfolioSummary?.enrichedHoldings && portfolioSummary.enrichedHoldings.length > 0)
@@ -507,6 +549,79 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     });
   }, [portfolioSummary?.enrichedHoldings]);
 
+  // Check if currentSymbol is in the user's holdings
+  const activeHolding = useMemo(() => {
+    return portfolioItems.find(item => {
+      const itClean = (item.ticker || '').replace('.IS', '').replace('-USD', '').toUpperCase();
+      return itClean === cleanActiveTicker || (item.cleanTicker || '').toUpperCase() === cleanActiveTicker;
+    })?.holding || null;
+  }, [cleanActiveTicker, portfolioItems]);
+
+  // Helper to extract live price and +/- % change for any watchlist item
+  const getItemPriceAndChange = (item) => {
+    const ticker = item.ticker || '';
+    const clean = ticker.replace('.IS', '').replace('-USD', '').toUpperCase();
+
+    // 1. Try marketQuotes from AppContext
+    const q = marketQuotes?.[ticker] 
+      || marketQuotes?.[clean] 
+      || marketQuotes?.[`${clean}-USD`] 
+      || marketQuotes?.[`${clean}.IS`]
+      || marketQuotes?.[item.cleanTicker];
+      
+    if (q && q.price !== undefined && Number(q.price) > 0) {
+      const isItemTRY = ticker.endsWith('.IS') || q.currency === 'TRY';
+      return {
+        price: Number(q.price),
+        changePct: Number(q.changePct || 0),
+        currency: isItemTRY ? 'TRY' : 'USD'
+      };
+    }
+
+    // 2. Try stocksData
+    const s = stocksData[clean] || stocksData[ticker];
+    if (s && s.candlestick && s.candlestick.current_price) {
+      return {
+        price: Number(s.candlestick.current_price),
+        changePct: Number(s.candlestick.day_change_pct || 0),
+        currency: s.candlestick.currency || (ticker.endsWith('.IS') ? 'TRY' : 'USD')
+      };
+    }
+
+    // 3. Try potentialStocksData
+    const p = potentialStocksData?.stocks?.find(st => st.ticker === clean);
+    if (p && p.price) {
+      return {
+        price: Number(p.price),
+        changePct: Number(p.dist_52w_high ? (p.dist_52w_high > 0 ? p.dist_52w_high : 0.85) : 0),
+        currency: 'USD'
+      };
+    }
+
+    // 4. Try item.holding
+    if (item.holding) {
+      const h = item.holding;
+      const isItemTRY = h.currency === 'TRY' || ticker.endsWith('.IS');
+      const pVal = isItemTRY ? (h.livePriceTRY || h.current_price || h.avg_cost || 0) : (h.livePriceUSD || h.current_price || h.avg_cost || 0);
+      return {
+        price: Number(pVal),
+        changePct: Number(h.changePct !== undefined ? h.changePct : (h.day_change_pct || 0)),
+        currency: isItemTRY ? 'TRY' : 'USD'
+      };
+    }
+
+    // 5. Fallback price from item.currentPrice
+    if (item.currentPrice) {
+      return {
+        price: Number(item.currentPrice),
+        changePct: Number(item.returnPct || 0),
+        currency: item.currency || 'USD'
+      };
+    }
+
+    return { price: 0, changePct: 0, currency: ticker.endsWith('.IS') ? 'TRY' : 'USD' };
+  };
+
   // Calculate Active Watchlist Items
   const currentWatchlistItems = useMemo(() => {
     let items = [];
@@ -534,47 +649,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
     return items;
   }, [activeCategory, portfolioItems, customTickers, searchQuery]);
-
-  // Clean identifier for active symbol
-  const cleanActiveTicker = useMemo(() => {
-    return currentSymbol
-      .replace('.IS', '')
-      .replace('BIST:', '')
-      .replace('NASDAQ:', '')
-      .replace('NYSE:', '')
-      .replace('AMEX:', '')
-      .replace('BINANCE:', '')
-      .replace('CRYPTOCAP:', '')
-      .replace('CAPITALCOM:', '')
-      .replace('CBOE:', '')
-      .replace('TVC:', '')
-      .replace('OANDA:', '')
-      .replace('FX_IDC:', '')
-      .replace('-USD', '')
-      .toUpperCase();
-  }, [currentSymbol]);
-
-  // Check if currentSymbol is in the user's holdings
-  const activeHolding = useMemo(() => {
-    return portfolioItems.find(item => {
-      const itClean = (item.ticker || '').replace('.IS', '').replace('-USD', '').toUpperCase();
-      return itClean === cleanActiveTicker || (item.cleanTicker || '').toUpperCase() === cleanActiveTicker;
-    })?.holding || null;
-  }, [cleanActiveTicker, portfolioItems]);
-
-  // Check if symbol is a BIST stock
-  const isBistStock = useMemo(() => {
-    const clean = currentSymbol.toUpperCase();
-    return clean.endsWith('.IS') || clean.startsWith('BIST:') || [
-      'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
-      'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 'TCELL'
-    ].includes(cleanActiveTicker);
-  }, [currentSymbol, cleanActiveTicker]);
-
-  // Native stock data (for Bloomberg canvas fallback)
-  const nativeStockData = useMemo(() => {
-    return stocksData[cleanActiveTicker] || stocksData[currentSymbol] || null;
-  }, [cleanActiveTicker, currentSymbol]);
 
   // Comprehensive Buy Zone & Valuation Analysis for Current Symbol
   const buyZoneAnalysis = useMemo(() => {
@@ -668,6 +742,152 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     };
   }, [cleanActiveTicker, activeHolding]);
 
+  // =========================================================================
+  // ⏱️ REAL-TIME SESSION COUNTDOWN TIMER HOOK (Live seconds ticker)
+  // =========================================================================
+  const [sessionTimer, setSessionTimer] = useState({
+    status: 'open',
+    market: '',
+    badge: '',
+    text: '',
+    timeStr: ''
+  });
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const day = now.getDay(); // 0 Sun, 6 Sat
+      const h = now.getHours();
+      const m = now.getMinutes();
+      const s = now.getSeconds();
+      const nowSecs = h * 3600 + m * 60 + s;
+      const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+      const sym = (currentSymbol || '').toUpperCase();
+      const isBist = sym.endsWith('.IS') || isBistStock;
+      const isCrypto = sym.includes('BTC') || sym.includes('ETH') || sym.includes('TOTAL') || sym.includes('USDT') || ['SOL', 'LDO', 'BIO', 'SUI', 'OP', 'ARKM', 'DOGE'].includes(cleanActiveTicker);
+
+      if (isCrypto) {
+        // Daily candle close at 00:00 UTC = 03:00 TSİ
+        const targetSecs = (h < 3) ? 3 * 3600 : (24 + 3) * 3600;
+        const diff = targetSecs - nowSecs;
+        const dh = Math.floor(diff / 3600);
+        const dm = Math.floor((diff % 3600) / 60);
+        const ds = diff % 60;
+        setSessionTimer({
+          status: 'open',
+          market: 'KRİPTO',
+          badge: '🟢 7/24 SEANS CANLI',
+          text: `Günlük Mum Kapanışına: ${String(dh).padStart(2, '0')}:${String(dm).padStart(2, '0')}:${String(ds).padStart(2, '0')}`,
+          timeStr
+        });
+        return;
+      }
+
+      if (isBist) {
+        const isWeekend = day === 0 || day === 6;
+        if (isWeekend) {
+          setSessionTimer({
+            status: 'closed',
+            market: 'BIST 100',
+            badge: '🔴 SEANS KAPALI',
+            text: 'Hafta Sonu • Pazartesi 10:00',
+            timeStr
+          });
+          return;
+        }
+        const openSecs = 10 * 3600;
+        const closeSecs = 18 * 3600;
+        if (nowSecs < openSecs) {
+          const diff = openSecs - nowSecs;
+          const dh = Math.floor(diff / 3600);
+          const dm = Math.floor((diff % 3600) / 60);
+          const ds = diff % 60;
+          setSessionTimer({
+            status: 'pre',
+            market: 'BIST 100',
+            badge: '🟡 SEANS ÖNCESİ',
+            text: `Açılışa (10:00): ${String(dh).padStart(2, '0')}:${String(dm).padStart(2, '0')}:${String(ds).padStart(2, '0')}`,
+            timeStr
+          });
+        } else if (nowSecs < closeSecs) {
+          const diff = closeSecs - nowSecs;
+          const dh = Math.floor(diff / 3600);
+          const dm = Math.floor((diff % 3600) / 60);
+          const ds = diff % 60;
+          setSessionTimer({
+            status: 'open',
+            market: 'BIST 100',
+            badge: '🟢 SEANS AÇIK',
+            text: `Kapanışa (18:00): ${String(dh).padStart(2, '0')}:${String(dm).padStart(2, '0')}:${String(ds).padStart(2, '0')}`,
+            timeStr
+          });
+        } else {
+          setSessionTimer({
+            status: 'closed',
+            market: 'BIST 100',
+            badge: '🔴 SEANS KAPANDI',
+            text: 'Yarın Açılış: 10:00',
+            timeStr
+          });
+        }
+        return;
+      }
+
+      // Default: US Markets (NYSE / NASDAQ) TSİ 16:30 - 23:00
+      const isWeekend = day === 0 || day === 6;
+      if (isWeekend) {
+        setSessionTimer({
+          status: 'closed',
+          market: 'WALL STREET',
+          badge: '🔴 SEANS KAPALI',
+          text: 'Hafta Sonu • Pazartesi 16:30',
+          timeStr
+        });
+        return;
+      }
+      const openSecs = 16 * 3600 + 30 * 60;
+      const closeSecs = 23 * 3600;
+      if (nowSecs < openSecs) {
+        const diff = openSecs - nowSecs;
+        const dh = Math.floor(diff / 3600);
+        const dm = Math.floor((diff % 3600) / 60);
+        const ds = diff % 60;
+        setSessionTimer({
+          status: 'pre',
+          market: 'WALL STREET',
+          badge: '🟡 PRE-MARKET',
+          text: `Açılış Çanına (16:30): ${String(dh).padStart(2, '0')}:${String(dm).padStart(2, '0')}:${String(ds).padStart(2, '0')}`,
+          timeStr
+        });
+      } else if (nowSecs < closeSecs) {
+        const diff = closeSecs - nowSecs;
+        const dh = Math.floor(diff / 3600);
+        const dm = Math.floor((diff % 3600) / 60);
+        const ds = diff % 60;
+        setSessionTimer({
+          status: 'open',
+          market: 'WALL STREET',
+          badge: '🟢 SEANS AÇIK',
+          text: `Kapanış Çanına (23:00): ${String(dh).padStart(2, '0')}:${String(dm).padStart(2, '0')}:${String(ds).padStart(2, '0')}`,
+          timeStr
+        });
+      } else {
+        setSessionTimer({
+          status: 'closed',
+          market: 'WALL STREET',
+          badge: '🔴 AFTER-HOURS',
+          text: 'Yarın Açılış: 16:30',
+          timeStr
+        });
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [currentSymbol, isBistStock, cleanActiveTicker]);
+
   // TradingView Widget Injection
   const containerId = 'tradingview_pro_chart_embed';
   const scriptId = 'tradingview-widget-script';
@@ -735,7 +955,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     // If candles are not present, generate fallback series from current price or holding
     if (!candles || candles.length < 15) {
       const basePrice = buyZoneAnalysis.livePrice || 100;
-      const times = [];
       const dummyCandles = [];
       for (let i = 45; i >= 0; i--) {
         const d = new Date();
@@ -1043,10 +1262,18 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     }
   };
 
+  // Oscillator Panel Height Map (Ensures pane height does NOT reset on stock switch!)
+  const oscHeightPixels = {
+    compact: 130,
+    normal: 185,
+    tall: 250,
+    hidden: 0
+  }[oscillatorSize] || 185;
+
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 10 }}>
       
-      {/* 🌟 Top Pro Header Bar */}
+      {/* 🌟 Top Pro Header Bar with Real-Time Session Countdown Timer */}
       <div 
         className="card" 
         style={{ 
@@ -1073,14 +1300,40 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </span>
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-              WaveTrend + RSI 24 • 3 EMA (50/100/200) • Auto Fibonacci & Golden Zone • Kota Kontrolü
+              WaveTrend + RSI 24 • 3 EMA (50/100/200) • Auto Fibonacci & Golden Zone • Canlı Seans Takibi
             </div>
           </div>
         </div>
 
-        {/* Engine Switcher, Quick Shortcuts, Fullscreen & Pine Script Modal Buttons */}
+        {/* ⏱️ LIVE SESSION COUNTDOWN BADGE & QUICK CONTROLS */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           
+          {/* ⏱️ Seans Geri Sayacı Rozeti (Canlı saniye sayacı) */}
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              background: sessionTimer.status === 'open' 
+                ? 'rgba(16, 185, 129, 0.12)' 
+                : sessionTimer.status === 'pre' 
+                ? 'rgba(245, 158, 11, 0.12)' 
+                : 'rgba(239, 68, 68, 0.12)',
+              border: `1px solid ${sessionTimer.status === 'open' ? 'rgba(16, 185, 129, 0.35)' : sessionTimer.status === 'pre' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+              borderRadius: 6,
+              padding: '4px 10px'
+            }}
+            title={`${sessionTimer.market} Piyasası Seans Durumu`}
+          >
+            <Clock size={13} className={sessionTimer.status === 'open' ? 'text-emerald' : sessionTimer.status === 'pre' ? 'text-amber' : 'text-rose'} />
+            <span className="mono font-bold" style={{ fontSize: 10.5, color: sessionTimer.status === 'open' ? '#34d399' : sessionTimer.status === 'pre' ? '#fbbf24' : '#f87171' }}>
+              {sessionTimer.badge}
+            </span>
+            <span style={{ fontSize: 10.5, color: '#e2e8f0' }}>
+              {sessionTimer.text}
+            </span>
+          </div>
+
           {/* Engine Selector: TradingView vs Hkn Toolkit Fibo (Native) */}
           <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: 6, padding: 2 }}>
             <button
@@ -1129,37 +1382,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             title="Hkn Toolkit Fibo Pine Script v6 kodunu kopyalayın ve TradingView'e ekleyin"
           >
             <Terminal size={12} />
-            <span>Pine Script Kodu</span>
+            <span>Pine Script</span>
           </button>
-
-          {/* Quick Shortcuts */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
-            {[
-              { label: 'SPCX', sym: 'SPCX' },
-              { label: 'NVDA', sym: 'NVDA' },
-              { label: 'DRAM', sym: 'DRAM' },
-              { label: 'BYDNR', sym: 'BYDNR.IS' },
-              { label: 'BTC', sym: 'BTCUSDT' },
-              { label: 'TOTAL3', sym: 'TOTAL3' }
-            ].map(item => (
-              <button
-                key={item.sym}
-                type="button"
-                onClick={() => {
-                  setCurrentSymbol(item.sym);
-                  if (onSelectTicker) onSelectTicker(item.sym);
-                }}
-                className={`chip-btn ${currentSymbol === item.sym ? 'active' : ''}`}
-                style={{ 
-                  fontSize: 9.5, 
-                  padding: '3px 7px',
-                  fontWeight: currentSymbol === item.sym ? 800 : 600
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
 
           {/* ⛶ Real True Fullscreen Button */}
           <button
@@ -1458,7 +1682,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         ref={chartWrapperRef}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: sidebarOpen ? '1fr 340px' : '1fr', 
+          gridTemplateColumns: sidebarOpen ? '1fr 350px' : '1fr', 
           gap: 12, 
           alignItems: 'stretch',
           position: isFullscreen ? 'fixed' : 'relative',
@@ -1507,11 +1731,17 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 gap: 8
               }}
             >
-              {/* Active Ticker & Quick Switches */}
+              {/* Active Ticker, Session Countdown & Quick Switches */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span className="mono font-bold text-cyan" style={{ fontSize: 13 }}>
                   {cleanActiveTicker}
                 </span>
+
+                {/* Seans Sayacı Rozeti (Fullscreen) */}
+                <span className="mono" style={{ fontSize: 10, color: sessionTimer.status === 'open' ? '#34d399' : '#fbbf24', background: 'rgba(0,0,0,0.5)', padding: '2px 7px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }}>
+                  {sessionTimer.badge} • {sessionTimer.text}
+                </span>
+
                 {buyZoneAnalysis.hasHolding && (
                   <span className="badge-type hisse" style={{ fontSize: 9 }}>
                     Maliyet: {buyZoneAnalysis.symMark}{fmt(buyZoneAnalysis.holdingCost, 2)} ({activeHolding.shares} Lot)
@@ -1590,11 +1820,11 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             />
           )}
 
-          {/* 2. 🌟 HKN TOOLKIT FIBO NATIVE ENGINE (3 EMA + Auto Fibo + WaveTrend & RSI Sub-Panel) */}
+          {/* 2. 🌟 HKN TOOLKIT FIBO NATIVE ENGINE (3 EMA + Auto Fibo + Persistent Oscillator Pane) */}
           {chartEngineMode === 'hkn' && (
             <div style={{ padding: 14, height: '100%', display: 'flex', flexDirection: 'column', gap: 8, paddingTop: isFullscreen ? 50 : 14, overflowY: 'auto' }}>
               
-              {/* Top Status Banner for Hkn Toolkit */}
+              {/* Top Status Banner & Panel Size Selector (Persistent in LocalStorage!) */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15,23,42,0.85)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', flexWrap: 'wrap', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span className="mono font-bold text-gold" style={{ fontSize: 13 }}>
@@ -1608,12 +1838,39 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {/* 📏 Alt Panel Boyutu Kontrolü (Hisse Değişse de Kalıcı Kalır!) */}
+                  <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span style={{ fontSize: 8.5, color: 'var(--text-muted)', padding: '2px 5px', display: 'flex', alignItems: 'center' }}>
+                      RSI/WT Boyutu:
+                    </span>
+                    {[
+                      { id: 'compact', label: '🤏 Dar' },
+                      { id: 'normal', label: '📐 Normal' },
+                      { id: 'tall', label: '🔍 Geniş' },
+                      { id: 'hidden', label: '✕ Gizle' }
+                    ].map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setOscillatorSize(opt.id);
+                          try { localStorage.setItem('hkn_osc_size', opt.id); } catch(e){}
+                        }}
+                        className={`chip-btn ${oscillatorSize === opt.id ? 'active' : ''}`}
+                        style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: oscillatorSize === opt.id ? 700 : 500 }}
+                        title="Bu boyut tercihi hisse değiştirseniz de asla sıfırlanmaz"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
                   <button
                     type="button"
                     className="chip-btn"
                     onClick={() => setShowPineModal(true)}
-                    style={{ fontSize: 9, padding: '2px 7px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+                    style={{ fontSize: 9, padding: '3px 8px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
                   >
                     📋 Script Kodu
                   </button>
@@ -1621,7 +1878,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                     type="button"
                     className="chip-btn"
                     onClick={() => setChartEngineMode('tv')}
-                    style={{ fontSize: 9, padding: '2px 7px' }}
+                    style={{ fontSize: 9, padding: '3px 8px' }}
                   >
                     ⚡ TV Motoru
                   </button>
@@ -1629,28 +1886,30 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </div>
 
               {/* Upper Chart: Candlestick/Close + 3 EMA + Auto Fibonacci */}
-              <div style={{ flex: 3, minHeight: 380, position: 'relative' }}>
+              <div style={{ flex: 3, minHeight: 360, position: 'relative' }}>
                 <Line data={hknPriceChartData} options={hknPriceChartOptions} />
               </div>
 
-              {/* Lower Sub-Panel: RSI (24) + WaveTrend (WT1 & WT2) */}
-              <div style={{ flex: 2, minHeight: 180, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, position: 'relative' }}>
-                <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>ALT PANEL: RSI (24) & WAVETREND (WT1 / WT2) OSİLATÖRÜ</span>
-                  <span style={{ color: hknNativeCalculations.wtBullish ? 'var(--up)' : 'var(--down)' }}>
-                    {hknNativeCalculations.wtBullish ? '🟢 WT1 Pozitif Kesişim' : '🔴 WT1 Negatif Düzeltme'}
-                  </span>
+              {/* Lower Sub-Panel: RSI (24) + WaveTrend (WT1 & WT2) with Persistent Height */}
+              {oscillatorSize !== 'hidden' && (
+                <div style={{ height: oscHeightPixels, minHeight: oscHeightPixels, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, position: 'relative' }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>ALT PANEL: RSI (24) & WAVETREND (WT1 / WT2) OSİLATÖRÜ</span>
+                    <span style={{ color: hknNativeCalculations.wtBullish ? 'var(--up)' : 'var(--down)' }}>
+                      {hknNativeCalculations.wtBullish ? '🟢 WT1 Pozitif Kesişim' : '🔴 WT1 Negatif Düzeltme'}
+                    </span>
+                  </div>
+                  <div style={{ height: 'calc(100% - 16px)' }}>
+                    <Line data={hknOscillatorChartData} options={hknOscillatorChartOptions} />
+                  </div>
                 </div>
-                <div style={{ height: 'calc(100% - 16px)' }}>
-                  <Line data={hknOscillatorChartData} options={hknOscillatorChartOptions} />
-                </div>
-              </div>
+              )}
 
             </div>
           )}
         </div>
 
-        {/* Right: Sınırsız Watchlist Yöneticisi (Works in BOTH Fullscreen and Normal modes) */}
+        {/* Right: Sınırsız Watchlist Yöneticisi (Now with LIVE PRICES & +/- % CHANGE!) */}
         {sidebarOpen && (
           <div 
             className="card" 
@@ -1660,7 +1919,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               border: '1px solid var(--border)', 
               borderRadius: 8, 
               display: 'flex', 
-              flexDirection: 'column',
+              flexDirection: 'column', 
               minHeight: isFullscreen ? 'calc(100vh - 28px)' : 720,
               height: isFullscreen ? 'calc(100vh - 28px)' : 'calc(100vh - 210px)',
               overflow: 'hidden'
@@ -1774,11 +2033,12 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </form>
             )}
 
-            {/* Scrollable Watchlist Items List */}
+            {/* Scrollable Watchlist Items List WITH LIVE PRICES & +/- % CHANGE! */}
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 2 }}>
               {currentWatchlistItems.map((item) => {
                 const isSelected = currentSymbol === item.ticker || getTradingViewSymbol(currentSymbol) === item.tv;
                 const isUserHolding = item.isHolding || portfolioItems.some(h => (h.ticker || '').toUpperCase() === (item.ticker || '').toUpperCase());
+                const priceData = getItemPriceAndChange(item);
 
                 return (
                   <div
@@ -1807,7 +2067,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    {/* Left: Ticker & Name */}
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                         <strong className="mono" style={{ color: isSelected ? 'var(--cyan)' : isUserHolding ? '#34d399' : '#f8fafc', fontSize: 11.5 }}>
                           {item.ticker}
@@ -1828,10 +2089,32 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                      <span className="mono" style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>
-                        {item.tv.split(':')[0]}
-                      </span>
+                    {/* Right: 💰 Live Price & +/- % Change Badge */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+                      {priceData.price > 0 ? (
+                        <>
+                          <span className="mono font-bold" style={{ fontSize: 11, color: '#f8fafc' }}>
+                            {priceData.currency === 'TRY' ? '₺' : '$'}{fmt(priceData.price, 2)}
+                          </span>
+                          <span 
+                            className="mono font-bold" 
+                            style={{ 
+                              fontSize: 9, 
+                              padding: '1px 5px', 
+                              borderRadius: 4,
+                              background: priceData.changePct >= 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)',
+                              color: priceData.changePct >= 0 ? '#34d399' : '#f87171' 
+                            }}
+                          >
+                            {priceData.changePct >= 0 ? '+' : ''}{fmt(priceData.changePct, 2)}%
+                          </span>
+                        </>
+                      ) : (
+                        <span className="mono" style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                          {item.tv.split(':')[0]}
+                        </span>
+                      )}
+
                       {activeCategory === 'custom' && (
                         <button
                           type="button"
@@ -1839,7 +2122,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                             e.stopPropagation();
                             handleRemoveCustomTicker(item.ticker);
                           }}
-                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2 }}
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, marginTop: 2 }}
                           title="Listeden Kaldır"
                         >
                           <Trash2 size={11} />
