@@ -15,6 +15,7 @@ import ModelPortfolioTab from './pages/ModelPortfolioTab';
 import TradeLedgerTab from './pages/TradeLedgerTab';
 import ManageTab from './pages/ManageTab';
 import PotentialStocksTab from './pages/PotentialStocksTab';
+import ProChartTab from './pages/ProChartTab';
 import {
   AddHoldingModal,
   SellHoldingModal,
@@ -92,6 +93,15 @@ function MainTerminal() {
         />
 
         <main className="terminal-main">
+          {activeTab === 'pro_chart' && (
+            <ProChartTab
+              onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
+              onOpenSellModal={(h) => setSelectedSellHolding(h)}
+              selectedTicker={selectedStockTicker}
+              onSelectTicker={(t) => setSelectedStockTicker(t)}
+            />
+          )}
+
           {activeTab === 'market' && <MarketPulseTab />}
 
           {activeTab === 'potential' && (
@@ -112,6 +122,10 @@ function MainTerminal() {
               onOpenSellModal={(h) => setSelectedSellHolding(h)}
               onOpenEditModal={(h) => setSelectedEditHolding(h)}
               onOpenCashModal={() => setShowCashModal(true)}
+              onSelectStockForChart={(ticker) => {
+                setSelectedStockTicker(ticker);
+                setActiveTab('pro_chart');
+              }}
             />
           )}
 

@@ -30,6 +30,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   const portfolioTabs = [
     { id: 'overview', label: 'Portföy (Özet)', icon: BarChart3, category: 'Varlık' },
     { id: 'holdings', label: 'Pozisyonlar', icon: ListFilter, badge: `${holdingsCount}`, badgeColor: 'amber', category: 'Varlık' },
+    { id: 'pro_chart', label: 'Teknik Pro Grafik', icon: LineChart, badge: 'TV', badgeColor: 'cyan', category: 'Analiz' },
     { id: 'shield', label: 'Kur Kalkanı', icon: ShieldCheck, badge: 'Zırh', badgeColor: 'gold', category: 'Koruma' },
     { id: 'benchmark', label: 'Benchmark', icon: LineChart, badge: 'GIPS', badgeColor: 'cyan', category: 'Analiz' },
     { id: 'health', label: 'Sağlık (Kar Tanesi)', icon: Snowflake, badge: '84', badgeColor: 'emerald', category: 'Analiz' },

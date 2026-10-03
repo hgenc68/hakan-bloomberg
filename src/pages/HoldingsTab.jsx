@@ -3,7 +3,7 @@ import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { 
   Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, 
   Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, 
-  ArrowRight, ShieldCheck, PieChart, Layers, TrendingUp, BarChart3, Snowflake, Award, Target, Activity, Calendar
+  ArrowRight, ShieldCheck, PieChart, Layers, TrendingUp, BarChart3, Snowflake, Award, Target, Activity, Calendar, LineChart
 } from 'lucide-react';
 import { Bar, Radar } from 'react-chartjs-2';
 import {
@@ -37,7 +37,7 @@ ChartJS.register(
   Legend
 );
 
-export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal }) {
+export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal, onSelectStockForChart }) {
   const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab } = useApp();
   
   // 🌟 Main Sub-View: 'equity' (HİSSE - ETF) or 'all' (TÜM PORTFÖY)
@@ -1503,6 +1503,19 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         </td>
                         <td className="text-right">
                           <div className="row-actions">
+                            <button
+                              type="button"
+                              className="chip-btn"
+                              onClick={() => {
+                                if (onSelectStockForChart) onSelectStockForChart(h.ticker);
+                                else if (setActiveTab) setActiveTab('pro_chart');
+                              }}
+                              title="Pro Canlı TradingView Grafiğini Aç"
+                              style={{ background: 'rgba(0, 229, 255, 0.1)', color: 'var(--cyan)', border: '1px solid rgba(0, 229, 255, 0.3)', padding: '3px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10 }}
+                            >
+                              <LineChart size={11} />
+                              <span>Grafik</span>
+                            </button>
                             <button
                               type="button"
                               className="btn-action-row buy"
