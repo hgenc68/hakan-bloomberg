@@ -681,3 +681,47 @@ if barstate.islast
         fibDrawLevel(fibShow7, fibVal7, fibCol7, fibW7, x1)
         fibDrawLevel(fibShow8, fibVal8, fibCol8, fibW8, x1)
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~}
+
+// ============================================================
+// 5) SQUEEZE MOMENTUM (Alt panel - John Carter / LazyBear)
+// ============================================================
+gSqz = "Squeeze Momentum"
+showSqz     = input.bool(true, "Squeeze Momentum Göster (Aç/Kapat)", group = gSqz)
+sqzLenBB    = input.int(20, "Bollinger Bant Uzunluğu", group = gSqz)
+sqzMultBB   = input.float(2.0, "Bollinger Çarpanı", group = gSqz)
+sqzLenKC    = input.int(20, "Keltner Kanal Uzunluğu", group = gSqz)
+sqzMultKC   = input.float(1.5, "Keltner Çarpanı", group = gSqz)
+useTrRange  = input.bool(true, "TrueRange Kullan (KC)", group = gSqz)
+
+// Bollinger Bands hesaplaması
+sqzBasis = ta.sma(close, sqzLenBB)
+sqzDev   = sqzMultBB * ta.stdev(close, sqzLenBB)
+sqzUpperBB = sqzBasis + sqzDev
+sqzLowerBB = sqzBasis - sqzDev
+
+// Keltner Channels hesaplaması
+sqzMaKC    = ta.sma(close, sqzLenKC)
+sqzRange   = useTrRange ? ta.tr : (high - low)
+sqzRangeMa = ta.sma(sqzRange, sqzLenKC)
+sqzUpperKC = sqzMaKC + sqzRangeMa * sqzMultKC
+sqzLowerKC = sqzMaKC - sqzRangeMa * sqzMultKC
+
+// Sıkışma (Squeeze) Durumu: Bollinger, Keltner içine girdiğinde sıkışma başlar
+sqzIn  = (sqzLowerBB > sqzLowerKC) and (sqzUpperBB < sqzUpperKC)
+sqzOut = (sqzLowerBB < sqzLowerKC) and (sqzUpperBB > sqzUpperKC)
+sqzNo  = not sqzIn and not sqzOut
+
+// Momentum Değeri (Linear Regression)
+sqzHighest = ta.highest(high, sqzLenKC)
+sqzLowest  = ta.lowest(low, sqzLenKC)
+sqzMid     = math.avg(math.avg(sqzHighest, sqzLowest), ta.sma(close, sqzLenKC))
+sqzMom     = ta.linreg(close - sqzMid, sqzLenKC, 0)
+
+// Histogram Renk Mantığı (Momentum Yönü ve İvmesi)
+sqzHistColor = sqzMom > 0 ? (sqzMom > nz(sqzMom[1]) ? color.lime : color.green) : (sqzMom < nz(sqzMom[1]) ? color.red : color.maroon)
+sqzDotColor  = sqzIn ? color.black : (sqzOut ? color.lime : color.gray)
+
+// Histogram ve Squeeze Noktaları Çizimi (Alt panelde çizilir)
+plot(showSqz ? sqzMom : na, title = "Squeeze Momentum Histogram", style = plot.style_columns, color = sqzHistColor, linewidth = 2)
+plot(showSqz ? 0 : na, title = "Squeeze Sıkışma Noktaları", style = plot.style_circles, color = sqzDotColor, linewidth = 2)
+

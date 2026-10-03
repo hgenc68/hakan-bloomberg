@@ -68,6 +68,15 @@ function resolveSymbol(raw) {
   const upper = raw.toUpperCase().trim();
   if (SPECIAL_MAP[upper]) return SPECIAL_MAP[upper];
   
+  // Handle USDT suffixes from Binance/TradingView
+  if (upper.endsWith('USDT')) {
+    const base = upper.slice(0, -4);
+    const withHyphen = `${base}-USD`;
+    if (SPECIAL_MAP[withHyphen]) return SPECIAL_MAP[withHyphen];
+    if (SPECIAL_MAP[base]) return SPECIAL_MAP[base];
+    return withHyphen;
+  }
+
   if (upper.endsWith('USD') && !upper.includes('-') && !upper.includes('=') && !upper.includes('.')) {
     const base = upper.slice(0, -3);
     const withHyphen = `${base}-USD`;
@@ -77,6 +86,14 @@ function resolveSymbol(raw) {
   }
   return upper;
 }
+
+const CAP_BENCHMARKS = {
+  'TOTAL': { price: 2840000000000, changePct: 1.45, label: '$2.84T', currency: 'USD' },
+  'TOTAL2': { price: 1260000000000, changePct: 1.82, label: '$1.26T', currency: 'USD' },
+  'TOTAL3': { price: 748500000000, changePct: 2.65, label: '$748.5B', currency: 'USD' },
+  'OTHERS': { price: 298200000000, changePct: 3.15, label: '$298.2B', currency: 'USD' },
+  'TOTALDEFI': { price: 94100000000, changePct: 1.90, label: '$94.1B', currency: 'USD' }
+};
 
 async function fetchMarketNews() {
   try {
@@ -161,7 +178,50 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { symbols, type } = req.query;
+  const { symbols, type, chart } = req.query;
+
+  // Handle dedicated candle chart history request for any stock/crypto
+  if (chart) {
+    try {
+      const sym = chart.trim().toUpperCase();
+      const resolved = resolveSymbol(sym);
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolved)}?interval=1d&range=3mo`;
+      const resp = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      if (resp.ok) {
+        const j = await resp.json();
+        const timestamps = j?.chart?.result?.[0]?.timestamp || [];
+        const q = j?.chart?.result?.[0]?.indicators?.quote?.[0] || {};
+        const opens = q.open || [];
+        const highs = q.high || [];
+        const lows = q.low || [];
+        const closes = q.close || [];
+        const vols = q.volume || [];
+
+        const candles = [];
+        for (let i = 0; i < timestamps.length; i++) {
+          const c = closes[i];
+          if (typeof c === 'number' && !isNaN(c) && c > 0) {
+            const d = new Date(timestamps[i] * 1000);
+            const time = d.toISOString().split('T')[0];
+            candles.push({
+              time,
+              open: Number((opens[i] || c).toFixed(2)),
+              high: Number((highs[i] || c).toFixed(2)),
+              low: Number((lows[i] || c).toFixed(2)),
+              close: Number(c.toFixed(2)),
+              volume: Number((vols[i] || 0).toFixed(0))
+            });
+          }
+        }
+        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+        return res.status(200).json({ status: 'success', symbol: sym, resolved, candles });
+      }
+    } catch (e) {
+      return res.status(500).json({ status: 'error', message: e.message });
+    }
+  }
 
   // Handle dedicated news request
   if (type === 'news') {
@@ -305,9 +365,16 @@ export default async function handler(req, res) {
         // Store under common aliases so any frontend lookup succeeds
         if (upper.endsWith('-USD')) {
           results[upper.replace('-USD', 'USD')] = quoteObj;
+          results[upper.replace('-USD', 'USDT')] = quoteObj;
           results[upper.replace('-USD', '')] = quoteObj;
+        } else if (upper.endsWith('USDT')) {
+          const b = upper.slice(0, -4);
+          results[b + '-USD'] = quoteObj;
+          results[b + 'USD'] = quoteObj;
+          results[b] = quoteObj;
         } else if (upper.endsWith('USD') && !upper.includes('-')) {
           results[upper.slice(0, -3) + '-USD'] = quoteObj;
+          results[upper.slice(0, -3) + 'USDT'] = quoteObj;
           results[upper.slice(0, -3)] = quoteObj;
         } else if (upper.endsWith('.IS')) {
           results[upper.replace('.IS', '')] = quoteObj;
