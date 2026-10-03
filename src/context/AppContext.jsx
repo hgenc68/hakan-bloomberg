@@ -305,7 +305,8 @@ export const AppProvider = ({ children }) => {
     try {
       const symbolsToFetch = new Set([
         'USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'BTC-USD', 'ETH-USD',
-        'SPY', 'QQQ', 'DIA', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F'
+        'SPY', 'QQQ', 'DIA', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F',
+        'DX-Y.NYB', 'SI=F', 'CL=F', '2YY=F'
       ]);
       
       const currentHoldings = holdings.length > 0 ? holdings : (() => {
@@ -416,6 +417,18 @@ export const AppProvider = ({ children }) => {
                 fetchedQuotes[s.replace('-USD', 'USD')] = quoteObj;
                 fetchedQuotes[s.replace('-USD', '')] = quoteObj;
               }
+              if (s === 'DX-Y.NYB') fetchedQuotes['DXY'] = quoteObj;
+              if (s === 'GC=F') fetchedQuotes['GOLD'] = quoteObj;
+              if (s === 'SI=F') fetchedQuotes['SILVER'] = quoteObj;
+              if (s === 'BZ=F') fetchedQuotes['BRENT'] = quoteObj;
+              if (s === 'CL=F') fetchedQuotes['WTI'] = quoteObj;
+              if (s === '^TNX') fetchedQuotes['US10Y'] = quoteObj;
+              if (s === '2YY=F') fetchedQuotes['US2Y'] = quoteObj;
+              if (s === '^VIX') fetchedQuotes['VIX'] = quoteObj;
+              if (s === '^GSPC') fetchedQuotes['SP500'] = quoteObj;
+              if (s === 'XU100.IS') fetchedQuotes['BIST100'] = quoteObj;
+              if (s === 'BTC-USD') fetchedQuotes['BTC'] = quoteObj;
+              if (s === 'ETH-USD') fetchedQuotes['ETH'] = quoteObj;
             }
           } catch (err) {}
         });

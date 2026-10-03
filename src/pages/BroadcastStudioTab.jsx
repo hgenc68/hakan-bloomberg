@@ -44,7 +44,7 @@ import macroPulseData from '../data/macroPulse.json';
 import latestQuotesData from '../data/latestQuotes.json';
 
 export default function BroadcastStudioTab() {
-  const { marketQuotes, usdtry } = useApp();
+  const { marketQuotes, usdtry, fetchMarketData } = useApp();
 
   // Active slide index (0 to 8)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -63,6 +63,18 @@ export default function BroadcastStudioTab() {
   const [copiedCurrent, setCopiedCurrent] = useState(false);
   const [isEditingScript, setIsEditingScript] = useState(false);
 
+  // Live Pulse state (Fear & Greed, Truflation, VIX)
+  const [pulse, setPulse] = useState(macroPulseData);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(() => new Date());
+
+  // Dynamic Date calculation
+  const todayDateObj = new Date();
+  const dayNames = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+  const dayName = dayNames[todayDateObj.getDay()];
+  const todayFullStr = `${todayDateObj.getDate()} ${todayDateObj.toLocaleDateString('tr-TR', { month: 'long' })} ${todayDateObj.getFullYear()} ${dayName}`;
+  const isMonday = todayDateObj.getDay() === 1;
+
   // Custom user overrides for scripts (persisted in localStorage)
   const [customScripts, setCustomScripts] = useState(() => {
     try {
@@ -78,6 +90,48 @@ export default function BroadcastStudioTab() {
       localStorage.setItem('broadcast_studio_custom_scripts_v2', JSON.stringify(customScripts));
     } catch (e) {}
   }, [customScripts]);
+
+  // Live data refresh handler (polls Yahoo Finance + Terminal Engine + Pulse API)
+  const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    try {
+      if (typeof fetchMarketData === 'function') {
+        await fetchMarketData();
+      }
+      try {
+        const res = await fetch('/api/market?type=pulse');
+        if (res.ok) {
+          const j = await res.json();
+          if (j.status === 'success' && j.fearGreed) {
+            setPulse(prev => ({
+              ...prev,
+              fear_greed_score: Math.round(j.fearGreed.score || prev.fear_greed_score),
+              fear_greed_label: (j.fearGreed.rating || prev.fear_greed_label).toUpperCase(),
+              vix: {
+                value: j.vix?.price || prev.vix?.value || 16.04,
+                change_pct: j.vix?.changePct || prev.vix?.change_pct || 0
+              }
+            }));
+          }
+        }
+      } catch (e) {}
+
+      try {
+        await fetch('/api/refresh', { method: 'POST' });
+      } catch (e) {}
+
+      setLastRefreshedAt(new Date());
+    } catch (err) {
+      console.warn('Live refresh error:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  // Run automatically as soon as the user opens this tab!
+  useEffect(() => {
+    handleRefreshAll();
+  }, []);
 
   // Robust Live Quote Resolver: AppContext marketQuotes -> latestQuotes.json -> fallback
   const getVerifiedQuote = (key, altKeys = [], fallbackPrice = 0, fallbackChange = 0) => {
@@ -131,10 +185,10 @@ export default function BroadcastStudioTab() {
   const gramAltinTL = (gold.price * currentUsdTry) / 31.1035;
 
   // Fear & Greed Index
-  const fgScore = macroPulseData?.fear_greed_score || 31;
-  const fgLabel = macroPulseData?.fear_greed_label || 'KORKU';
+  const fgScore = pulse?.fear_greed_score || macroPulseData?.fear_greed_score || 31;
+  const fgLabel = pulse?.fear_greed_label || macroPulseData?.fear_greed_label || 'KORKU';
   const needleRotation = -90 + (fgScore / 100) * 180;
-  const hist = macroPulseData?.fear_greed_history || {
+  const hist = pulse?.fear_greed_history || macroPulseData?.fear_greed_history || {
     yesterday: 30.8,
     week_ago: 35.7,
     month_ago: 44.9,
@@ -182,10 +236,10 @@ export default function BroadcastStudioTab() {
       metrics: [
         { label: 'Fear & Greed Skoru', val: `${fgScore} / 100`, chg: 0, note: fgLabel },
         { label: 'VIX Volatilite', val: fmt(vix.price, 2), chg: vix.change, isUp: vix.change >= 0 },
-        { label: 'Truflation (ABD TÜFE)', val: `%${fmt(macroPulseData?.inflation?.usa || 2.77, 2)}`, chg: 0, note: 'Öncü Enflasyon' },
-        { label: 'Piyasa Maruziyeti', val: macroPulseData?.exposure_pct || '20% to 40%', chg: 0, note: 'Defansif / Koruma' }
+        { label: 'Truflation (ABD TÜFE)', val: `%${fmt(pulse?.inflation?.usa || macroPulseData?.inflation?.usa || 2.77, 2)}`, chg: 0, note: 'Öncü Enflasyon' },
+        { label: 'Piyasa Maruziyeti', val: pulse?.exposure_pct || macroPulseData?.exposure_pct || '20% to 40%', chg: 0, note: 'Defansif / Koruma' }
       ],
-      defaultScript: `Değerli dostlar, ekran başına ve bugünkü piyasa yayınımıza hepiniz hoş geldiniz. Bugün piyasanın son 24 saatlik röntgenini çekmeye her zamanki gibi küresel resimle ve Global Piyasa Nabzı ile başlıyoruz. Ekranınızdaki ibrede gördüğünüz gibi Korku ve Açgözlülük endeksimiz 31 puanla korku bölgesinde seyrediyor. Dün 30.8, geçen hafta ise 35.7 seviyelerindeydik; yani piyasa genelinde risk iştahı temkinli ve savunmacı kalmaya devam ediyor. VIX oynaklık endeksinin ${fmt(vix.price, 2)} seviyesinde dengelenmesi, panik satışı yerine kontrollü bir pozisyon ayarlaması olduğunu gösteriyor. Öte yandan ABD tarafında Truflation öncü enflasyon verisinin yüzde ${fmt(macroPulseData?.inflation?.usa || 2.77, 2)} seviyesine oturması faiz patikasında umut verse de, endeksler tarafında S&P 500 ve Nasdaq temkinli duruşunu koruyor. Şimdi bu tablonun arkasındaki en kritik dinamik olan jeopolitik ve enerji masasına geçelim.`
+      defaultScript: `Değerli dostlar, ekran başına ve bugünkü piyasa yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Hem küresel piyasalar hem de Borsa İstanbul açısından ${isMonday ? 'haftanın açılış ve en belirleyici yön tayini seansını birlikte karşılıyoruz' : 'kritik kapanış ve yön belirleme seansını birlikte yaşıyoruz'}. Masamızda sıcak, hareketli ve çok net fiyatlamalar var. Bir tarafta Fed'in şahin duruşunun küresel faizleri çıpalaması, diğer tarafta 100 dolar sınırının hemen altında gevşeyerek ${fmt(brent.price, 2)} dolara oturan Brent petrol, ${fmt(gold.price, 0)} dolar tabanında dengelenme arayan ons altın, 12.200 desteğinde kurumsal talep toplayan Borsa İstanbul ve ${fmt(btc.price, 0)} doları aşarak direncini zorlayan güçlü bir Bitcoin var. Ekranınızdaki ibrede gördüğünüz gibi Korku ve Açgözlülük endeksimiz ${fgScore} puanla ${fgLabel.toLowerCase()} bölgesinde. Şimdi 9 slaytlık profesyonel yayın akışımızla piyasanın tüm şifrelerini adım adım çözelim.`
     },
 
     // SLIDE 2: Geopolitics & Energy Corridor
@@ -352,9 +406,8 @@ export default function BroadcastStudioTab() {
 
   // Build clean Word document text formatted ready for pasting
   const fullDocumentText = useMemo(() => {
-    const todayStr = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
     let out = `HAKAN GENÇ FİNANS - YOUTUBE YAYIN AKIŞI & PROMPTER KONUŞMA METNİ\n`;
-    out += `Yayın Tarihi: ${todayStr} | Tahmini Süre: ~7.5 - 8 Dakika | Format: 9 Slaytlık TV Brifingi\n\n`;
+    out += `Yayın Tarihi: ${todayFullStr} | Seans Saati: ${lastRefreshedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} TSİ | Format: 9 Slaytlık TV Brifingi (~7.5 - 8 Dakika)\n\n`;
     out += `GÜNCEL CANLI PİYASA KADRANI (SON 24 SAAT):\n`;
     out += `• Brent Ham Petrol: $${fmt(brent.price, 2)} (%${fmt(brent.change, 2)})\n`;
     out += `• Ons Altın (XAU/USD): $${fmt(gold.price, 2)} (%${fmt(gold.change, 2)})\n`;
@@ -378,7 +431,7 @@ export default function BroadcastStudioTab() {
     });
 
     return out;
-  }, [slides, customScripts, brent, gold, silver, bist100, btc, dxy, us10y, currentUsdTry, gramAltinTL]);
+  }, [slides, customScripts, brent, gold, silver, bist100, btc, dxy, us10y, currentUsdTry, gramAltinTL, todayFullStr, lastRefreshedAt]);
 
   const handleCopyAll = () => {
     if (navigator.clipboard) {
@@ -421,7 +474,7 @@ export default function BroadcastStudioTab() {
       <body>
         <h1>HAKAN GENÇ FİNANS</h1>
         <div style="font-size: 13pt; font-weight: bold; color: #2b6cb0; margin-bottom: 4px;">YOUTUBE YAYIN AKIŞI & PROMPTER KONUŞMA METNİ</div>
-        <div class="meta">Yayın Tarihi: ${todayStr} • Format: 9 Slaytlık TV Brifingi • Doğal Neden-Sonuç Anlatımı (~7-8 Dakika)</div>
+        <div class="meta">Yayın Tarihi: ${todayFullStr} | Seans Saati: ${lastRefreshedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} TSİ • Format: 9 Slaytlık TV Brifingi • Doğal Neden-Sonuç Anlatımı (~7-8 Dakika)</div>
         
         <h3>GÜNCEL CANLI PİYASA KADRANI</h3>
         <table class="table-box">
@@ -576,6 +629,34 @@ export default function BroadcastStudioTab() {
               <span>Prompter Ekranı</span>
             </button>
           </div>
+
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={handleRefreshAll}
+            disabled={isRefreshing}
+            className="chip-btn"
+            style={{ 
+              fontSize: 10, 
+              padding: '5px 11px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              borderColor: isRefreshing ? 'var(--cyan)' : 'rgba(255,255,255,0.2)', 
+              color: isRefreshing ? 'var(--cyan)' : '#f8fafc', 
+              fontWeight: 700 
+            }}
+            title="Tüm piyasa verilerini ve göstergelerini canlı olarak yeniler"
+          >
+            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+            <span>{isRefreshing ? 'Yenileniyor...' : 'Verileri Yenile'}</span>
+          </button>
+
+          {/* Live Timestamp Badge */}
+          <span style={{ fontSize: 9.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4, padding: '0 4px' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} className="animate-pulse" />
+            <span>{lastRefreshedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} TSİ</span>
+          </span>
 
           {/* Copy Full Word Document Button */}
           <button
