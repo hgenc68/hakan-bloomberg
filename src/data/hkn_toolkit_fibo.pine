@@ -72,6 +72,15 @@ plot(showEma2 ? ema2_val : na, color=ema2Color, linewidth=ema2Width, title="EMA 
 plot(showEma3 ? ema3_val : na, color=ema3Color, linewidth=ema3Width, title="EMA 3", force_overlay=true)
 
 // ============================
+// 2.1) VWAP (Hacim Ağırlıklı Ortalama - Üst Fiyat Paneli)
+// ============================
+vwap_ok = input.bool(true, "Show VWAP", group = "VWAP Settings")
+vwapColor = input.color(#2962FF, "VWAP Color", group = "VWAP Settings")
+vwapWidth = input.int(2, "VWAP Width", group = "VWAP Settings")
+vwapVal = ta.vwap(hlc3)
+plot(vwap_ok ? vwapVal : na, color=vwapColor, linewidth=vwapWidth, title="VWAP", force_overlay=true)
+
+// ============================
 
 //////////////////////////////////////////////////////////////////////////////////////
 
@@ -687,6 +696,7 @@ if barstate.islast
 // ============================================================
 gSqz = "Squeeze Momentum"
 showSqz     = input.bool(true, "Squeeze Momentum Göster (Aç/Kapat)", group = gSqz)
+sqzScaleMode = input.string("0-100 Uyumlu (RSI/WT Ezmez)", "Squeeze Ölçek Modu", options = ["0-100 Uyumlu (RSI/WT Ezmez)", "Ham Değer (Raw)", "Gizle"], tooltip = "0-100 Uyumlu: Alt paneldeki RSI ve WaveTrend'in ölçeğini bozmadan 50 seviyesi etrafında dalgalanır. Ham Değer: Gerçek momentum değerini çizer.", group = gSqz)
 sqzLenBB    = input.int(20, "Bollinger Bant Uzunluğu", group = gSqz)
 sqzMultBB   = input.float(2.0, "Bollinger Çarpanı", group = gSqz)
 sqzLenKC    = input.int(20, "Keltner Kanal Uzunluğu", group = gSqz)
@@ -719,9 +729,24 @@ sqzMom     = ta.linreg(close - sqzMid, sqzLenKC, 0)
 
 // Histogram Renk Mantığı (Momentum Yönü ve İvmesi)
 sqzHistColor = sqzMom > 0 ? (sqzMom > nz(sqzMom[1]) ? color.lime : color.green) : (sqzMom < nz(sqzMom[1]) ? color.red : color.maroon)
-sqzDotColor  = sqzIn ? color.black : (sqzOut ? color.lime : color.gray)
+sqzDotColor  = sqzIn ? color.orange : (sqzOut ? color.lime : color.gray)
+
+// Akıllı 0-100 Normalizasyonu (Alt paneldeki RSI ve WaveTrend'in asla sıkışıp bozulmasını önler!)
+atrSqz = ta.atr(sqzLenKC)
+sqzScaledMom = atrSqz > 0 ? (sqzMom / (atrSqz * 2.5)) * 18.0 : 0.0
+sqzNormalizedVal = math.max(15.0, math.min(85.0, 50.0 + sqzScaledMom))
+
+// Çizim Değerleri
+isNorm = sqzScaleMode == "0-100 Uyumlu (RSI/WT Ezmez)"
+isRaw  = sqzScaleMode == "Ham Değer (Raw)"
+canDrawSqz = showSqz and sqzScaleMode != "Gizle"
+
+finalSqzPlot = canDrawSqz ? (isNorm ? sqzNormalizedVal : sqzMom) : na
+finalSqzDot  = canDrawSqz ? (isNorm ? 50.0 : 0.0) : na
+finalSqzBase = isNorm ? 50.0 : 0.0
 
 // Histogram ve Squeeze Noktaları Çizimi (Alt panelde çizilir)
-plot(showSqz ? sqzMom : na, title = "Squeeze Momentum Histogram", style = plot.style_columns, color = sqzHistColor, linewidth = 2)
-plot(showSqz ? 0 : na, title = "Squeeze Sıkışma Noktaları", style = plot.style_circles, color = sqzDotColor, linewidth = 2)
+plot(finalSqzPlot, title = "Squeeze Momentum Histogram", style = plot.style_columns, color = sqzHistColor, linewidth = 2, histbase = finalSqzBase)
+plot(finalSqzDot, title = "Squeeze Sıkışma Noktaları", style = plot.style_circles, color = sqzDotColor, linewidth = 2)
+
 

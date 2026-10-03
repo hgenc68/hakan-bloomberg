@@ -39,6 +39,7 @@ import potentialStocksData from '../data/potentialStocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
 
 import hknPineRaw from '../data/hkn_toolkit_fibo.pine?raw';
+import HknCandlestickCanvas from '../components/HknCandlestickCanvas';
 
 // Full, 100% complete and tested Pine Script v6 Source for Hkn Toolkit Fibo
 export const HKN_PINE_SCRIPT_V6 = hknPineRaw;
@@ -319,6 +320,14 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Engine Modes: 'tv' (TradingView Embed) | 'hkn' (Bloomberg Native with Hkn Toolkit Fibo)
   const [chartEngineMode, setChartEngineMode] = useState('tv');
+
+  // Chart Display Toggles for Hkn Toolkit Fibo & TradingView
+  const [chartType, setChartType] = useState('candle'); // 'candle' | 'line'
+  const [showVwap, setShowVwap] = useState(true);
+  const [showEma, setShowEma] = useState(true);
+  const [showFib, setShowFib] = useState(true);
+  const [showSR, setShowSR] = useState(true);
+  const [chartInterval, setChartInterval] = useState('D'); // '15', '60', '240', 'D', 'W'
 
   // Oscillator Panel Size in Hkn Native Mode (Persisted in LocalStorage!)
   const [oscillatorSize, setOscillatorSize] = useState(() => {
@@ -942,7 +951,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         new window.TradingView.widget({
           autosize: true,
           symbol: tvSymbol,
-          interval: 'D',
+          interval: chartInterval,
           timezone: 'Europe/Istanbul',
           theme: 'dark',
           style: '1', // Candlestick
@@ -977,10 +986,10 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return () => {
       isMounted = false;
     };
-  }, [currentSymbol, chartEngineMode, activeStudies]);
+  }, [currentSymbol, chartEngineMode, activeStudies, chartInterval]);
 
-  // Oscillator Display Mode in Hkn Native Engine: 'combo' | 'rsi_wt' | 'squeeze'
-  const [oscillatorMode, setOscillatorMode] = useState('combo');
+  // Oscillator Display Mode in Hkn Native Engine: 'rsi_wt' (Default - identical to TV reference) | 'squeeze' | 'combo'
+  const [oscillatorMode, setOscillatorMode] = useState('rsi_wt');
 
   // Dynamic Real Candlestick Data fetched for any active stock/crypto
   const [dynamicCandles, setDynamicCandles] = useState(null);
@@ -1086,6 +1095,19 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     const highs = windowCandles.map(c => c.high || c.close);
     const lows = windowCandles.map(c => c.low || c.close);
 
+    // 0) VWAP (Hacim Ağırlıklı Ortalama)
+    let cumVol = 0;
+    let cumVolTyp = 0;
+    const vwap = [];
+    for (let i = 0; i < windowCandles.length; i++) {
+      const c = windowCandles[i];
+      const typ = ((c.high || c.close) + (c.low || c.close) + c.close) / 3;
+      const vol = Math.max(1, c.volume || 100000);
+      cumVol += vol;
+      cumVolTyp += typ * vol;
+      vwap.push(cumVol > 0 ? cumVolTyp / cumVol : c.close);
+    }
+
     // 1) 3 EMA: 50, 100, 200
     const ema50 = calcEMA(closes, 50);
     const ema100 = calcEMA(closes, 100);
@@ -1114,45 +1136,101 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     const wt2Last = wt2[lastIdx] || 50;
     const wtBullish = wt1Last > wt2Last;
 
-    // 4) Auto Fibonacci Retracement
-    const fibHi = Math.max(...highs);
-    const fibLo = Math.min(...lows);
-    const fibRange = fibHi - fibLo;
-    const f0 = fibHi;
-    const f236 = fibHi - fibRange * 0.236;
-    const f382 = fibHi - fibRange * 0.382;
-    const f500 = fibHi - fibRange * 0.500;
-    const f618 = fibHi - fibRange * 0.618;
-    const f786 = fibHi - fibRange * 0.786;
-    const f1000 = fibLo;
+    // 4) Auto Fibonacci Retracement (Identical to reference!)
+    let maxH = -Infinity, minL = Infinity, swingHiIdx = 0, swingLoIdx = 0;
+    for (let i = 0; i < windowCandles.length; i++) {
+      if (highs[i] > maxH) { maxH = highs[i]; swingHiIdx = i; }
+      if (lows[i] < minL) { minL = lows[i]; swingLoIdx = i; }
+    }
+    const fibRange = maxH - minL;
+    const isUpward = swingLoIdx < swingHiIdx;
+    const f0 = isUpward ? minL : maxH;
+    const f1000 = isUpward ? maxH : minL;
+    const f236 = isUpward ? minL + fibRange * 0.236 : maxH - fibRange * 0.236;
+    const f382 = isUpward ? minL + fibRange * 0.382 : maxH - fibRange * 0.382;
+    const f500 = isUpward ? minL + fibRange * 0.500 : maxH - fibRange * 0.500;
+    const f618 = isUpward ? minL + fibRange * 0.618 : maxH - fibRange * 0.618;
+    const f786 = isUpward ? minL + fibRange * 0.786 : maxH - fibRange * 0.786;
+
+    const fibObj = {
+      maxH,
+      minL,
+      swingHiIdx,
+      swingLoIdx,
+      isUpward,
+      f0,
+      f236,
+      f382,
+      f500,
+      f618,
+      f786,
+      f1000
+    };
 
     const curClose = closes[lastIdx] || 0;
     const inGoldenZone = curClose >= Math.min(f500, f618) && curClose <= Math.max(f500, f618);
 
-    // 5) Ranked Support & Resistance Pivot Detection
-    const pivotHighs = [];
-    const pivotLows = [];
-    const pSpan = 3;
-    for (let i = pSpan; i < highs.length - pSpan; i++) {
-      let isHigh = true;
-      let isLow = true;
-      for (let j = 1; j <= pSpan; j++) {
-        if (highs[i] < highs[i - j] || highs[i] < highs[i + j]) isHigh = false;
-        if (lows[i] > lows[i - j] || lows[i] > lows[i + j]) isLow = false;
+    // 5) Ranked Support & Resistance Pivot Detection (Matching Pine Script boxes)
+    const atr14 = [];
+    for (let i = 0; i < windowCandles.length; i++) {
+      if (i === 0) {
+        atr14.push((highs[0] - lows[0]) || (curClose * 0.02));
+      } else {
+        const trVal = Math.max(
+          highs[i] - lows[i],
+          Math.abs(highs[i] - closes[i - 1]),
+          Math.abs(lows[i] - closes[i - 1])
+        );
+        atr14.push((atr14[i - 1] * 13 + trVal) / 14);
       }
-      if (isHigh) pivotHighs.push(highs[i]);
-      if (isLow) pivotLows.push(lows[i]);
+    }
+    const curAtr = atr14[atr14.length - 1] || (curClose * 0.02);
+
+    const detectedZones = [];
+    const pSpan = 3;
+    for (let i = pSpan; i < windowCandles.length - pSpan; i++) {
+      let isPH = true, isPL = true;
+      for (let j = 1; j <= pSpan; j++) {
+        if (highs[i] < highs[i - j] || highs[i] < highs[i + j]) isPH = false;
+        if (lows[i] > lows[i - j] || lows[i] > lows[i + j]) isPL = false;
+      }
+      const zW = (atr14[i] || curAtr) * 0.35;
+      if (isPH) {
+        detectedZones.push({
+          type: 'resistance',
+          mid: highs[i],
+          top: highs[i] + zW,
+          bottom: highs[i] - zW,
+          startIdx: i,
+          price: highs[i]
+        });
+      }
+      if (isPL) {
+        detectedZones.push({
+          type: 'support',
+          mid: lows[i],
+          top: lows[i] + zW,
+          bottom: lows[i] - zW,
+          startIdx: i,
+          price: lows[i]
+        });
+      }
     }
 
-    const resistancesAbove = pivotHighs.filter(p => p > curClose);
-    const nearestResistance = resistancesAbove.length > 0 
-      ? Math.min(...resistancesAbove) 
-      : (f382 > curClose ? f382 : fibHi);
+    const resistances = detectedZones
+      .filter(z => z.type === 'resistance' && z.mid >= curClose * 0.99)
+      .sort((a, b) => b.mid - a.mid)
+      .slice(-4);
 
-    const supportsBelow = pivotLows.filter(p => p < curClose);
-    const nearestSupport = supportsBelow.length > 0 
-      ? Math.max(...supportsBelow) 
-      : (f618 < curClose ? f618 : fibLo);
+    const supports = detectedZones
+      .filter(z => z.type === 'support' && z.mid <= curClose * 1.01)
+      .sort((a, b) => b.mid - a.mid)
+      .slice(0, 4);
+
+    const srZones = [...resistances, ...supports];
+
+    const nearestResistance = resistances.length > 0 ? Math.min(...resistances.map(r => r.mid)) : f382;
+    const nearestSupport = supports.length > 0 ? Math.max(...supports.map(s => s.mid)) : f618;
 
     // 6) Squeeze Momentum (John Carter / LazyBear)
     const sqzLen = 20;
@@ -1199,13 +1277,22 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
     const sqzDotColors = squeezeOn.map(on => on ? '#f59e0b' : '#00e676');
 
+    // Normalized Squeeze Momentum for Combo Mode (centers at 50, doesn't crush RSI/WT!)
+    const sqzAtr = curAtr || (curClose * 0.02);
+    const sqzNormMom = sqzMom.map(v => {
+      const scaled = sqzAtr > 0 ? (v / (sqzAtr * 2.5)) * 18.0 : 0.0;
+      return Math.max(15, Math.min(85, 50.0 + scaled));
+    });
+
     const lastSqzOn = squeezeOn[lastIdx] || false;
     const lastMom = sqzMom[lastIdx] || 0;
     const lastRSI = rsi24[lastIdx] || 50;
 
     return {
+      windowCandles,
       times,
       closes,
+      vwap,
       ema50,
       ema100,
       ema200,
@@ -1213,6 +1300,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       wt1,
       wt2,
       wtBullish,
+      fibObj,
+      srZones,
       f0,
       f236,
       f382,
@@ -1226,6 +1315,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       curClose,
       squeezeOn,
       sqzMom,
+      sqzNormMom,
       sqzHistColors,
       sqzDotColors,
       lastSqzOn,
@@ -1349,7 +1439,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     const calc = hknNativeCalculations;
     const datasets = [];
 
-    // Mode: 'combo' or 'rsi_wt'
+    // Mode: 'combo' or 'rsi_wt' (RSI 24 + WaveTrend)
     if (oscillatorMode === 'combo' || oscillatorMode === 'rsi_wt') {
       datasets.push(
         {
@@ -1378,16 +1468,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           label: 'RSI (24)',
           data: calc.rsi24,
           borderColor: '#c084fc',
-          borderWidth: 1.8,
+          borderWidth: 2,
           pointRadius: 0,
           tension: 0.1,
           yAxisID: 'yRSI'
         },
         {
           type: 'line',
-          label: 'RSI Aşırı Alım (70)',
+          label: 'Aşırı Alım (70)',
           data: calc.times.map(() => 70),
-          borderColor: 'rgba(239, 68, 68, 0.4)',
+          borderColor: 'rgba(239, 68, 68, 0.45)',
           borderDash: [3, 3],
           borderWidth: 1,
           pointRadius: 0,
@@ -1395,9 +1485,19 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         },
         {
           type: 'line',
-          label: 'RSI Aşırı Satım (30)',
-          data: calc.times.map(() => 30),
-          borderColor: 'rgba(16, 185, 129, 0.4)',
+          label: 'Denge (50)',
+          data: calc.times.map(() => 50),
+          borderColor: 'rgba(148, 163, 184, 0.35)',
+          borderDash: [2, 2],
+          borderWidth: 1,
+          pointRadius: 0,
+          yAxisID: 'yRSI'
+        },
+        {
+          type: 'line',
+          label: 'Aşırı Satım (25)',
+          data: calc.times.map(() => 25),
+          borderColor: 'rgba(16, 185, 129, 0.45)',
           borderDash: [3, 3],
           borderWidth: 1,
           pointRadius: 0,
@@ -1406,9 +1506,30 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       );
     }
 
-    // Mode: 'combo' or 'squeeze' -> Add Squeeze Momentum
-    if (oscillatorMode === 'combo' || oscillatorMode === 'squeeze') {
-      // In combo mode, normalize momentum around the 50 level of WT/RSI or secondary scale
+    // Mode: 'combo' -> Squeeze Momentum normalized around 50 midline (does NOT crush RSI/WT!)
+    if (oscillatorMode === 'combo') {
+      datasets.push({
+        type: 'bar',
+        label: 'Squeeze Momentum (50 Bazlı)',
+        data: calc.sqzNormMom,
+        backgroundColor: calc.sqzHistColors,
+        borderRadius: 2,
+        base: 50,
+        yAxisID: 'yWT'
+      });
+      datasets.push({
+        type: 'line',
+        label: 'Sıkışma Noktaları',
+        data: calc.times.map(() => 50),
+        borderColor: 'transparent',
+        pointRadius: 3,
+        pointBackgroundColor: calc.sqzDotColors,
+        yAxisID: 'yWT'
+      });
+    }
+
+    // Mode: 'squeeze' -> Pure raw Linear Regression momentum centered at 0
+    if (oscillatorMode === 'squeeze') {
       datasets.push({
         type: 'bar',
         label: 'Squeeze Momentum Histogramı',
@@ -1419,10 +1540,10 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       });
       datasets.push({
         type: 'line',
-        label: 'Sıkışma Noktaları (Squeeze Dots)',
+        label: 'Sıkışma Noktaları (Sıfır Çizgisi)',
         data: calc.times.map(() => 0),
         borderColor: 'transparent',
-        pointRadius: 3,
+        pointRadius: 3.5,
         pointBackgroundColor: calc.sqzDotColors,
         yAxisID: 'yMom'
       });
@@ -1477,7 +1598,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     scales: {
       x: {
         grid: { display: false },
-        ticks: { display: false }
+        ticks: { color: '#64748b', font: { size: 9 } }
       },
       yWT: {
         position: 'left',
@@ -1496,7 +1617,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         ticks: { color: '#c084fc', font: { size: 9 } }
       },
       yMom: {
-        position: oscillatorMode === 'squeeze' ? 'left' : 'right',
+        position: 'right',
         display: oscillatorMode === 'squeeze',
         grid: { color: 'rgba(255, 255, 255, 0.04)' },
         ticks: { color: '#fbbf24', font: { size: 9 } }
@@ -1723,6 +1844,28 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             >
               🧹 Kotayı Boşalt (0 İndikatör)
             </button>
+
+            {/* ⏱️ Zaman Dilimi Seçici (VWAP'ın TradingView'de çalışabilmesi için 1S/4S desteği) */}
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)', marginLeft: 4 }}>
+              {[
+                { id: '15', label: '15D' },
+                { id: '60', label: '1S' },
+                { id: '240', label: '4S' },
+                { id: 'D', label: '1G' },
+                { id: 'W', label: '1H' }
+              ].map(tf => (
+                <button
+                  key={tf.id}
+                  type="button"
+                  onClick={() => setChartInterval(tf.id)}
+                  className={`chip-btn ${chartInterval === tf.id ? 'active' : ''}`}
+                  style={{ fontSize: 9, padding: '2px 5px', fontWeight: chartInterval === tf.id ? 700 : 500 }}
+                  title={`${tf.label} periyoduna geç (TradingView'de VWAP 1S veya 4S periyotlarında görünür)`}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: 'var(--text-muted)' }}>
@@ -1739,7 +1882,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         </div>
       )}
 
-      {/* ⚠️ TradingView 2 Gösterge Sınırı Bilgilendirmesi & 1-Tıkla Sınırsız Çözüm */}
+      {/* ⚠️ TradingView 2 Gösterge Sınırı ve VWAP/Squeeze Bilgilendirmesi */}
       {chartEngineMode === 'tv' && (
         <div 
           style={{ 
@@ -1759,7 +1902,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 280 }}>
             <AlertTriangle size={13} className="text-rose" style={{ flexShrink: 0 }} />
             <span>
-              <strong>TradingView 2 Gösterge Sınırı:</strong> Ücretsiz TradingView iframe widget'ında 3. indikatör eklenemez (ekran görüntünüzdeki paywall çıkar). Tüm indikatörleri sınırsız kullanmak için:
+              <strong>TradingView Bilgisi:</strong> TV iframe'inde VWAP gün içi periyotlarda (1S/4S) aktiftir ve 3. indikatörde paywall uyarısı çıkar. Tüm indikatörleri (VWAP, Mumlar, S/R Kutuları, Auto Fibo, RSI, WaveTrend, Squeeze) sıfır kotayla aynı anda görmek için:
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2133,24 +2276,70 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {/* 🎯 Osilatör Mod Seçici (Kombo / RSI+WT / Squeeze) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  {/* 📊 Grafik Tipi (Mum / Çizgi) */}
+                  <button
+                    type="button"
+                    onClick={() => setChartType(prev => prev === 'candle' ? 'line' : 'candle')}
+                    className="chip-btn"
+                    style={{ fontSize: 8.5, padding: '2px 6px', borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
+                    title="Mum barlar veya çizgi grafiği arasında geçiş yap"
+                  >
+                    {chartType === 'candle' ? '📊 Mum Grafiği' : '📈 Çizgi Grafiği'}
+                  </button>
+
+                  {/* 🔵 VWAP Aç/Kapat */}
+                  <button
+                    type="button"
+                    onClick={() => setShowVwap(prev => !prev)}
+                    className={`chip-btn ${showVwap ? 'active' : ''}`}
+                    style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: showVwap ? 700 : 500, borderColor: showVwap ? '#2563eb' : 'rgba(255,255,255,0.1)', color: showVwap ? '#3b82f6' : '#94a3b8' }}
+                    title="Hacim Ağırlıklı Ortalama Fiyat (Mavi Çizgi)"
+                  >
+                    {showVwap ? '✓ VWAP (Mavi)' : '+ VWAP'}
+                  </button>
+
+                  {/* 📈 3 EMA Aç/Kapat */}
+                  <button
+                    type="button"
+                    onClick={() => setShowEma(prev => !prev)}
+                    className={`chip-btn ${showEma ? 'active' : ''}`}
+                    style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: showEma ? 700 : 500 }}
+                    title="EMA 50 (Mavi), EMA 100 (Turuncu), EMA 200 (Mor)"
+                  >
+                    {showEma ? '✓ 3 EMA' : '+ 3 EMA'}
+                  </button>
+
+                  {/* 🧱 S/R Kutuları Aç/Kapat */}
+                  <button
+                    type="button"
+                    onClick={() => setShowSR(prev => !prev)}
+                    className={`chip-btn ${showSR ? 'active' : ''}`}
+                    style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: showSR ? 700 : 500, borderColor: showSR ? 'rgba(216, 76, 26, 0.7)' : 'rgba(255,255,255,0.1)' }}
+                    title="Direnç (Somon) ve Destek (Turkuaz) Şeffaf Yatay Kutuları"
+                  >
+                    {showSR ? '✓ S/R Kutuları' : '+ S/R Kutuları'}
+                  </button>
+
+                  {/* 🎯 Auto Fibo Aç/Kapat */}
+                  <button
+                    type="button"
+                    onClick={() => setShowFib(prev => !prev)}
+                    className={`chip-btn ${showFib ? 'active' : ''}`}
+                    style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: showFib ? 700 : 500, borderColor: showFib ? 'var(--gold)' : 'rgba(255,255,255,0.1)', color: showFib ? 'var(--gold)' : '#94a3b8' }}
+                    title="Auto Fibonacci Seviyeleri ve Golden Zone (0.50 - 0.618)"
+                  >
+                    {showFib ? '✓ Golden Fibo' : '+ Fibo'}
+                  </button>
+
+                  {/* 🎯 Osilatör Mod Seçici (RSI+WT / Squeeze / Kombo) */}
                   <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <button
-                      type="button"
-                      onClick={() => setOscillatorMode('combo')}
-                      className={`chip-btn ${oscillatorMode === 'combo' ? 'active' : ''}`}
-                      style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: oscillatorMode === 'combo' ? 700 : 500 }}
-                      title="WaveTrend + RSI + Squeeze Momentum'un tümünü birlikte gösterir"
-                    >
-                      ⚡ Kombo
-                    </button>
                     <button
                       type="button"
                       onClick={() => setOscillatorMode('rsi_wt')}
                       className={`chip-btn ${oscillatorMode === 'rsi_wt' ? 'active' : ''}`}
                       style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: oscillatorMode === 'rsi_wt' ? 700 : 500 }}
-                      title="Sadece RSI 24 ve WaveTrend osilatörlerini gösterir"
+                      title="Sadece RSI 24 ve WaveTrend osilatörlerini gösterir (Referans görselinizle birebir aynı)"
                     >
                       🌊 RSI+WT
                     </button>
@@ -2163,9 +2352,18 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                     >
                       🎯 Squeeze
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setOscillatorMode('combo')}
+                      className={`chip-btn ${oscillatorMode === 'combo' ? 'active' : ''}`}
+                      style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: oscillatorMode === 'combo' ? 700 : 500 }}
+                      title="WaveTrend + RSI + Squeeze Momentum'un tümünü 50 denge seviyesinde birlikte gösterir"
+                    >
+                      ⚡ Kombo
+                    </button>
                   </div>
 
-                  {/* 📏 Alt Panel Boyutu Kontrolü (Hisse Değişse de Kalıcı Kalır!) */}
+                  {/* 📏 Alt Panel Boyutu Kontrolü */}
                   <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
                     {[
                       { id: 'compact', label: '🤏 Dar' },
@@ -2208,9 +2406,24 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 </div>
               </div>
 
-              {/* Upper Chart: Candlestick/Close + 3 EMA + Auto Fibonacci + Ranked S/R Destek/Direnç */}
-              <div style={{ flex: 3, minHeight: 360, position: 'relative' }}>
-                <Line data={hknPriceChartData} options={hknPriceChartOptions} />
+              {/* Upper Chart: Authentic Candlestick/Close + 3 EMA + VWAP + Auto Fibonacci + Ranked S/R Boxes */}
+              <div style={{ flex: 3, minHeight: 380, position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <HknCandlestickCanvas
+                  candles={hknNativeCalculations.windowCandles}
+                  vwap={hknNativeCalculations.vwap}
+                  ema50={hknNativeCalculations.ema50}
+                  ema100={hknNativeCalculations.ema100}
+                  ema200={hknNativeCalculations.ema200}
+                  fib={hknNativeCalculations.fibObj}
+                  srZones={hknNativeCalculations.srZones}
+                  showCandles={chartType === 'candle'}
+                  showVwap={showVwap}
+                  showEma={showEma}
+                  showFib={showFib}
+                  showSR={showSR}
+                  currency={buyZoneAnalysis.holdingCurrency || (isBistStock ? 'TRY' : 'USD')}
+                  ticker={cleanActiveTicker}
+                />
               </div>
 
               {/* Lower Sub-Panel: RSI (24) + WaveTrend + Squeeze Momentum with Persistent Height */}
@@ -2525,7 +2738,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 <div>
                   <strong style={{ fontSize: 13, color: '#f8fafc' }}>Hkn Toolkit Fibo (Pine Script v6)</strong>
                   <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                    RSI 24 + WaveTrend + 3 EMA + S/R Destek/Direnç + Auto Fibo + Squeeze Momentum
+                    VWAP (Mavi) + 3 EMA + S/R Destek/Direnç + Auto Fibo + RSI 24 + WaveTrend + Squeeze Momentum
                   </div>
                 </div>
               </div>
