@@ -282,6 +282,67 @@ export default async function handler(req, res) {
     } catch (err) {
       return res.status(500).json({ status: 'error', message: err.message });
     }
+  // Handle candles request for Native Pro Chart
+  if (type === 'candles') {
+    const rawSymbol = req.query.symbol || 'SPCX';
+    const interval = req.query.interval || '1d';
+    const resolvedSymbol = resolveSymbol(rawSymbol.toUpperCase().trim());
+    
+    let range = '1y';
+    if (interval === '15m') range = '5d';
+    else if (interval === '1h' || interval === '60m') range = '1mo';
+    else if (interval === '4h') range = '3mo';
+
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolvedSymbol)}?interval=${interval}&range=${range}`;
+      const resp = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        const result = json?.chart?.result?.[0];
+        const timestamps = result?.timestamp || [];
+        const quote = result?.indicators?.quote?.[0] || {};
+        const opens = quote.open || [];
+        const highs = quote.high || [];
+        const lows = quote.low || [];
+        const closes = quote.close || [];
+        const volumes = quote.volume || [];
+
+        const candles = [];
+        for (let i = 0; i < timestamps.length; i++) {
+          const c = closes[i];
+          const o = opens[i];
+          const h = highs[i];
+          const l = lows[i];
+          if (c !== null && c !== undefined && !isNaN(c) && o !== null && h !== null && l !== null) {
+            const dateStr = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
+            candles.push({
+              time: interval === '1d' ? dateStr : timestamps[i],
+              open: Number(Number(o).toFixed(2)),
+              high: Number(Number(h).toFixed(2)),
+              low: Number(Number(l).toFixed(2)),
+              close: Number(Number(c).toFixed(2)),
+              volume: Number((volumes[i] || 0).toFixed(0))
+            });
+          }
+        }
+
+        if (candles.length > 0) {
+          res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+          return res.status(200).json({
+            status: 'success',
+            symbol: rawSymbol,
+            resolvedSymbol,
+            candles,
+            meta: result?.meta
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Candle fetch error in api/market.js:', e.message);
+    }
+    return res.status(200).json({ status: 'fallback', symbol: rawSymbol, candles: [] });
   }
 
   if (!symbols) {
