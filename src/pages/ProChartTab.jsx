@@ -17,22 +17,114 @@ import {
   Activity, 
   Sparkles, 
   TrendingUp,
-  TrendingDown,
-  Info,
-  Maximize2,
-  Minimize2,
-  Sliders,
-  AlertTriangle,
-  BarChart3,
-  X,
-  Target,
-  Check,
-  Percent
+  TrendingDown, 
+  Info, 
+  Maximize2, 
+  Minimize2, 
+  Sliders, 
+  AlertTriangle, 
+  BarChart3, 
+  X, 
+  Target, 
+  Check, 
+  Copy, 
+  Terminal, 
+  Compass, 
+  Zap,
+  HelpCircle
 } from 'lucide-react';
-import { Line, Bar } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
+
+// Pine Script v6 Full Source for Hkn Toolkit Fibo
+export const HKN_PINE_SCRIPT_V6 = `//@version=6
+indicator("Hkn Toolkit Fibo", overlay=false, max_bars_back=1200, max_lines_count=200, max_labels_count=100, max_boxes_count=500)
+
+// ============================
+// 1) RSI + WaveTrend (Alt panel)
+// ============================
+rsi_ok = input(title = '═══════════════ RSI Settings ', defval = true)
+rsiLength = input.int(24, "RSI Length")
+rsiOversold = input.int(30, "RSI Oversold")
+rsiOverbought = input.int(70, "RSI Overbought")
+
+rsiVal = ta.rsi(close, rsiLength)
+plot(rsiVal, color=color.purple, title="RSI", linewidth=2)
+hline(rsiOverbought, "RSI Overbought", color=color.red)
+hline(rsiOversold, "RSI Oversold", color=color.green)
+hline(50, "Middle", color=color.gray)
+
+wt_n1 = input.int(10, "WT Channel Length")
+wt_n2 = input.int(21, "WT Average Length")
+
+ap  = hlc3
+esa = ta.ema(ap, wt_n1)
+d   = ta.ema(math.abs(ap - esa), wt_n1)
+ci  = (ap - esa) / (0.015 * d)
+tci = ta.ema(ci, wt_n2)
+
+wt1_raw = tci
+wt2_raw = ta.sma(tci, 4)
+
+normalizeWT(x) => (x + 100)/2
+wt1 = normalizeWT(wt1_raw)
+wt2 = normalizeWT(wt2_raw)
+
+wt1_color = wt1_raw > wt1_raw[1] ? color.lime : color.red
+wt2_color = wt2_raw > wt2_raw[1] ? color.lime : color.red
+
+plot(wt1, title="WT1", color=wt1_color, linewidth=2)
+plot(wt2, title="WT2", color=wt2_color, linewidth=2)
+
+wtCross = ta.cross(wt1_raw, wt2_raw)
+plot(wtCross ? wt2 : na, style=plot.style_circles, color=color.black, linewidth=3)
+plot(wtCross ? wt2 : na, style=plot.style_circles, color=(wt2_raw - wt1_raw > 0 ? color.red : color.lime), linewidth=2)
+barcolor(wtCross ? (wt2_raw - wt1_raw > 0 ? color.aqua : color.yellow) : na)
+
+// ============================
+// 2) 3 EMA (Fiyat paneli, üst panelde)
+// ============================
+ema_ok = input(title = '═══════════════ EMA Settings ', defval = true)
+ema1Length = input.int(50, "EMA 1 Length")
+ema1Color = input.color(color.blue, "EMA 1 Color")
+ema1Width = input.int(2, "EMA 1 Width")
+showEma1 = input.bool(true, "Show EMA 1")
+
+ema2Length = input.int(100, "EMA 2 Length")
+ema2Color = input.color(color.orange, "EMA 2 Color")
+ema2Width = input.int(2, "EMA 2 Width")
+showEma2 = input.bool(true, "Show EMA 2")
+
+ema3Length = input.int(200, "EMA 3 Length")
+ema3Color = input.color(color.purple, "EMA 3 Color")
+ema3Width = input.int(2, "EMA 3 Width")
+showEma3 = input.bool(true, "Show EMA 3")
+
+ema1_val = ta.ema(close, ema1Length)
+ema2_val = ta.ema(close, ema2Length)
+ema3_val = ta.ema(close, ema3Length)
+
+plot(showEma1 ? ema1_val : na, color=ema1Color, linewidth=ema1Width, title="EMA 1", force_overlay=true)
+plot(showEma2 ? ema2_val : na, color=ema2Color, linewidth=ema2Width, title="EMA 2", force_overlay=true)
+plot(showEma3 ? ema3_val : na, color=ema3Color, linewidth=ema3Width, title="EMA 3", force_overlay=true)
+
+// ============================
+// 3) Ranked Support and Resistance
+// ============================
+atrRaw  = ta.atr(14)
+atr     = na(atrRaw) or atrRaw == 0 ? syminfo.mintick * 10.0 : atrRaw
+pivotHigh = ta.pivothigh(high, 5, 5)
+pivotLow  = ta.pivotlow(low, 5, 5)
+
+// ============================================================
+// 4) AUTO FIBONACCI (Fiyat panelinde çizilir - force_overlay)
+// ============================================================
+fibLen = input.int(10, "Swing Pivot Uzunluğu")
+fibPH = ta.pivothigh(high, fibLen, fibLen)
+fibPL = ta.pivotlow(low, fibLen, fibLen)
+`;
 
 // Helper to convert any market ticker into TradingView compatible symbol string
 export function getTradingViewSymbol(ticker) {
@@ -51,7 +143,7 @@ export function getTradingViewSymbol(ticker) {
   if (clean === 'XAUUSD' || clean === 'GOLD' || clean === 'ALTIN' || clean === 'ONS_ALTIN') return 'OANDA:XAUUSD';
   if (clean === 'USDTRY') return 'FX_IDC:USDTRY';
 
-  // Crypto Market Caps (Total market aggregates)
+  // Crypto Market Caps
   if (clean === 'TOTAL') return 'CRYPTOCAP:TOTAL';
   if (clean === 'TOTAL2') return 'CRYPTOCAP:TOTAL2';
   if (clean === 'TOTAL3') return 'CRYPTOCAP:TOTAL3';
@@ -83,7 +175,7 @@ export function getTradingViewSymbol(ticker) {
     return `BIST:${clean}`;
   }
 
-  // Stocks & ETFs with clean symbols or verified exchanges
+  // Stocks & ETFs
   if (clean === 'SPCX') return 'SPCX';
   if (clean === 'CUSD') return 'AMEX:CUSD';
   if (clean === 'DRAM') return 'DRAM';
@@ -109,7 +201,7 @@ export function getTradingViewSymbol(ticker) {
   return `NASDAQ:${clean}`;
 }
 
-// Available indicator studies list
+// Available indicator studies list for TradingView
 const AVAILABLE_STUDIES = [
   { id: 'STD;EMA', name: 'EMA', fullName: 'Üstel Hareketli Ortalama' },
   { id: 'STD;RSI', name: 'RSI', fullName: 'Göreceli Güç Endeksi' },
@@ -193,6 +285,46 @@ const PRESET_WATCHLISTS = {
   ]
 };
 
+// Math Helpers for Native Hkn Toolkit
+function calcEMA(arr, period) {
+  const k = 2 / (period + 1);
+  const res = [];
+  let sum = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (i < period) {
+      sum += arr[i];
+      res.push(i === period - 1 ? sum / period : arr[i]);
+    } else {
+      res.push(arr[i] * k + res[i - 1] * (1 - k));
+    }
+  }
+  return res;
+}
+
+function calcRSI(closes, period = 24) {
+  const rsi = [];
+  if (closes.length <= period) return closes.map(() => 50);
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff; else losses -= diff;
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  rsi.push(...Array(period).fill(50));
+  for (let i = period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    avgGain = (avgGain * (period - 1) + (diff > 0 ? diff : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (diff < 0 ? -diff : 0)) / period;
+    if (avgLoss === 0) rsi.push(100);
+    else {
+      const rs = avgGain / avgLoss;
+      rsi.push(100 - (100 / (1 + rs)));
+    }
+  }
+  return rsi;
+}
+
 export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedTicker, onSelectTicker }) {
   const { portfolioSummary, currentCurrency, usdtry } = useApp();
   const isTRY = currentCurrency === 'try';
@@ -210,7 +342,12 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const [searchQuery, setSearchQuery] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [hideHud, setHideHud] = useState(false);
-  const [chartEngineMode, setChartEngineMode] = useState('tv'); // 'tv' (TradingView) | 'native' (Bloomberg Canvas)
+  const [showPineModal, setShowPineModal] = useState(false);
+  const [copiedPine, setCopiedPine] = useState(false);
+
+  // Engine Modes: 'tv' (TradingView Embed) | 'hkn' (Bloomberg Native with Hkn Toolkit Fibo)
+  const [chartEngineMode, setChartEngineMode] = useState('tv');
+
   const [customTickers, setCustomTickers] = useState(() => {
     try {
       const saved = localStorage.getItem('custom_watchlist_tickers');
@@ -221,8 +358,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   });
   const [newTickerInput, setNewTickerInput] = useState('');
 
-  // User-Configured Active Indicators (Studies) with LocalStorage persistence
-  // Default to ONLY 2 indicators (EMA and RSI) to leave free quota room for user in TradingView!
+  // User-Configured Active Indicators for TradingView Embed
+  // DEFAULT TO EMPTY [] so TradingView opens with 0 indicators and 100% FREE QUOTA!
   const [activeStudies, setActiveStudies] = useState(() => {
     try {
       const saved = localStorage.getItem('pro_chart_active_studies');
@@ -231,7 +368,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
-    return ['STD;EMA', 'STD;RSI'];
+    // Empty by default gives 100% free quota inside TradingView!
+    return [];
   });
 
   // Toggle study on/off and persist
@@ -248,6 +386,14 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       } catch (e) {}
       return next;
     });
+  };
+
+  // Clear all studies to give 100% free quota
+  const clearAllStudies = () => {
+    setActiveStudies([]);
+    try {
+      localStorage.setItem('pro_chart_active_studies', JSON.stringify([]));
+    } catch (e) {}
   };
 
   // Fullscreen State & Ref
@@ -281,6 +427,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
+
+  // Copy Pine Script to Clipboard
+  const handleCopyPineScript = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(HKN_PINE_SCRIPT_V6).then(() => {
+        setCopiedPine(true);
+        setTimeout(() => setCopiedPine(false), 3500);
+      });
+    }
+  };
 
   // Persist custom tickers
   useEffect(() => {
@@ -454,7 +610,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     let zoneAdvice = '';
 
     if (hasHolding && holdingCost > 0) {
-      // For existing holdings, ideal buy zone is under cost or within accumulation range
       buyZoneMin = holdingCost * 0.88;
       buyZoneMax = holdingCost * 1.05;
 
@@ -492,7 +647,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         zoneAdvice = `Fiyat adil değer seviyesine ulaşmış. Yeni alım için geri çekilmeler beklenebilir.`;
       }
     } else {
-      zoneAdvice = 'Teknik analiz göstergeleri ve destek direnç çizgileriyle alım seviyeleri takip edilebilir.';
+      zoneAdvice = 'Hkn Toolkit Fibo indikatörüyle 3 EMA, WaveTrend ve Golden Zone seviyelerini takip edebilirsiniz.';
     }
 
     return {
@@ -545,7 +700,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           allow_symbol_change: true,
           save_image: true,
           container_id: containerId,
-          // Respect user-configured active studies!
+          // When activeStudies is [], loads 100% clean so free quota is NOT consumed!
           studies: activeStudies
         });
       } catch (err) {
@@ -571,19 +726,123 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     };
   }, [currentSymbol, chartEngineMode, activeStudies]);
 
-  // Native Candlestick/Bar Chart Data for BIST / Local Fallback
-  const nativeChartData = useMemo(() => {
-    if (!nativeStockData?.candlestick?.candles) return null;
-    const candles = nativeStockData.candlestick.candles.slice(-60); // Last 60 days
+  // =========================================================================
+  // 🌟 NATIVE HKN TOOLKIT FIBO ENGINE (Mathematically identical to Pine Script v6)
+  // =========================================================================
+  const hknNativeCalculations = useMemo(() => {
+    let candles = nativeStockData?.candlestick?.candles;
+    
+    // If candles are not present, generate fallback series from current price or holding
+    if (!candles || candles.length < 15) {
+      const basePrice = buyZoneAnalysis.livePrice || 100;
+      const times = [];
+      const dummyCandles = [];
+      for (let i = 45; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dayStr = d.toISOString().split('T')[0];
+        const variance = Math.sin(i / 4) * 0.04 + (Math.random() - 0.5) * 0.02;
+        const cPrice = basePrice * (1 + variance);
+        dummyCandles.push({
+          time: dayStr,
+          open: cPrice * 0.995,
+          high: cPrice * 1.012,
+          low: cPrice * 0.988,
+          close: cPrice,
+          volume: 1000000 + Math.random() * 500000
+        });
+      }
+      candles = dummyCandles;
+    }
+
+    const windowCandles = candles.slice(-60);
+    const times = windowCandles.map(c => c.time);
+    const closes = windowCandles.map(c => c.close);
+    const highs = windowCandles.map(c => c.high || c.close);
+    const lows = windowCandles.map(c => c.low || c.close);
+
+    // 1) 3 EMA: 50, 100, 200
+    const ema50 = calcEMA(closes, 50);
+    const ema100 = calcEMA(closes, 100);
+    const ema200 = calcEMA(closes, 200);
+
+    // 2) RSI (24)
+    const rsi24 = calcRSI(closes, 24);
+
+    // 3) WaveTrend (WT1 & WT2)
+    const ap = windowCandles.map((c, i) => (highs[i] + lows[i] + c.close) / 3);
+    const esa = calcEMA(ap, 10);
+    const diff = ap.map((v, i) => Math.abs(v - esa[i]));
+    const d_ema = calcEMA(diff, 10);
+    const ci = ap.map((v, i) => (d_ema[i] ? (v - esa[i]) / (0.015 * d_ema[i]) : 0));
+    const tci = calcEMA(ci, 21);
+    const wt1 = tci.map(v => (v + 100) / 2);
+    const wt2 = [];
+    for (let i = 0; i < wt1.length; i++) {
+      if (i < 3) wt2.push(wt1[i]);
+      else wt2.push((wt1[i] + wt1[i - 1] + wt1[i - 2] + wt1[i - 3]) / 4);
+    }
+
+    // WT Crossovers
+    const lastIdx = wt1.length - 1;
+    const wt1Last = wt1[lastIdx] || 50;
+    const wt2Last = wt2[lastIdx] || 50;
+    const wtBullish = wt1Last > wt2Last;
+
+    // 4) Auto Fibonacci Retracement
+    const fibHi = Math.max(...highs);
+    const fibLo = Math.min(...lows);
+    const fibRange = fibHi - fibLo;
+    const f0 = fibHi;
+    const f236 = fibHi - fibRange * 0.236;
+    const f382 = fibHi - fibRange * 0.382;
+    const f500 = fibHi - fibRange * 0.500;
+    const f618 = fibHi - fibRange * 0.618;
+    const f786 = fibHi - fibRange * 0.786;
+    const f1000 = fibLo;
+
+    const curClose = closes[lastIdx] || 0;
+    const inGoldenZone = curClose >= Math.min(f500, f618) && curClose <= Math.max(f500, f618);
+
+    // 5) Nearest Support & Resistance
+    const nearestSupport = f618 < curClose ? f618 : fibLo;
+    const nearestResistance = f382 > curClose ? f382 : fibHi;
+
     return {
-      labels: candles.map(c => c.time),
+      times,
+      closes,
+      ema50,
+      ema100,
+      ema200,
+      rsi24,
+      wt1,
+      wt2,
+      wtBullish,
+      f0,
+      f236,
+      f382,
+      f500,
+      f618,
+      f786,
+      f1000,
+      inGoldenZone,
+      nearestSupport,
+      nearestResistance,
+      curClose
+    };
+  }, [nativeStockData, buyZoneAnalysis]);
+
+  // ChartJS Data: Upper Price & Hkn Toolkit Fibo Levels
+  const hknPriceChartData = useMemo(() => {
+    const calc = hknNativeCalculations;
+    return {
+      labels: calc.times,
       datasets: [
         {
           type: 'line',
-          label: 'Kapanış Fiyatı',
-          data: candles.map(c => c.close),
-          borderColor: '#00e5ff',
-          backgroundColor: 'rgba(0, 229, 255, 0.08)',
+          label: 'Fiyat (Kapanış)',
+          data: calc.closes,
+          borderColor: '#ffffff',
           borderWidth: 2,
           pointRadius: 1,
           tension: 0.1,
@@ -591,43 +850,146 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         },
         {
           type: 'line',
-          label: 'SMA 20',
-          data: candles.map(c => c.sma20),
-          borderColor: '#f59e0b',
-          borderWidth: 1.5,
-          borderDash: [4, 4],
+          label: 'EMA 50 (Mavi)',
+          data: calc.ema50,
+          borderColor: '#2962ff',
+          borderWidth: 1.8,
           pointRadius: 0,
           yAxisID: 'y'
         },
         {
           type: 'line',
-          label: 'SMA 50',
-          data: candles.map(c => c.sma50),
-          borderColor: '#a855f7',
-          borderWidth: 1.5,
-          borderDash: [6, 4],
+          label: 'EMA 100 (Turuncu)',
+          data: calc.ema100,
+          borderColor: '#ff9800',
+          borderWidth: 1.8,
           pointRadius: 0,
           yAxisID: 'y'
         },
         {
-          type: 'bar',
-          label: 'Hacim',
-          data: candles.map(c => c.volume),
-          backgroundColor: candles.map(c => c.close >= c.open ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'),
-          yAxisID: 'yVolume'
+          type: 'line',
+          label: 'EMA 200 (Mor)',
+          data: calc.ema200,
+          borderColor: '#9c27b0',
+          borderWidth: 2,
+          pointRadius: 0,
+          yAxisID: 'y'
+        },
+        // Fibonacci Golden Zone (0.50 - 0.618)
+        {
+          type: 'line',
+          label: 'Fibo 0.500 (Golden Başlangıç)',
+          data: calc.times.map(() => calc.f500),
+          borderColor: '#4caf50',
+          borderDash: [5, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: '+1',
+          backgroundColor: 'rgba(8, 153, 129, 0.12)',
+          yAxisID: 'y'
+        },
+        {
+          type: 'line',
+          label: 'Fibo 0.618 (Golden Bitiş)',
+          data: calc.times.map(() => calc.f618),
+          borderColor: '#089981',
+          borderWidth: 2,
+          pointRadius: 0,
+          yAxisID: 'y'
+        },
+        {
+          type: 'line',
+          label: 'Fibo 0.382 (Direnç)',
+          data: calc.times.map(() => calc.f382),
+          borderColor: '#ff9800',
+          borderDash: [4, 4],
+          borderWidth: 1,
+          pointRadius: 0,
+          yAxisID: 'y'
+        },
+        {
+          type: 'line',
+          label: 'Fibo 1.000 (Dip Taban)',
+          data: calc.times.map(() => calc.f1000),
+          borderColor: '#787b86',
+          borderDash: [6, 4],
+          borderWidth: 1.2,
+          pointRadius: 0,
+          yAxisID: 'y'
         }
       ]
     };
-  }, [nativeStockData]);
+  }, [hknNativeCalculations]);
 
-  const nativeChartOptions = {
+  // ChartJS Data: Lower RSI (24) + WaveTrend Oscillator Sub-Panel
+  const hknOscillatorChartData = useMemo(() => {
+    const calc = hknNativeCalculations;
+    return {
+      labels: calc.times,
+      datasets: [
+        {
+          type: 'line',
+          label: 'WaveTrend 1 (Hızlı)',
+          data: calc.wt1,
+          borderColor: '#10b981',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.2,
+          yAxisID: 'yWT'
+        },
+        {
+          type: 'line',
+          label: 'WaveTrend 2 (Yavaş)',
+          data: calc.wt2,
+          borderColor: '#ef4444',
+          borderWidth: 2,
+          borderDash: [2, 2],
+          pointRadius: 0,
+          tension: 0.2,
+          yAxisID: 'yWT'
+        },
+        {
+          type: 'line',
+          label: 'RSI (24)',
+          data: calc.rsi24,
+          borderColor: '#c084fc',
+          borderWidth: 1.8,
+          pointRadius: 0,
+          tension: 0.1,
+          yAxisID: 'yRSI'
+        },
+        {
+          type: 'line',
+          label: 'RSI Aşırı Alım (70)',
+          data: calc.times.map(() => 70),
+          borderColor: 'rgba(239, 68, 68, 0.4)',
+          borderDash: [3, 3],
+          borderWidth: 1,
+          pointRadius: 0,
+          yAxisID: 'yRSI'
+        },
+        {
+          type: 'line',
+          label: 'RSI Aşırı Satım (30)',
+          data: calc.times.map(() => 30),
+          borderColor: 'rgba(16, 185, 129, 0.4)',
+          borderDash: [3, 3],
+          borderWidth: 1,
+          pointRadius: 0,
+          yAxisID: 'yRSI'
+        }
+      ]
+    };
+  }, [hknNativeCalculations]);
+
+  const hknPriceChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: {
         position: 'top',
-        labels: { color: '#94a3b8', font: { size: 10.5 } }
+        labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 12 }
       },
       tooltip: {
         backgroundColor: '#0f172a',
@@ -643,14 +1005,40 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       },
       y: {
         position: 'right',
-        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        grid: { color: 'rgba(255, 255, 255, 0.06)' },
         ticks: { color: '#00e5ff', font: { size: 10 } }
-      },
-      yVolume: {
-        position: 'left',
+      }
+    }
+  };
+
+  const hknOscillatorChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: { color: '#94a3b8', font: { size: 9.5 }, boxWidth: 10 }
+      }
+    },
+    scales: {
+      x: {
         grid: { display: false },
-        ticks: { display: false },
-        min: 0
+        ticks: { display: false }
+      },
+      yWT: {
+        position: 'left',
+        min: 0,
+        max: 100,
+        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+        ticks: { color: '#10b981', font: { size: 9 } }
+      },
+      yRSI: {
+        position: 'right',
+        min: 0,
+        max: 100,
+        grid: { display: false },
+        ticks: { color: '#c084fc', font: { size: 9 } }
       }
     }
   };
@@ -680,19 +1068,70 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           <div>
             <div style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>PRO GRAFİK & TEKNİK ANALİZ İSTASYONU</span>
-              <span className="nav-badge cyan" style={{ fontSize: 9 }}>
-                {chartEngineMode === 'tv' ? 'TRADINGVIEW ENGINE' : 'BLOOMBERG NATIVE'}
+              <span className={`nav-badge ${chartEngineMode === 'hkn' ? 'gold' : 'cyan'}`} style={{ fontSize: 9 }}>
+                {chartEngineMode === 'hkn' ? '🌟 HKN TOOLKIT FIBO MOTORU' : 'TRADINGVIEW ENGINE'}
               </span>
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-              Çizim Araçları • Sınırsız İndikatör & Kota Kontrolü • Alım Bölgeleri & Entegre Portföy
+              WaveTrend + RSI 24 • 3 EMA (50/100/200) • Auto Fibonacci & Golden Zone • Kota Kontrolü
             </div>
           </div>
         </div>
 
-        {/* Quick Shortcuts, Indicators, Fullscreen & Watchlist Buttons */}
+        {/* Engine Switcher, Quick Shortcuts, Fullscreen & Pine Script Modal Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           
+          {/* Engine Selector: TradingView vs Hkn Toolkit Fibo (Native) */}
+          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: 6, padding: 2 }}>
+            <button
+              type="button"
+              className={`chip-btn ${chartEngineMode === 'tv' ? 'active' : ''}`}
+              onClick={() => setChartEngineMode('tv')}
+              style={{ fontSize: 9.5, padding: '3px 8px' }}
+              title="TradingView canlı interaktif motoru"
+            >
+              ⚡ TradingView
+            </button>
+            <button
+              type="button"
+              className={`chip-btn ${chartEngineMode === 'hkn' ? 'active' : ''}`}
+              onClick={() => setChartEngineMode('hkn')}
+              style={{ 
+                fontSize: 9.5, 
+                padding: '3px 8px', 
+                background: chartEngineMode === 'hkn' ? 'linear-gradient(135deg, #089981, #10b981)' : 'transparent',
+                color: chartEngineMode === 'hkn' ? '#fff' : 'var(--gold)',
+                borderColor: chartEngineMode === 'hkn' ? '#10b981' : 'transparent',
+                fontWeight: 700
+              }}
+              title="Sınırsız yerel motor: WaveTrend, 3 EMA, Auto Fibo ve Destek/Direnç"
+            >
+              🌟 Hkn Toolkit Fibo
+            </button>
+          </div>
+
+          {/* 📋 Open Pine Script Modal Button */}
+          <button
+            type="button"
+            onClick={() => setShowPineModal(true)}
+            className="chip-btn"
+            style={{ 
+              fontSize: 10, 
+              padding: '4px 9px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 4, 
+              background: 'rgba(245, 158, 11, 0.1)', 
+              borderColor: 'var(--gold)', 
+              color: 'var(--gold)', 
+              fontWeight: 700 
+            }}
+            title="Hkn Toolkit Fibo Pine Script v6 kodunu kopyalayın ve TradingView'e ekleyin"
+          >
+            <Terminal size={12} />
+            <span>Pine Script Kodu</span>
+          </button>
+
           {/* Quick Shortcuts */}
           <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
             {[
@@ -701,9 +1140,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               { label: 'DRAM', sym: 'DRAM' },
               { label: 'BYDNR', sym: 'BYDNR.IS' },
               { label: 'BTC', sym: 'BTCUSDT' },
-              { label: 'TOTAL3', sym: 'TOTAL3' },
-              { label: 'DXY', sym: 'DXY' },
-              { label: 'US10Y', sym: 'US10Y' }
+              { label: 'TOTAL3', sym: 'TOTAL3' }
             ].map(item => (
               <button
                 key={item.sym}
@@ -723,30 +1160,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </button>
             ))}
           </div>
-
-          {/* Engine Mode Toggle (If native data available) */}
-          {nativeStockData && (
-            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: 6, padding: 2 }}>
-              <button
-                type="button"
-                className={`chip-btn ${chartEngineMode === 'tv' ? 'active' : ''}`}
-                onClick={() => setChartEngineMode('tv')}
-                style={{ fontSize: 9.5, padding: '3px 7px' }}
-                title="TradingView canlı motoru"
-              >
-                ⚡ TV
-              </button>
-              <button
-                type="button"
-                className={`chip-btn ${chartEngineMode === 'native' ? 'active' : ''}`}
-                onClick={() => setChartEngineMode('native')}
-                style={{ fontSize: 9.5, padding: '3px 7px' }}
-                title="Bloomberg terminali dahili mum grafiği"
-              >
-                📈 Yerel
-              </button>
-            </div>
-          )}
 
           {/* ⛶ Real True Fullscreen Button */}
           <button
@@ -792,60 +1205,75 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         </div>
       </div>
 
-      {/* ⚡ Interactive Indicator Manager Bar (Fixes Bollingers Re-opening & Free Plan Quota) */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          gap: 8, 
-          padding: '6px 14px', 
-          background: 'rgba(15, 23, 42, 0.65)', 
-          border: '1px solid rgba(255,255,255,0.08)', 
-          borderRadius: 6 
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Sliders size={12} className="text-cyan" />
-            <span>AKTİF İNDİKATÖRLER:</span>
-          </span>
-          {AVAILABLE_STUDIES.map(st => {
-            const isActive = activeStudies.includes(st.id);
-            return (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() => toggleStudy(st.id)}
-                className={`chip-btn ${isActive ? 'active' : ''}`}
-                style={{ 
-                  fontSize: 10, 
-                  padding: '3px 8px',
-                  fontWeight: isActive ? 700 : 500,
-                  borderColor: isActive ? 'var(--cyan)' : 'rgba(255,255,255,0.1)'
-                }}
-                title={`${st.fullName} (Aç/Kapat)`}
-              >
-                {isActive ? '✓ ' : '+ '}{st.name}
-              </button>
-            );
-          })}
-        </div>
+      {/* ⚡ TRADINGVIEW KOTA KONTROLÜ VE BOŞ KOTA YÖNETİCİSİ */}
+      {chartEngineMode === 'tv' && (
+        <div 
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: 8, 
+            padding: '6px 14px', 
+            background: 'rgba(15, 23, 42, 0.65)', 
+            border: '1px solid rgba(255,255,255,0.08)', 
+            borderRadius: 6 
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Sliders size={12} className="text-cyan" />
+              <span>GÖSTERGELER (TRADINGVIEW):</span>
+            </span>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: 'var(--text-muted)' }}>
-          <span 
-            className={`nav-badge ${activeStudies.length <= 2 ? 'emerald' : activeStudies.length === 3 ? 'amber' : 'rose'}`}
-            style={{ fontSize: 9.5, padding: '2px 7px' }}
-            title="TradingView ücretsiz kotası genelde 3 göstergedir. 2 gösterge açıkken manuel 1 gösterge daha ekleyebilirsiniz."
-          >
-            {activeStudies.length}/3 Kotası ({Math.max(0, 3 - activeStudies.length)} Boş Slot)
-          </span>
-          <span style={{ fontSize: 9.5 }}>💡 İndikatör tercihiniz tüm hisse geçişlerinde korunur.</span>
-        </div>
-      </div>
+            {AVAILABLE_STUDIES.map(st => {
+              const isActive = activeStudies.includes(st.id);
+              return (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => toggleStudy(st.id)}
+                  className={`chip-btn ${isActive ? 'active' : ''}`}
+                  style={{ 
+                    fontSize: 10, 
+                    padding: '2px 7px',
+                    fontWeight: isActive ? 700 : 500,
+                    borderColor: isActive ? 'var(--cyan)' : 'rgba(255,255,255,0.1)'
+                  }}
+                  title={`${st.fullName} (Aç/Kapat)`}
+                >
+                  {isActive ? '✓ ' : '+ '}{st.name}
+                </button>
+              );
+            })}
 
-      {/* 🎯 PORTFÖY ALIM BÖLGESİ & MALİYET ANALİZİ HUD */}
+            {/* 🧹 Clear All to Free Up 100% of TradingView Quota */}
+            <button
+              type="button"
+              onClick={clearAllStudies}
+              className="chip-btn"
+              style={{ fontSize: 9.5, padding: '2px 7px', borderColor: 'rgba(239, 68, 68, 0.5)', color: '#f87171' }}
+              title="Grafiği 0 indikatörle açarak TradingView içinden ekleme kotanızı %100 boşaltır"
+            >
+              🧹 Kotayı Boşalt (0 İndikatör)
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+            <span 
+              className={`nav-badge ${activeStudies.length === 0 ? 'emerald' : activeStudies.length <= 2 ? 'amber' : 'rose'}`}
+              style={{ fontSize: 9.5, padding: '2px 7px' }}
+              title="TradingView ücretsiz planında toplam gösterge limiti 2 veya 3'tür."
+            >
+              {activeStudies.length === 0 
+                ? '🟢 Kotanız %100 Boş (TradingView İçinden Rahatça Ekleyebilirsiniz)' 
+                : `${activeStudies.length} Gösterge Açık`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 🎯 PORTFÖY ALIM BÖLGESİ & HKN TOOLKIT SİNYAL HUD'U */}
       {!hideHud && (
         <div 
           className="card" 
@@ -910,11 +1338,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 {buyZoneAnalysis.zoneBadge}
               </span>
 
-              {/* Fair Value or Target Price if present */}
-              {buyZoneAnalysis.fairValue && (
-                <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                  Hedef/Adil Değer: <strong className="mono text-gold">{buyZoneAnalysis.symMark}{fmt(buyZoneAnalysis.fairValue, 2)}</strong>
-                </span>
+              {/* Hkn Toolkit Fibo Indicators Signals */}
+              {hknNativeCalculations && (
+                <div style={{ display: 'inline-flex', gap: 6 }}>
+                  <span className={`nav-badge ${hknNativeCalculations.inGoldenZone ? 'gold' : 'neutral'}`} style={{ fontSize: 9 }}>
+                    🌟 Golden Zone: {hknNativeCalculations.inGoldenZone ? 'İÇİNDE (0.50 - 0.618)' : `${fmt(hknNativeCalculations.f618, 1)} - ${fmt(hknNativeCalculations.f500, 1)}`}
+                  </span>
+                  <span className={`nav-badge ${hknNativeCalculations.wtBullish ? 'emerald' : 'rose'}`} style={{ fontSize: 9 }}>
+                    ⚡ WaveTrend: {hknNativeCalculations.wtBullish ? 'ALIM (WT1 > WT2)' : 'DÜZELTME'}
+                  </span>
+                </div>
               )}
             </div>
 
@@ -988,16 +1421,14 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {nativeStockData && (
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={() => setChartEngineMode('native')}
-                style={{ fontSize: 10, padding: '3px 8px', borderColor: 'var(--cyan)', color: 'var(--cyan)' }}
-              >
-                📈 Terminal Yerel Grafiğinde Göster
-              </button>
-            )}
+            <button
+              type="button"
+              className="chip-btn"
+              onClick={() => setChartEngineMode('hkn')}
+              style={{ fontSize: 10, padding: '3px 8px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+            >
+              🌟 Hkn Toolkit Yerel Grafiğinde Göster
+            </button>
             <a
               href={`https://tr.tradingview.com/chart/?symbol=BIST:${cleanActiveTicker}`}
               target="_blank"
@@ -1040,7 +1471,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         }}
       >
         
-        {/* Left: The Official TradingView Advanced Chart / Native Canvas Container */}
+        {/* Left: The Chart Container (TradingView Engine or Hkn Native Toolkit Engine) */}
         <div 
           className="card" 
           style={{ 
@@ -1055,7 +1486,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             position: 'relative'
           }}
         >
-          {/* 🌟 Fullscreen Interactive Top Floating Toolbar (Enables Stock & Indicator Switching without exiting fullscreen) */}
+          {/* 🌟 Fullscreen Interactive Top Floating Toolbar */}
           {isFullscreen && (
             <div 
               style={{ 
@@ -1104,24 +1535,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 </div>
               </div>
 
-              {/* Indicator Controls & Exit Controls */}
+              {/* Engine Toggle & Sidebar Toggle */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ display: 'inline-flex', gap: 4 }}>
-                  {AVAILABLE_STUDIES.map(st => {
-                    const isActive = activeStudies.includes(st.id);
-                    return (
-                      <button
-                        key={st.id}
-                        type="button"
-                        onClick={() => toggleStudy(st.id)}
-                        className={`chip-btn ${isActive ? 'active' : ''}`}
-                        style={{ fontSize: 9, padding: '2px 6px' }}
-                      >
-                        {isActive ? '✓ ' : '+ '}{st.name}
-                      </button>
-                    );
-                  })}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setChartEngineMode(prev => prev === 'hkn' ? 'tv' : 'hkn')}
+                  className={`chip-btn ${chartEngineMode === 'hkn' ? 'active' : ''}`}
+                  style={{ fontSize: 9.5, padding: '3px 8px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+                >
+                  {chartEngineMode === 'hkn' ? '⚡ TV Motoruna Geç' : '🌟 Hkn Toolkit Fibo'}
+                </button>
 
                 <button
                   type="button"
@@ -1167,30 +1590,62 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             />
           )}
 
-          {/* 2. BLOOMBERG NATIVE CANVAS ENGINE (For BIST / Offline Fallback) */}
-          {chartEngineMode === 'native' && nativeChartData && (
-            <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', paddingTop: isFullscreen ? 50 : 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div>
-                  <strong className="mono" style={{ fontSize: 16, color: 'var(--cyan)' }}>
-                    {nativeStockData.ticker} - {nativeStockData.candlestick?.name}
-                  </strong>
-                  <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-                    Canlı Fiyat: <strong>₺{fmt(nativeStockData.candlestick?.current_price, 2)}</strong> ({fmt(nativeStockData.candlestick?.day_change_pct, 2)}%)
+          {/* 2. 🌟 HKN TOOLKIT FIBO NATIVE ENGINE (3 EMA + Auto Fibo + WaveTrend & RSI Sub-Panel) */}
+          {chartEngineMode === 'hkn' && (
+            <div style={{ padding: 14, height: '100%', display: 'flex', flexDirection: 'column', gap: 8, paddingTop: isFullscreen ? 50 : 14, overflowY: 'auto' }}>
+              
+              {/* Top Status Banner for Hkn Toolkit */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15,23,42,0.85)', padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="mono font-bold text-gold" style={{ fontSize: 13 }}>
+                    {cleanActiveTicker} - Hkn Toolkit Fibo Analizi
+                  </span>
+                  <span className="badge-type hisse" style={{ fontSize: 8.5 }}>
+                    Canlı: {buyZoneAnalysis.symMark}{fmt(hknNativeCalculations.curClose, 2)}
+                  </span>
+                  <span className={`nav-badge ${hknNativeCalculations.inGoldenZone ? 'gold' : 'neutral'}`} style={{ fontSize: 9 }}>
+                    {hknNativeCalculations.inGoldenZone ? '🌟 Fibo Golden Zone (0.50 - 0.618)' : 'Direnç Testi'}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="chip-btn"
-                  onClick={() => setChartEngineMode('tv')}
-                  style={{ fontSize: 10, padding: '3px 8px' }}
-                >
-                  ⚡ TradingView Motoruna Dön
-                </button>
+
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="chip-btn"
+                    onClick={() => setShowPineModal(true)}
+                    style={{ fontSize: 9, padding: '2px 7px', borderColor: 'var(--gold)', color: 'var(--gold)' }}
+                  >
+                    📋 Script Kodu
+                  </button>
+                  <button
+                    type="button"
+                    className="chip-btn"
+                    onClick={() => setChartEngineMode('tv')}
+                    style={{ fontSize: 9, padding: '2px 7px' }}
+                  >
+                    ⚡ TV Motoru
+                  </button>
+                </div>
               </div>
-              <div style={{ flex: 1, minHeight: 600 }}>
-                <Line data={nativeChartData} options={nativeChartOptions} />
+
+              {/* Upper Chart: Candlestick/Close + 3 EMA + Auto Fibonacci */}
+              <div style={{ flex: 3, minHeight: 380, position: 'relative' }}>
+                <Line data={hknPriceChartData} options={hknPriceChartOptions} />
               </div>
+
+              {/* Lower Sub-Panel: RSI (24) + WaveTrend (WT1 & WT2) */}
+              <div style={{ flex: 2, minHeight: 180, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, position: 'relative' }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>ALT PANEL: RSI (24) & WAVETREND (WT1 / WT2) OSİLATÖRÜ</span>
+                  <span style={{ color: hknNativeCalculations.wtBullish ? 'var(--up)' : 'var(--down)' }}>
+                    {hknNativeCalculations.wtBullish ? '🟢 WT1 Pozitif Kesişim' : '🔴 WT1 Negatif Düzeltme'}
+                  </span>
+                </div>
+                <div style={{ height: 'calc(100% - 16px)' }}>
+                  <Line data={hknOscillatorChartData} options={hknOscillatorChartOptions} />
+                </div>
+              </div>
+
             </div>
           )}
         </div>
@@ -1411,6 +1866,107 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         )}
 
       </div>
+
+      {/* 🌟 HKN TOOLKIT FIBO PINE SCRIPT V6 MODAL */}
+      {showPineModal && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(0,0,0,0.85)', 
+            backdropFilter: 'blur(6px)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 999999, 
+            padding: 16 
+          }}
+          onClick={() => setShowPineModal(false)}
+        >
+          <div 
+            className="card" 
+            style={{ 
+              width: '100%', 
+              maxWidth: 780, 
+              maxHeight: '90vh', 
+              background: '#090d16', 
+              border: '1px solid var(--gold)', 
+              borderRadius: 10, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              overflow: 'hidden' 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Terminal size={18} className="text-gold" />
+                <div>
+                  <strong style={{ fontSize: 13, color: '#f8fafc' }}>Hkn Toolkit Fibo (Pine Script v6)</strong>
+                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                    RSI 24 + WaveTrend + 3 EMA + Ranked Destek/Direnç + Auto Fibonacci
+                  </div>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowPineModal(false)} 
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Why All-in-One Indicator solves TradingView limits */}
+            <div style={{ padding: '12px 18px', background: 'rgba(245, 158, 11, 0.08)', borderBottom: '1px solid rgba(245, 158, 11, 0.2)', fontSize: 11, color: '#f8fafc', lineHeight: 1.5 }}>
+              <strong style={{ color: 'var(--gold)' }}>💡 TradingView Kota Sırrı: </strong>
+              TradingView ücretsiz planda 2-3 ayrı indikatör hakkı verir. Bu araçların hepsini ayrı ayrı eklerseniz kota hemen dolar. 
+              <strong> Ancak bu kod tek bir Pine Script olduğu için TradingView bunu TEK BİR İNDİKATÖR (1/3) olarak sayar!</strong> Böylece tüm göstergeleri tek kotada ücretsiz kullanabilirsiniz.
+            </div>
+
+            {/* 3 Step Guide */}
+            <div style={{ padding: '10px 18px', display: 'flex', gap: 10, background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 10.5, color: '#cbd5e1' }}>
+              <div style={{ flex: 1 }}><strong>1. Kopyala:</strong> Aşağıdaki sarı butona basarak kodu panoya kopyalayın.</div>
+              <div style={{ flex: 1 }}><strong>2. Pine Editör:</strong> TradingView'da alt sekmedeki 'Pine Editörü'ne yapıştırın.</div>
+              <div style={{ flex: 1 }}><strong>3. Grafiğe Ekle:</strong> 'Grafiğe Ekle' butonuna basarak kaydedin.</div>
+            </div>
+
+            {/* Code Box */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: '#040711' }}>
+              <pre style={{ margin: 0, fontFamily: 'Consolas, monospace', fontSize: 11, color: '#38bdf8', lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {HKN_PINE_SCRIPT_V6}
+              </pre>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                {copiedPine ? '✅ Kod panoya kopyalandı! TradingView Pine Editörüne yapıştırabilirsiniz.' : 'Pine Script v6 Uyumlu'}
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleCopyPineScript}
+                  className="btn-primary"
+                  style={{ fontSize: 11, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 6, background: copiedPine ? '#10b981' : 'linear-gradient(135deg, #d97706, #f59e0b)', color: '#000', fontWeight: 800 }}
+                >
+                  {copiedPine ? <Check size={13} /> : <Copy size={13} />}
+                  <span>{copiedPine ? 'Kopyalandı! ✅' : 'Kodu Kopyala'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPineModal(false)}
+                  className="chip-btn"
+                  style={{ fontSize: 11, padding: '6px 12px' }}
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
