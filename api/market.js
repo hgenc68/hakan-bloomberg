@@ -60,7 +60,56 @@ const SPECIAL_MAP = {
   'TUPRS': 'TUPRS.IS',
   'TUPRS.IS': 'TUPRS.IS',
   'BYDNR': 'BYDNR.IS',
-  'BYDNR.IS': 'BYDNR.IS'
+  'BYDNR.IS': 'BYDNR.IS',
+  // Makro & Endeks Göstergeleri
+  'DXY': 'DX-Y.NYB',
+  'USDX': 'DX-Y.NYB',
+  'DX-Y': 'DX-Y.NYB',
+  'DX-Y.NYB': 'DX-Y.NYB',
+  'VIX': '^VIX',
+  '^VIX': '^VIX',
+  'US10Y': '^TNX',
+  'US10YR': '^TNX',
+  '^TNX': '^TNX',
+  'TNX': '^TNX',
+  'US02Y': '2YY=F',
+  'US2Y': '2YY=F',
+  '2YY=F': '2YY=F',
+  'US05Y': '^FVX',
+  'US5Y': '^FVX',
+  '^FVX': '^FVX',
+  'US30Y': '^TYX',
+  '^TYX': '^TYX',
+  'SPX': '^GSPC',
+  'SP500': '^GSPC',
+  '^GSPC': '^GSPC',
+  'NDX': '^IXIC',
+  'NASDAQ': '^IXIC',
+  '^IXIC': '^IXIC',
+  'DJI': '^DJI',
+  'DOW': '^DJI',
+  '^DJI': '^DJI',
+  'XU100': 'XU100.IS',
+  'BIST100': 'XU100.IS',
+  'XU030': 'XU030.IS',
+  'BIST30': 'XU030.IS',
+  // Emtialar
+  'UKOIL': 'BZ=F',
+  'BRENT': 'BZ=F',
+  'BZ=F': 'BZ=F',
+  'USOIL': 'CL=F',
+  'WTI': 'CL=F',
+  'CL=F': 'CL=F',
+  'GOLD': 'GC=F',
+  'XAUUSD': 'GC=F',
+  'GC=F': 'GC=F',
+  'SILVER': 'SI=F',
+  'XAGUSD': 'SI=F',
+  'SI=F': 'SI=F',
+  'COPPER': 'HG=F',
+  'HG=F': 'HG=F',
+  'NATGAS': 'NG=F',
+  'NG=F': 'NG=F'
 };
 
 const KNOWN_BIST_SYMBOLS = new Set([
@@ -202,7 +251,7 @@ export default async function handler(req, res) {
   if (chart) {
     try {
       const sym = chart.trim().toUpperCase();
-      const resolved = resolveSymbol(sym);
+      const isCryptoCapIndex = ['TOTAL', 'TOTAL2', 'TOTAL3', 'OTHERS', 'TOTALDEFI'].includes(sym);
       const reqInterval = (req.query.interval || '1d').toLowerCase();
       
       // Determine appropriate default range based on interval
@@ -212,6 +261,71 @@ export default async function handler(req, res) {
         else if (reqInterval === '1h') reqRange = '3mo';
         else reqRange = '2y';
       }
+
+      // Handle synthetic Crypto Market Cap indexes
+      if (isCryptoCapIndex) {
+        const btcUrl = `https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?interval=${encodeURIComponent(reqInterval)}&range=${encodeURIComponent(reqRange)}`;
+        const ethUrl = `https://query1.finance.yahoo.com/v8/finance/chart/ETH-USD?interval=${encodeURIComponent(reqInterval)}&range=${encodeURIComponent(reqRange)}`;
+
+        const [bResp, eResp] = await Promise.all([
+          fetch(btcUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(ethUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } }).then(r => r.ok ? r.json() : null).catch(() => null)
+        ]);
+
+        const bTimes = bResp?.chart?.result?.[0]?.timestamp || [];
+        const bQuote = bResp?.chart?.result?.[0]?.indicators?.quote?.[0] || {};
+        const eQuote = eResp?.chart?.result?.[0]?.indicators?.quote?.[0] || {};
+
+        const candles = [];
+        const isIntraday = reqInterval.includes('m') || reqInterval.includes('h');
+
+        for (let i = 0; i < bTimes.length; i++) {
+          const bClose = bQuote.close?.[i];
+          const bOpen = bQuote.open?.[i] || bClose;
+          const bHigh = bQuote.high?.[i] || bClose;
+          const bLow = bQuote.low?.[i] || bClose;
+          const bVol = bQuote.volume?.[i] || 0;
+
+          if (typeof bClose === 'number' && !isNaN(bClose) && bClose > 0) {
+            const eClose = eQuote.close?.[i] || (bClose / 35);
+            const eOpen = eQuote.open?.[i] || (bOpen / 35);
+            const eHigh = eQuote.high?.[i] || (bHigh / 35);
+            const eLow = eQuote.low?.[i] || (bLow / 35);
+
+            const calcCap = (bVal, eVal) => {
+              const totB = ((bVal * 19.8e6) + (eVal * 120.4e6)) / 0.72 / 1e9;
+              if (sym === 'TOTAL') return totB;
+              if (sym === 'TOTAL2') return totB - ((bVal * 19.8e6) / 1e9);
+              if (sym === 'TOTAL3') return totB * 0.276;
+              if (sym === 'OTHERS') return totB * 0.276 * 0.40;
+              if (sym === 'TOTALDEFI') return totB * 0.033;
+              return totB;
+            };
+
+            let timeVal;
+            if (isIntraday) {
+              timeVal = bTimes[i];
+            } else {
+              const d = new Date(bTimes[i] * 1000);
+              timeVal = d.toISOString().split('T')[0];
+            }
+
+            candles.push({
+              time: timeVal,
+              open: Number(calcCap(bOpen, eOpen).toFixed(2)),
+              high: Number(calcCap(bHigh, eHigh).toFixed(2)),
+              low: Number(calcCap(bLow, eLow).toFixed(2)),
+              close: Number(calcCap(bClose, eClose).toFixed(2)),
+              volume: Math.round(bVol * 0.4)
+            });
+          }
+        }
+
+        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+        return res.status(200).json({ status: 'success', symbol: sym, resolved: sym, interval: reqInterval, range: reqRange, candles });
+      }
+
+      const resolved = resolveSymbol(sym);
 
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolved)}?interval=${encodeURIComponent(reqInterval)}&range=${encodeURIComponent(reqRange)}`;
       const resp = await fetch(url, {

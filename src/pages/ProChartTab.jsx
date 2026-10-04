@@ -561,6 +561,7 @@ export const SEARCH_CATALOG = [
   { ticker: "NEARUSDT", name: "NEAR Protocol / Tether", market: "KRİPTO", keywords: "near nearusdt sharding yapay zeka user owned ai kripto" },
   { ticker: "TOTAL3", name: "Crypto Market Cap Excl. BTC & ETH", market: "KRİPTO", keywords: "total3 altcoin market cap toplam piyasa değeri btc ve eth hariç" },
   { ticker: "TOTAL", name: "Total Crypto Market Cap", market: "KRİPTO", keywords: "total kripto toplam piyasa değeri tüm kripto paralar" },
+  { ticker: "OTHERS", name: "Altcoin Market Cap Excl. Top 10", market: "KRİPTO", keywords: "others altcoin market cap top 10 haric kucuk orta altcoinler asimetrik" },
 
   // Macro & Commodities
   { ticker: "XAUUSD", name: "Altın Spot (Ons Dolar)", market: "EMTİA", keywords: "xauusd altın ons spot gold sarı metal ons altın emtia" },

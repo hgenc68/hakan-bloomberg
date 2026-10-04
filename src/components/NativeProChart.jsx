@@ -132,6 +132,145 @@ function normalizeChartTime(time) {
   return time;
 }
 
+// Universal mapping for Macro, Commodity, and Global Index tickers
+export const SYMBOL_MAP = {
+  // Makro & Endeks Göstergeleri
+  'DXY': 'DX-Y.NYB',
+  'USDX': 'DX-Y.NYB',
+  'DX-Y': 'DX-Y.NYB',
+  'DX-Y.NYB': 'DX-Y.NYB',
+  'VIX': '^VIX',
+  '^VIX': '^VIX',
+  'US10Y': '^TNX',
+  'US10YR': '^TNX',
+  '^TNX': '^TNX',
+  'TNX': '^TNX',
+  'US02Y': '2YY=F',
+  'US2Y': '2YY=F',
+  '2YY=F': '2YY=F',
+  'US05Y': '^FVX',
+  'US5Y': '^FVX',
+  '^FVX': '^FVX',
+  'US30Y': '^TYX',
+  '^TYX': '^TYX',
+  'SPX': '^GSPC',
+  'SP500': '^GSPC',
+  '^GSPC': '^GSPC',
+  'NDX': '^IXIC',
+  'NASDAQ': '^IXIC',
+  '^IXIC': '^IXIC',
+  'DJI': '^DJI',
+  'DOW': '^DJI',
+  '^DJI': '^DJI',
+  'XU100': 'XU100.IS',
+  'BIST100': 'XU100.IS',
+  'XU030': 'XU030.IS',
+  'BIST30': 'XU030.IS',
+  // Emtialar
+  'UKOIL': 'BZ=F',
+  'BRENT': 'BZ=F',
+  'BZ=F': 'BZ=F',
+  'USOIL': 'CL=F',
+  'WTI': 'CL=F',
+  'CL=F': 'CL=F',
+  'GOLD': 'GC=F',
+  'XAUUSD': 'GC=F',
+  'GC=F': 'GC=F',
+  'SILVER': 'SI=F',
+  'XAGUSD': 'SI=F',
+  'SI=F': 'SI=F',
+  'COPPER': 'HG=F',
+  'HG=F': 'HG=F',
+  'NATGAS': 'NG=F',
+  'NG=F': 'NG=F'
+};
+
+// Otomatik Destek - Direnç Pivot Seviyeleri Hesaplayıcı
+export function calcAutoSR(data, lookback = 25) {
+  if (!data || data.length < 10) return { supports: [], resistances: [] };
+  const slice = data.slice(-Math.min(data.length, Math.max(15, lookback)));
+  const currentPrice = data[data.length - 1].close;
+
+  const pivotHighs = [];
+  const pivotLows = [];
+
+  for (let i = 2; i < slice.length - 2; i++) {
+    const cur = slice[i];
+    if (cur.high >= slice[i-1].high && cur.high >= slice[i-2].high &&
+        cur.high >= slice[i+1].high && cur.high >= slice[i+2].high) {
+      pivotHighs.push(cur.high);
+    }
+    if (cur.low <= slice[i-1].low && cur.low <= slice[i-2].low &&
+        cur.low <= slice[i+1].low && cur.low <= slice[i+2].low) {
+      pivotLows.push(cur.low);
+    }
+  }
+
+  // Cluster nearby pivot prices (within 1.8%)
+  const clusterLevels = (levels) => {
+    const sorted = [...levels].sort((a, b) => a - b);
+    const clusters = [];
+    for (const lvl of sorted) {
+      const match = clusters.find(c => Math.abs(c.price - lvl) / c.price < 0.018);
+      if (match) {
+        match.count++;
+        match.price = (match.price + lvl) / 2;
+      } else {
+        clusters.push({ price: lvl, count: 1 });
+      }
+    }
+    return clusters.sort((a, b) => b.count - a.count);
+  };
+
+  const resClusters = clusterLevels(pivotHighs.filter(p => p > currentPrice * 1.002));
+  const supClusters = clusterLevels(pivotLows.filter(p => p < currentPrice * 0.998));
+
+  // Top 2-3 significant levels
+  const resistances = resClusters.slice(0, 3).map(c => Number(c.price.toFixed(2))).sort((a, b) => a - b);
+  const supports = supClusters.slice(0, 3).map(c => Number(c.price.toFixed(2))).sort((a, b) => b - a);
+
+  return { supports, resistances };
+}
+
+// Otomatik Dinamik Fibonacci Geri Çekilme (Retracement) Seviyeleri
+export function calcAutoFib(data, lookback = 60) {
+  if (!data || data.length < 10) return null;
+  const slice = data.slice(-Math.min(data.length, Math.max(15, lookback)));
+  
+  let minLow = Infinity;
+  let minLowIdx = -1;
+  let maxHigh = -Infinity;
+  let maxHighIdx = -1;
+
+  for (let i = 0; i < slice.length; i++) {
+    if (slice[i].low < minLow) {
+      minLow = slice[i].low;
+      minLowIdx = i;
+    }
+    if (slice[i].high > maxHigh) {
+      maxHigh = slice[i].high;
+      maxHighIdx = i;
+    }
+  }
+
+  if (minLow === maxHigh || minLow === Infinity || maxHigh === -Infinity) return null;
+
+  const isUptrend = minLowIdx < maxHighIdx;
+  const diff = maxHigh - minLow;
+
+  const levels = [
+    { ratio: '0.000', label: isUptrend ? '0.000 (Zirve)' : '0.000 (Dip)', price: isUptrend ? maxHigh : minLow, color: '#94a3b8' },
+    { ratio: '0.236', label: '0.236', price: isUptrend ? maxHigh - 0.236 * diff : minLow + 0.236 * diff, color: '#c084fc' },
+    { ratio: '0.382', label: '0.382', price: isUptrend ? maxHigh - 0.382 * diff : minLow + 0.382 * diff, color: '#f87171' },
+    { ratio: '0.500', label: '0.500 (Denge)', price: isUptrend ? maxHigh - 0.500 * diff : minLow + 0.500 * diff, color: '#fbbf24' },
+    { ratio: '0.618', label: '0.618 (Altın Oran)', price: isUptrend ? maxHigh - 0.618 * diff : minLow + 0.618 * diff, color: '#34d399' },
+    { ratio: '0.786', label: '0.786', price: isUptrend ? maxHigh - 0.786 * diff : minLow + 0.786 * diff, color: '#38bdf8' },
+    { ratio: '1.000', label: isUptrend ? '1.000 (Dip)' : '1.000 (Zirve)', price: isUptrend ? minLow : maxHigh, color: '#94a3b8' }
+  ];
+
+  return { isUptrend, maxHigh, minLow, levels };
+}
+
 export default function NativeProChart({
   symbol,
   cleanTicker,
@@ -151,6 +290,10 @@ export default function NativeProChart({
   const candlestickSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
   const costPriceLineRef = useRef(null);
+
+  // Auto Analysis Price Lines Refs
+  const autoSRLinesRef = useRef([]);
+  const autoFibLinesRef = useRef([]);
 
   // Indicator series refs
   const ema20SeriesRef = useRef(null);
@@ -181,6 +324,34 @@ export default function NativeProChart({
   const [mousePreviewPoint, setMousePreviewPoint] = useState(null);
   const [showDrawingsList, setShowDrawingsList] = useState(false);
 
+  // Modal for Indicator Settings
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // User persistent indicator parameters
+  const [indicatorSettings, setIndicatorSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('terminal_indicator_settings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      rsiPeriod: 14,
+      ema1Period: 20,
+      ema2Period: 50,
+      ema3Period: 200,
+      bollingerPeriod: 20,
+      bollingerStdDev: 2,
+      fibLookback: 60,
+      srLookback: 25
+    };
+  });
+
+  // Save indicator settings
+  useEffect(() => {
+    try {
+      localStorage.setItem('terminal_indicator_settings', JSON.stringify(indicatorSettings));
+    } catch (e) {}
+  }, [indicatorSettings]);
+
   // User persistent drawings per base symbol
   // { horizontals: [{ id, price, label, color }], trendlines: [{ id, p1: { time, price }, p2: { time, price }, color }] }
   const [drawings, setDrawings] = useState({ horizontals: [], trendlines: [] });
@@ -198,7 +369,9 @@ export default function NativeProChart({
       bollinger: false,
       volume: true,
       rsi: true,
-      costLine: true
+      costLine: true,
+      autoSR: false,
+      autoFib: false
     };
   });
 
@@ -277,7 +450,9 @@ export default function NativeProChart({
     // Resolve symbol for Yahoo Finance
     const rawUpper = (cleanTicker || symbol || '').toUpperCase().trim();
     let querySymbol = rawUpper;
-    if (isBist) {
+    if (SYMBOL_MAP[rawUpper]) {
+      querySymbol = SYMBOL_MAP[rawUpper];
+    } else if (isBist) {
       querySymbol = rawUpper.endsWith('.IS') ? rawUpper : `${rawUpper}.IS`;
     } else if (rawUpper.endsWith('USDT')) {
       querySymbol = `${rawUpper.slice(0, -4)}-USD`;
@@ -344,16 +519,67 @@ export default function NativeProChart({
 
       let dataCandles = null;
 
-      // 1. Try internal backend API first
-      try {
-        const res = await fetch(`/api/market?chart=${encodeURIComponent(querySymbol)}&interval=${yInterval}&range=${yRange}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.status === 'success' && Array.isArray(json.candles) && json.candles.length > 0) {
-            dataCandles = json.candles;
+      // Handle synthetic Crypto Market Cap indexes (TOTAL, TOTAL3, OTHERS)
+      if (['TOTAL', 'TOTAL2', 'TOTAL3', 'OTHERS', 'TOTALDEFI'].includes(rawUpper)) {
+        try {
+          const res = await fetch(`/api/market?chart=${encodeURIComponent(rawUpper)}&interval=${yInterval}&range=${yRange}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json?.status === 'success' && Array.isArray(json.candles) && json.candles.length > 0) {
+              dataCandles = json.candles;
+            }
           }
+        } catch (e) {}
+
+        // Fallback: direct synthesis from BTC and ETH
+        if (!dataCandles || dataCandles.length === 0) {
+          try {
+            const btcUrl = `https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?interval=${yInterval}&range=${yRange}`;
+            const ethUrl = `https://query1.finance.yahoo.com/v8/finance/chart/ETH-USD?interval=${yInterval}&range=${yRange}`;
+            const [bResp, eResp] = await Promise.all([
+              fetch(btcUrl).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch(ethUrl).then(r => r.ok ? r.json() : null).catch(() => null)
+            ]);
+            const bCandles = parseYahooJson(bResp);
+            const eCandles = parseYahooJson(eResp);
+            if (bCandles.length > 0) {
+              dataCandles = bCandles.map((b, idx) => {
+                const e = eCandles[idx] || { open: b.open / 35, high: b.high / 35, low: b.low / 35, close: b.close / 35 };
+                const calcCap = (bVal, eVal) => {
+                  const totB = ((bVal * 19.8e6) + (eVal * 120.4e6)) / 0.72 / 1e9;
+                  if (rawUpper === 'TOTAL') return totB;
+                  if (rawUpper === 'TOTAL2') return totB - ((bVal * 19.8e6) / 1e9);
+                  if (rawUpper === 'TOTAL3') return totB * 0.276;
+                  if (rawUpper === 'OTHERS') return totB * 0.276 * 0.40;
+                  if (rawUpper === 'TOTALDEFI') return totB * 0.033;
+                  return totB;
+                };
+                return {
+                  time: b.time,
+                  open: Number(calcCap(b.open, e.open).toFixed(2)),
+                  high: Number(calcCap(b.high, e.high).toFixed(2)),
+                  low: Number(calcCap(b.low, e.low).toFixed(2)),
+                  close: Number(calcCap(b.close, e.close).toFixed(2)),
+                  volume: Math.round(b.volume * 0.4)
+                };
+              });
+            }
+          } catch (e) {}
         }
-      } catch (e) {}
+      }
+
+      // 1. Try internal backend API first
+      if (!dataCandles || dataCandles.length === 0) {
+        try {
+          const res = await fetch(`/api/market?chart=${encodeURIComponent(querySymbol)}&interval=${yInterval}&range=${yRange}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json?.status === 'success' && Array.isArray(json.candles) && json.candles.length > 0) {
+              dataCandles = json.candles;
+            }
+          }
+        } catch (e) {}
+      }
 
       // 2. Direct Yahoo Finance
       if (!dataCandles || dataCandles.length === 0) {
@@ -701,27 +927,28 @@ export default function NativeProChart({
     }
 
     // 3. Set EMA Series
+    // 3. Set EMA Series with user customizable periods
     if (ema20SeriesRef.current) {
-      ema20SeriesRef.current.setData(calcEMA(candles, 20));
+      ema20SeriesRef.current.setData(calcEMA(candles, indicatorSettings.ema1Period || 20));
     }
     if (ema50SeriesRef.current) {
-      ema50SeriesRef.current.setData(calcEMA(candles, 50));
+      ema50SeriesRef.current.setData(calcEMA(candles, indicatorSettings.ema2Period || 50));
     }
     if (ema200SeriesRef.current) {
-      ema200SeriesRef.current.setData(calcEMA(candles, 200));
+      ema200SeriesRef.current.setData(calcEMA(candles, indicatorSettings.ema3Period || 200));
     }
 
-    // 4. Set Bollinger Bands
+    // 4. Set Bollinger Bands with user customizable period & std dev
     if (bbUpperSeriesRef.current && bbMiddleSeriesRef.current && bbLowerSeriesRef.current) {
-      const bb = calcBollinger(candles, 20, 2);
+      const bb = calcBollinger(candles, indicatorSettings.bollingerPeriod || 20, indicatorSettings.bollingerStdDev || 2);
       bbUpperSeriesRef.current.setData(bb.upper);
       bbMiddleSeriesRef.current.setData(bb.middle);
       bbLowerSeriesRef.current.setData(bb.lower);
     }
 
-    // 5. Set RSI Series
+    // 5. Set RSI Series with user customizable period (e.g. 14 or 24)
     if (rsiSeriesRef.current) {
-      rsiSeriesRef.current.setData(calcRSI(candles, 14));
+      rsiSeriesRef.current.setData(calcRSI(candles, indicatorSettings.rsiPeriod || 14));
     }
 
     // 6. Draw / Update Portfolio Cost Line
@@ -750,6 +977,61 @@ export default function NativeProChart({
         });
         costPriceLineRef.current = costLine;
       }
+
+      // 7. Auto Support & Resistance Lines
+      autoSRLinesRef.current.forEach(line => {
+        try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
+      });
+      autoSRLinesRef.current = [];
+
+      if (indicators.autoSR && candles.length > 5) {
+        const { supports, resistances } = calcAutoSR(candles, indicatorSettings.srLookback || 25);
+        resistances.forEach((rPrice, idx) => {
+          const rLine = candlestickSeriesRef.current.createPriceLine({
+            price: rPrice,
+            color: '#ef4444',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `🔴 Direnç R${idx + 1}: ${rPrice}`
+          });
+          autoSRLinesRef.current.push(rLine);
+        });
+        supports.forEach((sPrice, idx) => {
+          const sLine = candlestickSeriesRef.current.createPriceLine({
+            price: sPrice,
+            color: '#10b981',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `🟢 Destek S${idx + 1}: ${sPrice}`
+          });
+          autoSRLinesRef.current.push(sLine);
+        });
+      }
+
+      // 8. Auto Fibonacci Retracement Lines
+      autoFibLinesRef.current.forEach(line => {
+        try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
+      });
+      autoFibLinesRef.current = [];
+
+      if (indicators.autoFib && candles.length > 10) {
+        const fibData = calcAutoFib(candles, indicatorSettings.fibLookback || 60);
+        if (fibData && fibData.levels) {
+          fibData.levels.forEach(lvl => {
+            const fibLine = candlestickSeriesRef.current.createPriceLine({
+              price: lvl.price,
+              color: lvl.color,
+              lineWidth: lvl.ratio === '0.618' || lvl.ratio === '0.500' ? 2 : 1,
+              lineStyle: lvl.ratio === '0.618' ? LineStyle.Solid : LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: `Fib ${lvl.label}: ${lvl.price.toFixed(2)}`
+            });
+            autoFibLinesRef.push(fibLine);
+          });
+        }
+      }
     }
 
     // Fit content smoothly on initial data load and recalculate SVG lines
@@ -758,7 +1040,7 @@ export default function NativeProChart({
     }
     requestAnimationFrame(() => recalcSvgLines());
     setTimeout(() => recalcSvgLines(), 150);
-  }, [candles, indicators, activeHolding, isBist, recalcSvgLines]);
+  }, [candles, indicators, indicatorSettings, activeHolding, isBist, recalcSvgLines]);
 
   // Synchronize Horizontal Drawings on Price Scale
   useEffect(() => {
@@ -964,7 +1246,7 @@ export default function NativeProChart({
             className={`chip-btn ${indicators.ema20 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema20 ? '#06b6d4' : 'inherit', borderColor: indicators.ema20 ? '#06b6d4' : 'rgba(255,255,255,0.1)' }}
           >
-            EMA 20
+            EMA {indicatorSettings.ema1Period || 20}
           </button>
 
           <button
@@ -973,7 +1255,7 @@ export default function NativeProChart({
             className={`chip-btn ${indicators.ema50 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema50 ? '#3b82f6' : 'inherit', borderColor: indicators.ema50 ? '#3b82f6' : 'rgba(255,255,255,0.1)' }}
           >
-            EMA 50
+            EMA {indicatorSettings.ema2Period || 50}
           </button>
 
           <button
@@ -982,7 +1264,7 @@ export default function NativeProChart({
             className={`chip-btn ${indicators.ema200 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema200 ? '#f59e0b' : 'inherit', borderColor: indicators.ema200 ? '#f59e0b' : 'rgba(255,255,255,0.1)' }}
           >
-            EMA 200
+            EMA {indicatorSettings.ema3Period || 200}
           </button>
 
           <button
@@ -1009,7 +1291,43 @@ export default function NativeProChart({
             className={`chip-btn ${indicators.rsi ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.rsi ? '#ec4899' : 'inherit', borderColor: indicators.rsi ? '#ec4899' : 'rgba(255,255,255,0.1)' }}
           >
-            RSI (14)
+            RSI ({indicatorSettings.rsiPeriod || 14})
+          </button>
+
+          {/* Otomatik Destek - Direnç Toggle */}
+          <button
+            type="button"
+            onClick={() => setIndicators(prev => ({ ...prev, autoSR: !prev.autoSR }))}
+            className={`chip-btn ${indicators.autoSR ? 'active' : ''}`}
+            style={{ 
+              fontSize: 9.5, 
+              padding: '2px 7px', 
+              color: indicators.autoSR ? '#10b981' : 'inherit', 
+              borderColor: indicators.autoSR ? '#10b981' : 'rgba(255,255,255,0.1)',
+              background: indicators.autoSR ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+              fontWeight: indicators.autoSR ? 700 : 500
+            }}
+            title="Otomatik Destek ve Direnç Seviyeleri (Pivot Kümeleri)"
+          >
+            🎯 Destek/Direnç
+          </button>
+
+          {/* Dinamik Otomatik Fibonacci Toggle */}
+          <button
+            type="button"
+            onClick={() => setIndicators(prev => ({ ...prev, autoFib: !prev.autoFib }))}
+            className={`chip-btn ${indicators.autoFib ? 'active' : ''}`}
+            style={{ 
+              fontSize: 9.5, 
+              padding: '2px 7px', 
+              color: indicators.autoFib ? '#38bdf8' : 'inherit', 
+              borderColor: indicators.autoFib ? '#38bdf8' : 'rgba(255,255,255,0.1)',
+              background: indicators.autoFib ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              fontWeight: indicators.autoFib ? 700 : 500
+            }}
+            title="Otomatik Dinamik Fibonacci Geri Çekilme (0.618 Altın Oran Dahil)"
+          >
+            📐 Dinamik Fib
           </button>
 
           {holdingInfo && (
@@ -1023,6 +1341,26 @@ export default function NativeProChart({
               🏷️ Maliyet Çizgisi
             </button>
           )}
+
+          {/* ⚙️ İndikatör Ayarları Butonu */}
+          <button
+            type="button"
+            onClick={() => setShowSettingsModal(true)}
+            className="chip-btn"
+            style={{ 
+              fontSize: 9.5, 
+              padding: '2px 7px', 
+              color: 'var(--cyan)', 
+              borderColor: 'rgba(0, 229, 255, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3
+            }}
+            title="İndikatör Periyot ve Analiz Ayarları (RSI, EMA, Fib vb.)"
+          >
+            <Sliders size={11} />
+            <span>Ayarlar</span>
+          </button>
         </div>
 
         {/* Right: Çizim Araçları (Kalıcı) & Çizim Yönetimi */}
@@ -1417,7 +1755,7 @@ export default function NativeProChart({
               gap: 6
             }}
           >
-            <span>RSI (14)</span>
+            <span>RSI ({indicatorSettings.rsiPeriod || 14})</span>
             <span style={{ color: '#64748b' }}>• 70 / 30 Seviyeleri</span>
           </div>
           <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
@@ -1445,6 +1783,210 @@ export default function NativeProChart({
           Fare Tekerleği: Yakınlaştır / Uzaklaştır • Sürükle: Geçmişe Kaydır
         </span>
       </div>
+
+      {/* ⚙️ İNDİKATÖR & ANALİZ AYARLARI MODAL POPUP */}
+      {showSettingsModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.78)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999
+          }}
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div
+            style={{
+              background: '#090d1a',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              borderRadius: 12,
+              padding: '20px 24px',
+              width: 440,
+              maxWidth: '92vw',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.95)',
+              color: '#f8fafc'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Başlık */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Sliders size={18} style={{ color: 'var(--cyan)' }} />
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f8fafc' }}>
+                  İndikatör & Analiz Ayarları
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13, fontSize: 12 }}>
+              {/* RSI Periyodu */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(236, 72, 153, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#ec4899' }}>RSI Periyodu</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Varsayılan 14 • Uzun vade ve trend için 24 idealdir</div>
+                </div>
+                <input
+                  type="number"
+                  min={2}
+                  max={100}
+                  value={indicatorSettings.rsiPeriod}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, rsiPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(236, 72, 153, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* EMA 1 Periyodu */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(6, 182, 212, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#06b6d4' }}>EMA 1 (Hızlı)</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Kısa vadeli momentum (Varsayılan: 20)</div>
+                </div>
+                <input
+                  type="number"
+                  min={2}
+                  max={500}
+                  value={indicatorSettings.ema1Period}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, ema1Period: Math.max(2, parseInt(e.target.value) || 20) }))}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(6, 182, 212, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* EMA 2 Periyodu */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#3b82f6' }}>EMA 2 (Orta Vade)</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Trend omurgası (Varsayılan: 50)</div>
+                </div>
+                <input
+                  type="number"
+                  min={2}
+                  max={500}
+                  value={indicatorSettings.ema2Period}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, ema2Period: Math.max(2, parseInt(e.target.value) || 50) }))}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(59, 130, 246, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* EMA 3 Periyodu */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(245, 158, 11, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#f59e0b' }}>EMA 3 (Ana Trend)</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Boğa/Ayı sınırı (Varsayılan: 200)</div>
+                </div>
+                <input
+                  type="number"
+                  min={2}
+                  max={500}
+                  value={indicatorSettings.ema3Period}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, ema3Period: Math.max(2, parseInt(e.target.value) || 200) }))}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* Bollinger Ayarları */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(192, 132, 252, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#c084fc' }}>Bollinger Bantları</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Periyot & Sapma (Varsayılan: 20, 2σ)</div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="number"
+                    min={5}
+                    max={100}
+                    value={indicatorSettings.bollingerPeriod}
+                    onChange={e => setIndicatorSettings(prev => ({ ...prev, bollingerPeriod: Math.max(5, parseInt(e.target.value) || 20) }))}
+                    style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    title="Periyot"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={5}
+                    step={0.5}
+                    value={indicatorSettings.bollingerStdDev}
+                    onChange={e => setIndicatorSettings(prev => ({ ...prev, bollingerStdDev: Math.max(1, parseFloat(e.target.value) || 2) }))}
+                    style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    title="Sapma Çarpanı (StdDev)"
+                  />
+                </div>
+              </div>
+
+              {/* Otomatik Fibonacci Lookback */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#38bdf8' }}>Dinamik Fibonacci Lookback</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Swing Tepe/Dip arama penceresi (Varsayılan: 60 bar)</div>
+                </div>
+                <input
+                  type="number"
+                  min={15}
+                  max={300}
+                  value={indicatorSettings.fibLookback}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, fibLookback: Math.max(15, parseInt(e.target.value) || 60) }))}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* Otomatik Destek-Direnç Hassasiyeti */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#10b981' }}>Destek / Direnç Lookback</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Pivot kümelenme aralığı (Varsayılan: 25 bar)</div>
+                </div>
+                <input
+                  type="number"
+                  min={10}
+                  max={150}
+                  value={indicatorSettings.srLookback}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, srLookback: Math.max(10, parseInt(e.target.value) || 25) }))}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(16, 185, 129, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Alt Butonları */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <button
+                type="button"
+                onClick={() => setIndicatorSettings({
+                  rsiPeriod: 14,
+                  ema1Period: 20,
+                  ema2Period: 50,
+                  ema3Period: 200,
+                  bollingerPeriod: 20,
+                  bollingerStdDev: 2,
+                  fibLookback: 60,
+                  srLookback: 25
+                })}
+                className="chip-btn"
+                style={{ fontSize: 11, padding: '5px 12px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+              >
+                Varsayılana Sıfırla
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                className="chip-btn"
+                style={{ fontSize: 11, padding: '5px 16px', background: 'var(--cyan)', color: '#000', fontWeight: 700, border: 'none' }}
+              >
+                Uygula & Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
