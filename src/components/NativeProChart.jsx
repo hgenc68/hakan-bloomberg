@@ -979,58 +979,66 @@ export default function NativeProChart({
       }
 
       // 7. Auto Support & Resistance Lines
-      autoSRLinesRef.current.forEach(line => {
-        try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
-      });
-      autoSRLinesRef.current = [];
+      try {
+        autoSRLinesRef.current.forEach(line => {
+          try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
+        });
+        autoSRLinesRef.current = [];
 
-      if (indicators.autoSR && candles.length > 5) {
-        const { supports, resistances } = calcAutoSR(candles, indicatorSettings.srLookback || 25);
-        resistances.forEach((rPrice, idx) => {
-          const rLine = candlestickSeriesRef.current.createPriceLine({
-            price: rPrice,
-            color: '#ef4444',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: `🔴 Direnç R${idx + 1}: ${rPrice}`
+        if (indicators.autoSR && candles.length > 5) {
+          const { supports, resistances } = calcAutoSR(candles, indicatorSettings.srLookback || 25);
+          resistances.forEach((rPrice, idx) => {
+            const rLine = candlestickSeriesRef.current.createPriceLine({
+              price: rPrice,
+              color: '#ef4444',
+              lineWidth: 1,
+              lineStyle: LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: `🔴 Direnç R${idx + 1}: ${rPrice}`
+            });
+            autoSRLinesRef.current.push(rLine);
           });
-          autoSRLinesRef.current.push(rLine);
-        });
-        supports.forEach((sPrice, idx) => {
-          const sLine = candlestickSeriesRef.current.createPriceLine({
-            price: sPrice,
-            color: '#10b981',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: `🟢 Destek S${idx + 1}: ${sPrice}`
+          supports.forEach((sPrice, idx) => {
+            const sLine = candlestickSeriesRef.current.createPriceLine({
+              price: sPrice,
+              color: '#10b981',
+              lineWidth: 1,
+              lineStyle: LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: `🟢 Destek S${idx + 1}: ${sPrice}`
+            });
+            autoSRLinesRef.current.push(sLine);
           });
-          autoSRLinesRef.current.push(sLine);
-        });
+        }
+      } catch (err) {
+        console.warn('Auto SR drawing error:', err);
       }
 
       // 8. Auto Fibonacci Retracement Lines
-      autoFibLinesRef.current.forEach(line => {
-        try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
-      });
-      autoFibLinesRef.current = [];
+      try {
+        autoFibLinesRef.current.forEach(line => {
+          try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
+        });
+        autoFibLinesRef.current = [];
 
-      if (indicators.autoFib && candles.length > 10) {
-        const fibData = calcAutoFib(candles, indicatorSettings.fibLookback || 60);
-        if (fibData && fibData.levels) {
-          fibData.levels.forEach(lvl => {
-            const fibLine = candlestickSeriesRef.current.createPriceLine({
-              price: lvl.price,
-              color: lvl.color,
-              lineWidth: lvl.ratio === '0.618' || lvl.ratio === '0.500' ? 2 : 1,
-              lineStyle: lvl.ratio === '0.618' ? LineStyle.Solid : LineStyle.Dashed,
-              axisLabelVisible: true,
-              title: `Fib ${lvl.label}: ${lvl.price.toFixed(2)}`
+        if (indicators.autoFib && candles.length > 10) {
+          const fibData = calcAutoFib(candles, indicatorSettings.fibLookback || 60);
+          if (fibData && fibData.levels) {
+            fibData.levels.forEach(lvl => {
+              const fibLine = candlestickSeriesRef.current.createPriceLine({
+                price: lvl.price,
+                color: lvl.color,
+                lineWidth: lvl.ratio === '0.618' || lvl.ratio === '0.500' ? 2 : 1,
+                lineStyle: lvl.ratio === '0.618' ? LineStyle.Solid : LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `Fib ${lvl.label}: ${lvl.price.toFixed(2)}`
+              });
+              autoFibLinesRef.current.push(fibLine);
             });
-            autoFibLinesRef.push(fibLine);
-          });
+          }
         }
+      } catch (err) {
+        console.warn('Auto Fib drawing error:', err);
       }
     }
 
