@@ -250,26 +250,8 @@ export default function NativeProChart({
     }
 
     try {
-      // 1. Try internal backend API first
-      let dataCandles = null;
-      try {
-        const res = await fetch(`/api/market?chart=${encodeURIComponent(querySymbol)}&interval=${yInterval}&range=${yRange}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.status === 'success' && Array.isArray(json.candles) && json.candles.length > 0) {
-            dataCandles = json.candles;
-          }
-        }
-      } catch (e) {
-        // Fallback to client-side Yahoo fetch if API fails or local Vite dev
-      }
-
-      // 2. Direct Yahoo Finance fallback if API did not return data
-      if (!dataCandles || dataCandles.length === 0) {
-        const directUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=${yInterval}&range=${yRange}`;
-        const resp = await fetch(directUrl);
-        if (!resp.ok) throw new Error(`Veri sunucusundan yanıt alınamadı (${resp.status})`);
-        const j = await resp.json();
+      // Helper to parse Yahoo chart JSON
+      const parseYahooJson = (j) => {
         const timestamps = j?.chart?.result?.[0]?.timestamp || [];
         const q = j?.chart?.result?.[0]?.indicators?.quote?.[0] || {};
         const opens = q.open || [];
@@ -277,7 +259,6 @@ export default function NativeProChart({
         const lows = q.low || [];
         const closes = q.close || [];
         const vols = q.volume || [];
-
         const isIntraday = yInterval.includes('m') || yInterval.includes('h');
         const parsed = [];
 
@@ -302,7 +283,63 @@ export default function NativeProChart({
             });
           }
         }
-        dataCandles = parsed;
+        return parsed;
+      };
+
+      let dataCandles = null;
+
+      // 1. Try internal backend API first
+      try {
+        const res = await fetch(`/api/market?chart=${encodeURIComponent(querySymbol)}&interval=${yInterval}&range=${yRange}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.status === 'success' && Array.isArray(json.candles) && json.candles.length > 0) {
+            dataCandles = json.candles;
+          }
+        }
+      } catch (e) {
+        console.warn('Internal /api/market endpoint unavailable, trying direct & CORS fallback...');
+      }
+
+      // 2. Direct Yahoo Finance
+      if (!dataCandles || dataCandles.length === 0) {
+        const directUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=${yInterval}&range=${yRange}`;
+        try {
+          const resp = await fetch(directUrl);
+          if (resp.ok) {
+            const j = await resp.json();
+            const parsed = parseYahooJson(j);
+            if (parsed.length > 0) dataCandles = parsed;
+          }
+        } catch (e) {}
+      }
+
+      // 3. Resilient CORS proxy fallback (corsproxy.io)
+      if (!dataCandles || dataCandles.length === 0) {
+        try {
+          const directUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=${yInterval}&range=${yRange}`;
+          const corsUrl = `https://corsproxy.io/?url=${encodeURIComponent(directUrl)}`;
+          const resp = await fetch(corsUrl);
+          if (resp.ok) {
+            const j = await resp.json();
+            const parsed = parseYahooJson(j);
+            if (parsed.length > 0) dataCandles = parsed;
+          }
+        } catch (e) {}
+      }
+
+      // 4. Secondary CORS proxy fallback (allorigins.win)
+      if (!dataCandles || dataCandles.length === 0) {
+        try {
+          const directUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=${yInterval}&range=${yRange}`;
+          const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`;
+          const resp = await fetch(allOriginsUrl);
+          if (resp.ok) {
+            const j = await resp.json();
+            const parsed = parseYahooJson(j);
+            if (parsed.length > 0) dataCandles = parsed;
+          }
+        } catch (e) {}
       }
 
       if (!dataCandles || dataCandles.length === 0) {
