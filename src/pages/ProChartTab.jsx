@@ -287,10 +287,10 @@ export function getTradingViewSymbol(ticker) {
   if (clean === 'SPCX') return 'SPCX';
   if (clean === 'CUSD') return 'AMEX:CUSD';
   if (clean === 'DRAM') return 'DRAM';
-  if (clean === 'SGOV') return 'NASDAQ:SGOV';
+  if (clean === 'SGOV') return 'NYSE:SGOV';
   if (clean === 'IEF') return 'NASDAQ:IEF';
   if (clean === 'TLT') return 'NASDAQ:TLT';
-  if (clean === 'SHV') return 'NASDAQ:SHV';
+  if (clean === 'SHV') return 'NYSE:SHV';
   if (clean === 'BIL') return 'AMEX:BIL';
   if (clean === 'BND') return 'NASDAQ:BND';
   if (clean === 'SOXX') return 'NASDAQ:SOXX';
@@ -350,7 +350,7 @@ const PRESET_WATCHLISTS = {
   etf: [
     { ticker: 'DRAM', name: 'D-RAM Bellek Teknoloji ETF', desc: 'Portföy ETF Varlığı • 5.00 Lot', tv: 'DRAM', isHolding: true },
     { ticker: 'CUSD', name: 'Coinbase USD Yield ETF', desc: 'Portföy Nakit Getiri Fonu', tv: 'AMEX:CUSD', isHolding: true },
-    { ticker: 'SGOV', name: 'iShares 0-3 Month Treasury', desc: 'Ultra Kısa Vadeli Risksiz Dolar Faizi (0-3 Ay)', tv: 'NASDAQ:SGOV' },
+    { ticker: 'SGOV', name: 'iShares 0-3 Month Treasury', desc: 'Ultra Kısa Vadeli Risksiz Dolar Faizi (0-3 Ay)', tv: 'NYSE:SGOV' },
     { ticker: 'IEF', name: 'iShares 7-10 Year Treasury', desc: 'Orta Vadeli ABD Gösterge Tahvili (7-10Y)', tv: 'NASDAQ:IEF' },
     { ticker: 'TLT', name: 'iShares 20+ Year Treasury', desc: 'Uzun Vadeli ABD Hazine Tahvilleri (20Y+)', tv: 'NASDAQ:TLT' },
     { ticker: 'SOXX', name: 'iShares Semiconductor ETF', desc: 'ABD Yarı İletken Sektör Sepeti', tv: 'NASDAQ:SOXX' },
