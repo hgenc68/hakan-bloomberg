@@ -758,18 +758,20 @@ export default function NativeProChart({
       ema20SeriesRef.current = mainChart.addSeries(LineSeries, {
         color: '#06b6d4',
         lineWidth: 1.5,
+        priceLineVisible: false,
+        lastValueVisible: true,
         title: 'EMA 20'
       });
     } else {
       ema20SeriesRef.current = null;
     }
 
-    // EMA 50: Çizgiye gerek yok, yalnızca sağ skalada mavi "EMA 50" fiyat etiketi olarak görünür
+    // EMA 50: Trend eğrisi aktif (lineVisible: true), yatay kesikli fiyat çizgisi kapalı (priceLineVisible: false), sağ eksende mavi fiyat etiketi aktif
     if (indicators.ema50) {
       ema50SeriesRef.current = mainChart.addSeries(LineSeries, {
         color: '#3b82f6',
-        lineWidth: 1,
-        lineVisible: false,
+        lineWidth: 1.5,
+        lineVisible: true,
         priceLineVisible: false,
         lastValueVisible: true,
         title: 'EMA 50'
@@ -782,6 +784,8 @@ export default function NativeProChart({
       ema200SeriesRef.current = mainChart.addSeries(LineSeries, {
         color: '#f59e0b',
         lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
         title: 'EMA 200'
       });
     } else {
@@ -793,17 +797,23 @@ export default function NativeProChart({
         color: '#c084fc',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: true,
         title: 'BB Üst'
       });
       bbMiddleSeriesRef.current = mainChart.addSeries(LineSeries, {
         color: '#a855f7',
         lineWidth: 1.5,
+        priceLineVisible: false,
+        lastValueVisible: true,
         title: 'BB Orta (20)'
       });
       bbLowerSeriesRef.current = mainChart.addSeries(LineSeries, {
         color: '#c084fc',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: true,
         title: 'BB Alt'
       });
     } else {
@@ -1274,9 +1284,9 @@ export default function NativeProChart({
             onClick={() => setIndicators(prev => ({ ...prev, ema50: !prev.ema50 }))}
             className={`chip-btn ${indicators.ema50 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema50 ? '#3b82f6' : 'inherit', borderColor: indicators.ema50 ? '#3b82f6' : 'rgba(255,255,255,0.1)' }}
-            title="EMA 50 seviyesini sağ fiyat skalasında mavi etiket olarak gösterir (çizgisiz sade görünüm)"
+            title="EMA 50 hareketli ortalama trend eğrisi (kesikli yatay fiyat çizgisi kapalı, sade görünüm)"
           >
-            EMA {indicatorSettings.ema2Period || 50} (Etiket)
+            EMA {indicatorSettings.ema2Period || 50}
           </button>
 
           <button
