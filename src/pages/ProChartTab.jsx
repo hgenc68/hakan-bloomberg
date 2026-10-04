@@ -1309,27 +1309,77 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     );
   }, [activeCategory, portfolioItems, isCustomActive, currentCustomList, searchQuery, stocksData, potentialStocksData]);
 
-  // Find user's holding data if they own this stock
+  // Find user's holding data if they own this stock (robust across BIST, US, and Crypto aliases)
   const activeHolding = useMemo(() => {
-    const rawClean = cleanActiveTicker.replace('.IS', '');
+    function normalizeTicker(t) {
+      if (!t) return '';
+      let s = String(t).toUpperCase().trim();
+      if (s.includes(':')) s = s.split(':')[1];
+      s = s.replace('.IS', '');
+      if (s.endsWith('USDT')) s = s.slice(0, -4);
+      if (s.endsWith('-USD')) s = s.slice(0, -4);
+      if (s.endsWith('USD') && !s.includes('-') && !s.includes('=')) s = s.slice(0, -3);
+      return s;
+    }
+
+    const baseTarget = normalizeTicker(cleanActiveTicker);
     const all = (portfolioSummary?.enrichedHoldings && portfolioSummary.enrichedHoldings.length > 0)
       ? portfolioSummary.enrichedHoldings
       : (holdings || []);
-    return all.find(h => {
+
+    const match = all.find(h => {
       const hTicker = (h.ticker || '').toUpperCase().trim();
-      const hClean = (h.clean_ticker || hTicker).replace('.IS', '').toUpperCase().trim();
-      return hTicker === cleanActiveTicker || hClean === cleanActiveTicker || hClean === rawClean || hTicker === rawClean;
-    }) || null;
-  }, [portfolioSummary, holdings, cleanActiveTicker]);
+      const hClean = (h.clean_ticker || hTicker).toUpperCase().trim();
+      const hCleanTicker = (h.cleanTicker || '').toUpperCase().trim();
+      return normalizeTicker(hTicker) === baseTarget || 
+             normalizeTicker(hClean) === baseTarget || 
+             normalizeTicker(hCleanTicker) === baseTarget;
+    });
+
+    if (!match) return null;
+
+    // Currency normalization for the chart:
+    // If isBistStock, chart is quoted in TRY.
+    // If Crypto or US, chart is quoted in USD.
+    const isTRYChart = isBistStock;
+    const rate = Number(match.cost_rate) > 1.5 ? Number(match.cost_rate) : (usdtry || 49.03);
+
+    let unitCostTRY = 0;
+    let unitCostUSD = 0;
+
+    if (match.isHoldingUSD || match.currency === 'USD') {
+      unitCostUSD = (match.costUSD && match.shares) ? (match.costUSD / match.shares) : (match.avg_cost || match.costBasis || match.avgPrice || 0);
+      unitCostTRY = unitCostUSD * rate;
+    } else {
+      unitCostTRY = (match.costTRY && match.shares) ? (match.costTRY / match.shares) : (match.avg_cost || match.costBasis || match.avgPrice || 0);
+      unitCostUSD = rate > 0 ? (unitCostTRY / rate) : 0;
+    }
+
+    const chartUnitCost = isTRYChart ? unitCostTRY : unitCostUSD;
+    const chartCurrency = isTRYChart ? 'TRY' : 'USD';
+    const chartSymMark = isTRYChart ? '₺' : '$';
+
+    return {
+      ...match,
+      unitCostTRY,
+      unitCostUSD,
+      chartUnitCost,
+      chartCurrency,
+      chartSymMark,
+      holdingCost: chartUnitCost,
+      shares: match.shares || match.quantity || 0,
+      returnPct: match.returnPct !== undefined ? match.returnPct : 0
+    };
+  }, [portfolioSummary, holdings, cleanActiveTicker, isBistStock, usdtry]);
 
   // Portfolio Buy Zone & Valuation Analysis
   const buyZoneAnalysis = useMemo(() => {
     const rawClean = cleanActiveTicker.replace('.IS', '');
     const sData = stocksData[cleanActiveTicker] || stocksData[rawClean] || potentialStocksData[cleanActiveTicker] || potentialStocksData[rawClean];
     const hasHolding = !!activeHolding;
-    const holdingCost = activeHolding ? (activeHolding.avgPrice || activeHolding.costBasis || activeHolding.avg_cost || 0) : null;
-    const holdingCurrency = activeHolding ? activeHolding.currency : (sData?.currency || (isBistStock ? 'TRY' : 'USD'));
-    const symMark = holdingCurrency === 'TRY' ? '₺' : '$';
+    const holdingCost = activeHolding ? activeHolding.chartUnitCost : null;
+    const holdingCurrency = activeHolding ? activeHolding.chartCurrency : (sData?.currency || (isBistStock ? 'TRY' : 'USD'));
+    const symMark = activeHolding ? activeHolding.chartSymMark : (holdingCurrency === 'TRY' ? '₺' : '$');
 
     const livePrice = activeHolding?.currentPrice || sData?.price?.current || 100;
     const fairValue = sData?.valuation?.targetPrice || sData?.dcfValuation?.fairValue || (livePrice * 1.25);
@@ -1820,6 +1870,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             cleanTicker={cleanActiveTicker}
             isBist={isBistStock}
             activeHolding={activeHolding}
+            usdtry={usdtry}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             sessionTimer={sessionTimer}

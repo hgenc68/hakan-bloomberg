@@ -17,11 +17,7 @@ import {
   RotateCcw, 
   Plus, 
   Activity, 
-  Eye, 
-  EyeOff,
   Layers,
-  HelpCircle,
-  Check,
   X,
   ExternalLink
 } from 'lucide-react';
@@ -113,11 +109,35 @@ function resampleCandles(candles, groupSize) {
   return res;
 }
 
+// Universal ticker normalizer across aliases (e.g. BTCUSDT -> BTC, BTC-USD -> BTC, THYAO.IS -> THYAO)
+export function normalizeTicker(t) {
+  if (!t) return '';
+  let s = String(t).toUpperCase().trim();
+  if (s.includes(':')) s = s.split(':')[1];
+  s = s.replace('.IS', '');
+  if (s.endsWith('USDT')) s = s.slice(0, -4);
+  if (s.endsWith('-USD')) s = s.slice(0, -4);
+  if (s.endsWith('USD') && !s.includes('-') && !s.includes('=')) s = s.slice(0, -3);
+  return s;
+}
+
+// Normalize Lightweight Charts time object { year, month, day } to 'YYYY-MM-DD'
+function normalizeChartTime(time) {
+  if (!time) return null;
+  if (typeof time === 'object' && time.year) {
+    const m = String(time.month).padStart(2, '0');
+    const d = String(time.day).padStart(2, '0');
+    return `${time.year}-${m}-${d}`;
+  }
+  return time;
+}
+
 export default function NativeProChart({
   symbol,
   cleanTicker,
   isBist = false,
   activeHolding = null,
+  usdtry = 49.03,
   isFullscreen = false,
   onToggleFullscreen,
   sessionTimer = { status: 'open', text: '', badge: '' },
@@ -125,7 +145,6 @@ export default function NativeProChart({
 }) {
   const chartContainerRef = useRef(null);
   const rsiContainerRef = useRef(null);
-  const svgOverlayRef = useRef(null);
 
   const chartInstanceRef = useRef(null);
   const rsiChartInstanceRef = useRef(null);
@@ -152,6 +171,9 @@ export default function NativeProChart({
   const [loadError, setLoadError] = useState(null);
   const [hoverData, setHoverData] = useState(null);
 
+  // Dynamic SVG Trendline Coordinates state
+  const [svgTrendlines, setSvgTrendlines] = useState([]);
+
   // Drawing Tools State
   // Modes: null, 'horizontal', 'trendline'
   const [activeDrawTool, setActiveDrawTool] = useState(null);
@@ -159,7 +181,7 @@ export default function NativeProChart({
   const [mousePreviewPoint, setMousePreviewPoint] = useState(null);
   const [showDrawingsList, setShowDrawingsList] = useState(false);
 
-  // User persistent drawings per symbol
+  // User persistent drawings per base symbol
   // { horizontals: [{ id, price, label, color }], trendlines: [{ id, p1: { time, price }, p2: { time, price }, color }] }
   const [drawings, setDrawings] = useState({ horizontals: [], trendlines: [] });
 
@@ -188,7 +210,10 @@ export default function NativeProChart({
   }, [indicators]);
 
   // Load symbol's drawings from localStorage whenever symbol changes
-  const storageKey = `terminal_drawings_${cleanTicker || symbol}`;
+  // Uses normalized base symbol (e.g. 'BTC' whether ticker is BTCUSDT, BTC-USD, or BTC)
+  const baseSymbol = normalizeTicker(cleanTicker || symbol);
+  const storageKey = `terminal_drawings_${baseSymbol}`;
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -203,7 +228,7 @@ export default function NativeProChart({
     setActiveDrawTool(null);
     setTrendStartPoint(null);
     setMousePreviewPoint(null);
-  }, [storageKey, cleanTicker, symbol]);
+  }, [storageKey]);
 
   // Persist drawings to localStorage
   const saveDrawings = useCallback((newDrawings) => {
@@ -212,6 +237,37 @@ export default function NativeProChart({
       localStorage.setItem(storageKey, JSON.stringify(newDrawings));
     } catch (e) {}
   }, [storageKey]);
+
+  // Re-calculate SVG trendline pixel coordinates from timeScale and priceScale
+  const recalcSvgLines = useCallback(() => {
+    if (!chartInstanceRef.current || !candlestickSeriesRef.current) return;
+    const timeScale = chartInstanceRef.current.timeScale();
+    const series = candlestickSeriesRef.current;
+
+    const lines = (drawings.trendlines || []).map(t => {
+      const x1 = timeScale.timeToCoordinate(t.p1.time);
+      const y1 = series.priceToCoordinate(t.p1.price);
+      const x2 = timeScale.timeToCoordinate(t.p2.time);
+      const y2 = series.priceToCoordinate(t.p2.price);
+      return {
+        ...t,
+        x1, y1, x2, y2,
+        valid: x1 !== null && y1 !== null && x2 !== null && y2 !== null
+      };
+    });
+    setSvgTrendlines(lines);
+  }, [drawings.trendlines]);
+
+  // Trigger SVG lines recalculation on drawings or candle change
+  useEffect(() => {
+    recalcSvgLines();
+    const rId = requestAnimationFrame(() => recalcSvgLines());
+    const tId = setTimeout(() => recalcSvgLines(), 150);
+    return () => {
+      cancelAnimationFrame(rId);
+      clearTimeout(tId);
+    };
+  }, [recalcSvgLines, candles]);
 
   // Fetch candle data for current symbol & interval
   const fetchSymbolCandles = useCallback(async () => {
@@ -297,9 +353,7 @@ export default function NativeProChart({
             dataCandles = json.candles;
           }
         }
-      } catch (e) {
-        console.warn('Internal /api/market endpoint unavailable, trying direct & CORS fallback...');
-      }
+      } catch (e) {}
 
       // 2. Direct Yahoo Finance
       if (!dataCandles || dataCandles.length === 0) {
@@ -314,7 +368,7 @@ export default function NativeProChart({
         } catch (e) {}
       }
 
-      // 3. Resilient CORS proxy fallback (corsproxy.io)
+      // 3. Resilient CORS proxy fallback 1 (corsproxy.io)
       if (!dataCandles || dataCandles.length === 0) {
         try {
           const directUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=${yInterval}&range=${yRange}`;
@@ -328,7 +382,7 @@ export default function NativeProChart({
         } catch (e) {}
       }
 
-      // 4. Secondary CORS proxy fallback (allorigins.win)
+      // 4. Resilient CORS proxy fallback 2 (allorigins.win)
       if (!dataCandles || dataCandles.length === 0) {
         try {
           const directUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=${yInterval}&range=${yRange}`;
@@ -392,14 +446,13 @@ export default function NativeProChart({
 
     const container = chartContainerRef.current;
     const width = container.clientWidth || 800;
-    const totalHeight = container.clientHeight || 600;
-    const rsiHeight = indicators.rsi ? 110 : 0;
-    const mainHeight = totalHeight - rsiHeight;
+    // Main chart fills the entire height of containerRef (no subtraction, zero gap above RSI)
+    const height = container.clientHeight || 480;
 
     // 1. Create Main Candlestick Chart
     const mainChart = createChart(container, {
       width,
-      height: mainHeight > 250 ? mainHeight : 450,
+      height,
       layout: {
         background: { type: 'solid', color: '#040711' },
         textColor: '#94a3b8',
@@ -427,7 +480,7 @@ export default function NativeProChart({
         borderColor: 'rgba(255, 255, 255, 0.1)',
         autoScale: true,
         scaleMargins: {
-          top: 0.1,
+          top: 0.08,
           bottom: indicators.volume ? 0.22 : 0.05
         }
       },
@@ -523,12 +576,12 @@ export default function NativeProChart({
       bbLowerSeriesRef.current = null;
     }
 
-    // 2. Create RSI Sub-Chart (if active)
+    // 2. Create RSI Sub-Chart (if active, height: 95px, tight against main chart)
     if (indicators.rsi && rsiContainerRef.current) {
       const rsiContainer = rsiContainerRef.current;
       const rsiChart = createChart(rsiContainer, {
         width,
-        height: 110,
+        height: 95,
         layout: {
           background: { type: 'solid', color: '#03050c' },
           textColor: '#64748b',
@@ -540,7 +593,7 @@ export default function NativeProChart({
         },
         rightPriceScale: {
           borderColor: 'rgba(255, 255, 255, 0.08)',
-          scaleMargins: { top: 0.15, bottom: 0.15 }
+          scaleMargins: { top: 0.12, bottom: 0.12 }
         },
         timeScale: {
           visible: false,
@@ -596,26 +649,22 @@ export default function NativeProChart({
 
     // Subscribe to time scale change to sync SVG trendlines
     mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-      // Force SVG overlay re-render
-      if (svgOverlayRef.current) {
-        svgOverlayRef.current.style.opacity = '0.99';
-        setTimeout(() => {
-          if (svgOverlayRef.current) svgOverlayRef.current.style.opacity = '1';
-        }, 10);
-      }
+      recalcSvgLines();
+    });
+    mainChart.timeScale().subscribeVisibleTimeRangeChange(() => {
+      recalcSvgLines();
     });
 
     // Resize Observer for auto responsive sizing
     const resizeObserver = new ResizeObserver(entries => {
       if (!entries || !entries[0] || !chartInstanceRef.current) return;
-      const { width: newWidth, height: newTotalHeight } = entries[0].contentRect;
-      if (newWidth > 0 && newTotalHeight > 0) {
-        const curRsiHeight = indicators.rsi ? 110 : 0;
-        const curMainHeight = Math.max(250, newTotalHeight - curRsiHeight);
-        chartInstanceRef.current.resize(newWidth, curMainHeight);
-        if (rsiChartInstanceRef.current) {
-          rsiChartInstanceRef.current.resize(newWidth, 110);
+      const { width: newWidth, height: newHeight } = entries[0].contentRect;
+      if (newWidth > 0 && newHeight > 0) {
+        chartInstanceRef.current.resize(newWidth, newHeight);
+        if (rsiChartInstanceRef.current && rsiContainerRef.current) {
+          rsiChartInstanceRef.current.resize(newWidth, 95);
         }
+        recalcSvgLines();
       }
     });
 
@@ -632,7 +681,7 @@ export default function NativeProChart({
         rsiChartInstanceRef.current = null;
       }
     };
-  }, [indicators, chartInterval]);
+  }, [indicators, chartInterval, recalcSvgLines]);
 
   // Push candle data & indicators to series whenever candles update
   useEffect(() => {
@@ -684,26 +733,32 @@ export default function NativeProChart({
         costPriceLineRef.current = null;
       }
 
-      const holdingCost = activeHolding ? (activeHolding.avgPrice || activeHolding.costBasis || activeHolding.avg_cost || 0) : 0;
+      // Read normalized cost matching the chart's quotation currency (TRY for BIST, USD for Crypto/US)
+      const holdingCost = activeHolding 
+        ? (activeHolding.chartUnitCost || activeHolding.holdingCost || activeHolding.avgPrice || activeHolding.costBasis || activeHolding.avg_cost || 0) 
+        : 0;
+
       if (indicators.costLine && holdingCost > 0) {
-        const symMark = activeHolding?.currency === 'TRY' || isBist ? '₺' : '$';
+        const symMark = activeHolding?.chartSymMark || (isBist ? '₺' : '$');
         const costLine = candlestickSeriesRef.current.createPriceLine({
           price: Number(holdingCost),
           color: '#eab308', // Gold / Amber
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `🏷️ MALİYET (${symMark}${holdingCost.toFixed(2)})`
+          title: `🏷️ MALİYET (${symMark}${holdingCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
         });
         costPriceLineRef.current = costLine;
       }
     }
 
-    // Fit content smoothly on initial data load
+    // Fit content smoothly on initial data load and recalculate SVG lines
     if (chartInstanceRef.current) {
       chartInstanceRef.current.timeScale().fitContent();
     }
-  }, [candles, indicators, activeHolding, isBist]);
+    requestAnimationFrame(() => recalcSvgLines());
+    setTimeout(() => recalcSvgLines(), 150);
+  }, [candles, indicators, activeHolding, isBist, recalcSvgLines]);
 
   // Synchronize Horizontal Drawings on Price Scale
   useEffect(() => {
@@ -743,7 +798,8 @@ export default function NativeProChart({
     const y = e.clientY - rect.top;
 
     const price = candlestickSeriesRef.current.coordinateToPrice(y);
-    const time = chartInstanceRef.current.timeScale().coordinateToTime(x);
+    const rawTime = chartInstanceRef.current.timeScale().coordinateToTime(x);
+    const clickedTime = normalizeChartTime(rawTime) || (candles[candles.length - 1]?.time);
 
     if (price === null || isNaN(price)) return;
 
@@ -762,7 +818,7 @@ export default function NativeProChart({
     } else if (activeDrawTool === 'trendline') {
       if (!trendStartPoint) {
         // First click sets Point A
-        setTrendStartPoint({ time: time || (candles[candles.length - 1]?.time), price: Number(price.toFixed(2)), x, y });
+        setTrendStartPoint({ time: clickedTime, price: Number(price.toFixed(2)), x, y });
       } else {
         // Second click sets Point B and completes trendline
         const newTrendlines = [
@@ -770,7 +826,7 @@ export default function NativeProChart({
           {
             id: `t_${Date.now()}`,
             p1: { time: trendStartPoint.time, price: trendStartPoint.price },
-            p2: { time: time || (candles[candles.length - 1]?.time), price: Number(price.toFixed(2)) },
+            p2: { time: clickedTime, price: Number(price.toFixed(2)) },
             color: '#38bdf8'
           }
         ];
@@ -803,30 +859,11 @@ export default function NativeProChart({
   };
 
   const clearAllDrawings = () => {
-    if (window.confirm(`${cleanTicker || symbol} hissesine ait TÜM çizimleri temizlemek istediğinize emin misiniz?`)) {
+    if (window.confirm(`${cleanTicker || symbol} varlığına ait TÜM çizimleri temizlemek istediğinize emin misiniz?`)) {
       saveDrawings({ horizontals: [], trendlines: [] });
       setShowDrawingsList(false);
     }
   };
-
-  // Compute SVG trendlines coordinates from chart instance
-  const computedTrendlines = useMemo(() => {
-    if (!chartInstanceRef.current || !candlestickSeriesRef.current || !drawings.trendlines) return [];
-    const timeScale = chartInstanceRef.current.timeScale();
-    const series = candlestickSeriesRef.current;
-
-    return drawings.trendlines.map(t => {
-      const x1 = timeScale.timeToCoordinate(t.p1.time);
-      const y1 = series.priceToCoordinate(t.p1.price);
-      const x2 = timeScale.timeToCoordinate(t.p2.time);
-      const y2 = series.priceToCoordinate(t.p2.price);
-      return {
-        ...t,
-        x1, y1, x2, y2,
-        valid: x1 !== null && y1 !== null && x2 !== null && y2 !== null
-      };
-    });
-  }, [drawings.trendlines, candles]);
 
   // Last Candle Details for HUD
   const lastBar = useMemo(() => {
@@ -843,15 +880,17 @@ export default function NativeProChart({
   // Portfolio PnL for Holding Overlay
   const holdingInfo = useMemo(() => {
     if (!activeHolding) return null;
-    const cost = activeHolding.avgPrice || activeHolding.costBasis || activeHolding.avg_cost || 0;
+    const cost = activeHolding.chartUnitCost || activeHolding.holdingCost || activeHolding.avgPrice || activeHolding.avg_cost || 0;
     const shares = activeHolding.shares || activeHolding.quantity || 0;
     const currentPrice = displayBar?.close || activeHolding.currentPrice || cost;
-    const pnlPct = cost > 0 ? ((currentPrice - cost) / cost) * 100 : 0;
+    const pnlPct = cost > 0 ? ((currentPrice - cost) / cost) * 100 : (activeHolding.returnPct || 0);
     const pnlVal = (currentPrice - cost) * shares;
-    const symMark = activeHolding.currency === 'TRY' || isBist ? '₺' : '$';
+    const symMark = activeHolding.chartSymMark || (isBist ? '₺' : '$');
+    const altCostTRY = activeHolding.unitCostTRY || 0;
 
     return {
       cost,
+      altCostTRY,
       shares,
       pnlPct,
       pnlVal,
@@ -1097,7 +1136,7 @@ export default function NativeProChart({
                   <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {drawings.horizontals.map(h => (
                       <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 6px', borderRadius: 4, fontSize: 10 }}>
-                        <span style={{ color: '#cbd5e1' }}>Yatay Seviye: <strong>{h.price}</strong></span>
+                        <span style={{ color: '#cbd5e1' }}>Yatay: <strong>{h.price}</strong></span>
                         <button type="button" onClick={() => deleteHorizontal(h.id)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer' }}>
                           <X size={12} />
                         </button>
@@ -1162,9 +1201,16 @@ export default function NativeProChart({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: '#eab308' }}>💼 PORTFÖYÜNÜZDE:</span>
-            <span style={{ color: '#f8fafc' }}>{holdingInfo.shares} Lot / Adet</span>
+            <span style={{ color: '#f8fafc' }}>{holdingInfo.shares} Adet / Lot</span>
             <span style={{ color: '#94a3b8' }}>•</span>
-            <span style={{ color: '#f8fafc' }}>Ortalama Maliyet: <strong style={{ color: '#eab308' }}>{holdingInfo.symMark}{holdingInfo.cost.toFixed(2)}</strong></span>
+            <span style={{ color: '#f8fafc' }}>
+              Maliyet: <strong style={{ color: '#eab308' }}>{holdingInfo.symMark}{holdingInfo.cost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              {holdingInfo.symMark === '$' && holdingInfo.altCostTRY > 0 && (
+                <span style={{ fontSize: 9.5, color: '#94a3b8', marginLeft: 4 }}>
+                  ({holdingInfo.altCostTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺)
+                </span>
+              )}
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1221,8 +1267,8 @@ export default function NativeProChart({
 
         {/* Drawing Mode Hint */}
         {activeDrawTool && (
-          <div style={{ color: '#38bdf8', fontSize: 10, display: 'flex', alignItems: 'center', gap: 6, animation: 'pulse 1.5s infinite' }}>
-            <span>✏️ Çizim Modu Aktif: {activeDrawTool === 'horizontal' ? 'İstediğiniz seviyeye tıklayın' : '2 nokta belirleyin'}</span>
+          <div style={{ color: '#38bdf8', fontSize: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>✏️ Çizim Modu: {activeDrawTool === 'horizontal' ? 'İstediğiniz seviyeye tıklayın' : (trendStartPoint ? 'Bitiş noktasına tıklayın' : 'Başlangıç noktasına tıklayın')}</span>
             <button 
               type="button" 
               onClick={() => { setActiveDrawTool(null); setTrendStartPoint(null); }}
@@ -1240,8 +1286,9 @@ export default function NativeProChart({
           position: 'relative', 
           flex: 1, 
           width: '100%', 
-          minHeight: 400, 
-          cursor: activeDrawTool ? 'crosshair' : 'default' 
+          minHeight: 350, 
+          cursor: activeDrawTool ? 'crosshair' : 'default',
+          overflow: 'hidden'
         }}
         onClick={handleChartClick}
         onMouseMove={handleMouseMove}
@@ -1300,7 +1347,6 @@ export default function NativeProChart({
 
         {/* Interactive SVG Overlay for Trendlines */}
         <svg
-          ref={svgOverlayRef}
           style={{
             position: 'absolute',
             inset: 0,
@@ -1311,7 +1357,7 @@ export default function NativeProChart({
           }}
         >
           {/* Render Persistent Trendlines */}
-          {computedTrendlines.map(t => {
+          {svgTrendlines.map(t => {
             if (!t.valid) return null;
             return (
               <g key={t.id}>
@@ -1345,23 +1391,24 @@ export default function NativeProChart({
         </svg>
       </div>
 
-      {/* 📉 RSI SUB-CHART (If active) */}
+      {/* 📉 RSI SUB-CHART (Height 95px, tight against the main chart time scale) */}
       {indicators.rsi && (
         <div 
           style={{ 
-            height: 110, 
+            height: 95, 
             width: '100%', 
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)', 
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)', 
             background: '#03050c',
-            position: 'relative' 
+            position: 'relative',
+            flexShrink: 0
           }}
         >
           <div 
             style={{ 
               position: 'absolute', 
-              top: 4, 
+              top: 3, 
               left: 10, 
-              fontSize: 9.5, 
+              fontSize: 9, 
               color: '#ec4899', 
               fontWeight: 700, 
               zIndex: 5,
@@ -1371,7 +1418,7 @@ export default function NativeProChart({
             }}
           >
             <span>RSI (14)</span>
-            <span style={{ color: '#64748b' }}>• 70/30 Seviyeleri</span>
+            <span style={{ color: '#64748b' }}>• 70 / 30 Seviyeleri</span>
           </div>
           <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
         </div>
@@ -1387,11 +1434,12 @@ export default function NativeProChart({
           color: 'var(--text-muted)',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexShrink: 0
         }}
       >
         <span>
-          💡 <strong>Kalıcı Grafik:</strong> Çizdiğiniz tüm trend ve yatay çizgiler hisse bazında tarayıcınızda saklanır. Başka hisseye geçseniz bile asla silinmez.
+          💡 <strong>Kalıcı Grafik:</strong> Çizdiğiniz tüm trend ve yatay çizgiler varlık bazında tarayıcınızda saklanır. Başka hisseye geçseniz bile asla silinmez.
         </span>
         <span>
           Fare Tekerleği: Yakınlaştır / Uzaklaştır • Sürükle: Geçmişe Kaydır
