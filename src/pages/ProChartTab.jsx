@@ -19,7 +19,9 @@ import {
   Clock,
   Terminal,
   Copy,
-  Check
+  Check,
+  Edit2,
+  FolderPlus
 } from 'lucide-react';
 import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
@@ -400,6 +402,212 @@ const PRESET_WATCHLISTS = {
   ]
 };
 
+
+// Comprehensive Search & Autocomplete Catalog for Stocks, ETFs, Crypto & Macro
+export const SEARCH_CATALOG = [
+  // BIST 100 (Türkiye)
+  { ticker: "THYAO.IS", name: "Türk Hava Yolları", market: "BIST", keywords: "thy thyao hava taşımacılık uçak kargo turk" },
+  { ticker: "TUPRS.IS", name: "Tüpraş Rafinerileri", market: "BIST", keywords: "tuprs tüpraş petrol rafineri akaryakıt enerji temettü" },
+  { ticker: "ASELS.IS", name: "Aselsan Elektronik Sanayii", market: "BIST", keywords: "asels aselsan savunma askeri radar elektronik teknoloji" },
+  { ticker: "EREGL.IS", name: "Ereğli Demir ve Çelik", market: "BIST", keywords: "eregl erdemir çelik demir yassı metal sanayi" },
+  { ticker: "KCHOL.IS", name: "Koç Holding", market: "BIST", keywords: "kchol koç holding sanayi otomotiv enerji" },
+  { ticker: "SAHOL.IS", name: "Sabancı Holding", market: "BIST", keywords: "sahol sabancı holding enerji banka sanayi" },
+  { ticker: "BIMAS.IS", name: "BİM Birleşik Mağazalar", market: "BIST", keywords: "bimas bim perakende market gıda indirim" },
+  { ticker: "SISE.IS", name: "Şişecam Cam Sanayii", market: "BIST", keywords: "sise şişe cam düzcam kimyasallar global" },
+  { ticker: "FROTO.IS", name: "Ford Otosan", market: "BIST", keywords: "froto ford otomotiv araba ticari araç ihracat" },
+  { ticker: "ASTOR.IS", name: "Astor Enerji", market: "BIST", keywords: "astor transformatör şebeke elektrik enerji" },
+  { ticker: "GARAN.IS", name: "Garanti BBVA", market: "BIST", keywords: "garan garanti banka bankacılık finans kredi" },
+  { ticker: "AKBNK.IS", name: "Akbank", market: "BIST", keywords: "akbnk akbank banka bankacılık sabancı finans" },
+  { ticker: "YKBNK.IS", name: "Yapı ve Kredi Bankası", market: "BIST", keywords: "ykbnk yapı kredi banka finans koç" },
+  { ticker: "ISCTR.IS", name: "İş Bankası (C)", market: "BIST", keywords: "isctr iş bankası bankacılık finans c" },
+  { ticker: "VAKBN.IS", name: "VakıfBank", market: "BIST", keywords: "vakbn vakıfbank kamu bankası finans" },
+  { ticker: "HALKB.IS", name: "Halkbank", market: "BIST", keywords: "halkb halkbank kamu bankası esnaf finans" },
+  { ticker: "TOASO.IS", name: "Tofaş Türk Otomobil Fabrikası", market: "BIST", keywords: "toaso tofaş fiat stellantis otomotiv araba" },
+  { ticker: "TTRAK.IS", name: "Türk Traktör", market: "BIST", keywords: "ttrak traktör tarım koç new holland temettü" },
+  { ticker: "OTKAR.IS", name: "Otokar Otomotiv ve Savunma", market: "BIST", keywords: "otkar otokar savunma zırhlı araç otobüs koç" },
+  { ticker: "ARCLK.IS", name: "Arçelik (Beko)", market: "BIST", keywords: "arclk arçelik beko beyaz eşya koç dayanıklı tüketim" },
+  { ticker: "VESTL.IS", name: "Vestel Elektronik", market: "BIST", keywords: "vestl vestel beyaz eşya tv batarya zorlu" },
+  { ticker: "VESBE.IS", name: "Vestel Beyaz Eşya", market: "BIST", keywords: "vesbe vestel beyaz eşya buzdolabı ihracat" },
+  { ticker: "ENKAI.IS", name: "Enka İnşaat", market: "BIST", keywords: "enkai enka inşaat mühendislik enerji döviz nakit" },
+  { ticker: "TCELL.IS", name: "Turkcell İletişim", market: "BIST", keywords: "tcell turkcell telekom mobil iletişim 5g" },
+  { ticker: "TTKOM.IS", name: "Türk Telekomünikasyon", market: "BIST", keywords: "ttkom türk telekom internet fiber altyapı sabit hat" },
+  { ticker: "PGSUS.IS", name: "Pegasus Hava Taşımacılığı", market: "BIST", keywords: "pgsus pegasus havacılık uçak low cost seyahat" },
+  { ticker: "TAVHL.IS", name: "TAV Havalimanları", market: "BIST", keywords: "tavhl tav havalimanı terminal duty free havacılık" },
+  { ticker: "SOKM.IS", name: "Şok Marketler", market: "BIST", keywords: "sokm şok market perakende gıda indirim yıldız" },
+  { ticker: "MGROS.IS", name: "Migros Ticaret", market: "BIST", keywords: "mgros migros süpermarket perakende gıda anadolu" },
+  { ticker: "PETKM.IS", name: "Petkim Petrokimya", market: "BIST", keywords: "petkm petkim petrokimya plastik etilen socar" },
+  { ticker: "GUBRF.IS", name: "Gübre Fabrikaları", market: "BIST", keywords: "gubrf gübre fabrikaları tarım gübre altın maden" },
+  { ticker: "HEKTS.IS", name: "Hektaş Ticaret", market: "BIST", keywords: "hekts hektaş tarım tohum hayvan sağlığı oyak" },
+  { ticker: "KONTRA.IS", name: "Kontrolmatik Teknoloji", market: "BIST", keywords: "kontr kontrolmatik teknoloji lityum batarya pomega mühendislik" },
+  { ticker: "SMRTG.IS", name: "Smart Güneş Enerjisi", market: "BIST", keywords: "smrtg smart güneş paneli ges yenilenebilir enerji" },
+  { ticker: "EUPWR.IS", name: "Europower Enerji", market: "BIST", keywords: "eupwr europower elektrik trafo otomasyon ges girişim" },
+  { ticker: "CWENE.IS", name: "CW Enerji", market: "BIST", keywords: "cwene cw enerji güneş paneli ges fotovoltaik" },
+  { ticker: "ALARK.IS", name: "Alarko Holding", market: "BIST", keywords: "alark alarko holding enerji taahhüt tarım turizm" },
+  { ticker: "ENJSA.IS", name: "Enerjisa Enerji", market: "BIST", keywords: "enjsa enerjisa elektrik dağıtım perakende sabancı temettü" },
+  { ticker: "AKSEN.IS", name: "Aksa Enerji", market: "BIST", keywords: "aksen aksa enerji elektrik üretim santral doğalgaz kazancı" },
+  { ticker: "ODAS.IS", name: "Odaş Elektrik", market: "BIST", keywords: "odas odaş elektrik kömür santral maden altın çan" },
+  { ticker: "KOZAL.IS", name: "Koza Altın İşletmeleri", market: "BIST", keywords: "kozal koza altın madencilik cevher külçe kıymetli" },
+  { ticker: "KOZAA.IS", name: "Koza Anadolu Metal", market: "BIST", keywords: "kozaa koza anadolu maden metal ipek holding" },
+  { ticker: "IPEKE.IS", name: "İpek Doğal Enerji", market: "BIST", keywords: "ipeke ipek enerji petrol doğalgaz maden" },
+  { ticker: "TKFEN.IS", name: "Tekfen Holding", market: "BIST", keywords: "tkfen tekfen inşaat taahhüt gübre toros tarım" },
+  { ticker: "DOHOL.IS", name: "Doğan Şirketler Grubu Holding", market: "BIST", keywords: "dohol doğan holding otomotiv elektrik yatırım finans" },
+  { ticker: "EKGYO.IS", name: "Emlak Konut GYO", market: "BIST", keywords: "ekgyo emlak konut gyo toki gayrimenkul konut inşaat" },
+  { ticker: "ISGYO.IS", name: "İş Gayrimenkul Yatırım Ortaklığı", market: "BIST", keywords: "isgyo iş gyo gayrimenkul kira portföy iş bankası" },
+  { ticker: "MAVI.IS", name: "Mavi Giyim", market: "BIST", keywords: "mavi giyim jeans perakende tekstil moda" },
+  { ticker: "ULKER.IS", name: "Ülker Bisküvi", market: "BIST", keywords: "ulker ülker bisküvi çikolata gıda pladis yıldız" },
+  { ticker: "AEFES.IS", name: "Anadolu Efes Biracılık", market: "BIST", keywords: "aefes anadolu efes bira içecek meşrubat ccola rusya" },
+  { ticker: "CCOLA.IS", name: "Coca-Cola İçecek", market: "BIST", keywords: "ccola coca cola içecek gazlı anadolu meşrubat ihracat" },
+  { ticker: "BRSAN.IS", name: "Borusan Boru", market: "BIST", keywords: "brsan borusan boru çelik abd berg boru sanayi" },
+  { ticker: "KORDS.IS", name: "Kordsa Teknik Tekstil", market: "BIST", keywords: "kords kordsa lastik bezi kompozit karbon sabancı" },
+  { ticker: "OYAKC.IS", name: "Oyak Çimento", market: "BIST", keywords: "oyakc oyak çimento hazır beton inşaat aslan" },
+  { ticker: "CIMSA.IS", name: "Çimsa Çimento", market: "BIST", keywords: "cimsa çimsa beyaz çimento sabancı cac ihracat" },
+  { ticker: "BERA.IS", name: "Bera Holding", market: "BIST", keywords: "bera holding konya kağıt rulman gıda tekstil" },
+  { ticker: "KCAER.IS", name: "Kocaer Çelik", market: "BIST", keywords: "kcaer kocaer profil çelik yapı yeşil çelik ihracat" },
+  { ticker: "ISMEN.IS", name: "İş Yatırım Menkul Değerler", market: "BIST", keywords: "ismen iş yatırım aracı kurum borsa komisyon temettü" },
+  { ticker: "TABGD.IS", name: "TAB Gıda", market: "BIST", keywords: "tabgd tab gıda burger king popeyes ata restoran hızlı tüketim" },
+  { ticker: "BYDNR.IS", name: "Baydöner Restoranları", market: "BIST", keywords: "bydnr baydöner restoran iskender gıda perakende portföy" },
+
+  // US Tech & Growth Leaders
+  { ticker: "NVDA", name: "NVIDIA Corporation", market: "NASDAQ", keywords: "nvda nvidia ai yapay zeka gpu çip veri merkezi blackwell cuda h100" },
+  { ticker: "AAPL", name: "Apple Inc.", market: "NASDAQ", keywords: "aapl apple iphone mac ipad ios app store hizmetler" },
+  { ticker: "MSFT", name: "Microsoft Corporation", market: "NASDAQ", keywords: "msft microsoft azure cloud windows office openai copilot" },
+  { ticker: "AMZN", name: "Amazon.com Inc.", market: "NASDAQ", keywords: "amzn amazon aws bulut e-ticaret prime perakende cloud" },
+  { ticker: "GOOGL", name: "Alphabet Inc. (Google)", market: "NASDAQ", keywords: "googl google alphabet arama youtube cloud waymo gemini ai" },
+  { ticker: "META", name: "Meta Platforms Inc.", market: "NASDAQ", keywords: "meta facebook instagram whatsapp threads llama ai reklam vr quest" },
+  { ticker: "TSLA", name: "Tesla Inc.", market: "NASDAQ", keywords: "tsla tesla elektrikli araç ev otonom fsd optimus batarya robotaksi" },
+  { ticker: "PLTR", name: "Palantir Technologies", market: "NYSE", keywords: "pltr palantir aip ontology savunma veri analitiği kurumsal ai" },
+  { ticker: "TSM", name: "Taiwan Semiconductor (TSMC)", market: "NYSE", keywords: "tsm tsmc dökümhane taiwan çip yarı iletken 3nm wafer" },
+  { ticker: "AVGO", name: "Broadcom Inc.", market: "NASDAQ", keywords: "avgo broadcom asic özel çip ağ switch vmware yazılım" },
+  { ticker: "AMD", name: "Advanced Micro Devices", market: "NASDAQ", keywords: "amd cpu ryzen epyc gpu mi300 veri merkezi yapay zeka" },
+  { ticker: "ARM", name: "Arm Holdings plc", market: "NASDAQ", keywords: "arm işlemci mimari mobil iot sunucu lisans çip" },
+  { ticker: "ASML", name: "ASML Holding N.V.", market: "NASDAQ", keywords: "asml euv litografi çip baskı makinesi tekel hollanda" },
+  { ticker: "VRT", name: "Vertiv Holdings Co", market: "NYSE", keywords: "vrt vertiv sıvı soğutma veri merkezi güç ups thermal ai altyapı" },
+  { ticker: "ALAB", name: "Astera Labs Inc.", market: "NASDAQ", keywords: "alab astera pcie cxl aries taurus bağlantı connectivity çip" },
+  { ticker: "MU", name: "Micron Technology", market: "NASDAQ", keywords: "mu micron dram nand hbm bellek hafıza bellek modülü" },
+  { ticker: "INTC", name: "Intel Corporation", market: "NASDAQ", keywords: "intc intel x86 işlemci dökümhane foundry cpu sunucu" },
+  { ticker: "QCOM", name: "Qualcomm Inc.", market: "NASDAQ", keywords: "qcom qualcomm snapdragon 5g modem mobil ai arm pc" },
+  { ticker: "CRWD", name: "CrowdStrike Holdings", market: "NASDAQ", keywords: "crwd crowdstrike falcon siber güvenlik edr cloud security" },
+  { ticker: "PANW", name: "Palo Alto Networks", market: "NASDAQ", keywords: "panw palo alto ağ güvenlik firewall prisma sase" },
+  { ticker: "SNOW", name: "Snowflake Inc.", market: "NYSE", keywords: "snow snowflake veri ambarı data cloud sql kurumsal analiz" },
+  { ticker: "ORCL", name: "Oracle Corporation", market: "NYSE", keywords: "orcl oracle veri tabanı oci cloud kurumsal yazılım bulut erp" },
+  { ticker: "CRM", name: "Salesforce Inc.", market: "NYSE", keywords: "crm salesforce müşteri ilişkileri saas agentforce bulut" },
+  { ticker: "ADBE", name: "Adobe Inc.", market: "NASDAQ", keywords: "adbe adobe photoshop illustrator firefly yaratıcı yazılım dijital medya" },
+  { ticker: "NOW", name: "ServiceNow Inc.", market: "NYSE", keywords: "now servicenow iş akışı it servis otomasyon kurumsal bulut" },
+  { ticker: "UBER", name: "Uber Technologies", market: "NYSE", keywords: "uber yolculuk araç paylaşım eats kurye mobilite teslimat" },
+  { ticker: "COIN", name: "Coinbase Global", market: "NASDAQ", keywords: "coin coinbase kripto borsa bitcoin ethereum altyapı saklama" },
+  { ticker: "MSTR", name: "MicroStrategy Inc.", market: "NASDAQ", keywords: "mstr microstrategy saylor bitcoin rezerv btc hazine" },
+  { ticker: "NFLX", name: "Netflix Inc.", market: "NASDAQ", keywords: "nflx netflix yayın platformu dizi film streaming abone" },
+  { ticker: "DIS", name: "Walt Disney Company", market: "NYSE", keywords: "dis disney eğlence tema parkları marvel star wars disney+" },
+  { ticker: "SPCX", name: "Space Exploration Tech Corp", market: "US", keywords: "spcx space exploration uzay portföy roket uydu" },
+
+  // US Dividend & Value Titans
+  { ticker: "BRK.B", name: "Berkshire Hathaway Inc.", market: "NYSE", keywords: "brk brkb berkshire warren buffett sigorta nakit holding geico" },
+  { ticker: "JPM", name: "JPMorgan Chase & Co.", market: "NYSE", keywords: "jpm jp morgan bankacılık küresel yatırım bankası jamie dimon" },
+  { ticker: "V", name: "Visa Inc.", market: "NYSE", keywords: "v visa ödeme ağları kredi kartı fintech takas işlem" },
+  { ticker: "MA", name: "Mastercard Incorporated", market: "NYSE", keywords: "ma mastercard ödeme sistemleri kart fintech küresel takas" },
+  { ticker: "ABBV", name: "AbbVie Inc.", market: "NYSE", keywords: "abbv abbvie biyofarma humira skyrizi temettü sağlık" },
+  { ticker: "LLY", name: "Eli Lilly and Company", market: "NYSE", keywords: "lly lilly kilo verme zepbound mounjaro diyabet ilaç sağlık" },
+  { ticker: "NVO", name: "Novo Nordisk A/S", market: "NYSE", keywords: "nvo novo nordisk ozempic wegovy insülin obezite danimarka" },
+  { ticker: "JNJ", name: "Johnson & Johnson", market: "NYSE", keywords: "jnj johnson & johnson medikal cihaz ilaç sağlık temettü kralı" },
+  { ticker: "XOM", name: "Exxon Mobil Corporation", market: "NYSE", keywords: "xom exxon mobil petrol doğalgaz kaya gazı rafine enerji temettü" },
+  { ticker: "CVX", name: "Chevron Corporation", market: "NYSE", keywords: "cvx chevron petrol fosil yakıt enerji temettü entegre" },
+  { ticker: "WMT", name: "Walmart Inc.", market: "NYSE", keywords: "wmt walmart süpermarket indirimli perakende perakendeci gıda" },
+  { ticker: "COST", name: "Costco Wholesale Corp.", market: "NASDAQ", keywords: "cost costco toptan üyelik market perakende depo" },
+  { ticker: "KO", name: "The Coca-Cola Company", market: "NYSE", keywords: "ko coca cola içecek alkolsüz meşrubat temettü warren buffett" },
+  { ticker: "PEP", name: "PepsiCo Inc.", market: "NASDAQ", keywords: "pep pepsi lays cips frito-lay meşrubat gıda temettü" },
+  { ticker: "PG", name: "Procter & Gamble", market: "NYSE", keywords: "pg procter gamble tüketim malları ariel gillette deterjan hijyen" },
+  { ticker: "MCD", name: "McDonald's Corporation", market: "NYSE", keywords: "mcd mcdonalds fast food restoran hamburger bayilik franchise" },
+
+  // Key ETFs
+  { ticker: "QQQ", name: "Invesco QQQ Trust (Nasdaq 100)", market: "ETF", keywords: "qqq nasdaq 100 teknoloji büyüme büyük ölçek endeks fonu" },
+  { ticker: "SPY", name: "SPDR S&P 500 ETF Trust", market: "ETF", keywords: "spy spdr s&p 500 abd gösterge endeksi etf fon" },
+  { ticker: "VOO", name: "Vanguard S&P 500 ETF", market: "ETF", keywords: "voo vanguard s&p 500 düşük masraf endeks fonu" },
+  { ticker: "IWM", name: "iShares Russell 2000 ETF", market: "ETF", keywords: "iwm russell 2000 küçük ölçekli small cap abd şirketleri etf" },
+  { ticker: "SOXX", name: "iShares Semiconductor ETF", market: "ETF", keywords: "soxx yariletken çip yarı iletken sektör etf fonu nvda avgo tsm" },
+  { ticker: "SMH", name: "VanEck Semiconductor ETF", market: "ETF", keywords: "smh vaneck yarı iletken çip çip sektörü fonu" },
+  { ticker: "BOTZ", name: "Global X Robotics & AI ETF", market: "ETF", keywords: "botz robotik yapay zeka otomasyon endüstriyel robot etf" },
+  { ticker: "XLK", name: "Technology Select Sector SPDR", market: "ETF", keywords: "xlk teknoloji sektörü fonu s&p tech apple microsoft nvidia" },
+  { ticker: "XLE", name: "Energy Select Sector SPDR", market: "ETF", keywords: "xle enerji sektörü petrol doğalgaz exxon chevron etf" },
+  { ticker: "XLF", name: "Financial Select Sector SPDR", market: "ETF", keywords: "xlf finans bankacılık jpmorgan berkshire sigorta etf" },
+  { ticker: "URA", name: "Global X Uranium ETF", market: "ETF", keywords: "ura uranyum nükleer enerji nükleer yakıt cameco etf" },
+  { ticker: "GLD", name: "SPDR Gold Shares (Fiziki Altın)", market: "ETF", keywords: "gld spdr altın ons külçe değerli metal altın fonu" },
+  { ticker: "SLV", name: "iShares Silver Trust (Gümüş)", market: "ETF", keywords: "slv ishares gümüş silver ons gümüş fonu metal" },
+  { ticker: "TLT", name: "iShares 20+ Year Treasury Bond ETF", market: "ETF", keywords: "tlt abd uzun vadeli tahvil faiz bono sabit getiri" },
+  { ticker: "DRAM", name: "D-RAM Bellek Teknoloji ETF", market: "ETF", keywords: "dram d-ram bellek teknoloji portföy etf" },
+  { ticker: "CUSD", name: "Coinbase USD Yield ETF", market: "ETF", keywords: "cusd coinbase usd nakit getiri fonu portföy" },
+
+  // Crypto Assets
+  { ticker: "BTCUSDT", name: "Bitcoin / Tether", market: "KRİPTO", keywords: "btc btcusdt bitcoin dijital altın satoshi blokzincir btc/usdt" },
+  { ticker: "ETHUSDT", name: "Ethereum / Tether", market: "KRİPTO", keywords: "eth ethusdt ethereum akıllı sözleşme defi gas ether eth/usdt" },
+  { ticker: "SOLUSDT", name: "Solana / Tether", market: "KRİPTO", keywords: "sol solusdt solana l1 hızlı blokzincir nft defi sol/usdt" },
+  { ticker: "BNBUSDT", name: "BNB / Tether", market: "KRİPTO", keywords: "bnb bnbusdt binance coin bsc bnb zincir kripto" },
+  { ticker: "XRPUSDT", name: "Ripple / Tether", market: "KRİPTO", keywords: "xrp xrpusdt ripple transfer sınır ötesi ödeme token" },
+  { ticker: "AVAXUSDT", name: "Avalanche / Tether", market: "KRİPTO", keywords: "avax avaxusdt avalanche subnet emin gün sirer token" },
+  { ticker: "ADAUSDT", name: "Cardano / Tether", market: "KRİPTO", keywords: "ada adausdt cardano hoskinson blokzincir token" },
+  { ticker: "DOGEUSDT", name: "Dogecoin / Tether", market: "KRİPTO", keywords: "doge dogeusdt meme coin köpek elon musk kripto" },
+  { ticker: "NEARUSDT", name: "NEAR Protocol / Tether", market: "KRİPTO", keywords: "near nearusdt sharding yapay zeka user owned ai kripto" },
+  { ticker: "TOTAL3", name: "Crypto Market Cap Excl. BTC & ETH", market: "KRİPTO", keywords: "total3 altcoin market cap toplam piyasa değeri btc ve eth hariç" },
+  { ticker: "TOTAL", name: "Total Crypto Market Cap", market: "KRİPTO", keywords: "total kripto toplam piyasa değeri tüm kripto paralar" },
+
+  // Macro & Commodities
+  { ticker: "XAUUSD", name: "Altın Spot (Ons Dolar)", market: "EMTİA", keywords: "xauusd altın ons spot gold sarı metal ons altın emtia" },
+  { ticker: "XAGUSD", name: "Gümüş Spot (Ons Dolar)", market: "EMTİA", keywords: "xagusd gümüş ons spot silver metal sanayi gümüş" },
+  { ticker: "UKOIL", name: "Brent Petrol (Varil)", market: "EMTİA", keywords: "ukoil brent petrol ham petrol brent oil varil varil petrol opec" },
+  { ticker: "USOIL", name: "WTI Ham Petrol (ABD)", market: "EMTİA", keywords: "usoil wti petrol abd ham petrol ham petrol enerji" },
+  { ticker: "NATGAS", name: "Doğalgaz (Henry Hub)", market: "EMTİA", keywords: "natgas doğal gaz henry hub lmg enerji kış tüketim" },
+  { ticker: "COPPER", name: "Bakır Vadeli", market: "EMTİA", keywords: "copper bakır emtia sanayi doktor bakır ekonomik büyüme" },
+  { ticker: "DXY", name: "US Dollar Index (Dolar Endeksi)", market: "MAKRO", keywords: "dxy dolar endeksi usd sepet para gücü majör pariteler fed" },
+  { ticker: "VIX", name: "CBOE Volatilite Endeksi", market: "MAKRO", keywords: "vix korku endeksi volatilite oynaklık s&p 500 opsiyon" },
+  { ticker: "US10Y", name: "ABD 10 Yıllık Hazine Tahvil Faizi", market: "MAKRO", keywords: "us10y tahvil faizi risksiz getiri dcf iskonto 10y bono" },
+  { ticker: "US02Y", name: "ABD 2 Yıllık Tahvil Faizi", market: "MAKRO", keywords: "us02y 2 yıllık tahvil faizi fed faiz beklentisi eğri spread" },
+  { ticker: "USDTRY", name: "Dolar / Türk Lirası Paritesi", market: "DÖVİZ", keywords: "usdtry dolar tl kur tcmb döviz parite türk lirası" }
+];
+
+export const searchCatalog = (query, limit = 8) => {
+  if (!query || typeof query !== 'string') return [];
+  const normalize = (str) => {
+    return (str || '')
+      .toLowerCase()
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .trim();
+  };
+
+  const q = normalize(query);
+  if (!q) return [];
+
+  const results = [];
+  for (const item of SEARCH_CATALOG) {
+    const t = normalize(item.ticker);
+    const n = normalize(item.name);
+    const k = normalize(item.keywords || '');
+    let score = 0;
+
+    if (t.startsWith(q) || t.replace('.is', '').startsWith(q)) {
+      score = 100;
+    } else if (t.includes(q)) {
+      score = 75;
+    } else if (n.startsWith(q)) {
+      score = 60;
+    } else if (n.includes(q)) {
+      score = 50;
+    } else if (k.includes(q)) {
+      score = 30;
+    }
+
+    if (score > 0) {
+      results.push({ score, item });
+    }
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, limit).map(r => r.item);
+};
+
 export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedTicker, onSelectTicker }) {
   const { portfolioSummary, holdings, currentCurrency, usdtry, marketQuotes } = useApp();
   const isTRY = currentCurrency === 'try';
@@ -460,15 +668,49 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     try { return localStorage.getItem('pro_chart_interval') || 'D'; } catch { return 'D'; }
   });
 
-  // Custom User Watchlist Tickers
-  const [customTickers, setCustomTickers] = useState(() => {
+  // Custom User Watchlists (Multiple lists supported)
+  const [customWatchlists, setCustomWatchlists] = useState(() => {
     try {
-      const saved = localStorage.getItem('custom_watchlist_tickers');
-      return saved ? JSON.parse(saved) : ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'];
+      const saved = localStorage.getItem('pro_chart_custom_watchlists_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      // Migrate from legacy custom_watchlist_tickers
+      const oldSaved = localStorage.getItem('custom_watchlist_tickers');
+      const initialTickers = oldSaved ? JSON.parse(oldSaved) : ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'];
+      return [
+        { id: 'custom_default', name: 'Özel Listem', tickers: Array.isArray(initialTickers) ? initialTickers : ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'] }
+      ];
     } catch {
-      return ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'];
+      return [
+        { id: 'custom_default', name: 'Özel Listem', tickers: ['VRT', 'ALAB', 'PLTR', 'THYAO.IS', 'TOTAL3'] }
+      ];
     }
   });
+
+  // Modal / Inline input states for watchlist management
+  const [showNewListModal, setShowNewListModal] = useState(false);
+  const [newListNameInput, setNewListNameInput] = useState('');
+  const [editingListId, setEditingListId] = useState(null);
+  const [editingListName, setEditingListName] = useState('');
+
+  // Autocomplete Suggestions State
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const searchContainerRef = useRef(null);
+
+  // Active custom list detection
+  const isCustomActive = customWatchlists.some(cw => cw.id === activeCategory) || activeCategory === 'custom';
+  const currentCustomList = isCustomActive 
+    ? (customWatchlists.find(cw => cw.id === activeCategory) || customWatchlists[0]) 
+    : null;
+
+  // Backward-compatible tickers accessor for active custom list
+  const customTickers = useMemo(() => {
+    if (currentCustomList) return currentCustomList.tickers;
+    return customWatchlists[0]?.tickers || [];
+  }, [currentCustomList, customWatchlists]);
 
   // Manually added tickers specifically to Portfolio watchlist
   const [manualPortfolioTickers, setManualPortfolioTickers] = useState(() => {
@@ -571,14 +813,68 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     };
   }, []);
 
-  // Persist custom tickers
+  // Persist custom watchlists
   useEffect(() => {
     try {
-      localStorage.setItem('custom_watchlist_tickers', JSON.stringify(customTickers));
+      localStorage.setItem('pro_chart_custom_watchlists_v2', JSON.stringify(customWatchlists));
+      if (customWatchlists[0]?.tickers) {
+        localStorage.setItem('custom_watchlist_tickers', JSON.stringify(customWatchlists[0].tickers));
+      }
     } catch (err) {
-      console.warn('Could not save custom watchlist', err);
+      console.warn('Could not save custom watchlists', err);
     }
-  }, [customTickers]);
+  }, [customWatchlists]);
+
+  // Autocomplete filtering based on newTickerInput
+  const filteredSuggestions = useMemo(() => {
+    if (!newTickerInput || !newTickerInput.trim()) return [];
+    return searchCatalog(newTickerInput, 8);
+  }, [newTickerInput]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Keyboard navigation for suggestions dropdown
+  const handleInputKeyDown = (e) => {
+    if (!showSuggestions || filteredSuggestions.length === 0) {
+      if (e.key === 'Enter') {
+        handleAddTicker(e);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => 
+        prev < filteredSuggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSuggestionIndex(prev => 
+        prev > 0 ? prev - 1 : filteredSuggestions.length - 1
+      );
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < filteredSuggestions.length) {
+        const item = filteredSuggestions[selectedSuggestionIndex];
+        handleAddTicker(e, item.ticker);
+      } else {
+        handleAddTicker(e);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setSelectedSuggestionIndex(-1);
+    }
+  };
 
   // Sync when prop selectedTicker changes from outside
   useEffect(() => {
@@ -587,11 +883,52 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     }
   }, [selectedTicker]);
 
-  // Handle adding ticker to either Portfolio tab or Custom tab
-  const handleAddTicker = (e) => {
+  // Create new custom watchlist
+  const handleCreateWatchlist = (e) => {
     e?.preventDefault();
-    if (!newTickerInput.trim()) return;
-    const clean = newTickerInput.trim().toUpperCase();
+    const name = newListNameInput.trim();
+    if (!name) return;
+    const newId = 'custom_' + Date.now();
+    const newList = { id: newId, name, tickers: [] };
+    setCustomWatchlists(prev => [...prev, newList]);
+    setActiveCategory(newId);
+    setNewListNameInput('');
+    setShowNewListModal(false);
+  };
+
+  // Rename custom watchlist
+  const handleRenameWatchlist = (e) => {
+    e?.preventDefault();
+    const name = editingListName.trim();
+    if (!name || !editingListId) return;
+    setCustomWatchlists(prev => prev.map(wl => wl.id === editingListId ? { ...wl, name } : wl));
+    setEditingListId(null);
+    setEditingListName('');
+  };
+
+  // Delete custom watchlist
+  const handleDeleteWatchlist = (listId) => {
+    const target = customWatchlists.find(wl => wl.id === listId);
+    if (!target) return;
+    if (customWatchlists.length <= 1) {
+      alert("En az bir özel izleme listeniz bulunmalıdır.");
+      return;
+    }
+    if (window.confirm(`"${target.name}" izleme listesini silmek istediğinizden emin misiniz?`)) {
+      const remaining = customWatchlists.filter(wl => wl.id !== listId);
+      setCustomWatchlists(remaining);
+      if (activeCategory === listId) {
+        setActiveCategory(remaining[0].id);
+      }
+    }
+  };
+
+  // Handle adding ticker to either Portfolio or Custom Watchlist
+  const handleAddTicker = (e, explicitTicker) => {
+    e?.preventDefault();
+    const targetTicker = explicitTicker || newTickerInput;
+    if (!targetTicker || !targetTicker.trim()) return;
+    const clean = targetTicker.trim().toUpperCase();
 
     if (activeCategory === 'portfolio') {
       // If was previously hidden, unhide it
@@ -600,12 +937,33 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       } else if (!manualPortfolioTickers.includes(clean)) {
         setManualPortfolioTickers(prev => [...prev, clean]);
       }
+    } else if (isCustomActive && currentCustomList) {
+      if (!currentCustomList.tickers.includes(clean)) {
+        setCustomWatchlists(prev => prev.map(wl => 
+          wl.id === currentCustomList.id 
+            ? { ...wl, tickers: [...wl.tickers, clean] }
+            : wl
+        ));
+      }
     } else {
-      if (!customTickers.includes(clean)) {
-        setCustomTickers(prev => [...prev, clean]);
+      // If user is on a preset list (e.g. US, BIST, etc.), add to the first custom list!
+      const targetList = customWatchlists[0];
+      if (targetList && !targetList.tickers.includes(clean)) {
+        setCustomWatchlists(prev => prev.map(wl => 
+          wl.id === targetList.id 
+            ? { ...wl, tickers: [...wl.tickers, clean] }
+            : wl
+        ));
       }
     }
+
+    // Automatically navigate chart to this symbol!
+    setCurrentSymbol(clean);
+    if (onSelectTicker) onSelectTicker(clean);
+
     setNewTickerInput('');
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
   };
 
   // Handle removing ticker
@@ -618,16 +976,34 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         const raw = (item.rawTicker || '').toUpperCase().trim();
         setHiddenPortfolioTickers(prev => [...new Set([...prev, clean, raw])]);
       }
-    } else if (activeCategory === 'custom') {
-      setCustomTickers(prev => prev.filter(t => t !== clean));
+    } else if (isCustomActive && currentCustomList) {
+      setCustomWatchlists(prev => prev.map(wl => 
+        wl.id === currentCustomList.id 
+          ? { ...wl, tickers: wl.tickers.filter(t => t !== clean) }
+          : wl
+      ));
     }
   };
 
   // Handle quick-adding ticker from presets (us_stocks, bist, crypto, etf) to Custom Watchlist
   const handleQuickAddTicker = (tickerToAdd) => {
     const clean = (tickerToAdd || '').toUpperCase().trim();
-    if (clean && !customTickers.includes(clean)) {
-      setCustomTickers(prev => [...prev, clean]);
+    if (!clean) return;
+    const targetCustom = currentCustomList || customWatchlists[0];
+    if (targetCustom) {
+      if (targetCustom.tickers.includes(clean)) {
+        setCustomWatchlists(prev => prev.map(wl => 
+          wl.id === targetCustom.id 
+            ? { ...wl, tickers: wl.tickers.filter(t => t !== clean) }
+            : wl
+        ));
+      } else {
+        setCustomWatchlists(prev => prev.map(wl => 
+          wl.id === targetCustom.id 
+            ? { ...wl, tickers: [...wl.tickers, clean] }
+            : wl
+        ));
+      }
     }
   };
 
@@ -902,11 +1278,11 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       list = PRESET_WATCHLISTS.crypto;
     } else if (activeCategory === 'macro') {
       list = PRESET_WATCHLISTS.macro;
-    } else if (activeCategory === 'custom') {
-      list = customTickers.map(t => {
+    } else if (isCustomActive && currentCustomList) {
+      list = currentCustomList.tickers.map(t => {
         const tv = getTradingViewSymbol(t);
         const name = stocksData[t]?.name || potentialStocksData[t]?.name || t;
-        return { ticker: t, name, desc: 'Özel Listenizdeki Varlık', tv };
+        return { ticker: t, name, desc: `${currentCustomList.name} Varlığı`, tv };
       });
     }
 
@@ -918,7 +1294,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       (item.name && item.name.toLowerCase().includes(q)) ||
       (item.desc && item.desc.toLowerCase().includes(q))
     );
-  }, [activeCategory, portfolioItems, customTickers, searchQuery]);
+  }, [activeCategory, portfolioItems, isCustomActive, currentCustomList, searchQuery, stocksData, potentialStocksData]);
 
   // Find user's holding data if they own this stock
   const activeHolding = useMemo(() => {
@@ -1831,33 +2207,217 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </span>
             </div>
 
-            {/* 🔽 Downward Dropdown Category Selector */}
-            <div style={{ marginBottom: 6 }}>
+            {/* 🔽 Category & Custom Watchlist Selector Bar */}
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 6 }}>
               <select
-                value={activeCategory}
-                onChange={(e) => setActiveCategory(e.target.value)}
+                value={isCustomActive && currentCustomList ? currentCustomList.id : activeCategory}
+                onChange={(e) => {
+                  if (e.target.value === '__NEW_LIST__') {
+                    setShowNewListModal(true);
+                  } else {
+                    setActiveCategory(e.target.value);
+                  }
+                }}
                 style={{
-                  width: '100%',
-                  padding: '6px 10px',
-                  fontSize: 11,
+                  flex: 1,
+                  padding: '6px 8px',
+                  fontSize: 10.5,
                   fontWeight: 700,
                   background: '#040711',
                   border: '1px solid rgba(0, 229, 255, 0.35)',
                   borderRadius: 6,
                   color: 'var(--cyan)',
                   cursor: 'pointer',
-                  outline: 'none'
+                  outline: 'none',
+                  minWidth: 0
                 }}
               >
-                <option value="portfolio">💼 Portföyüm ({portfolioItems.length} Varlık - Tam Liste)</option>
-                <option value="us_stocks">📈 ABD Hisse (SPCX, NVDA, TSM, VRT... {PRESET_WATCHLISTS.us_stocks.length})</option>
-                <option value="etf">🏛️ ETF Sepeti (DRAM, SOXX, QQQ... {PRESET_WATCHLISTS.etf.length})</option>
-                <option value="bist">🇹🇷 BIST 100 (BYDNR, TUPRS, THYAO... {PRESET_WATCHLISTS.bist.length})</option>
-                <option value="crypto">⚡ Kripto & TOTAL3 ({PRESET_WATCHLISTS.crypto.length} Varlık)</option>
-                <option value="macro">🌐 Genel Makro & Emtia ({PRESET_WATCHLISTS.macro.length} Varlık)</option>
-                <option value="custom">⭐ Özel Listem ({customTickers.length} Varlık)</option>
+                <optgroup label="⭐ ÖZEL İZLEME LİSTELERİM" style={{ background: '#080c16', color: '#fbbf24' }}>
+                  {customWatchlists.map(wl => (
+                    <option key={wl.id} value={wl.id} style={{ color: '#f8fafc', background: '#0a0f1d' }}>
+                      ⭐ {wl.name} ({wl.tickers.length} Varlık)
+                    </option>
+                  ))}
+                  <option value="__NEW_LIST__" style={{ color: 'var(--cyan)', background: '#0a0f1d', fontWeight: 700 }}>
+                    ➕ Yeni Liste Oluştur...
+                  </option>
+                </optgroup>
+                <optgroup label="📊 HAZIR PİYASA LİSTELERİ" style={{ background: '#080c16', color: '#94a3b8' }}>
+                  <option value="portfolio" style={{ color: '#f8fafc', background: '#0a0f1d' }}>💼 Portföyüm ({portfolioItems.length} Varlık)</option>
+                  <option value="us_stocks" style={{ color: '#f8fafc', background: '#0a0f1d' }}>📈 ABD Hisse ({PRESET_WATCHLISTS.us_stocks.length})</option>
+                  <option value="etf" style={{ color: '#f8fafc', background: '#0a0f1d' }}>🏛️ ETF Sepeti ({PRESET_WATCHLISTS.etf.length})</option>
+                  <option value="bist" style={{ color: '#f8fafc', background: '#0a0f1d' }}>🇹🇷 BIST 100 ({PRESET_WATCHLISTS.bist.length})</option>
+                  <option value="crypto" style={{ color: '#f8fafc', background: '#0a0f1d' }}>⚡ Kripto & TOTAL3 ({PRESET_WATCHLISTS.crypto.length})</option>
+                  <option value="macro" style={{ color: '#f8fafc', background: '#0a0f1d' }}>🌐 Genel Makro & Emtia ({PRESET_WATCHLISTS.macro.length})</option>
+                </optgroup>
               </select>
+
+              {/* + Liste Button */}
+              <button
+                type="button"
+                onClick={() => setShowNewListModal(true)}
+                className="btn-secondary"
+                style={{
+                  padding: '5px 7px',
+                  fontSize: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  background: 'rgba(0, 229, 255, 0.12)',
+                  border: '1px solid rgba(0, 229, 255, 0.35)',
+                  color: 'var(--cyan)',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+                title="Yeni özel izleme listesi oluştur"
+              >
+                <FolderPlus size={12} />
+                <span>+ Liste</span>
+              </button>
+
+              {/* Edit / Delete actions when custom list is active */}
+              {isCustomActive && currentCustomList && (
+                <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingListId(currentCustomList.id);
+                      setEditingListName(currentCustomList.name);
+                    }}
+                    style={{
+                      padding: '5px 6px',
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 5,
+                      color: '#cbd5e1',
+                      cursor: 'pointer'
+                    }}
+                    title={`"${currentCustomList.name}" listesini yeniden adlandır`}
+                  >
+                    <Edit2 size={11} />
+                  </button>
+
+                  {customWatchlists.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteWatchlist(currentCustomList.id)}
+                      style={{
+                        padding: '5px 6px',
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        borderRadius: 5,
+                        color: '#f87171',
+                        cursor: 'pointer'
+                      }}
+                      title={`"${currentCustomList.name}" listesini sil`}
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Modal: Yeni Liste Oluştur */}
+            {showNewListModal && (
+              <div style={{
+                marginBottom: 8,
+                padding: '8px 10px',
+                background: '#0d1527',
+                border: '1px solid var(--cyan)',
+                borderRadius: 6,
+                boxShadow: '0 4px 14px rgba(0,0,0,0.5)'
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#f8fafc', marginBottom: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>📁 Yeni İzleme Listesi</span>
+                  <button 
+                    type="button" 
+                    onClick={() => { setShowNewListModal(false); setNewListNameInput(''); }}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <form onSubmit={handleCreateWatchlist} style={{ display: 'flex', gap: 5 }}>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Liste adı (Örn: AI Hisseleri)..."
+                    value={newListNameInput}
+                    onChange={(e) => setNewListNameInput(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '4px 7px',
+                      fontSize: 10,
+                      background: 'rgba(0,0,0,0.5)',
+                      border: '1px solid rgba(0, 229, 255, 0.4)',
+                      borderRadius: 4,
+                      color: '#fff',
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newListNameInput.trim()}
+                    className="btn-primary"
+                    style={{ fontSize: 9.5, padding: '3px 8px', opacity: newListNameInput.trim() ? 1 : 0.5 }}
+                  >
+                    Oluştur
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Modal: Listeyi Yeniden Adlandır */}
+            {editingListId && (
+              <div style={{
+                marginBottom: 8,
+                padding: '8px 10px',
+                background: '#0d1527',
+                border: '1px solid rgba(251, 191, 36, 0.6)',
+                borderRadius: 6,
+                boxShadow: '0 4px 14px rgba(0,0,0,0.5)'
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', marginBottom: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>✏️ Listeyi Yeniden Adlandır</span>
+                  <button 
+                    type="button" 
+                    onClick={() => { setEditingListId(null); setEditingListName(''); }}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <form onSubmit={handleRenameWatchlist} style={{ display: 'flex', gap: 5 }}>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Yeni liste adı..."
+                    value={editingListName}
+                    onChange={(e) => setEditingListName(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '4px 7px',
+                      fontSize: 10,
+                      background: 'rgba(0,0,0,0.5)',
+                      border: '1px solid rgba(251, 191, 36, 0.4)',
+                      borderRadius: 4,
+                      color: '#fff',
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!editingListName.trim()}
+                    className="btn-primary"
+                    style={{ fontSize: 9.5, padding: '3px 8px', background: '#f59e0b', borderColor: '#f59e0b', opacity: editingListName.trim() ? 1 : 0.5 }}
+                  >
+                    Kaydet
+                  </button>
+                </form>
+              </div>
+            )}
 
             {/* Quick 4-Pill Shortcut Bar */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, marginBottom: 8 }}>
@@ -1865,21 +2425,25 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 { id: 'portfolio', label: '💼 Portföy' },
                 { id: 'us_stocks', label: '📈 ABD' },
                 { id: 'crypto', label: '⚡ Kripto' },
-                { id: 'custom', label: '⭐ Özel' }
-              ].map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setActiveCategory(p.id)}
-                  className={`chip-btn ${activeCategory === p.id ? 'active' : ''}`}
-                  style={{ fontSize: 9, padding: '2px 4px', textAlign: 'center' }}
-                >
-                  {p.label}
-                </button>
-              ))}
+                { id: currentCustomList ? currentCustomList.id : (customWatchlists[0]?.id || 'custom_default'), label: `⭐ ${currentCustomList ? (currentCustomList.name.length > 7 ? currentCustomList.name.slice(0, 6) + '..' : currentCustomList.name) : 'Özel'}` }
+              ].map(p => {
+                const isActive = activeCategory === p.id || (p.id.startsWith('custom') && isCustomActive);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setActiveCategory(p.id)}
+                    className={`chip-btn ${isActive ? 'active' : ''}`}
+                    style={{ fontSize: 9, padding: '2px 4px', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={p.label}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Search Filter within Category */}
+            {/* Search Filter within Current Category */}
             <div style={{ position: 'relative', marginBottom: 8 }}>
               <Search size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
@@ -1894,40 +2458,171 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   background: 'rgba(0,0,0,0.4)', 
                   border: '1px solid rgba(255,255,255,0.08)', 
                   borderRadius: 6, 
-                  color: '#fff' 
+                  color: '#fff',
+                  outline: 'none'
                 }}
               />
             </div>
 
-            {/* Ticker Add Bar (Available for both 'portfolio' and 'custom') */}
-            {(activeCategory === 'custom' || activeCategory === 'portfolio') && (
-              <form onSubmit={handleAddTicker} style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                <input
-                  type="text"
-                  placeholder={activeCategory === 'portfolio' ? "Portföye sembol ekle (Örn: PLTR, THYAO)..." : "Özel listeye ekle (Örn: PLTR, THYAO)..."}
-                  value={newTickerInput}
-                  onChange={(e) => setNewTickerInput(e.target.value)}
-                  style={{ 
-                    flex: 1, 
-                    padding: '5px 8px', 
-                    fontSize: 10, 
-                    background: 'rgba(0,0,0,0.5)', 
-                    border: '1px solid rgba(0, 229, 255, 0.3)', 
-                    borderRadius: 4, 
-                    color: '#fff' 
-                  }}
-                />
+            {/* Ticker Add & Intelligent Autocomplete Bar */}
+            <div ref={searchContainerRef} style={{ position: 'relative', marginBottom: 8 }}>
+              <form onSubmit={handleAddTicker} style={{ display: 'flex', gap: 6 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    type="text"
+                    placeholder={
+                      activeCategory === 'portfolio' 
+                        ? "Portföye hisse ekle / ara (Örn: PLTR, THYAO)..." 
+                        : isCustomActive && currentCustomList 
+                        ? `"${currentCustomList.name}" listesine ekle...` 
+                        : "Özel listeye ekle & Grafiği aç (Örn: THYAO, NVDA)..."
+                    }
+                    value={newTickerInput}
+                    onChange={(e) => {
+                      setNewTickerInput(e.target.value);
+                      setShowSuggestions(true);
+                      setSelectedSuggestionIndex(-1);
+                    }}
+                    onFocus={() => {
+                      if (newTickerInput && newTickerInput.trim().length > 0) setShowSuggestions(true);
+                    }}
+                    onKeyDown={handleInputKeyDown}
+                    style={{ 
+                      width: '100%', 
+                      padding: '5px 22px 5px 8px', 
+                      fontSize: 10, 
+                      background: 'rgba(0,0,0,0.5)', 
+                      border: '1px solid rgba(0, 229, 255, 0.35)', 
+                      borderRadius: 4, 
+                      color: '#fff',
+                      outline: 'none'
+                    }}
+                  />
+                  {newTickerInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewTickerInput('');
+                        setShowSuggestions(false);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: 6,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex'
+                      }}
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ fontSize: 9.5, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 3 }}
+                  style={{ fontSize: 9.5, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}
+                  title="Listeye ekle ve grafiği hemen aç"
                 >
                   <Plus size={11} />
                   <span>Ekle</span>
                 </button>
               </form>
-            )}
 
+              {/* 💡 Autocomplete Suggestions Floating Dropdown */}
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div 
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    zIndex: 9999,
+                    background: '#090e1a',
+                    border: '1px solid rgba(0, 229, 255, 0.45)',
+                    borderRadius: 6,
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.85)',
+                    maxHeight: 280,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '4px'
+                  }}
+                >
+                  <div style={{ padding: '3px 6px', fontSize: 8.5, color: 'var(--cyan)', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>ÖNERİLEN VARLIKLAR ({filteredSuggestions.length})</span>
+                    <span style={{ color: 'var(--text-muted)' }}>↑↓ Gezin • Enter Seç</span>
+                  </div>
+                  {filteredSuggestions.map((item, idx) => {
+                    const isHighlighted = idx === selectedSuggestionIndex;
+                    const marketBadgeColor = 
+                      item.market === 'BIST' ? 'rgba(239, 68, 68, 0.2)' :
+                      item.market === 'NASDAQ' ? 'rgba(59, 130, 246, 0.2)' :
+                      item.market === 'NYSE' ? 'rgba(99, 102, 241, 0.2)' :
+                      item.market === 'KRİPTO' ? 'rgba(234, 179, 8, 0.2)' :
+                      item.market === 'ETF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(168, 85, 247, 0.2)';
+
+                    const marketBadgeText = 
+                      item.market === 'BIST' ? '#f87171' :
+                      item.market === 'NASDAQ' ? '#60a5fa' :
+                      item.market === 'NYSE' ? '#818cf8' :
+                      item.market === 'KRİPTO' ? '#facc15' :
+                      item.market === 'ETF' ? '#34d399' : '#c084fc';
+
+                    return (
+                      <div
+                        key={item.ticker}
+                        onMouseEnter={() => setSelectedSuggestionIndex(idx)}
+                        onClick={(e) => handleAddTicker(e, item.ticker)}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: 4,
+                          background: isHighlighted ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+                          border: isHighlighted ? '1px solid rgba(0, 229, 255, 0.3)' : '1px solid transparent',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          transition: 'all 0.1s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span className="mono font-bold" style={{ color: 'var(--cyan)', fontSize: 11 }}>
+                              {item.ticker}
+                            </span>
+                            <span style={{ 
+                              fontSize: 7.5, 
+                              padding: '1px 4px', 
+                              borderRadius: 3, 
+                              background: marketBadgeColor, 
+                              color: marketBadgeText, 
+                              fontWeight: 800,
+                              letterSpacing: '0.5px'
+                            }}>
+                              {item.market}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 9.5, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                            {item.name}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <span style={{ fontSize: 8.5, color: 'var(--cyan)', background: 'rgba(0, 229, 255, 0.08)', padding: '2px 5px', borderRadius: 3 }}>
+                            + Ekle
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             {/* If items in portfolio are hidden or added, show reset shortcut */}
             {activeCategory === 'portfolio' && (hiddenPortfolioTickers.length > 0 || manualPortfolioTickers.length > 0) && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, padding: '2px 4px', fontSize: 9, color: 'var(--text-muted)' }}>
@@ -2029,7 +2724,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       )}
 
                       {/* Delete / Remove Action for custom or portfolio */}
-                      {(activeCategory === 'custom' || activeCategory === 'portfolio') && (
+                      {(isCustomActive || activeCategory === 'portfolio') && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -2044,7 +2739,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       )}
 
                       {/* Quick Add Star for Preset Categories (us_stocks, bist, crypto, etf, macro) */}
-                      {activeCategory !== 'custom' && activeCategory !== 'portfolio' && (
+                      {!isCustomActive && activeCategory !== 'portfolio' && (
                         <button
                           type="button"
                           onClick={(e) => {
