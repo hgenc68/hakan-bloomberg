@@ -185,33 +185,36 @@ export const SYMBOL_MAP = {
   'NG=F': 'NG=F'
 };
 
-// Otomatik Destek - Direnç Pivot Seviyeleri Hesaplayıcı
-export function calcAutoSR(data, lookback = 25) {
+// Otomatik Destek - Direnç Pivot Seviyeleri Hesaplayıcı (Genişletilmiş Makro Lookback & Pivot Filtresi)
+export function calcAutoSR(data, lookback = 90) {
   if (!data || data.length < 10) return { supports: [], resistances: [] };
-  const slice = data.slice(-Math.min(data.length, Math.max(15, lookback)));
+  const slice = data.slice(-Math.min(data.length, Math.max(20, lookback)));
   const currentPrice = data[data.length - 1].close;
 
+  // 4 bar sol ve sağ (9 barlık güçlü swing pivot) ile minör günlük gürültüleri filtrele
+  const k = 4;
   const pivotHighs = [];
   const pivotLows = [];
 
-  for (let i = 2; i < slice.length - 2; i++) {
-    const cur = slice[i];
-    if (cur.high >= slice[i-1].high && cur.high >= slice[i-2].high &&
-        cur.high >= slice[i+1].high && cur.high >= slice[i+2].high) {
-      pivotHighs.push(cur.high);
+  for (let i = k; i < slice.length - k; i++) {
+    let isH = true, isL = true;
+    for (let j = 1; j <= k; j++) {
+      if (slice[i].high < slice[i-j].high || slice[i].high < slice[i+j].high) isH = false;
+      if (slice[i].low > slice[i-j].low || slice[i].low > slice[i+j].low) isL = false;
     }
-    if (cur.low <= slice[i-1].low && cur.low <= slice[i-2].low &&
-        cur.low <= slice[i+1].low && cur.low <= slice[i+2].low) {
-      pivotLows.push(cur.low);
-    }
+    if (isH) pivotHighs.push(slice[i].high);
+    if (isL) pivotLows.push(slice[i].low);
   }
 
-  // Cluster nearby pivot prices (within 1.8%)
+  // Fiyatın en az %1.5 uzağındaki gerçek majör seviyeleri ayıkla
+  const resFiltered = pivotHighs.filter(p => p > currentPrice * 1.015).sort((a, b) => a - b);
+  const supFiltered = pivotLows.filter(p => p < currentPrice * 0.985).sort((a, b) => b - a);
+
+  // Birbirine çok yakın (%2.5 içinde) seviyeleri tek bir ana kümede birleştir
   const clusterLevels = (levels) => {
-    const sorted = [...levels].sort((a, b) => a - b);
     const clusters = [];
-    for (const lvl of sorted) {
-      const match = clusters.find(c => Math.abs(c.price - lvl) / c.price < 0.018);
+    for (const lvl of levels) {
+      const match = clusters.find(c => Math.abs(c.price - lvl) / c.price < 0.025);
       if (match) {
         match.count++;
         match.price = (match.price + lvl) / 2;
@@ -222,20 +225,20 @@ export function calcAutoSR(data, lookback = 25) {
     return clusters.sort((a, b) => b.count - a.count);
   };
 
-  const resClusters = clusterLevels(pivotHighs.filter(p => p > currentPrice * 1.002));
-  const supClusters = clusterLevels(pivotLows.filter(p => p < currentPrice * 0.998));
+  const resClusters = clusterLevels(resFiltered);
+  const supClusters = clusterLevels(supFiltered);
 
-  // Top 2-3 significant levels
-  const resistances = resClusters.slice(0, 3).map(c => Number(c.price.toFixed(2))).sort((a, b) => a - b);
-  const supports = supClusters.slice(0, 3).map(c => Number(c.price.toFixed(2))).sort((a, b) => b - a);
+  // Grafiği boğmamak için en güçlü 2 majör direnç ve en güçlü 2 majör destek
+  const resistances = resClusters.slice(0, 2).map(c => Number(c.price.toFixed(2))).sort((a, b) => a - b);
+  const supports = supClusters.slice(0, 2).map(c => Number(c.price.toFixed(2))).sort((a, b) => b - a);
 
   return { supports, resistances };
 }
 
-// Otomatik Dinamik Fibonacci Geri Çekilme (Retracement) Seviyeleri
-export function calcAutoFib(data, lookback = 60) {
+// Otomatik Dinamik Fibonacci Geri Çekilme (Genişletilmiş Makro Döngü Lookback)
+export function calcAutoFib(data, lookback = 180) {
   if (!data || data.length < 10) return null;
-  const slice = data.slice(-Math.min(data.length, Math.max(15, lookback)));
+  const slice = data.slice(-Math.min(data.length, Math.max(20, lookback)));
   
   let minLow = Infinity;
   let minLowIdx = -1;
@@ -259,13 +262,13 @@ export function calcAutoFib(data, lookback = 60) {
   const diff = maxHigh - minLow;
 
   const levels = [
-    { ratio: '0.000', label: isUptrend ? '0.000 (Zirve)' : '0.000 (Dip)', price: isUptrend ? maxHigh : minLow, color: '#94a3b8' },
-    { ratio: '0.236', label: '0.236', price: isUptrend ? maxHigh - 0.236 * diff : minLow + 0.236 * diff, color: '#c084fc' },
-    { ratio: '0.382', label: '0.382', price: isUptrend ? maxHigh - 0.382 * diff : minLow + 0.382 * diff, color: '#f87171' },
-    { ratio: '0.500', label: '0.500 (Denge)', price: isUptrend ? maxHigh - 0.500 * diff : minLow + 0.500 * diff, color: '#fbbf24' },
-    { ratio: '0.618', label: '0.618 (Altın Oran)', price: isUptrend ? maxHigh - 0.618 * diff : minLow + 0.618 * diff, color: '#34d399' },
-    { ratio: '0.786', label: '0.786', price: isUptrend ? maxHigh - 0.786 * diff : minLow + 0.786 * diff, color: '#38bdf8' },
-    { ratio: '1.000', label: isUptrend ? '1.000 (Dip)' : '1.000 (Zirve)', price: isUptrend ? minLow : maxHigh, color: '#94a3b8' }
+    { ratio: '0.000', label: '0.000', price: isUptrend ? maxHigh : minLow, color: 'rgba(148, 163, 184, 0.4)' },
+    { ratio: '0.236', label: '0.236', price: isUptrend ? maxHigh - 0.236 * diff : minLow + 0.236 * diff, color: 'rgba(192, 132, 252, 0.5)' },
+    { ratio: '0.382', label: '0.382', price: isUptrend ? maxHigh - 0.382 * diff : minLow + 0.382 * diff, color: 'rgba(239, 68, 68, 0.6)' },
+    { ratio: '0.500', label: '0.500', price: isUptrend ? maxHigh - 0.500 * diff : minLow + 0.500 * diff, color: '#f59e0b' },
+    { ratio: '0.618', label: '0.618', price: isUptrend ? maxHigh - 0.618 * diff : minLow + 0.618 * diff, color: '#10b981' },
+    { ratio: '0.786', label: '0.786', price: isUptrend ? maxHigh - 0.786 * diff : minLow + 0.786 * diff, color: 'rgba(6, 182, 212, 0.5)' },
+    { ratio: '1.000', label: '1.000', price: isUptrend ? minLow : maxHigh, color: 'rgba(148, 163, 184, 0.4)' }
   ];
 
   return { isUptrend, maxHigh, minLow, levels };
@@ -334,14 +337,15 @@ export default function NativeProChart({
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return {
-      rsiPeriod: 14,
+      rsiPeriod: 24,
       ema1Period: 20,
       ema2Period: 50,
       ema3Period: 200,
       bollingerPeriod: 20,
       bollingerStdDev: 2,
-      fibLookback: 60,
-      srLookback: 25
+      fibLookback: 180,
+      srLookback: 90,
+      showLevelTitles: false
     };
   });
 
@@ -978,7 +982,7 @@ export default function NativeProChart({
         costPriceLineRef.current = costLine;
       }
 
-      // 7. Auto Support & Resistance Lines
+      // 7. Auto Support & Resistance Lines (Majör Pivotlar, Temiz Çizgiler)
       try {
         autoSRLinesRef.current.forEach(line => {
           try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
@@ -986,15 +990,15 @@ export default function NativeProChart({
         autoSRLinesRef.current = [];
 
         if (indicators.autoSR && candles.length > 5) {
-          const { supports, resistances } = calcAutoSR(candles, indicatorSettings.srLookback || 25);
+          const { supports, resistances } = calcAutoSR(candles, indicatorSettings.srLookback || 90);
           resistances.forEach((rPrice, idx) => {
             const rLine = candlestickSeriesRef.current.createPriceLine({
               price: rPrice,
               color: '#ef4444',
-              lineWidth: 1,
+              lineWidth: 1.5,
               lineStyle: LineStyle.Dashed,
               axisLabelVisible: true,
-              title: `🔴 Direnç R${idx + 1}: ${rPrice}`
+              title: indicatorSettings.showLevelTitles ? `Direnç R${idx + 1}` : ''
             });
             autoSRLinesRef.current.push(rLine);
           });
@@ -1002,10 +1006,10 @@ export default function NativeProChart({
             const sLine = candlestickSeriesRef.current.createPriceLine({
               price: sPrice,
               color: '#10b981',
-              lineWidth: 1,
+              lineWidth: 1.5,
               lineStyle: LineStyle.Dashed,
               axisLabelVisible: true,
-              title: `🟢 Destek S${idx + 1}: ${sPrice}`
+              title: indicatorSettings.showLevelTitles ? `Destek S${idx + 1}` : ''
             });
             autoSRLinesRef.current.push(sLine);
           });
@@ -1014,7 +1018,7 @@ export default function NativeProChart({
         console.warn('Auto SR drawing error:', err);
       }
 
-      // 8. Auto Fibonacci Retracement Lines
+      // 8. Auto Fibonacci Retracement Lines (Makro Döngü, Mumları Kapatmayan Sade Çizgiler)
       try {
         autoFibLinesRef.current.forEach(line => {
           try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
@@ -1022,16 +1026,18 @@ export default function NativeProChart({
         autoFibLinesRef.current = [];
 
         if (indicators.autoFib && candles.length > 10) {
-          const fibData = calcAutoFib(candles, indicatorSettings.fibLookback || 60);
+          const fibData = calcAutoFib(candles, indicatorSettings.fibLookback || 180);
           if (fibData && fibData.levels) {
             fibData.levels.forEach(lvl => {
+              const isGolden = lvl.ratio === '0.618';
+              const isMid = lvl.ratio === '0.500';
               const fibLine = candlestickSeriesRef.current.createPriceLine({
                 price: lvl.price,
                 color: lvl.color,
-                lineWidth: lvl.ratio === '0.618' || lvl.ratio === '0.500' ? 2 : 1,
-                lineStyle: lvl.ratio === '0.618' ? LineStyle.Solid : LineStyle.Dashed,
+                lineWidth: isGolden ? 2 : isMid ? 1.5 : 1,
+                lineStyle: isGolden ? LineStyle.Solid : isMid ? LineStyle.Dashed : LineStyle.Dotted,
                 axisLabelVisible: true,
-                title: `Fib ${lvl.label}: ${lvl.price.toFixed(2)}`
+                title: indicatorSettings.showLevelTitles ? `Fib ${lvl.label}` : ''
               });
               autoFibLinesRef.current.push(fibLine);
             });
@@ -1935,14 +1941,14 @@ export default function NativeProChart({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: 6 }}>
                 <div>
                   <div style={{ fontWeight: 600, color: '#38bdf8' }}>Dinamik Fibonacci Lookback</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Swing Tepe/Dip arama penceresi (Varsayılan: 60 bar)</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Makro döngü tepe/dip aralığı (Varsayılan: 180 bar ~9 ay)</div>
                 </div>
                 <input
                   type="number"
-                  min={15}
-                  max={300}
+                  min={20}
+                  max={1000}
                   value={indicatorSettings.fibLookback}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, fibLookback: Math.max(15, parseInt(e.target.value) || 60) }))}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, fibLookback: Math.max(20, parseInt(e.target.value) || 180) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
@@ -1951,16 +1957,39 @@ export default function NativeProChart({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 6 }}>
                 <div>
                   <div style={{ fontWeight: 600, color: '#10b981' }}>Destek / Direnç Lookback</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Pivot kümelenme aralığı (Varsayılan: 25 bar)</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Majör pivot aralığı (Varsayılan: 90 bar ~4.5 ay)</div>
                 </div>
                 <input
                   type="number"
-                  min={10}
-                  max={150}
+                  min={20}
+                  max={500}
                   value={indicatorSettings.srLookback}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, srLookback: Math.max(10, parseInt(e.target.value) || 25) }))}
+                  onChange={e => setIndicatorSettings(prev => ({ ...prev, srLookback: Math.max(20, parseInt(e.target.value) || 90) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(16, 185, 129, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
+              </div>
+
+              {/* Grafik İçi Seviye Metinleri (Sadelik Ayarı) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#f8fafc' }}>Çizgi Üstü Metin Etiketleri</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Kapalıyken mumları kapatmaz, seviyeler sağ eksende görünür</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIndicatorSettings(prev => ({ ...prev, showLevelTitles: !prev.showLevelTitles }))}
+                  className="chip-btn"
+                  style={{
+                    fontSize: 10,
+                    padding: '3px 10px',
+                    fontWeight: 700,
+                    color: indicatorSettings.showLevelTitles ? '#38bdf8' : '#10b981',
+                    borderColor: indicatorSettings.showLevelTitles ? '#38bdf8' : '#10b981',
+                    background: indicatorSettings.showLevelTitles ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.15)'
+                  }}
+                >
+                  {indicatorSettings.showLevelTitles ? 'Yazılar Açık' : '✓ Sade / Minimal'}
+                </button>
               </div>
             </div>
 
@@ -1969,14 +1998,15 @@ export default function NativeProChart({
               <button
                 type="button"
                 onClick={() => setIndicatorSettings({
-                  rsiPeriod: 14,
+                  rsiPeriod: 24,
                   ema1Period: 20,
                   ema2Period: 50,
                   ema3Period: 200,
                   bollingerPeriod: 20,
                   bollingerStdDev: 2,
-                  fibLookback: 60,
-                  srLookback: 25
+                  fibLookback: 180,
+                  srLookback: 90,
+                  showLevelTitles: false
                 })}
                 className="chip-btn"
                 style={{ fontSize: 11, padding: '5px 12px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}
