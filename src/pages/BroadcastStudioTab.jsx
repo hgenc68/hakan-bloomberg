@@ -744,15 +744,15 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
                 {/* SLIDE 1: Global Market Pulse (Matching MarketPulseTab) */}
                 {activeSlide.id === 1 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isPopout ? '290px minmax(0, 1fr)' : 'minmax(240px, 270px) minmax(0, 1fr)', gap: 12, alignItems: 'stretch' }}>
                     {/* Left: Fear & Greed Speedometer */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 6 }}>
+                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 4 }}>
                         KORKU & AÇGÖZLÜLÜK ENDEKSİ
                       </div>
 
                       {/* SVG Gauge */}
-                      <div style={{ position: 'relative', width: 220, height: 110, margin: '0 auto' }}>
+                      <div style={{ position: 'relative', width: 200, height: 100, margin: '0 auto' }}>
                         <svg viewBox="0 0 280 140" style={{ width: '100%', height: '100%' }}>
                           <path d="M 20 130 A 120 120 0 0 1 55 45" fill="none" stroke="#ef4444" strokeWidth="20" strokeLinecap="round" />
                           <path d="M 60 40 A 120 120 0 0 1 120 15" fill="none" stroke="#f97316" strokeWidth="20" />
@@ -766,7 +766,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             bottom: 8,
                             left: '50%',
                             width: 3,
-                            height: 80,
+                            height: 72,
                             background: '#fff',
                             transformOrigin: 'bottom center',
                             transform: `translateX(-50%) rotate(${needleRotation}deg)`,
@@ -792,70 +792,69 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         />
                       </div>
 
-                      <div style={{ textAlign: 'center', marginTop: 6 }}>
-                        <div style={{ fontSize: 28, fontWeight: 900, color: getFgColor(fgScore), lineHeight: 1, fontFamily: 'var(--font-mono)' }}>
+                      <div style={{ textAlign: 'center', marginTop: 4 }}>
+                        <div style={{ fontSize: 26, fontWeight: 900, color: getFgColor(fgScore), lineHeight: 1, fontFamily: 'var(--font-mono)' }}>
                           {fgScore}
                         </div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: getFgColor(fgScore), marginTop: 2 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 800, color: getFgColor(fgScore), marginTop: 2 }}>
                           {fgLabel}
                         </div>
                       </div>
 
                       {/* 4 Historical Levels */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 2px', borderRadius: 4, textAlign: 'center' }}>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 7.5, fontWeight: 700 }}>DÜN</div>
-                          <div style={{ fontWeight: 800, color: getFgColor(hist.yesterday), fontSize: 10, fontFamily: 'var(--font-mono)' }}>{hist.yesterday}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 2px', borderRadius: 4, textAlign: 'center' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 7, fontWeight: 700 }}>DÜN</div>
+                          <div style={{ fontWeight: 800, color: getFgColor(hist.yesterday), fontSize: 9.5, fontFamily: 'var(--font-mono)' }}>{hist.yesterday}</div>
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 2px', borderRadius: 4, textAlign: 'center' }}>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 7.5, fontWeight: 700 }}>1 HAFTA</div>
-                          <div style={{ fontWeight: 800, color: getFgColor(hist.week_ago), fontSize: 10, fontFamily: 'var(--font-mono)' }}>{hist.week_ago}</div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 2px', borderRadius: 4, textAlign: 'center' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 7, fontWeight: 700 }}>1 HAFTA</div>
+                          <div style={{ fontWeight: 800, color: getFgColor(hist.week_ago), fontSize: 9.5, fontFamily: 'var(--font-mono)' }}>{hist.week_ago}</div>
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 2px', borderRadius: 4, textAlign: 'center' }}>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 7.5, fontWeight: 700 }}>1 AY</div>
-                          <div style={{ fontWeight: 800, color: getFgColor(hist.month_ago), fontSize: 10, fontFamily: 'var(--font-mono)' }}>{hist.month_ago}</div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 2px', borderRadius: 4, textAlign: 'center' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 7, fontWeight: 700 }}>1 AY</div>
+                          <div style={{ fontWeight: 800, color: getFgColor(hist.month_ago), fontSize: 9.5, fontFamily: 'var(--font-mono)' }}>{hist.month_ago}</div>
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 2px', borderRadius: 4, textAlign: 'center' }}>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 7.5, fontWeight: 700 }}>1 YIL</div>
-                          <div style={{ fontWeight: 800, color: getFgColor(hist.year_ago), fontSize: 10, fontFamily: 'var(--font-mono)' }}>{hist.year_ago}</div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 2px', borderRadius: 4, textAlign: 'center' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 7, fontWeight: 700 }}>1 YIL</div>
+                          <div style={{ fontWeight: 800, color: getFgColor(hist.year_ago), fontSize: 9.5, fontFamily: 'var(--font-mono)' }}>{hist.year_ago}</div>
                         </div>
                       </div>
 
                       {/* Mini VIX & Truflation row */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
-                        <div style={{ background: '#0b0f19', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', textAlign: 'center' }}>
-                          <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 700 }}>VIX OYNAKLIK</div>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>{fmt(vix.price, 2)}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
+                        <div style={{ background: '#0b0f19', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 8, color: 'var(--text-muted)', fontWeight: 700 }}>VIX OYNAKLIK</div>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>{fmt(vix.price, 2)}</div>
                         </div>
-                        <div style={{ background: '#0b0f19', border: '1px solid var(--border)', borderRadius: 4, padding: '6px 8px', textAlign: 'center' }}>
-                          <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 700 }}>TRUFLATION</div>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>%{fmt(macroPulseData?.inflation?.usa || 2.77, 2)}</div>
+                        <div style={{ background: '#0b0f19', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 8, color: 'var(--text-muted)', fontWeight: 700 }}>TRUFLATION</div>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>%{fmt(macroPulseData?.inflation?.usa || 2.77, 2)}</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Right: Equities & Commodities Return Matrix Table */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0' }}>
+                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#e2e8f0', whiteSpace: 'nowrap' }}>
                           🏛️ KÜRESEL VARLIK PERFORMANS MATRİSİ
                         </span>
-                        <span style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                          Resmi Kapanış Fiyatları (% Değişimler)
+                        <span style={{ fontSize: 8.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          Resmi Kapanış Fiyatları
                         </span>
                       </div>
 
-                      <div style={{ overflowX: 'auto', flex: 1 }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
+                      <div style={{ overflowX: 'auto', flex: 1, minWidth: 0 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9.5, tableLayout: 'auto' }}>
                           <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                              <th style={{ padding: '6px 8px' }}>Varlık</th>
-                              <th style={{ padding: '6px 8px' }}>Sembol</th>
-                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Son Fiyat</th>
-                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Bugün (%)</th>
-                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>5 Gün (%)</th>
-                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>1 Ay (%)</th>
-                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>YTD (%)</th>
+                              <th style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>Varlık</th>
+                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>Son Fiyat</th>
+                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>Bugün</th>
+                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>5 Gün</th>
+                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>1 Ay</th>
+                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>YTD</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -863,21 +862,25 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                               const isPositive = (n) => n >= 0;
                               return (
                                 <tr key={eq.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                                  <td style={{ padding: '6px 8px', fontWeight: 700, color: '#fff' }}>{eq.name}</td>
-                                  <td style={{ padding: '6px 8px', fontFamily: 'var(--font-mono)', color: 'var(--cyan)' }}>{eq.symbol}</td>
-                                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                                    {fmt(eq.price, 2)}
+                                  <td style={{ padding: '4px 6px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <span>{eq.name}</span>
+                                      <span style={{ fontSize: 8, color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>({eq.symbol})</span>
+                                    </div>
                                   </td>
-                                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: isPositive(eq.today) ? 'var(--emerald)' : 'var(--red)' }}>
+                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                    {fmt(eq.price, eq.price > 1000 ? 0 : 2)}
+                                  </td>
+                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: isPositive(eq.today) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
                                     {isPositive(eq.today) ? '+' : ''}{fmt(eq.today, 2)}%
                                   </td>
-                                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.d5) ? 'var(--emerald)' : 'var(--red)' }}>
+                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.d5) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
                                     {isPositive(eq.d5) ? '+' : ''}{fmt(eq.d5, 2)}%
                                   </td>
-                                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.m1) ? 'var(--emerald)' : 'var(--red)' }}>
+                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.m1) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
                                     {isPositive(eq.m1) ? '+' : ''}{fmt(eq.m1, 2)}%
                                   </td>
-                                  <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: isPositive(eq.ytd) ? 'var(--emerald)' : 'var(--red)' }}>
+                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: isPositive(eq.ytd) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
                                     {isPositive(eq.ytd) ? '+' : ''}{fmt(eq.ytd, 2)}%
                                   </td>
                                 </tr>
@@ -1680,7 +1683,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         ref={presentationContainerRef}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: viewMode === 'split' ? 'minmax(600px, 1.45fr) minmax(360px, 1fr)' : '1fr', 
+          gridTemplateColumns: viewMode === 'split' ? 'minmax(0, 1.45fr) minmax(320px, 1fr)' : '1fr', 
           gap: 14,
           alignItems: 'stretch',
           background: isFullscreen ? '#040711' : 'transparent',

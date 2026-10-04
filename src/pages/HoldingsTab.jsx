@@ -1384,7 +1384,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   </th>
                   <th onClick={() => handleSort('profit')} className="text-right" style={{ cursor: 'pointer' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                      <span>Kâr / Zarar</span>
+                      <span>Açık Kâr / Zarar</span>
                       {renderSortIndicator('profit')}
                     </div>
                   </th>
@@ -1856,7 +1856,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
                 const label = isEqMode 
                   ? '🎯 ÇEKİRDEK HİSSE & ETF TOPLAMI' 
-                  : (selectedSegment === 'all' ? '🎯 GENEL KONSOLİDE PORTFÖY TOPLAMI' : `🎯 ${activeStat.shortLabel} TOPLAMI`);
+                  : (selectedSegment === 'all' ? '🎯 TÜM AÇIK PORTFÖY TOPLAMI' : `🎯 ${activeStat.shortLabel} TOPLAMI`);
 
                 // 1. Unified Footnote (8 columns)
                 if (isEqMode && tableSubMode === 'unified') {
@@ -1889,6 +1889,9 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         <span className={isProf ? 'text-up' : 'text-down'}>
                           {isProf ? '+' : ''}{sym}{fmt(profitVal, 2)}
                         </span>
+                        <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 600, marginTop: 1 }}>
+                          Açık K/Z
+                        </div>
                         <div style={{ marginTop: 2 }}>
                           <span className={`return-badge ${activeStat.returnPct >= 0 ? 'up' : 'down'}`} style={{ fontSize: 9 }}>
                             {activeStat.returnPct >= 0 ? '+' : ''}{fmt(activeStat.returnPct, 1)}%
@@ -1943,6 +1946,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 }
 
                 // 3. Classical Financial Footnote (10 columns)
+                const realProfitForFooter = (isTRY ? portfolioSummary?.realizedProfitTRY : portfolioSummary?.realizedProfitUSD) || 0;
                 return (
                   <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
                     <td colSpan={3} style={{ color: activeStat.color, letterSpacing: '0.4px', paddingLeft: 12 }}>
@@ -1987,11 +1991,24 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       <span className={isProf ? 'text-up' : 'text-down'}>
                         {isProf ? '+' : ''}{sym}{fmt(profitVal, 2)}
                       </span>
+                      <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 600, marginTop: 1 }}>
+                        Açık K/Z (Mevcut)
+                      </div>
+                      {selectedSegment === 'all' && !isEqMode && realProfitForFooter !== 0 && (
+                        <div style={{ fontSize: 8.5, color: 'var(--emerald)', marginTop: 2, whiteSpace: 'nowrap' }} title="Daha önce satılan işlemlerden cebe giren realize kâr">
+                          +{sym}{fmt(realProfitForFooter, 0)} Realize
+                        </div>
+                      )}
                     </td>
                     <td className="text-right mono" style={{ fontSize: 12, fontWeight: 800 }}>
                       <span className={`return-badge ${activeStat.returnPct >= 0 ? 'up' : 'down'}`}>
                         {activeStat.returnPct >= 0 ? '+' : ''}{fmt(activeStat.returnPct, 2)}%
                       </span>
+                      {selectedSegment === 'all' && !isEqMode && (portfolioSummary?.consolidatedReturnPct || 0) !== 0 && (
+                        <div style={{ fontSize: 8.5, color: 'var(--cyan)', marginTop: 2, whiteSpace: 'nowrap' }} title="Açık + Realize toplam konsolide getiri">
+                          Konsolide: %{fmt(portfolioSummary?.consolidatedReturnPct, 1)}
+                        </div>
+                      )}
                     </td>
                     <td className="text-right">
                       <span className="nav-badge" style={{ fontSize: 9.5, background: `${activeStat.color}22`, color: activeStat.color, border: `1px solid ${activeStat.color}55` }}>
