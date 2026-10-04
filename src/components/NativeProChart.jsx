@@ -262,13 +262,13 @@ export function calcAutoFib(data, lookback = 180) {
   const diff = maxHigh - minLow;
 
   const levels = [
-    { ratio: '0.000', label: '0.000', price: isUptrend ? maxHigh : minLow, color: 'rgba(148, 163, 184, 0.4)' },
-    { ratio: '0.236', label: '0.236', price: isUptrend ? maxHigh - 0.236 * diff : minLow + 0.236 * diff, color: 'rgba(192, 132, 252, 0.5)' },
-    { ratio: '0.382', label: '0.382', price: isUptrend ? maxHigh - 0.382 * diff : minLow + 0.382 * diff, color: 'rgba(239, 68, 68, 0.6)' },
-    { ratio: '0.500', label: '0.500', price: isUptrend ? maxHigh - 0.500 * diff : minLow + 0.500 * diff, color: '#f59e0b' },
-    { ratio: '0.618', label: '0.618', price: isUptrend ? maxHigh - 0.618 * diff : minLow + 0.618 * diff, color: '#10b981' },
-    { ratio: '0.786', label: '0.786', price: isUptrend ? maxHigh - 0.786 * diff : minLow + 0.786 * diff, color: 'rgba(6, 182, 212, 0.5)' },
-    { ratio: '1.000', label: '1.000', price: isUptrend ? minLow : maxHigh, color: 'rgba(148, 163, 184, 0.4)' }
+    { ratio: '0.000', label: '0.000', price: isUptrend ? maxHigh : minLow, color: 'rgba(148, 163, 184, 0.35)' },
+    { ratio: '0.236', label: '0.236', price: isUptrend ? maxHigh - 0.236 * diff : minLow + 0.236 * diff, color: 'rgba(192, 132, 252, 0.45)' },
+    { ratio: '0.382', label: '0.382', price: isUptrend ? maxHigh - 0.382 * diff : minLow + 0.382 * diff, color: 'rgba(244, 114, 182, 0.45)' },
+    { ratio: '0.500', label: '0.500', price: isUptrend ? maxHigh - 0.500 * diff : minLow + 0.500 * diff, color: '#ef4444' }, // 0.50 Kırmızı & Kalın
+    { ratio: '0.618', label: '0.618', price: isUptrend ? maxHigh - 0.618 * diff : minLow + 0.618 * diff, color: '#f97316' }, // 0.618 Turuncu
+    { ratio: '0.786', label: '0.786', price: isUptrend ? maxHigh - 0.786 * diff : minLow + 0.786 * diff, color: 'rgba(6, 182, 212, 0.45)' },
+    { ratio: '1.000', label: '1.000', price: isUptrend ? minLow : maxHigh, color: 'rgba(148, 163, 184, 0.35)' }
   ];
 
   return { isUptrend, maxHigh, minLow, levels };
@@ -723,13 +723,15 @@ export default function NativeProChart({
 
     chartInstanceRef.current = mainChart;
 
-    // Add Candlestick Series
+    // Add Candlestick Series (Temiz Grafik: Güncel fiyatta grafiği kesen yatay çizgi gizli, sağ skalada etiket aktif)
     const candleSeries = mainChart.addSeries(CandlestickSeries, {
       upColor: '#10b981',
       downColor: '#ef4444',
       borderVisible: false,
       wickUpColor: '#10b981',
-      wickDownColor: '#ef4444'
+      wickDownColor: '#ef4444',
+      priceLineVisible: false,
+      lastValueVisible: true
     });
     candlestickSeriesRef.current = candleSeries;
 
@@ -755,17 +757,21 @@ export default function NativeProChart({
     if (indicators.ema20) {
       ema20SeriesRef.current = mainChart.addSeries(LineSeries, {
         color: '#06b6d4',
-        lineWidth: 2,
+        lineWidth: 1.5,
         title: 'EMA 20'
       });
     } else {
       ema20SeriesRef.current = null;
     }
 
+    // EMA 50: Çizgiye gerek yok, yalnızca sağ skalada mavi "EMA 50" fiyat etiketi olarak görünür
     if (indicators.ema50) {
       ema50SeriesRef.current = mainChart.addSeries(LineSeries, {
         color: '#3b82f6',
-        lineWidth: 2,
+        lineWidth: 1,
+        lineVisible: false,
+        priceLineVisible: false,
+        lastValueVisible: true,
         title: 'EMA 50'
       });
     } else {
@@ -1029,13 +1035,13 @@ export default function NativeProChart({
           const fibData = calcAutoFib(candles, indicatorSettings.fibLookback || 180);
           if (fibData && fibData.levels) {
             fibData.levels.forEach(lvl => {
+              const isHalf = lvl.ratio === '0.500';
               const isGolden = lvl.ratio === '0.618';
-              const isMid = lvl.ratio === '0.500';
               const fibLine = candlestickSeriesRef.current.createPriceLine({
                 price: lvl.price,
                 color: lvl.color,
-                lineWidth: isGolden ? 2 : isMid ? 1.5 : 1,
-                lineStyle: isGolden ? LineStyle.Solid : isMid ? LineStyle.Dashed : LineStyle.Dotted,
+                lineWidth: isHalf ? 2 : 1, // 0.500 kırmızı ve daha kalın (2px), 0.618 ve diğerleri 1px
+                lineStyle: isHalf ? LineStyle.Solid : isGolden ? LineStyle.Dashed : LineStyle.Dotted,
                 axisLabelVisible: true,
                 title: indicatorSettings.showLevelTitles ? `Fib ${lvl.label}` : ''
               });
@@ -1268,8 +1274,9 @@ export default function NativeProChart({
             onClick={() => setIndicators(prev => ({ ...prev, ema50: !prev.ema50 }))}
             className={`chip-btn ${indicators.ema50 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema50 ? '#3b82f6' : 'inherit', borderColor: indicators.ema50 ? '#3b82f6' : 'rgba(255,255,255,0.1)' }}
+            title="EMA 50 seviyesini sağ fiyat skalasında mavi etiket olarak gösterir (çizgisiz sade görünüm)"
           >
-            EMA {indicatorSettings.ema2Period || 50}
+            EMA {indicatorSettings.ema2Period || 50} (Etiket)
           </button>
 
           <button
