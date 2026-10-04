@@ -63,11 +63,29 @@ const SPECIAL_MAP = {
   'BYDNR.IS': 'BYDNR.IS'
 };
 
+const KNOWN_BIST_SYMBOLS = new Set([
+  'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
+  'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 
+  'TCELL', 'PETKM', 'TTKOM', 'ENKAI', 'KOZAL', 'SASA', 'HEKTS', 'KONTR',
+  'AGROT', 'AHGAZ', 'AKCNS', 'AKFGY', 'AKFYE', 'ALARK', 'ALBRK', 'ALFAS', 'ARCLK', 
+  'ARDYZ', 'BERA', 'BFREN', 'BRSAN', 'BRYAT', 'BSOKE', 'BTCIM', 'CANTE', 'CCOLA', 
+  'CIMSA', 'CWENE', 'DOAS', 'DOHOL', 'ECILC', 'ECZYT', 'EGEEN', 'EKGYO', 'ENERY', 
+  'ENJSA', 'EUPWR', 'EUREN', 'GESAN', 'GLYHO', 'GOLTS', 'GSDHO', 'GUBRF', 'GWIND', 
+  'HALKB', 'IPEKE', 'ISDMR', 'ISGYO', 'ISMEN', 'IZMDC', 'KARSN', 'KAYSE', 'KCAER', 
+  'KMPUR', 'KONYA', 'KORDS', 'KOZAA', 'KRDMD', 'MAVI', 'MGROS', 'MIATK', 'ODAS', 
+  'OTKAR', 'OYAKC', 'PASEU', 'PENTA', 'QUAGR', 'REEDR', 'SDTTR', 'SKBNK', 'SMRTG', 
+  'SOKM', 'TABGD', 'TARKM', 'TATEN', 'TAVHL', 'TKFEN', 'TOASO', 'TRGYO', 'TSKB', 
+  'TTRAK', 'ULKER', 'VAKBN', 'VESBE', 'VESTL', 'YEOTK', 'YYLGD', 'ZOREN'
+]);
+
 function resolveSymbol(raw) {
   if (!raw) return raw;
   const upper = raw.toUpperCase().trim();
   if (SPECIAL_MAP[upper]) return SPECIAL_MAP[upper];
   
+  if (upper.endsWith('.IS')) return upper;
+  if (KNOWN_BIST_SYMBOLS.has(upper)) return `${upper}.IS`;
+
   // Handle USDT suffixes from Binance/TradingView
   if (upper.endsWith('USDT')) {
     const base = upper.slice(0, -4);
@@ -185,7 +203,17 @@ export default async function handler(req, res) {
     try {
       const sym = chart.trim().toUpperCase();
       const resolved = resolveSymbol(sym);
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolved)}?interval=1d&range=3mo`;
+      const reqInterval = (req.query.interval || '1d').toLowerCase();
+      
+      // Determine appropriate default range based on interval
+      let reqRange = req.query.range;
+      if (!reqRange) {
+        if (reqInterval === '1wk') reqRange = '5y';
+        else if (reqInterval === '1h') reqRange = '3mo';
+        else reqRange = '2y';
+      }
+
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolved)}?interval=${encodeURIComponent(reqInterval)}&range=${encodeURIComponent(reqRange)}`;
       const resp = await fetch(url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
       });
@@ -200,13 +228,21 @@ export default async function handler(req, res) {
         const vols = q.volume || [];
 
         const candles = [];
+        const isIntraday = reqInterval.includes('m') || reqInterval.includes('h');
+
         for (let i = 0; i < timestamps.length; i++) {
           const c = closes[i];
           if (typeof c === 'number' && !isNaN(c) && c > 0) {
-            const d = new Date(timestamps[i] * 1000);
-            const time = d.toISOString().split('T')[0];
+            let timeVal;
+            if (isIntraday) {
+              timeVal = timestamps[i]; // UNIX timestamp in seconds for Lightweight Charts
+            } else {
+              const d = new Date(timestamps[i] * 1000);
+              timeVal = d.toISOString().split('T')[0];
+            }
+
             candles.push({
-              time,
+              time: timeVal,
               open: Number((opens[i] || c).toFixed(2)),
               high: Number((highs[i] || c).toFixed(2)),
               low: Number((lows[i] || c).toFixed(2)),
@@ -216,7 +252,7 @@ export default async function handler(req, res) {
           }
         }
         res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
-        return res.status(200).json({ status: 'success', symbol: sym, resolved, candles });
+        return res.status(200).json({ status: 'success', symbol: sym, resolved, interval: reqInterval, range: reqRange, candles });
       }
     } catch (e) {
       return res.status(500).json({ status: 'error', message: e.message });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import NativeProChart from '../components/NativeProChart';
 import { 
   LineChart, 
   Search, 
@@ -1513,65 +1514,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     return () => clearInterval(interval);
   }, [currentSymbol, isBistStock, cleanActiveTicker]);
 
-  // TradingView Widget Injection
-  const containerId = 'tradingview_pro_chart_embed';
-  const scriptId = 'tradingview-widget-script';
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const initWidget = () => {
-      if (!window.TradingView) return;
-      const el = document.getElementById(containerId);
-      if (!el) return;
-      el.innerHTML = '';
-
-      const tvSymbol = getTradingViewSymbol(currentSymbol);
-
-      try {
-        new window.TradingView.widget({
-          autosize: true,
-          symbol: tvSymbol,
-          interval: chartInterval,
-          timezone: 'Europe/Istanbul',
-          theme: 'dark',
-          style: '1', // Candlestick
-          locale: 'tr',
-          toolbar_bg: '#040711',
-          enable_publishing: false,
-          hide_side_toolbar: false, // Full drawing tools on left
-          allow_symbol_change: true,
-          save_image: true,
-          container_id: containerId,
-          studies: activeStudies,
-          studies_overrides: {
-            "moving average exponential.length": 50,
-            "moving average exponential.plot.color": "#2962FF",
-            "moving average exponential.plot.linewidth": 2
-          }
-        });
-      } catch (err) {
-        console.warn('TradingView widget initialization error:', err);
-      }
-    };
-
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://s3.tradingview.com/tv.js';
-      script.async = true;
-      script.onload = () => {
-        if (isMounted) initWidget();
-      };
-      document.head.appendChild(script);
-    } else {
-      initWidget();
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentSymbol, activeStudies, chartInterval]);
 
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1599,11 +1542,11 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             <div style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span>PRO GRAFİK & TEKNİK ANALİZ İSTASYONU</span>
               <span className="nav-badge cyan" style={{ fontSize: 9 }}>
-                TRADINGVIEW ENGINE
+                BAĞIMSIZ YEREL MOTOR • KALICI ÇİZİM
               </span>
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-              Canlı Fiyatlar • Çizim Araçları • Sınırsız İzleme Listeleri • Seans Sayacı
+              BIST, ABD, Tahviller & Kriptolar • Sınırsız İndikatörler • Asla Silinmeyen Çizimler • Portföy Maliyet Çizgisi
             </div>
           </div>
         </div>
@@ -1676,7 +1619,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               textDecoration: 'none',
               fontWeight: 600
             }}
-            title="TradingView resmi sitesinde aç (En altta Pine Düzenleyici sekmesi yer alır)"
+            title="Çizimlerinizi, trend çizgilerinizi ve grafik düzeninizi kalıcı olarak saklamak için resmi sitede açın (TradingView hesabınızda otomatik kaydedilir)"
           >
             <ExternalLink size={12} />
             <span>TradingView'de Aç</span>
@@ -1726,104 +1669,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         </div>
       </div>
 
-      {/* ⚡ TRADINGVIEW GÖSTERGELER & PERİYOT KONTROL BARI */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          gap: 8, 
-          padding: '6px 12px', 
-          background: 'rgba(15, 23, 42, 0.75)', 
-          border: '1px solid rgba(0, 229, 255, 0.2)', 
-          borderRadius: 6 
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Sliders size={12} className="text-cyan" />
-            <span>GÖSTERGELER:</span>
-          </span>
 
-          {AVAILABLE_STUDIES.map(st => {
-            const isActive = activeStudies.includes(st.id);
-            return (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() => toggleStudy(st.id)}
-                className={`chip-btn ${isActive ? 'active' : ''}`}
-                style={{ 
-                  fontSize: 10, 
-                  padding: '2px 7px',
-                  fontWeight: isActive ? 700 : 500,
-                  borderColor: isActive ? 'var(--cyan)' : 'rgba(255,255,255,0.1)'
-                }}
-                title={`${st.fullName} (Aç/Kapat)`}
-              >
-                {isActive ? '✓ ' : '+ '}{st.name}
-              </button>
-            );
-          })}
-
-          {/* 🧹 Clear All to Free Up 100% of TradingView Quota */}
-          <button
-            type="button"
-            onClick={clearAllStudies}
-            className="chip-btn"
-            style={{ fontSize: 9.5, padding: '2px 7px', borderColor: 'rgba(239, 68, 68, 0.5)', color: '#f87171' }}
-            title="Grafiği 0 indikatörle açarak TradingView içinden ekleme kotanızı %100 boşaltır"
-          >
-            🧹 Kotayı Boşalt (0 İndikatör)
-          </button>
-
-          {/* 📐 EMA 50 & Auto Fib Kodu */}
-          <button
-            type="button"
-            onClick={() => setShowFibModal(true)}
-            className="chip-btn"
-            style={{ fontSize: 9.5, padding: '2px 8px', borderColor: 'rgba(99, 102, 241, 0.5)', color: '#c7d2fe', background: 'rgba(99, 102, 241, 0.12)', fontWeight: 600 }}
-            title="EMA 50 ve Ayarlanabilir Otomatik Fibonacci Pine Script Kodunu Al"
-          >
-            📐 EMA 50 & Auto Fib Kodu
-          </button>
-
-          {/* ⏱️ Zaman Dilimi Seçici */}
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)', marginLeft: 4 }}>
-            {[
-              { id: '15', label: '15D' },
-              { id: '60', label: '1S' },
-              { id: '240', label: '4S' },
-              { id: 'D', label: '1G' },
-              { id: 'W', label: '1H' }
-            ].map(tf => (
-              <button
-                key={tf.id}
-                type="button"
-                onClick={() => setChartInterval(tf.id)}
-                className={`chip-btn ${chartInterval === tf.id ? 'active' : ''}`}
-                style={{ fontSize: 9, padding: '2px 5px', fontWeight: chartInterval === tf.id ? 700 : 500 }}
-                title={`${tf.label} periyoduna geç`}
-              >
-                {tf.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: 'var(--text-muted)' }}>
-          <span 
-            className={`nav-badge ${activeStudies.length === 0 ? 'emerald' : activeStudies.length <= 2 ? 'amber' : 'rose'}`}
-            style={{ fontSize: 9.5, padding: '2px 7px' }}
-            title="TradingView ücretsiz planında toplam gösterge limiti 2 veya 3'tür."
-          >
-            {activeStudies.length === 0 
-              ? '🟢 Kotanız %100 Boş (TradingView İçinden Rahatça Ekleyebilirsiniz)' 
-              : `${activeStudies.length} Gösterge Açık`}
-          </span>
-        </div>
-      </div>
 
       {/* 🎯 PORTFÖY ALIM BÖLGESİ HUD'U */}
       {!hideHud && (
@@ -1935,56 +1781,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         </div>
       )}
 
-      {/* 🇹🇷 BIST Symbol Warning & 1-Click Launch Bar */}
-      {isBistStock && (
-        <div 
-          style={{ 
-            background: 'rgba(245, 158, 11, 0.1)', 
-            border: '1px solid rgba(245, 158, 11, 0.35)', 
-            borderRadius: 6, 
-            padding: '7px 12px', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            flexWrap: 'wrap', 
-            gap: 8,
-            marginBottom: 2
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 14 }}>🇹🇷</span>
-            <div>
-              <strong style={{ color: 'var(--amber)', fontSize: 11 }}>BIST Resmi Veri Bildirimi: </strong>
-              <span style={{ fontSize: 10.5, color: '#e2e8f0' }}>
-                Borsa İstanbul lisans kuralı gereği, TradingView harici sitelerde BIST grafiklerini sınırlandırır.
-              </span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <a
-              href={`https://tr.tradingview.com/chart/?symbol=BIST:${cleanActiveTicker}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary"
-              style={{
-                fontSize: 10,
-                padding: '3px 10px',
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                background: 'linear-gradient(135deg, #d97706, #f59e0b)',
-                color: '#000',
-                fontWeight: 800
-              }}
-            >
-              <ExternalLink size={11} />
-              <span>TradingView'da Tam Aç ➔</span>
-            </a>
-          </div>
-        </div>
-      )}
-
       {/* 📊 Main Workspace: Chart (Left) + Sınırsız Watchlist Sidebar (Right) */}
       <div 
         ref={chartWrapperRef}
@@ -2003,7 +1799,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         }}
       >
         
-        {/* Left: The Chart Container (TradingView Engine) */}
+        {/* Left: The Native Independent Pro Chart Engine */}
         <div 
           className="card" 
           style={{ 
@@ -2015,180 +1811,19 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             height: isFullscreen ? 'calc(100vh - 28px)' : 'calc(100vh - 210px)',
             display: 'flex',
             flexDirection: 'column',
-            position: 'relative'
+            position: 'relative',
+            overflow: 'hidden'
           }}
         >
-          {/* Fullscreen Interactive Top Floating Toolbar */}
-          {isFullscreen && (
-            <div 
-              style={{ 
-                position: 'absolute', 
-                top: 10, 
-                left: 14, 
-                right: 14, 
-                zIndex: 9999, 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                background: 'rgba(8, 12, 22, 0.95)', 
-                padding: '6px 12px', 
-                borderRadius: 8, 
-                border: '1px solid rgba(0, 229, 255, 0.35)',
-                backdropFilter: 'blur(8px)',
-                flexWrap: 'wrap',
-                gap: 8
-              }}
-            >
-              {/* Active Ticker, Session Countdown & Quick Switches */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="mono font-bold text-cyan" style={{ fontSize: 13 }}>
-                  {cleanActiveTicker}
-                </span>
-
-                {/* Seans Sayacı Rozeti (Fullscreen) */}
-                <span className="mono" style={{ fontSize: 10, color: sessionTimer.status === 'open' ? '#34d399' : '#fbbf24', background: 'rgba(0,0,0,0.5)', padding: '2px 7px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }}>
-                  {sessionTimer.badge} • {sessionTimer.text}
-                </span>
-
-                {buyZoneAnalysis.hasHolding && (
-                  <span className="badge-type hisse" style={{ fontSize: 9 }}>
-                    Maliyet: {buyZoneAnalysis.symMark}{fmt(buyZoneAnalysis.holdingCost, 2)} ({activeHolding.shares} Lot)
-                  </span>
-                )}
-                <div style={{ display: 'inline-flex', gap: 4 }}>
-                  {['SPCX', 'NVDA', 'BYDNR.IS', 'DRAM', 'BTCUSDT', 'TOTAL3'].map(symCode => (
-                    <button
-                      key={symCode}
-                      type="button"
-                      onClick={() => {
-                        setCurrentSymbol(symCode);
-                        if (onSelectTicker) onSelectTicker(symCode);
-                      }}
-                      className={`chip-btn ${currentSymbol === symCode ? 'active' : ''}`}
-                      style={{ fontSize: 9, padding: '2px 6px' }}
-                    >
-                      {symCode.replace('.IS', '').replace('USDT', '')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sidebar Toggle & Exit Fullscreen */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(prev => !prev)}
-                  className="chip-btn"
-                  style={{ 
-                    fontSize: 9.5, 
-                    padding: '3px 8px', 
-                    background: sidebarOpen ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
-                    borderColor: 'var(--cyan)',
-                    color: 'var(--cyan)'
-                  }}
-                  title="Tam ekranda yan paneldeki tüm hisseleri açıp kapatın"
-                >
-                  <Layers size={11} style={{ marginRight: 3 }} />
-                  <span>{sidebarOpen ? 'Listeyi Gizle' : 'Listeyi Aç'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowFibModal(true)}
-                  className="chip-btn"
-                  style={{ 
-                    fontSize: 9.5, 
-                    padding: '3px 8px', 
-                    borderColor: 'rgba(99, 102, 241, 0.5)', 
-                    color: '#c7d2fe', 
-                    background: 'rgba(99, 102, 241, 0.15)' 
-                  }}
-                  title="EMA 50 & Auto Fib Pine Script Kodu"
-                >
-                  📐 EMA 50 & Fib
-                </button>
-
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="chip-btn"
-                  style={{ fontSize: 9.5, padding: '3px 9px', background: '#ef4444', color: '#fff', borderColor: '#ef4444', fontWeight: 700 }}
-                  title="Tam Ekrandan Çık (ESC)"
-                >
-                  ✕ Çık (ESC)
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 🇹🇷 BIST Veri Lisansı Kuralı & Doğrudan TradingView Açma Bildirimi */}
-          {isBistStock && (
-            <div 
-              style={{ 
-                margin: '8px 10px 4px 10px',
-                padding: '8px 14px',
-                background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.16), rgba(15, 23, 42, 0.95))',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 10
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 16 }}>🇹🇷</span>
-                <div>
-                  <div style={{ fontSize: 11.5, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span>Borsa İstanbul (BIST) Veri Kuralı</span>
-                    <span style={{ fontSize: 9.5, padding: '1px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.2)', color: '#fca5a5' }}>
-                      {cleanActiveTicker.replace('.IS', '')}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 1 }}>
-                    Borsa İstanbul'un veri lisansı kuralı nedeniyle gömülü widget'lar kısıtlanmaktadır. Hissenin anlık grafiğini, tüm derinliğini ve göstergelerini kesintisiz açmak için:
-                  </div>
-                </div>
-              </div>
-
-              <a
-                href={tvExternalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="chip-btn"
-                style={{
-                  fontSize: 11,
-                  padding: '6px 14px',
-                  background: '#ef4444',
-                  borderColor: '#dc2626',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  borderRadius: 6,
-                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.35)'
-                }}
-                title="Resmi TradingView sayfasında tüm araçlar ve Pine düzenleyiciyle aç"
-              >
-                <ExternalLink size={13} />
-                <span>{cleanActiveTicker.replace('.IS', '')} Grafiğini TradingView'de Aç ↗</span>
-              </a>
-            </div>
-          )}
-
-          {/* TRADINGVIEW PRO CHART WIDGET */}
-          <div 
-            id={containerId} 
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              minHeight: 700, 
-              flex: 1, 
-              paddingTop: isFullscreen ? 44 : 0 
-            }} 
+          <NativeProChart
+            symbol={currentSymbol}
+            cleanTicker={cleanActiveTicker}
+            isBist={isBistStock}
+            activeHolding={activeHolding}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            sessionTimer={sessionTimer}
+            onOpenAddModal={onOpenAddModal}
           />
         </div>
 
