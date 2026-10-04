@@ -287,12 +287,17 @@ export function getTradingViewSymbol(ticker) {
   if (clean === 'SPCX') return 'SPCX';
   if (clean === 'CUSD') return 'AMEX:CUSD';
   if (clean === 'DRAM') return 'DRAM';
+  if (clean === 'SGOV') return 'NASDAQ:SGOV';
+  if (clean === 'IEF') return 'NASDAQ:IEF';
+  if (clean === 'TLT') return 'NASDAQ:TLT';
+  if (clean === 'SHV') return 'NASDAQ:SHV';
+  if (clean === 'BIL') return 'AMEX:BIL';
+  if (clean === 'BND') return 'NASDAQ:BND';
   if (clean === 'SOXX') return 'NASDAQ:SOXX';
   if (clean === 'SMH') return 'NASDAQ:SMH';
   if (clean === 'QQQ') return 'NASDAQ:QQQ';
   if (clean === 'SPY') return 'AMEX:SPY';
   if (clean === 'IWM') return 'AMEX:IWM';
-  if (clean === 'TLT') return 'NASDAQ:TLT';
   if (clean === 'GLD') return 'AMEX:GLD';
   if (clean === 'URA') return 'AMEX:URA';
   if (clean === 'XLE') return 'AMEX:XLE';
@@ -345,6 +350,9 @@ const PRESET_WATCHLISTS = {
   etf: [
     { ticker: 'DRAM', name: 'D-RAM Bellek Teknoloji ETF', desc: 'Portföy ETF Varlığı • 5.00 Lot', tv: 'DRAM', isHolding: true },
     { ticker: 'CUSD', name: 'Coinbase USD Yield ETF', desc: 'Portföy Nakit Getiri Fonu', tv: 'AMEX:CUSD', isHolding: true },
+    { ticker: 'SGOV', name: 'iShares 0-3 Month Treasury', desc: 'Ultra Kısa Vadeli Risksiz Dolar Faizi (0-3 Ay)', tv: 'NASDAQ:SGOV' },
+    { ticker: 'IEF', name: 'iShares 7-10 Year Treasury', desc: 'Orta Vadeli ABD Gösterge Tahvili (7-10Y)', tv: 'NASDAQ:IEF' },
+    { ticker: 'TLT', name: 'iShares 20+ Year Treasury', desc: 'Uzun Vadeli ABD Hazine Tahvilleri (20Y+)', tv: 'NASDAQ:TLT' },
     { ticker: 'SOXX', name: 'iShares Semiconductor ETF', desc: 'ABD Yarı İletken Sektör Sepeti', tv: 'NASDAQ:SOXX' },
     { ticker: 'SMH', name: 'VanEck Semiconductor ETF', desc: 'En Büyük Yarı İletken Şirketleri', tv: 'NASDAQ:SMH' },
     { ticker: 'QQQ', name: 'Invesco QQQ Trust', desc: 'Nasdaq 100 Teknoloji Endeksi', tv: 'NASDAQ:QQQ' },
@@ -354,8 +362,7 @@ const PRESET_WATCHLISTS = {
     { ticker: 'XLK', name: 'Technology Select Sector SPDR', desc: 'S&P Teknoloji Sektör Fonu', tv: 'AMEX:XLK' },
     { ticker: 'XLE', name: 'Energy Select Sector SPDR', desc: 'S&P Enerji Sektör Fonu', tv: 'AMEX:XLE' },
     { ticker: 'URA', name: 'Global X Uranium ETF', desc: 'Uranyum & Nükleer Enerji Şirketleri', tv: 'AMEX:URA' },
-    { ticker: 'GLD', name: 'SPDR Gold Shares', desc: 'Fiziki Altın Fonu', tv: 'AMEX:GLD' },
-    { ticker: 'TLT', name: 'iShares 20+ Year Treasury', desc: 'ABD Uzun Vadeli Hazine Tahvilleri', tv: 'NASDAQ:TLT' }
+    { ticker: 'GLD', name: 'SPDR Gold Shares', desc: 'Fiziki Altın Fonu', tv: 'AMEX:GLD' }
   ],
   bist: [
     { ticker: 'BYDNR.IS', name: 'Baydöner Restoranları', desc: 'Portföy BIST Hissesi • 10.00 Lot', tv: 'BIST:BYDNR', isHolding: true },
@@ -532,7 +539,12 @@ export const SEARCH_CATALOG = [
   { ticker: "URA", name: "Global X Uranium ETF", market: "ETF", keywords: "ura uranyum nükleer enerji nükleer yakıt cameco etf" },
   { ticker: "GLD", name: "SPDR Gold Shares (Fiziki Altın)", market: "ETF", keywords: "gld spdr altın ons külçe değerli metal altın fonu" },
   { ticker: "SLV", name: "iShares Silver Trust (Gümüş)", market: "ETF", keywords: "slv ishares gümüş silver ons gümüş fonu metal" },
-  { ticker: "TLT", name: "iShares 20+ Year Treasury Bond ETF", market: "ETF", keywords: "tlt abd uzun vadeli tahvil faiz bono sabit getiri" },
+  { ticker: "TLT", name: "iShares 20+ Year Treasury Bond ETF", market: "ETF", keywords: "tlt abd uzun vadeli tahvil faiz bono sabit getiri 20y" },
+  { ticker: "SGOV", name: "iShares 0-3 Month Treasury Bond ETF", market: "ETF", keywords: "sgov ishares 0-3 month treasury abd kisa vadeli hazine tahvil nakit faiz dolar kupon aylik temettu risksiz getiri bono kuru barut" },
+  { ticker: "IEF", name: "iShares 7-10 Year Treasury Bond ETF", market: "ETF", keywords: "ief ishares 7-10 year treasury abd orta vadeli hazine tahvili gosterge 10y faiz bono durasyon" },
+  { ticker: "SHV", name: "iShares Short Treasury Bond ETF (1Y Altı)", market: "ETF", keywords: "shv ishares short treasury abd kisa vadeli tahvil nakit faiz" },
+  { ticker: "BIL", name: "SPDR Bloomberg 1-3 Month T-Bill ETF", market: "ETF", keywords: "bil t-bill hazine bonosu kisa vadeli nakit faiz abd" },
+  { ticker: "BND", name: "Vanguard Total Bond Market ETF", market: "ETF", keywords: "bnd vanguard total bond aggregate tahvil piyasasi kupon" },
   { ticker: "DRAM", name: "D-RAM Bellek Teknoloji ETF", market: "ETF", keywords: "dram d-ram bellek teknoloji portföy etf" },
   { ticker: "CUSD", name: "Coinbase USD Yield ETF", market: "ETF", keywords: "cusd coinbase usd nakit getiri fonu portföy" },
 
