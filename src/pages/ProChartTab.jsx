@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import NativeProChart from '../components/NativeProChart';
+import { db } from '../firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { 
   LineChart, 
   Search, 
@@ -827,7 +829,42 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     };
   }, []);
 
-  // Persist custom watchlists
+  const isApplyingCloudWatchlistsRef = useRef(false);
+
+  // 1. Subscribe to Firestore custom watchlists in real-time
+  useEffect(() => {
+    const unsubWatchlists = onSnapshot(doc(db, 'chart_watchlists', 'custom_lists'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && Array.isArray(data.lists) && data.lists.length > 0) {
+          isApplyingCloudWatchlistsRef.current = true;
+          setCustomWatchlists(data.lists);
+          try {
+            localStorage.setItem('pro_chart_custom_watchlists_v2', JSON.stringify(data.lists));
+            if (data.lists[0]?.tickers) {
+              localStorage.setItem('custom_watchlist_tickers', JSON.stringify(data.lists[0].tickers));
+            }
+          } catch (e) {}
+        }
+      } else {
+        // If nothing in cloud yet, seed cloud from current state
+        try {
+          if (customWatchlists && customWatchlists.length > 0) {
+            setDoc(doc(db, 'chart_watchlists', 'custom_lists'), {
+              lists: customWatchlists,
+              updatedAt: Date.now()
+            }, { merge: true });
+          }
+        } catch (e) {}
+      }
+    }, (err) => {
+      console.warn('Firestore watchlists subscription error:', err);
+    });
+
+    return () => unsubWatchlists();
+  }, []);
+
+  // Persist custom watchlists to local & Firestore
   useEffect(() => {
     try {
       localStorage.setItem('pro_chart_custom_watchlists_v2', JSON.stringify(customWatchlists));
@@ -837,6 +874,22 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     } catch (err) {
       console.warn('Could not save custom watchlists', err);
     }
+
+    if (isApplyingCloudWatchlistsRef.current) {
+      isApplyingCloudWatchlistsRef.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        setDoc(doc(db, 'chart_watchlists', 'custom_lists'), {
+          lists: customWatchlists,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (e) {}
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, [customWatchlists]);
 
   // Autocomplete filtering based on newTickerInput

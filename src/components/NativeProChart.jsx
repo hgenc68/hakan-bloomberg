@@ -19,8 +19,11 @@ import {
   Activity, 
   Layers,
   X,
-  ExternalLink
+  ExternalLink,
+  Cloud
 } from 'lucide-react';
+import { db } from '../firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // Math calculation helpers for Indicators
 function calcEMA(data, period) {
@@ -330,6 +333,11 @@ export default function NativeProChart({
   // Modal for Indicator Settings
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+  // Flags to avoid feedback loop between Firestore subscription and local state updates
+  const isApplyingCloudPreferencesRef = useRef(false);
+  const isApplyingCloudSettingsRef = useRef(false);
+  const isApplyingCloudDrawingsRef = useRef(false);
+
   // User persistent indicator parameters
   const [indicatorSettings, setIndicatorSettings] = useState(() => {
     try {
@@ -349,18 +357,7 @@ export default function NativeProChart({
     };
   });
 
-  // Save indicator settings
-  useEffect(() => {
-    try {
-      localStorage.setItem('terminal_indicator_settings', JSON.stringify(indicatorSettings));
-    } catch (e) {}
-  }, [indicatorSettings]);
-
-  // User persistent drawings per base symbol
-  // { horizontals: [{ id, price, label, color }], trendlines: [{ id, p1: { time, price }, p2: { time, price }, color }] }
-  const [drawings, setDrawings] = useState({ horizontals: [], trendlines: [] });
-
-  // Persistent Active Indicators
+  // Persistent Active Indicators (Default matches user preferences: EMA 50, RSI, Fib active; CostLine off)
   const [indicators, setIndicators] = useState(() => {
     try {
       const saved = localStorage.getItem('terminal_chart_indicators');
@@ -369,29 +366,114 @@ export default function NativeProChart({
     return {
       ema20: false,
       ema50: true,
-      ema200: true,
+      ema200: false,
       bollinger: false,
       volume: true,
       rsi: true,
-      costLine: true,
+      costLine: false,
       autoSR: false,
-      autoFib: false
+      autoFib: true
     };
   });
 
-  // Save indicator preferences
+  // 1. Subscribe to Firebase Firestore Cloud Preferences (Real-Time Sync between PC & Mobile)
+  useEffect(() => {
+    const unsubPrefs = onSnapshot(doc(db, 'chart_preferences', 'settings'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && data.indicators) {
+          isApplyingCloudPreferencesRef.current = true;
+          setIndicators(prev => {
+            if (JSON.stringify(prev) !== JSON.stringify(data.indicators)) {
+              return data.indicators;
+            }
+            return prev;
+          });
+          try {
+            localStorage.setItem('terminal_chart_indicators', JSON.stringify(data.indicators));
+          } catch (e) {}
+        }
+        if (data && data.indicatorSettings) {
+          isApplyingCloudSettingsRef.current = true;
+          setIndicatorSettings(prev => {
+            if (JSON.stringify(prev) !== JSON.stringify(data.indicatorSettings)) {
+              return data.indicatorSettings;
+            }
+            return prev;
+          });
+          try {
+            localStorage.setItem('terminal_indicator_settings', JSON.stringify(data.indicatorSettings));
+          } catch (e) {}
+        }
+      }
+    }, (err) => {
+      console.warn('Firestore preferences subscription error:', err);
+    });
+
+    return () => unsubPrefs();
+  }, []);
+
+  // Save indicator preferences to localStorage & Firebase Cloud
   useEffect(() => {
     try {
       localStorage.setItem('terminal_chart_indicators', JSON.stringify(indicators));
     } catch (e) {}
+
+    if (isApplyingCloudPreferencesRef.current) {
+      isApplyingCloudPreferencesRef.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        setDoc(doc(db, 'chart_preferences', 'settings'), {
+          indicators,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firestore indicators sync error:', err);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
   }, [indicators]);
 
-  // Load symbol's drawings from localStorage whenever symbol changes
+  // Save indicator settings to localStorage & Firebase Cloud
+  useEffect(() => {
+    try {
+      localStorage.setItem('terminal_indicator_settings', JSON.stringify(indicatorSettings));
+    } catch (e) {}
+
+    if (isApplyingCloudSettingsRef.current) {
+      isApplyingCloudSettingsRef.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        setDoc(doc(db, 'chart_preferences', 'settings'), {
+          indicatorSettings,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firestore settings sync error:', err);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [indicatorSettings]);
+
+  // User persistent drawings per base symbol
+  // { horizontals: [{ id, price, label, color }], trendlines: [{ id, p1: { time, price }, p2: { time, price }, color }] }
+  const [drawings, setDrawings] = useState({ horizontals: [], trendlines: [] });
+
+  // Load symbol's drawings from localStorage & Firebase Cloud whenever symbol changes
   // Uses normalized base symbol (e.g. 'BTC' whether ticker is BTCUSDT, BTC-USD, or BTC)
   const baseSymbol = normalizeTicker(cleanTicker || symbol);
   const storageKey = `terminal_drawings_${baseSymbol}`;
 
   useEffect(() => {
+    // 1. Immediate local cache load (0ms latency)
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
@@ -405,15 +487,66 @@ export default function NativeProChart({
     setActiveDrawTool(null);
     setTrendStartPoint(null);
     setMousePreviewPoint(null);
-  }, [storageKey]);
 
-  // Persist drawings to localStorage
+    if (!baseSymbol) return;
+
+    // 2. Real-Time Cloud Firestore Sync for Drawings
+    const unsubDrawings = onSnapshot(doc(db, 'chart_drawings', baseSymbol), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && (Array.isArray(data.horizontals) || Array.isArray(data.trendlines))) {
+          const cloudDrawings = {
+            horizontals: Array.isArray(data.horizontals) ? data.horizontals : [],
+            trendlines: Array.isArray(data.trendlines) ? data.trendlines : []
+          };
+          isApplyingCloudDrawingsRef.current = true;
+          setDrawings(cloudDrawings);
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(cloudDrawings));
+          } catch (e) {}
+        }
+      } else {
+        // If not in cloud yet, check if local storage had drawings and upload to cloud
+        try {
+          const local = localStorage.getItem(storageKey);
+          if (local) {
+            const parsed = JSON.parse(local);
+            if ((parsed.horizontals && parsed.horizontals.length > 0) || (parsed.trendlines && parsed.trendlines.length > 0)) {
+              setDoc(doc(db, 'chart_drawings', baseSymbol), {
+                horizontals: parsed.horizontals || [],
+                trendlines: parsed.trendlines || [],
+                updatedAt: Date.now()
+              }, { merge: true });
+            }
+          }
+        } catch (e) {}
+      }
+    }, (err) => {
+      console.warn('Firestore drawings subscription error:', err);
+    });
+
+    return () => unsubDrawings();
+  }, [storageKey, baseSymbol]);
+
+  // Persist drawings to localStorage & Firebase Cloud
   const saveDrawings = useCallback((newDrawings) => {
     setDrawings(newDrawings);
     try {
       localStorage.setItem(storageKey, JSON.stringify(newDrawings));
     } catch (e) {}
-  }, [storageKey]);
+
+    if (baseSymbol) {
+      try {
+        setDoc(doc(db, 'chart_drawings', baseSymbol), {
+          horizontals: newDrawings.horizontals || [],
+          trendlines: newDrawings.trendlines || [],
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firestore saveDrawings error:', err);
+      }
+    }
+  }, [storageKey, baseSymbol]);
 
   // Re-calculate SVG trendline pixel coordinates from timeScale and priceScale
   const recalcSvgLines = useCallback(() => {
