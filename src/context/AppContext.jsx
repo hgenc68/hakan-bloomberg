@@ -122,19 +122,38 @@ const DEFAULT_INITIAL_QUOTES = {
   'TOTAL3': { symbol: 'TOTAL3', price: 748500000000, currency: 'USD', changePct: 2.65 },
   'OTHERS': { symbol: 'OTHERS', price: 298200000000, currency: 'USD', changePct: 3.15 },
   'TOTALDEFI': { symbol: 'TOTALDEFI', price: 94100000000, currency: 'USD', changePct: 1.90 },
-  'TSM': { symbol: 'TSM', price: 195.0, currency: 'USD', changePct: 1.8 },
-  'NVDA': { symbol: 'NVDA', price: 135.0, currency: 'USD', changePct: 1.4 },
+  'NVDA': { symbol: 'NVDA', price: 238.90, currency: 'USD', changePct: 2.12 },
+  'AMZN': { symbol: 'AMZN', price: 251.40, currency: 'USD', changePct: -0.05 },
+  'SOFI': { symbol: 'SOFI', price: 15.92, currency: 'USD', changePct: 0.95 },
+  'AAPL': { symbol: 'AAPL', price: 332.89, currency: 'USD', changePct: -0.24 },
+  'MSFT': { symbol: 'MSFT', price: 525.18, currency: 'USD', changePct: 1.48 },
+  'TSLA': { symbol: 'TSLA', price: 378.73, currency: 'USD', changePct: 2.20 },
+  'GOOGL': { symbol: 'GOOGL', price: 346.47, currency: 'USD', changePct: 0.86 },
+  'META': { symbol: 'META', price: 741.90, currency: 'USD', changePct: 1.90 },
+  'PLTR': { symbol: 'PLTR', price: 189.40, currency: 'USD', changePct: 0.34 },
+  'AMD': { symbol: 'AMD', price: 631.75, currency: 'USD', changePct: -0.34 },
+  'TSM': { symbol: 'TSM', price: 485.80, currency: 'USD', changePct: 2.75 },
+  'AVGO': { symbol: 'AVGO', price: 362.51, currency: 'USD', changePct: 2.08 },
   'ABBV': { symbol: 'ABBV', price: 198.0, currency: 'USD', changePct: 0.2 },
-  'TUPRS.IS': { symbol: 'TUPRS.IS', price: 148.5, currency: 'TRY', changePct: 0.8 },
-  'FROTO.IS': { symbol: 'FROTO.IS', price: 1040.0, currency: 'TRY', changePct: 0.4 },
-  'THYAO.IS': { symbol: 'THYAO.IS', price: 312.0, currency: 'TRY', changePct: 0.6 },
+  'TUPRS.IS': { symbol: 'TUPRS.IS', price: 391.25, currency: 'TRY', changePct: 3.78 },
+  'FROTO.IS': { symbol: 'FROTO.IS', price: 74.55, currency: 'TRY', changePct: 0.54 },
+  'THYAO.IS': { symbol: 'THYAO.IS', price: 292.25, currency: 'TRY', changePct: 0.09 },
+  'EREGL.IS': { symbol: 'EREGL.IS', price: 37.64, currency: 'TRY', changePct: 1.68 },
+  'ASELS.IS': { symbol: 'ASELS.IS', price: 371.50, currency: 'TRY', changePct: 2.41 },
+  'BIMAS.IS': { symbol: 'BIMAS.IS', price: 413.50, currency: 'TRY', changePct: -0.12 },
+  'KCHOL.IS': { symbol: 'KCHOL.IS', price: 214.90, currency: 'TRY', changePct: 3.92 },
+  'SISE.IS': { symbol: 'SISE.IS', price: 38.10, currency: 'TRY', changePct: 2.36 },
+  'GARAN.IS': { symbol: 'GARAN.IS', price: 130.40, currency: 'TRY', changePct: 3.57 },
+  'AKBNK.IS': { symbol: 'AKBNK.IS', price: 68.95, currency: 'TRY', changePct: 2.76 },
   'QQQ': { symbol: 'QQQ', price: 495.0, currency: 'USD', changePct: 0.5 },
   'SPY': { symbol: 'SPY', price: 580.0, currency: 'USD', changePct: 0.3 },
-  'VRT': { symbol: 'VRT', price: 86.45, currency: 'USD', changePct: 1.25 },
-  'ALAB': { symbol: 'ALAB', price: 82.50, currency: 'USD', changePct: 2.10 },
-  'CAMT': { symbol: 'CAMT', price: 105.12, currency: 'USD', changePct: 1.40 },
-  'MRVL': { symbol: 'MRVL', price: 74.20, currency: 'USD', changePct: 0.85 },
-  'POET': { symbol: 'POET', price: 4.85, currency: 'USD', changePct: 3.20 }
+  'SPCX': { symbol: 'SPCX', price: 171.09, currency: 'USD', changePct: 7.63 },
+  'DRAM': { symbol: 'DRAM', price: 61.67, currency: 'USD', changePct: -0.18 },
+  'VRT': { symbol: 'VRT', price: 253.62, currency: 'USD', changePct: 0.57 },
+  'ALAB': { symbol: 'ALAB', price: 362.34, currency: 'USD', changePct: 3.43 },
+  'CAMT': { symbol: 'CAMT', price: 162.05, currency: 'USD', changePct: -1.90 },
+  'MRVL': { symbol: 'MRVL', price: 271.25, currency: 'USD', changePct: -0.38 },
+  'POET': { symbol: 'POET', price: 7.81, currency: 'USD', changePct: 0.26 }
 };
 
 export const AppProvider = ({ children }) => {
@@ -306,7 +325,13 @@ export const AppProvider = ({ children }) => {
       const symbolsToFetch = new Set([
         'USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'BTC-USD', 'ETH-USD',
         'SPY', 'QQQ', 'DIA', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F',
-        'DX-Y.NYB', 'SI=F', 'CL=F', '2YY=F'
+        'DX-Y.NYB', 'SI=F', 'CL=F', '2YY=F',
+        // US Tech & Wall Street Core Leaders
+        'NVDA', 'AMZN', 'SOFI', 'AAPL', 'MSFT', 'TSLA', 'GOOGL', 'META', 'PLTR', 'AMD', 'TSM', 'AVGO',
+        // BIST Core Leaders
+        'THYAO.IS', 'TUPRS.IS', 'FROTO.IS', 'EREGL.IS', 'ASELS.IS', 'BIMAS.IS', 'KCHOL.IS', 'SISE.IS', 'GARAN.IS', 'AKBNK.IS',
+        // Potential & Radar Stocks
+        'SPCX', 'DRAM', 'VRT', 'ALAB', 'CAMT', 'MRVL', 'POET'
       ]);
       
       const currentHoldings = holdings.length > 0 ? holdings : (() => {
@@ -480,6 +505,65 @@ export const AppProvider = ({ children }) => {
     const interval = setInterval(fetchMarketData, 45000); // 45s refresh
     return () => clearInterval(interval);
   }, [fetchMarketData]);
+
+  // On-demand single stock live quote fetcher (supports any US or BIST ticker)
+  const fetchSingleQuote = useCallback(async (rawTicker) => {
+    if (!rawTicker) return null;
+    const clean = rawTicker.toUpperCase().trim();
+    let sym = clean;
+    const isBist = clean.endsWith('.IS') || ['THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK'].includes(clean);
+    if (isBist && !clean.endsWith('.IS')) {
+      sym = `${clean}.IS`;
+    }
+
+    try {
+      const c1 = new AbortController();
+      const t1 = setTimeout(() => c1.abort(), 3500);
+      const res = await fetch(`/api/market?symbols=${encodeURIComponent(sym)}`, { signal: c1.signal });
+      clearTimeout(t1);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          const q = json.data[sym] || json.data[clean];
+          if (q && q.price > 0) {
+            setMarketQuotes(prev => ({ ...prev, [clean]: q, [sym]: q }));
+            return q;
+          }
+        }
+      }
+    } catch (e) {}
+
+    try {
+      const c2 = new AbortController();
+      const t2 = setTimeout(() => c2.abort(), 3000);
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`, { signal: c2.signal });
+      clearTimeout(t2);
+      if (r.ok) {
+        const j = await r.json();
+        const meta = j?.chart?.result?.[0]?.meta;
+        if (meta) {
+          const p = meta.regularMarketPrice || meta.chartPreviousClose || 0;
+          const prev = meta.previousClose || p;
+          const changePct = meta.regularMarketChangePercent != null 
+            ? Number(meta.regularMarketChangePercent) 
+            : (prev > 0 ? ((p - prev) / prev) * 100 : 0);
+          const qObj = {
+            symbol: clean,
+            resolvedSymbol: sym,
+            price: p,
+            previousClose: prev,
+            change: p - prev,
+            changePct: changePct,
+            currency: meta.currency || (sym.endsWith('.IS') ? 'TRY' : 'USD')
+          };
+          setMarketQuotes(prev => ({ ...prev, [clean]: qObj, [sym]: qObj }));
+          return qObj;
+        }
+      }
+    } catch (e) {}
+
+    return marketQuotes[clean] || marketQuotes[sym] || null;
+  }, [marketQuotes]);
 
   // 3. Robust Portfolio Mathematical Aggregations
   const portfolioSummary = useMemo(() => {
@@ -1096,6 +1180,7 @@ export const AppProvider = ({ children }) => {
     lastMarketUpdate,
     isUpdatingMarket,
     fetchMarketData,
+    fetchSingleQuote,
     activeTab,
     setActiveTab,
     currentCurrency,

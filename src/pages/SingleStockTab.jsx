@@ -167,13 +167,13 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
   
   // Specific model for AMZN (Amazon.com Inc.)
   if (clean === 'AMZN') {
-    const p = marketQuotes['AMZN']?.price || 186.40;
-    const target = 225.00;
+    const p = Number(marketQuotes['AMZN']?.price) || 251.40;
+    const target = 295.00;
     const quarters = ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
     const revenue = [127358, 134383, 143083, 169961, 143313, 147977, 158877, 187800];
     const netIncome = [3172, 6750, 9879, 10624, 10431, 13485, 15328, 18500];
     const fcf = [7900, 11200, 15400, 21400, 18200, 19500, 22100, 25800];
-    const priceHistory = [102.5, 130.4, 127.1, 151.9, 180.4, 193.2, 186.4, 186.4];
+    const priceHistory = [175.4, 186.4, 193.2, 215.0, 230.5, 245.8, 251.4, p];
     return {
       ticker: 'AMZN',
       full_ticker: 'AMZN',
@@ -182,9 +182,9 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
         name: 'Amazon.com, Inc. (AWS Cloud & AI)',
         currency: 'USD',
         current_price: p,
-        day_change_pct: 0.85,
-        high_52w: 201.20,
-        dist_52w_high_pct: -7.3,
+        day_change_pct: marketQuotes['AMZN']?.changePct || -0.05,
+        high_52w: 260.00,
+        dist_52w_high_pct: -3.3,
         candles: []
       },
       dcf: {
@@ -193,7 +193,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
         currency: 'USD',
         current_price: p,
         analyst_target: target,
-        fair_value: 218.50,
+        fair_value: 280.00,
         inputs: {
           base_fcf: 54000,
           shares: 10400,
@@ -223,13 +223,13 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
 
   // Specific model for SOFI (SoFi Technologies Inc.)
   if (clean === 'SOFI') {
-    const p = marketQuotes['SOFI']?.price || 9.15;
-    const target = 13.50;
+    const p = Number(marketQuotes['SOFI']?.price) || 15.92;
+    const target = 22.00;
     const quarters = ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
     const revenue = [472, 498, 537, 615, 645, 697, 742, 810];
     const netIncome = [-34, -48, -267, 48, 88, 97, 115, 140];
     const fcf = [62, 75, 92, 118, 142, 165, 195, 230];
-    const priceHistory = [6.1, 8.4, 7.9, 9.9, 7.2, 6.8, 8.5, 9.15];
+    const priceHistory = [8.4, 9.15, 10.5, 11.8, 13.2, 14.9, 15.7, p];
     return {
       ticker: 'SOFI',
       full_ticker: 'SOFI',
@@ -238,9 +238,9 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
         name: 'SoFi Technologies, Inc. (Fintech & Neobank)',
         currency: 'USD',
         current_price: p,
-        day_change_pct: 2.35,
-        high_52w: 10.49,
-        dist_52w_high_pct: -12.7,
+        day_change_pct: marketQuotes['SOFI']?.changePct || 0.95,
+        high_52w: 18.50,
+        dist_52w_high_pct: -13.9,
         candles: []
       },
       dcf: {
@@ -249,7 +249,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
         currency: 'USD',
         current_price: p,
         analyst_target: target,
-        fair_value: 12.80,
+        fair_value: 19.80,
         inputs: {
           base_fcf: 450,
           shares: 1020,
@@ -338,8 +338,9 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
 }
 
 export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
-  const { currentCurrency, usdtry, marketQuotes } = useApp();
+  const { currentCurrency, usdtry, marketQuotes, fetchSingleQuote } = useApp();
   const [currentTicker, setCurrentTicker] = useState(selectedTicker || 'NVDA');
+  const [liveQuote, setLiveQuote] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchBoxRef = useRef(null);
@@ -362,6 +363,28 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     }
   }, [selectedTicker]);
 
+  // Real-time quote fetcher whenever currentTicker changes
+  useEffect(() => {
+    let isMounted = true;
+    const clean = currentTicker.toUpperCase().trim();
+    const isBist = clean.endsWith('.IS') || ['THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK'].includes(clean);
+    const resolvedSym = isBist && !clean.endsWith('.IS') ? `${clean}.IS` : clean;
+
+    const existing = marketQuotes[clean] || marketQuotes[resolvedSym];
+    if (existing && existing.price > 0) {
+      setLiveQuote(existing);
+    }
+
+    if (fetchSingleQuote) {
+      fetchSingleQuote(clean).then(q => {
+        if (isMounted && q && q.price > 0) {
+          setLiveQuote(q);
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [currentTicker, fetchSingleQuote, marketQuotes]);
+
   // DCF Sliders State
   const [growthRate, setGrowthRate] = useState(22.0); // %
   const [discountRate, setDiscountRate] = useState(9.5); // %
@@ -376,10 +399,41 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   if (!activeStock) {
     activeStock = synthesizeGenericStock(currentTicker, marketQuotes);
   }
-  const cData = activeStock.candlestick || {};
-  const qData = activeStock.qualtrim || {};
-  const dcfData = activeStock.dcf || {};
-  const analysis = activeStock.analysis || {};
+
+  // Determine effective live market price from liveQuote / marketQuotes
+  const cleanTickerUpper = currentTicker.toUpperCase().trim();
+  const effectiveLivePrice = Number(
+    liveQuote?.price ||
+    marketQuotes[cleanTickerUpper]?.price ||
+    marketQuotes[`${cleanTickerUpper}.IS`]?.price ||
+    activeStock?.dcf?.current_price ||
+    activeStock?.candlestick?.current_price ||
+    (cleanTickerUpper === 'NVDA' ? 238.90 : (cleanTickerUpper === 'AMZN' ? 251.40 : (cleanTickerUpper === 'SOFI' ? 15.92 : 150.0)))
+  );
+
+  const effectiveChangePct = liveQuote?.changePct != null
+    ? liveQuote.changePct
+    : (marketQuotes[cleanTickerUpper]?.changePct != null 
+        ? marketQuotes[cleanTickerUpper].changePct 
+        : activeStock?.candlestick?.day_change_pct);
+
+  const cData = {
+    ...(activeStock?.candlestick || {}),
+    current_price: effectiveLivePrice,
+    day_change_pct: effectiveChangePct != null ? effectiveChangePct : 0.85,
+    high_52w: Math.max(activeStock?.candlestick?.high_52w || 0, Math.round(effectiveLivePrice * 1.12 * 100) / 100)
+  };
+
+  const dcfData = {
+    ...(activeStock?.dcf || {}),
+    current_price: effectiveLivePrice,
+    analyst_target: (activeStock?.dcf?.analyst_target && activeStock.dcf.analyst_target > effectiveLivePrice * 0.75 && activeStock.dcf.analyst_target < effectiveLivePrice * 2.5)
+      ? activeStock.dcf.analyst_target
+      : Math.round(effectiveLivePrice * 1.28 * 100) / 100
+  };
+
+  const qData = activeStock?.qualtrim || {};
+  const analysis = activeStock?.analysis || {};
 
   const pillars = analysis.pillars || {};
   const fund = pillars.fundamental || {};
@@ -486,15 +540,24 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   };
 
   // Dynamic DCF recalculation based on sliders
-  const baseFCF = dcfData?.inputs?.base_fcf || 25000;
-  const sharesOutstanding = dcfData?.inputs?.shares || 24000;
-  const curPrice = dcfData?.current_price || 228.0;
-  const currencySym = dcfData?.currency === 'TRY' ? '₺' : '$';
+  const curPrice = effectiveLivePrice;
+  const currencySym = (dcfData?.currency === 'TRY' || currentTicker.endsWith('.IS')) ? '₺' : '$';
 
-  // Calculate 5-year discounted cash flow & projected timeline
+  // Calculate normalized base FCF per share (scales perfectly for any stock price)
+  let baseFCFPerShare = curPrice * 0.042; // standard 4.2% FCF yield baseline
+  const rawFCF = dcfData?.inputs?.fcf_base ?? dcfData?.inputs?.base_fcf;
+  const rawShares = dcfData?.inputs?.shares_outstanding ?? dcfData?.inputs?.shares;
+  if (rawFCF > 0 && rawShares > 0) {
+    const ratio = rawFCF / rawShares;
+    if (ratio > curPrice * 0.01 && ratio < curPrice * 0.25) {
+      baseFCFPerShare = ratio;
+    }
+  }
+
+  // Calculate 5-year discounted cash flow per share & projected timeline
   const fcfProjections = [];
   let pvSum = 0;
-  let runningFCF = baseFCF;
+  let runningFCF = baseFCFPerShare;
   for (let yr = 1; yr <= 5; yr++) {
     runningFCF *= (1 + growthRate / 100);
     const pv = runningFCF / Math.pow(1 + discountRate / 100, yr);
@@ -508,7 +571,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const terminalVal = runningFCF * terminalMultiple;
   const pvTerminal = terminalVal / Math.pow(1 + discountRate / 100, 5);
   const enterpriseVal = pvSum + pvTerminal;
-  const simulatedFairValue = sharesOutstanding > 0 ? (enterpriseVal / sharesOutstanding) : curPrice * 1.25;
+  const simulatedFairValue = enterpriseVal; // already normalized per share
   const simFairValRounded = Math.round(simulatedFairValue * 100) / 100;
   const marginOfSafety = curPrice > 0 ? Math.round(((simFairValRounded - curPrice) / curPrice) * 1000) / 10 : 0;
   const isUndervalued = marginOfSafety >= 0;
@@ -827,8 +890,29 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 {dcfData?.currency || 'USD'}
               </span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              Piyasa Fiyatı: <strong style={{ color: '#fff' }}>{currencySym}{Number(curPrice).toFixed(2)}</strong> | 52H Zirve: <strong style={{ color: '#fff' }}>{currencySym}{Number(cData.high_52w || curPrice * 1.15).toFixed(2)}</strong>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>
+                Piyasa Fiyatı: <strong style={{ color: '#fff', fontSize: 14 }}>{currencySym}{Number(curPrice).toFixed(2)}</strong>
+              </span>
+              {cData.day_change_pct != null && (
+                <span style={{ 
+                  color: cData.day_change_pct >= 0 ? 'var(--emerald)' : 'var(--red)', 
+                  fontWeight: 800,
+                  fontSize: 12,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 2
+                }}>
+                  {cData.day_change_pct >= 0 ? '▲ +' : '▼ '}{Number(cData.day_change_pct).toFixed(2)}%
+                </span>
+              )}
+              <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '1px 6px', fontWeight: 800 }}>
+                ● CANLI PİYASA
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+              <span>
+                52H Zirve: <strong style={{ color: '#cbd5e1' }}>{currencySym}{Number(cData.high_52w || curPrice * 1.15).toFixed(2)}</strong>
+              </span>
             </div>
           </div>
 
@@ -1355,10 +1439,10 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 <div key={p.year} style={{ background: '#0e1424', padding: '6px 4px', borderRadius: 4 }}>
                   <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{p.year}. Yıl</div>
                   <div style={{ fontSize: 10.5, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                    {currencySym}{p.fcf > 1000000 ? (p.fcf / 1000000).toFixed(1) + 'M' : p.fcf > 1000 ? (p.fcf / 1000).toFixed(1) + 'K' : p.fcf.toFixed(0)}
+                    {currencySym}{p.fcf > 1000000 ? (p.fcf / 1000000).toFixed(1) + 'M' : p.fcf > 1000 ? (p.fcf / 1000).toFixed(1) + 'K' : p.fcf.toFixed(2)}
                   </div>
                   <div style={{ fontSize: 8.5, color: 'var(--cyan)', marginTop: 1 }}>
-                    Bugün: {currencySym}{p.pv > 1000000 ? (p.pv / 1000000).toFixed(1) + 'M' : p.pv > 1000 ? (p.pv / 1000).toFixed(1) + 'K' : p.pv.toFixed(0)}
+                    Bugün: {currencySym}{p.pv > 1000000 ? (p.pv / 1000000).toFixed(1) + 'M' : p.pv > 1000 ? (p.pv / 1000).toFixed(1) + 'K' : p.pv.toFixed(2)}
                   </div>
                 </div>
               ))}
@@ -1373,7 +1457,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span>Analist Hedef Konsensüsü:</span>
-              <strong style={{ color: 'var(--cyan)' }}>{currencySym}{(curPrice * 1.22).toFixed(2)}</strong>
+              <strong style={{ color: 'var(--cyan)' }}>{currencySym}{(dcfData.analyst_target || curPrice * 1.25).toFixed(2)}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Graham Sayısı Değerlemesi:</span>

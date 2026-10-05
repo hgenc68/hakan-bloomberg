@@ -29,7 +29,7 @@ import potentialData from '../data/potentialStocksData.json';
 import { useApp } from '../context/AppContext';
 
 export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAnalysis }) {
-  const { currentCurrency, usdtry } = useApp();
+  const { currentCurrency, usdtry, marketQuotes } = useApp();
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
@@ -309,6 +309,9 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
           {filteredStocks.map(stock => {
             const isExpanded = expandedStock === stock.ticker;
             const convStyle = getConvictionStyle(stock.conviction);
+            const livePrice = Number(marketQuotes[stock.ticker]?.price || stock.price);
+            const targetPrice = Number(stock.target_price) || (livePrice * 1.5);
+            const dynamicUpside = livePrice > 0 ? Math.round(((targetPrice - livePrice) / livePrice) * 1000) / 10 : 0;
 
             return (
               <div 
@@ -391,22 +394,22 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
                 }}>
                   <div>
                     <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Canlı Fiyat: </span>
-                    <strong className="mono" style={{ fontSize: 14, color: '#fff' }}>${fmt(stock.price)}</strong>
+                    <strong className="mono" style={{ fontSize: 14, color: '#fff' }}>${fmt(livePrice)}</strong>
                     {isTRY && (
                       <span className="mono text-muted" style={{ fontSize: 10.5, marginLeft: 4 }}>
-                        (₺{fmt(stock.price * (usdtry || 49.03), 0)})
+                        (₺{fmt(livePrice * (usdtry || 49.03), 0)})
                       </span>
                     )}
                   </div>
 
                   <div style={{ textAlign: 'center' }}>
                     <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Konsensüs Hedef: </span>
-                    <strong className="mono text-emerald" style={{ fontSize: 13 }}>${fmt(stock.target_price)}</strong>
+                    <strong className="mono text-emerald" style={{ fontSize: 13 }}>${fmt(targetPrice)}</strong>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span className="change-pill up" style={{ fontSize: 11, fontWeight: 800 }}>
-                      ▲ {stock.potential_upside}
+                      ▲ +{dynamicUpside}%
                     </span>
                     <span className="nav-badge gold" style={{ fontSize: 9.5 }}>
                       🎯 {stock.bagger_potential}
@@ -577,17 +580,24 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
                         {stock.market_cap}
                       </td>
 
-                      <td className="text-right mono font-bold">
-                        ${fmt(stock.price)}
-                      </td>
-
-                      <td className="text-right mono font-bold text-emerald">
-                        ${fmt(stock.target_price)}
-                      </td>
-
-                      <td className="text-right mono font-bold text-emerald">
-                        {stock.potential_upside}
-                      </td>
+                      {(() => {
+                        const tLive = Number(marketQuotes[stock.ticker]?.price || stock.price);
+                        const tTarget = Number(stock.target_price) || (tLive * 1.5);
+                        const tUpside = tLive > 0 ? Math.round(((tTarget - tLive) / tLive) * 1000) / 10 : 0;
+                        return (
+                          <>
+                            <td className="text-right mono font-bold">
+                              ${fmt(tLive)}
+                            </td>
+                            <td className="text-right mono font-bold text-emerald">
+                              ${fmt(tTarget)}
+                            </td>
+                            <td className="text-right mono font-bold text-emerald">
+                              +{tUpside}%
+                            </td>
+                          </>
+                        );
+                      })()}
 
                       <td className="text-center">
                         <span 

@@ -4,7 +4,7 @@ import { Trophy, Search, Filter, ShieldCheck, Flame, TrendingUp, Sparkles, Chevr
 import quantData from '../data/quantLeaderboard.json';
 
 export default function Top10QuantTab({ onSelectStock }) {
-  const { setActiveTab } = useApp();
+  const { setActiveTab, marketQuotes } = useApp();
   const [marketFilter, setMarketFilter] = useState('all'); // 'all', 'bist', 'us'
   const [styleFilter, setStyleFilter] = useState('all'); // 'all', 'value', 'growth'
   const [search, setSearch] = useState('');
@@ -179,6 +179,12 @@ export default function Top10QuantTab({ onSelectStock }) {
               {allItems.map((item, idx) => {
                 const isBist = item.market === 'BIST';
                 const p = item.pillars || {};
+                const livePrice = Number(
+                  marketQuotes[item.ticker]?.price || 
+                  marketQuotes[`${item.ticker}.IS`]?.price || 
+                  item.price || 
+                  0
+                );
 
                 return (
                   <tr key={`${item.ticker}-${idx}`} className="table-row">
@@ -203,7 +209,7 @@ export default function Top10QuantTab({ onSelectStock }) {
                       </span>
                     </td>
                     <td className="text-right mono font-medium">
-                      {isBist ? '₺' : '$'}{Number(item.price || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {isBist ? '₺' : '$'}{livePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     {/* 5-Pillar Scores */}
                     <td>

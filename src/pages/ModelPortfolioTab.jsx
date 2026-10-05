@@ -4,7 +4,7 @@ import { Briefcase, Calendar, RefreshCw, Award, TrendingUp, CheckCircle, ArrowRi
 import modelData from '../data/modelPortfolios.json';
 
 export default function ModelPortfolioTab() {
-  const { setActiveTab } = useApp();
+  const { setActiveTab, marketQuotes } = useApp();
   const [selectedMarket, setSelectedMarket] = useState('master');
 
   const portfolios = modelData.portfolios || {};
@@ -147,7 +147,16 @@ export default function ModelPortfolioTab() {
             </thead>
             <tbody>
               {holdings.map((h, idx) => {
-                const isUp = (h.return_pct || 0) >= 0;
+                const livePrice = Number(
+                  marketQuotes[h.ticker]?.price || 
+                  marketQuotes[`${h.ticker}.IS`]?.price || 
+                  h.current_price || 
+                  h.entry_price || 
+                  0
+                );
+                const entryPrice = Number(h.entry_price) || livePrice;
+                const dynamicReturnPct = entryPrice > 0 ? ((livePrice - entryPrice) / entryPrice) * 100 : (h.return_pct || 0);
+                const isUp = dynamicReturnPct >= 0;
                 const isNew = h.status === 'NEW';
 
                 return (
@@ -188,10 +197,10 @@ export default function ModelPortfolioTab() {
                       {currencySym}{Number(h.entry_price || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="text-right mono font-medium">
-                      {currencySym}{Number(h.current_price || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {currencySym}{livePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="text-right mono font-medium" style={{ color: isUp ? 'var(--emerald)' : 'var(--red)' }}>
-                      {isUp ? '+' : ''}{Number(h.return_pct || 0).toFixed(2)}%
+                      {isUp ? '+' : ''}{dynamicReturnPct.toFixed(2)}%
                     </td>
                     <td className="text-right mono font-medium" style={{ color: 'var(--emerald)' }}>
                       {h.quant_score || 85.0}
