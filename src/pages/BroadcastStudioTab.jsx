@@ -49,8 +49,25 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   // Active slide index (0 to 8)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
+  // Active sub-tab inside Slide 1 ('fed': FED Faiz Tahmini, 'seasonality': S&P 500 Mevsimsellik, 'macro': TÜFE & PMI, 'matrix': Varlık Matrisi)
+  const [slide1SubTab, setSlide1SubTab] = useState(() => {
+    try { return localStorage.getItem('broadcast_studio_slide1_subtab') || 'fed'; } catch { return 'fed'; }
+  });
+
   // Cross-window synchronization for OBS Pop-out (4-Way Redundant Engine)
   const syncChannelRef = useRef(null);
+
+  const changeSlide1SubTab = (tab) => {
+    setSlide1SubTab(tab);
+    if (syncChannelRef.current) {
+      try {
+        syncChannelRef.current.postMessage({ type: 'CHANGE_SLIDE1_SUBTAB', subTab: tab, time: Date.now() });
+      } catch (e) {}
+    }
+    try {
+      localStorage.setItem('broadcast_studio_slide1_subtab', tab);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     // 1. BroadcastChannel Listener
@@ -62,6 +79,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         if (e.data && e.data.type === 'CHANGE_SLIDE' && typeof e.data.slideIndex === 'number') {
           setCurrentSlideIndex(e.data.slideIndex);
         }
+        if (e.data && e.data.type === 'CHANGE_SLIDE1_SUBTAB' && e.data.subTab) {
+          setSlide1SubTab(e.data.subTab);
+        }
       };
     } catch (e) {}
 
@@ -69,6 +89,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     const handleWindowMsg = (e) => {
       if (e.data && e.data.type === 'CHANGE_SLIDE' && typeof e.data.slideIndex === 'number') {
         setCurrentSlideIndex(e.data.slideIndex);
+      }
+      if (e.data && e.data.type === 'CHANGE_SLIDE1_SUBTAB' && e.data.subTab) {
+        setSlide1SubTab(e.data.subTab);
       }
     };
     window.addEventListener('message', handleWindowMsg);
@@ -86,6 +109,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           if (!isNaN(idx)) setCurrentSlideIndex(idx);
         }
       }
+      if (e.key === 'broadcast_studio_slide1_subtab' && e.newValue) {
+        setSlide1SubTab(e.newValue);
+      }
     };
     window.addEventListener('storage', handleStorage);
 
@@ -101,6 +127,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
             if (typeof parsed.slideIndex === 'number' && parsed.slideIndex !== currentSlideIndex) {
               setCurrentSlideIndex(parsed.slideIndex);
             }
+          }
+          const subRaw = localStorage.getItem('broadcast_studio_slide1_subtab');
+          if (subRaw) {
+            setSlide1SubTab(prev => (prev !== subRaw ? subRaw : prev));
           }
         } catch (e) {}
       }, 200);
@@ -316,21 +346,29 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   // 9 Complete Television Slides (Macro to Micro)
   const slides = useMemo(() => [
-    // SLIDE 1: Global Market Pulse (Matching MarketPulseTab exactly)
+    // SLIDE 1: Global Market Pulse (Matching MarketPulseTab + Fed Rates + S&P 500 Seasonality + Fresh Macro Data)
     {
       id: 1,
       badge: 'GLOBAL MAKRO RADAR',
       badgeColor: 'cyan',
-      title: 'Global Piyasa Nabzı & Risk İştahı',
-      subtitle: 'Korku & Açgözlülük İbresi, VIX, Truflation ve Küresel Endeks Performansları',
-      durationEst: '55 sn',
+      title: 'Global Piyasa Nabzı & Makro Radar',
+      subtitle: 'FED Faiz Tahmini (CME), S&P 500 Mevsimsellik Döngüsü ve Sıcak Makro Veriler (TÜFE & PMI)',
+      durationEst: '65 sn',
       metrics: [
-        { label: 'Fear & Greed Skoru', val: `${fgScore} / 100`, chg: 0, note: fgLabel },
-        { label: 'VIX Volatilite', val: fmt(vix.price, 2), chg: vix.change, isUp: vix.change >= 0 },
-        { label: 'Truflation (ABD TÜFE)', val: `%${fmt(pulse?.inflation?.usa || macroPulseData?.inflation?.usa || 2.77, 2)}`, chg: 0, note: 'Öncü Enflasyon' },
-        { label: 'Piyasa Maruziyeti', val: pulse?.exposure_pct || macroPulseData?.exposure_pct || '20% to 40%', chg: 0, note: 'Defansif / Koruma' }
+        { label: 'FED Faiz Tahmini (7 Kas)', val: '%88.2 (25 Bp)', chg: 0, note: '50 Bp İptal (NFP 254K)' },
+        { label: 'S&P 500 Mevsimsellik', val: 'Q4 Ralli +%4.1', chg: 1.4, isUp: true, note: 'Seçim Yılı Döngüsü' },
+        { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: 0, note: 'Aylık %2.97 • Reel Faiz +' },
+        { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
       ],
-      defaultScript: `Değerli dostlar, ekran başına ve bugünkü piyasa yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Hem küresel piyasalar hem de Borsa İstanbul açısından ${isMonday ? 'haftanın açılış ve en belirleyici yön tayini seansını birlikte karşılıyoruz' : 'kritik kapanış ve yön belirleme seansını birlikte yaşıyoruz'}. Masamızda sıcak, hareketli ve çok net fiyatlamalar var. Bir tarafta Fed'in şahin duruşunun küresel faizleri çıpalaması, diğer tarafta 100 dolar sınırının hemen altında gevşeyerek ${fmt(brent.price, 2)} dolara oturan Brent petrol, ${fmt(gold.price, 0)} dolar tabanında dengelenme arayan ons altın, 12.200 desteğinde kurumsal talep toplayan Borsa İstanbul ve ${fmt(btc.price, 0)} doları aşarak direncini zorlayan güçlü bir Bitcoin var. Ekranınızdaki ibrede gördüğünüz gibi Korku ve Açgözlülük endeksimiz ${fgScore} puanla ${fgLabel.toLowerCase()} bölgesinde. Şimdi 9 slaytlık profesyonel yayın akışımızla piyasanın tüm şifrelerini adım adım çözelim.`
+      defaultScript: `Değerli dostlar, ekran başına ve bugünkü piyasa yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Hem küresel piyasalar hem de Borsa İstanbul açısından son derece kritik ve yön tayin edici verilerin açıklandığı bir gündeyiz.
+
+İlk olarak sunumumuzun ilk sayfasındaki en kritik göstergeye, yani FED faiz tahminlerine bakalım: CME FedWatch göstergelerinde tarihi bir kırılma yaşandı. Cuma günü ABD'den gelen 254 bin kişilik bomba tarım dışı istihdam verisi ve ardından açıklanan 54.9 seviyesindeki güçlü ISM Hizmetler PMI verisi, piyasadaki tüm resesyon çığırtkanlığını bir anda sildi süpürdü. Bu verilerin ardından Fed'in Kasım toplantısında 50 baz puanlık agresif indirim yapma ihtimali tamamen sıfırlandı. Şu an piyasa yüzde 88 ihtimalle 25 baz puanlık ölçülü bir indirim fiyatlıyor. Bu durum ABD 10 yıllık tahvil faizini yeniden yüzde 4'ün üzerine taşırken, dolar endeksi DXY 102.50 seviyesine yükseldi.
+
+İkinci kritik grafiğimiz olan S&P 500 mevsimsellik eğrisine baktığımızda ise tam bir döngü eşiğindeyiz. Tarihsel olarak ABD Başkanlık Seçimi yıllarında Ekim ayının ilk iki haftası seçim belirsizliği ve kâr realizasyonlarıyla dalgalı geçer. Ancak geçmiş 70 yıllık veri gösteriyor ki, seçimlerin tamamlanmasıyla birlikte Kasım ve Aralık aylarında S&P 500 ortalama yüzde 4.1'lik muazzam bir yıl sonu rallisine imza atıyor. Yani Ekim'deki bu silkelemeler ve dalgalanmalar aslında kurumsal fonlar için bir alım fırsatı tabanı oluşturuyor.
+
+Yurtiçine döndüğümüzde ise masamızda Türkiye'nin son TÜFE enflasyon karnesi var: Eylül ayı aylık TÜFE yüzde 2.97 gelirken, yıllık enflasyonumuz yüzde 49.38'e geriledi. Bu verinin piyasa açısından iki büyük anlamı var: Birincisi, TCMB'nin yüzde 50'lik politika faizi ilk kez resmi enflasyonun üzerine çıktı ve Türkiye net pozitif reel faiz bölgesine yerleşti. Ancak ikincisi, hizmet enflasyonundaki katılık nedeniyle Merkez Bankası'nın faiz indirimi beklentisi Kasım'dan Aralık veya Ocak ayına ötelendi. Borsa İstanbul'un 12.200 desteğinde bekleme moduna geçmesinin ana nedeni budur. 
+
+Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 dolar tabanındaki ons altını da hesaba katarak şimdi 9 slaytlık profesyonel analizimize adım adım başlayalım.`
     },
 
     // SLIDE 2: Geopolitics & Energy Corridor
@@ -356,15 +394,15 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       badge: 'MERKEZ BANKALARI & REEL GETİRİ',
       badgeColor: 'amber',
       title: 'Merkez Bankaları & TL Reel Getiri Kalkanı',
-      subtitle: 'Fed Faiz Duruşu, Enflasyon Patikası ve TCMB %37 Politika Faizi',
+      subtitle: 'Fed 25 Bp Patikası, TÜİK %49.38 TÜFE ve TCMB %50 Politika Faizi',
       durationEst: '55 sn',
       metrics: [
-        { label: 'TCMB Politika Faizi', val: '%37.00', chg: 0, isUp: true, note: '+%5.5 Net Reel Getiri' },
-        { label: 'Fed Fonlama Faizi', val: '%3.75 - %4.00', chg: 0, isUp: true, note: 'Warsh Şahin Beklenti' },
-        { label: 'Türkiye TÜFE (Yıllık)', val: `%${fmt(macroPulseData?.inflation?.turkey || 31.51, 2)}`, chg: 0, note: 'Enflasyon Patikası' },
-        { label: '5Y CDS Risk Primi', val: '216 bp', chg: -4.2, isUp: false, note: 'Düşüş Trendi' }
+        { label: 'TCMB Politika Faizi', val: '%50.00', chg: 0, isUp: true, note: '+%0.62 Net Reel Faiz' },
+        { label: 'Fed Fonlama Faizi', val: '%4.75 - %5.00', chg: 0, isUp: true, note: 'Kasım: 25 Bp İndirim' },
+        { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: -2.59, isUp: false, note: 'Aylık TÜFE: %2.97' },
+        { label: '5Y CDS Risk Primi', val: '265 bp', chg: -3.5, isUp: false, note: 'Düşüş Trendi' }
       ],
-      defaultScript: `Buradan merkez bankaları masamıza geçiyoruz. Küresel tarafta Fed politika faizini yüzde 3.75 ile 4.00 bandında tutarken, şahin tonunu koruyarak erken faiz indirim beklentilerine set çekiyor. Peki bu küresel sıkılaşma ortamında Türkiye nerede duruyor? İşte bizim elimizdeki en büyük avantaj burada: TCMB politika faizini yüzde 37 seviyesinde sabit tutuyor. Yıllık enflasyonumuzun yüzde 31,51 seviyesinde olması sayesinde Türkiye, küresel yatırımcılara net 5,5 puanlık pozitif bir reel faiz kalkanı sunuyor. Üstelik 5 yıllık CDS risk primimizin 216 baz puana gerilemesi ve cari dengemizin artı 779 milyon dolar fazla vermesi, TL varlıklar üzerinde kurumsal bir koruma kalkanı oluşturuyor.`
+      defaultScript: `Buradan merkez bankaları masamıza geçiyoruz. Küresel tarafta Fed, 254 bin kişilik istihdam ve 54.9'luk ISM PMI sonrası faiz indirim hızını yavaşlatıyor ve Kasım'da 25 baz puanlık ölçülü adıma hazırlanıyor. Peki Türkiye cephesinde ne oluyor? İşte en taze veri: TÜİK'in açıkladığı Eylül TÜFE'si aylık yüzde 2.97 geldi, yıllık enflasyon ise yüzde 49.38'e indi. Bu kritik bir dönüm noktası; çünkü TCMB'nin yüzde 50'lik politika faizi aylardır ilk defa yıllık enflasyonun üzerine çıktı ve Türkiye net pozitif reel faiz bölgesine girdi. Ancak eğitim ve kiralardaki katılık nedeniyle Merkez Bankası'nın faiz indirimine başlama tarihi Kasım'dan Aralık veya 2025 başına kaydı. Bu gecikme borsada bir miktar kâr realizasyonu yaratsa da, yüzde 50 faiz kuru baskılayarak dolar/TL üzerinde kur kalkanı görevini sürdürüyor.`
     },
 
     // SLIDE 4: Wall Street & AI Ecosystem
@@ -372,16 +410,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       id: 4,
       badge: 'WALL STREET & YAPAY ZEKA',
       badgeColor: 'emerald',
-      title: 'Wall Street & Yapay Zeka Döngüsü',
-      subtitle: 'S&P 500 ve Nasdaq Direnci, Yarı İletken Liderliği ve Büyük Teknoloji',
+      title: 'Wall Street: S&P 500 Mevsimsellik & AI Döngüsü',
+      subtitle: 'Seçim Yılı Q4 Rallisi (+%4.1), Güçlü ISM Hizmetler (54.9) ve Büyük Teknoloji',
       durationEst: '50 sn',
       metrics: [
         { label: 'S&P 500 Endeksi', val: fmt(sp500.price, 2), chg: sp500.change, isUp: sp500.change >= 0 },
         { label: 'Nasdaq 100 Endeksi', val: fmt(nasdaq.price, 2), chg: nasdaq.change, isUp: nasdaq.change >= 0 },
-        { label: 'Dow Jones Endeksi', val: fmt(dow.price, 2), chg: dow.change, isUp: dow.change >= 0 },
-        { label: 'Sektör Lideri', val: 'Yapay Zeka & AI', chg: 1.85, isUp: true, note: 'Nvidia Blackwell' }
+        { label: 'ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi' },
+        { label: 'Tarihsel Q4 Getirisi', val: '+%4.1', chg: 0, isUp: true, note: 'Seçim Yılı Ortalaması' }
       ],
-      defaultScript: `Okyanusun ötesine, Wall Street'e baktığımızda ise yüksek faize rağmen yıkılmayan, tam tersine bilançolarıyla direnen bir Amerikan borsası görüyoruz. S&P 500 endeksi ${fmt(sp500.price, 0)} puanda kurumsal tabanını korurken, Nasdaq teknoloji endeksi ${fmt(nasdaq.price, 0)} puan seviyesinde güçlü duruyor. Burada hisse hisse sayılara boğulmaya hiç gerek yok; büyük resimdeki ana motor yapay zeka ve yarı iletken talebidir. Nvidia'nın yeni nesil Blackwell teslimatları, Amazon'un bulut kârlılığı ve kurumsal yapay zeka yatırımları serbest nakit akışı yarattığı için, yüksek tahvil faizlerinin borsalar üzerindeki olumsuz etkisi büyük teknoloji bilançoları tarafından dengeleniyor.`
+      defaultScript: `Okyanusun ötesine, Wall Street'e baktığımızda ise yüksek tahvil faizine rağmen direnen güçlü bir Amerikan ekonomisi görüyoruz. ISM Hizmetler PMI'nın 54.9 ile son 1.5 yılın zirvesine çıkması ve 254 binlik tarım dışı istihdam, resesyon ihtimalini tamamen ortadan kaldırdı. S&P 500 endeksinde tarihsel mevsimsellik eğrimiz çok açık: ABD seçim yıllarında Ekim ayının ilk yarısı piyasada bir silkeleme ve düzeltme dönemi yaratır. Ancak seçim sonrasında Kasım ve Aralık aylarında endeks ortalama yüzde 4.1 yükselerek yılı tarihi zirvelerde tamamlama eğilimindedir. Nvidia'nın Blackwell çip teslimatları, kurumsal yapay zeka harcamaları ve güçlü şirket kârları bu rallinin en büyük yakıtı olmaya devam ediyor.`
     },
 
     // SLIDE 5: Commodities: Gold & Silver
@@ -579,6 +617,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           <tr><td><b>ABD 10Y Tahvil</b></td><td>%${fmt(us10y.price, 3)}</td><td>%${fmt(us10y.change, 2)}</td><td>Getiri Eğrisi Normalleşiyor (+54 bp)</td></tr>
           <tr><td><b>Dolar / TL</b></td><td>${fmt(currentUsdTry, 2)} ₺</td><td>+%0.13</td><td>%37 Reel Faiz Kalkanı Devrede</td></tr>
           <tr><td><b>Kapalıçarşı Gram Altın</b></td><td>${fmt(gramAltinTL, 0)} ₺/gr</td><td>+%0.15</td><td>Çifte Enflasyon Kalkanı</td></tr>
+        </table>
+
+        <h3>KRİTİK MAKRO GÖSTERGELER & MERKEZ BANKASI BEKLENTİLERİ</h3>
+        <table class="table-box">
+          <tr><th>Veri / Gösterge</th><th>Açıklanan / Piyasa Değeri</th><th>Beklenti / Durum</th><th>Piyasa Etkisi & Strateji</th></tr>
+          <tr><td><b>FED CME Faiz İndirimi (7 Kasım)</b></td><td><b>%88.2 (25 bp İndirim)</b></td><td>%11.8 Pas / %0.0 (50 bp)</td><td>50 bp indirim masadan kalktı; yumuşak iniş ve DXY güçlenişi teyit edildi.</td></tr>
+          <tr><td><b>S&P 500 Seçim Yılı Q4 Mevsimselliği</b></td><td><b>+%4.1 Tarihsel Ortalama</b></td><td>Kasım-Aralık Kazanma: %83.3</td><td>Ekim ayı dalgalanmaları yıl sonu rallisi öncesi dip fırsatı sunuyor.</td></tr>
+          <tr><td><b>Türkiye TÜFE (Eylül 2024)</b></td><td><b>Aylık %2.97 | Yıllık %49.38</b></td><td>Beklenti: %48.2 (Pozitif Reel Faiz: +%0.62)</td><td>TCMB faizi (%50) altında ilk yıllık enflasyon, indirimler Aralık/Ocak'a ötelendi.</td></tr>
+          <tr><td><b>ABD ISM Hizmetler PMI</b></td><td><b>54.9 (1.5 Yılın Zirvesi)</b></td><td>Beklenti: 51.7 | Önceki: 51.5</td><td>Resesyon tezini sildi, yeni siparişler fırladı (59.4).</td></tr>
+          <tr><td><b>ABD Tarım Dışı İstihdam (NFP)</b></td><td><b>+254.000 Kişi (İşsizlik %4.1)</b></td><td>Beklenti: 140.000 Kişi</td><td>İstihdam patlaması tahvil faizlerini %4.02'ye tırmandırdı.</td></tr>
         </table>
     `;
 
@@ -834,61 +882,362 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                       </div>
                     </div>
 
-                    {/* Right: Equities & Commodities Return Matrix Table */}
+                    {/* Right: Sub-Tabbed Multi-Visual Hub (FED CME, S&P Mevsimsellik, Sıcak Makro, Varlık Matrisi) */}
                     <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#e2e8f0', whiteSpace: 'nowrap' }}>
-                          🏛️ KÜRESEL VARLIK PERFORMANS MATRİSİ
-                        </span>
-                        <span style={{ fontSize: 8.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          Resmi Kapanış Fiyatları
-                        </span>
+                      {/* Sub-Tab Navigation Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                          {[
+                            { id: 'fed', label: '🏛️ FED Faiz Tahmini', badge: '%88.2 İndirim' },
+                            { id: 'seasonality', label: '📈 S&P 500 Mevsimsellik', badge: 'Q4 +%4.1' },
+                            { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: 'TÜFE 49.38%' },
+                            { id: 'matrix', label: '📊 Varlık Matrisi', badge: 'Canlı' }
+                          ].map((tab) => {
+                            const isActive = slide1SubTab === tab.id;
+                            return (
+                              <button
+                                key={tab.id}
+                                onClick={() => changeSlide1SubTab(tab.id)}
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: 4,
+                                  fontSize: 9.5,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  background: isActive ? 'rgba(56, 189, 248, 0.16)' : 'rgba(255, 255, 255, 0.03)',
+                                  border: isActive ? '1px solid var(--cyan)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                  color: isActive ? '#38bdf8' : 'var(--text-muted)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <span>{tab.label}</span>
+                                <span style={{
+                                  fontSize: 8,
+                                  padding: '1px 4px',
+                                  borderRadius: 3,
+                                  background: isActive ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                                  color: isActive ? '#fff' : 'var(--text-muted)',
+                                  fontFamily: 'var(--font-mono)'
+                                }}>
+                                  {tab.badge}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      <div style={{ overflowX: 'auto', flex: 1, minWidth: 0 }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9.5, tableLayout: 'auto' }}>
-                          <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                              <th style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>Varlık</th>
-                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>Son Fiyat</th>
-                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>Bugün</th>
-                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>5 Gün</th>
-                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>1 Ay</th>
-                              <th style={{ padding: '4px 6px', textAlign: 'right', whiteSpace: 'nowrap' }}>YTD</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {equitiesMatrix.map((eq, i) => {
-                              const isPositive = (n) => n >= 0;
-                              return (
-                                <tr key={eq.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                                  <td style={{ padding: '4px 6px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                      <span>{eq.name}</span>
-                                      <span style={{ fontSize: 8, color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>({eq.symbol})</span>
-                                    </div>
-                                  </td>
-                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                    {fmt(eq.price, eq.price > 1000 ? 0 : 2)}
-                                  </td>
-                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: isPositive(eq.today) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
-                                    {isPositive(eq.today) ? '+' : ''}{fmt(eq.today, 2)}%
-                                  </td>
-                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.d5) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
-                                    {isPositive(eq.d5) ? '+' : ''}{fmt(eq.d5, 2)}%
-                                  </td>
-                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.m1) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
-                                    {isPositive(eq.m1) ? '+' : ''}{fmt(eq.m1, 2)}%
-                                  </td>
-                                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: isPositive(eq.ytd) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
-                                    {isPositive(eq.ytd) ? '+' : ''}{fmt(eq.ytd, 2)}%
-                                  </td>
+                      {/* VIEW 1: FED INTEREST RATE FORECAST (CME FedWatch) */}
+                      {slide1SubTab === 'fed' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 9, flex: 1, minWidth: 0 }}>
+                          {/* CME FedWatch Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span>CME FEDWATCH FAİZ BEKLENTİLERİ</span>
+                                <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', fontWeight: 800 }}>
+                                  7 KASIM FOMC
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 8.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                                Mevcut Politika Faizi: <span style={{ color: '#fff', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>%4.75 - %5.00</span> | Konsensüs: <span style={{ color: 'var(--cyan)' }}>25 bp İndirim</span>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>18 ARALIK YIL SONU</div>
+                              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>Toplam -50 bp (%78.4)</div>
+                            </div>
+                          </div>
+
+                          {/* Horizontal Bar Chart for 7 November FOMC */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(0,0,0,0.3)', padding: '9px 11px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            {/* 25 bp Cut */}
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
+                                <span style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }}></span>
+                                  25 bp İndirim (Hedef: %4.50 - %4.75)
+                                </span>
+                                <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%88.2</span>
+                              </div>
+                              <div style={{ height: 9, background: 'rgba(255,255,255,0.06)', borderRadius: 5, overflow: 'hidden' }}>
+                                <div style={{ width: '88.2%', height: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', borderRadius: 5 }}></div>
+                              </div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Ezici piyasa konsensüsü — Tarım dışı istihdam (254K) sonrası yumuşak iniş teyidi</div>
+                            </div>
+
+                            {/* Unchanged / Pause */}
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
+                                <span style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }}></span>
+                                  Faiz Sabit / Pas (Hedef: %4.75 - %5.00)
+                                </span>
+                                <span style={{ color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%11.8</span>
+                              </div>
+                              <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                                <div style={{ width: '11.8%', height: '100%', background: '#f59e0b', borderRadius: 4 }}></div>
+                              </div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Enflasyon katılığını izlemek isteyen şahin üyelerin beklentisi</div>
+                            </div>
+
+                            {/* 50 bp Aggressive Cut */}
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
+                                <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }}></span>
+                                  50 bp Agresif İndirim (Hedef: %4.25 - %4.50)
+                                </span>
+                                <span style={{ color: '#ef4444', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%0.0</span>
+                              </div>
+                              <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: '0%', height: '100%', background: '#ef4444' }}></div>
+                              </div>
+                              <div style={{ fontSize: 8, color: '#f87171', marginTop: 1 }}>Patlayan istihdam ve 54.9 ISM hizmetler verisi sonrası tamamen masadan kalktı</div>
+                            </div>
+                          </div>
+
+                          {/* Analytical Takeaway Box */}
+                          <div style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 5, padding: '7px 10px', fontSize: 8.5, color: '#cbd5e1', lineHeight: 1.45 }}>
+                            <span style={{ color: '#38bdf8', fontWeight: 800 }}>⚡ PİYASA YORUMU: </span>
+                            FED, acil resesyon fiyatlamasından ölçülü gevşeme sürecine geçti. ABD 10 yıllık tahvil faizleri %4.02 seviyesine tırmanırken, Dolar Endeksi (DXY) 102.50 bandında güçleniyor. Ons altında görülen kâr satışları bu getiri yükselişinden kaynaklanıyor.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* VIEW 2: S&P 500 SEASONALITY CHART */}
+                      {slide1SubTab === 'seasonality' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span>S&P 500 TARİHSEL MEVSİMSELLİK (1950 - GÜNÜMÜZ)</span>
+                                <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: 800 }}>
+                                  SEÇİM YILI DÖNGÜSÜ
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 8.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                                Aylık Tarihsel Getiri Ortalamaları & 4. Çeyrek (Q4) Yıl Sonu Gücü
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 4, padding: '2px 7px', textAlign: 'center' }}>
+                                <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>SEÇİM Q4 ORT.</div>
+                                <div style={{ fontSize: 10.5, fontWeight: 900, color: '#34d399', fontFamily: 'var(--font-mono)' }}>+%4.1</div>
+                              </div>
+                              <div style={{ background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 4, padding: '2px 7px', textAlign: 'center' }}>
+                                <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>KAS-ARA KAZANMA</div>
+                                <div style={{ fontSize: 10.5, fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>%83.3</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 12-Month Bar Chart */}
+                          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '7px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 3, alignItems: 'flex-end', height: 75, paddingBottom: 17, position: 'relative' }}>
+                              {/* Baseline 0% line */}
+                              <div style={{ position: 'absolute', bottom: 17, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.15)' }} />
+
+                              {[
+                                { m: 'Oca', ret: 1.2, isQ4: false },
+                                { m: 'Şub', ret: -0.1, isQ4: false },
+                                { m: 'Mar', ret: 1.1, isQ4: false },
+                                { m: 'Nis', ret: 1.5, isQ4: false },
+                                { m: 'May', ret: 0.3, isQ4: false },
+                                { m: 'Haz', ret: 0.2, isQ4: false },
+                                { m: 'Tem', ret: 1.7, isQ4: false },
+                                { m: 'Ağu', ret: -0.2, isQ4: false },
+                                { m: 'Eyl', ret: -1.2, isQ4: false },
+                                { m: 'Eki', ret: 1.4, isQ4: true, active: true },
+                                { m: 'Kas', ret: 2.8, isQ4: true },
+                                { m: 'Ara', ret: 1.6, isQ4: true }
+                              ].map((item) => {
+                                const isPos = item.ret >= 0;
+                                const barHeight = Math.min(Math.abs(item.ret) * 16, 46);
+                                return (
+                                  <div key={item.m} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
+                                    <span style={{
+                                      fontSize: 7.5,
+                                      fontWeight: 800,
+                                      color: item.active ? '#38bdf8' : isPos ? (item.isQ4 ? '#34d399' : '#94a3b8') : '#f87171',
+                                      fontFamily: 'var(--font-mono)',
+                                      marginBottom: 2
+                                    }}>
+                                      {isPos ? '+' : ''}{item.ret}%
+                                    </span>
+                                    <div style={{
+                                      width: '75%',
+                                      height: `${barHeight}px`,
+                                      background: item.active 
+                                        ? 'linear-gradient(180deg, #38bdf8, #0284c7)'
+                                        : item.isQ4 
+                                          ? 'linear-gradient(180deg, #10b981, #059669)'
+                                          : isPos ? '#475569' : '#ef4444',
+                                      borderRadius: '3px 3px 0 0',
+                                      border: item.active ? '1px solid #7dd3fc' : 'none',
+                                      boxShadow: item.active ? '0 0 8px rgba(56, 189, 248, 0.4)' : 'none'
+                                    }} />
+                                    <span style={{
+                                      position: 'absolute',
+                                      bottom: 0,
+                                      fontSize: 7.5,
+                                      fontWeight: item.isQ4 ? 800 : 600,
+                                      color: item.active ? '#38bdf8' : item.isQ4 ? '#e2e8f0' : 'var(--text-muted)'
+                                    }}>
+                                      {item.m}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Analytical Takeaway Box */}
+                          <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 5, padding: '7px 10px', fontSize: 8.5, color: '#cbd5e1', lineHeight: 1.45 }}>
+                            <span style={{ color: '#34d399', fontWeight: 800 }}>📈 MEVSİMSELLİK KURALI: </span>
+                            Ekim ayı başındaki jeopolitik risk ve seçim gerginliği çalkantıları, tarihsel olarak yıl sonu rallisi için ideal dip zeminini hazırlar. Kasım ayı (+%2.8 ortalama) S&P 500 için yılın en güçlü ayıdır; seçim sonrasında piyasa belirsizliği bittiğinde ralli hızlanır.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* VIEW 3: HOT MACRO DATA (TURKEY CPI & US PMI / NFP) */}
+                      {slide1SubTab === 'macro' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>⚡ BUGÜNÜN KRİTİK VERİLERİ & PİYASA ETKİSİ</span>
+                            </div>
+                            <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 800 }}>
+                              RESMİ VERİLER
+                            </span>
+                          </div>
+
+                          {/* 4 Cards Grid (2x2) */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, flex: 1 }}>
+                            {/* 1. TÜFE */}
+                            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 5, padding: '6px 8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 8.5, fontWeight: 800, color: 'var(--cyan)' }}>TÜRKİYE TÜFE (EYLÜL)</span>
+                                <span style={{ fontSize: 7.5, color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>Pozitif Reel Faiz</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>%49.38</span>
+                                <span style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>Aylık: %2.97</span>
+                              </div>
+                              <div style={{ fontSize: 7.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
+                                Yıllık enflasyon TCMB politika faizinin (%50.0) altına indi (+%0.62 reel getiri). Ancak hizmet katılığından dolayı faiz indirimi Aralık/Ocak'a ötelendi.
+                              </div>
+                            </div>
+
+                            {/* 2. ABD ISM Hizmetler PMI */}
+                            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 5, padding: '6px 8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 8.5, fontWeight: 800, color: '#38bdf8' }}>ABD ISM HİZMETLER PMI</span>
+                                <span style={{ fontSize: 7.5, color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>1.5 Yılın Zirvesi</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>54.9</span>
+                                <span style={{ fontSize: 8.5, color: '#34d399' }}>(Beklenti: 51.7)</span>
+                              </div>
+                              <div style={{ fontSize: 7.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
+                                Yeni siparişler 59.4 ile patladı. ABD ekonomisinde resesyon tezini sildi; yumuşak iniş değil, doğrudan güçlü büyümeyi teyit etti.
+                              </div>
+                            </div>
+
+                            {/* 3. Tarım Dışı İstihdam */}
+                            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 5, padding: '6px 8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 8.5, fontWeight: 800, color: '#fbbf24' }}>ABD TARIM DIŞI İSTİHDAM</span>
+                                <span style={{ fontSize: 7.5, color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>İşsizlik: %4.1</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>+254K</span>
+                                <span style={{ fontSize: 8.5, color: '#34d399' }}>(Beklenti: 140K)</span>
+                              </div>
+                              <div style={{ fontSize: 7.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
+                                50 bp faiz indirimini tamamen bitirdi. ABD 10 yıllık tahvilini %4.02'ye, DXY'yi 102.50'ye fırlattı; altında kâr satışlarını tetikledi.
+                              </div>
+                            </div>
+
+                            {/* 4. Petrol & Jeopolitik */}
+                            <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 5, padding: '6px 8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 8.5, fontWeight: 800, color: '#f87171' }}>BRENT & JEOPOLİTİK</span>
+                                <span style={{ fontSize: 7.5, color: '#f87171', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>Haftalık +%8.5</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>$78.20</span>
+                                <span style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>Bant: 75$ - 82$</span>
+                              </div>
+                              <div style={{ fontSize: 7.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
+                                İsrail-İran gerilimi risk primi ekledi ancak OPEC+ atıl üretim kapasitesi şok dalgasını 80$ altında dizginlemeyi sürdürüyor.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* VIEW 4: EQUITIES RETURN MATRIX TABLE */}
+                      {slide1SubTab === 'matrix' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#e2e8f0', whiteSpace: 'nowrap' }}>
+                              🏛️ KÜRESEL VARLIK PERFORMANS MATRİSİ
+                            </span>
+                            <span style={{ fontSize: 8, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                              Resmi Kapanış Fiyatları
+                            </span>
+                          </div>
+
+                          <div style={{ overflowX: 'auto', flex: 1, minWidth: 0 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, tableLayout: 'auto' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                                  <th style={{ padding: '3px 5px', whiteSpace: 'nowrap' }}>Varlık</th>
+                                  <th style={{ padding: '3px 5px', textAlign: 'right', whiteSpace: 'nowrap' }}>Son Fiyat</th>
+                                  <th style={{ padding: '3px 5px', textAlign: 'right', whiteSpace: 'nowrap' }}>Bugün</th>
+                                  <th style={{ padding: '3px 5px', textAlign: 'right', whiteSpace: 'nowrap' }}>5 Gün</th>
+                                  <th style={{ padding: '3px 5px', textAlign: 'right', whiteSpace: 'nowrap' }}>1 Ay</th>
+                                  <th style={{ padding: '3px 5px', textAlign: 'right', whiteSpace: 'nowrap' }}>YTD</th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                              </thead>
+                              <tbody>
+                                {equitiesMatrix.map((eq, i) => {
+                                  const isPositive = (n) => n >= 0;
+                                  return (
+                                    <tr key={eq.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                                      <td style={{ padding: '3px 5px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                          <span>{eq.name}</span>
+                                          <span style={{ fontSize: 7.5, color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>({eq.symbol})</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '3px 5px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                        {fmt(eq.price, eq.price > 1000 ? 0 : 2)}
+                                      </td>
+                                      <td style={{ padding: '3px 5px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: isPositive(eq.today) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
+                                        {isPositive(eq.today) ? '+' : ''}{fmt(eq.today, 2)}%
+                                      </td>
+                                      <td style={{ padding: '3px 5px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.d5) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
+                                        {isPositive(eq.d5) ? '+' : ''}{fmt(eq.d5, 2)}%
+                                      </td>
+                                      <td style={{ padding: '3px 5px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: isPositive(eq.m1) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
+                                        {isPositive(eq.m1) ? '+' : ''}{fmt(eq.m1, 2)}%
+                                      </td>
+                                      <td style={{ padding: '3px 5px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: isPositive(eq.ytd) ? 'var(--emerald)' : 'var(--red)', whiteSpace: 'nowrap' }}>
+                                        {isPositive(eq.ytd) ? '+' : ''}{fmt(eq.ytd, 2)}%
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
