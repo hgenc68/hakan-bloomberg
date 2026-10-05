@@ -1890,14 +1890,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
         ref={chartWrapperRef}
         style={{ 
           display: 'grid', 
-          gridTemplateColumns: sidebarOpen ? '1fr 350px' : '1fr', 
-          gap: 12, 
+          gridTemplateColumns: sidebarOpen 
+            ? (isFullscreen ? '1fr 230px' : '1fr 260px') 
+            : '1fr', 
+          gap: isFullscreen ? 8 : 10, 
           alignItems: 'stretch',
           position: isFullscreen ? 'fixed' : 'relative',
           inset: isFullscreen ? 0 : 'auto',
           zIndex: isFullscreen ? 99999 : 1,
           background: isFullscreen ? '#040711' : 'transparent',
-          padding: isFullscreen ? 14 : 0,
+          padding: isFullscreen ? 8 : 0,
           width: isFullscreen ? '100vw' : '100%',
           height: isFullscreen ? '100vh' : 'auto'
         }}
@@ -1911,8 +1913,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             background: '#040711', 
             border: '1px solid var(--border)', 
             borderRadius: 8, 
-            minHeight: isFullscreen ? 'calc(100vh - 28px)' : 720,
-            height: isFullscreen ? 'calc(100vh - 28px)' : 'calc(100vh - 210px)',
+            minHeight: isFullscreen ? 'calc(100vh - 16px)' : 720,
+            height: isFullscreen ? 'calc(100vh - 16px)' : 'calc(100vh - 210px)',
             display: 'flex',
             flexDirection: 'column',
             position: 'relative',
@@ -1927,6 +1929,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             usdtry={usdtry}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={() => setSidebarOpen(prev => !prev)}
             sessionTimer={sessionTimer}
             onOpenAddModal={onOpenAddModal}
           />
@@ -1937,26 +1941,44 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
           <div 
             className="card" 
             style={{ 
-              padding: '12px', 
+              padding: isFullscreen ? '8px 10px' : '10px', 
               background: '#080c16', 
               border: '1px solid var(--border)', 
               borderRadius: 8, 
               display: 'flex', 
               flexDirection: 'column', 
-              minHeight: isFullscreen ? 'calc(100vh - 28px)' : 720,
-              height: isFullscreen ? 'calc(100vh - 28px)' : 'calc(100vh - 210px)',
+              minHeight: isFullscreen ? 'calc(100vh - 16px)' : 720,
+              height: isFullscreen ? 'calc(100vh - 16px)' : 'calc(100vh - 210px)',
               overflow: 'hidden'
             }}
           >
-            {/* Watchlist Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={{ fontWeight: 800, fontSize: 12, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Star size={14} className="text-gold" />
-                <span>İZLEME LİSTELERİ</span>
+            {/* Watchlist Header with Quick Close Button */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontWeight: 800, fontSize: 11.5, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Star size={13} className="text-gold" />
+                <span>İZLEME LİSTESİ</span>
               </div>
-              <span className="nav-badge cyan" style={{ fontSize: 9 }}>
-                {currentWatchlistItems.length} Varlık
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="nav-badge cyan" style={{ fontSize: 8.5, padding: '1px 5px' }}>
+                  {currentWatchlistItems.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 2,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="İzleme Listesini Gizle (Grafiği Tam Ekran Genişlet)"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
 
             {/* 🔽 Category & Custom Watchlist Selector Bar */}

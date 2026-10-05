@@ -20,7 +20,8 @@ import {
   Layers,
   X,
   ExternalLink,
-  Cloud
+  Cloud,
+  List
 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -285,6 +286,8 @@ export default function NativeProChart({
   usdtry = 49.03,
   isFullscreen = false,
   onToggleFullscreen,
+  sidebarOpen = true,
+  onToggleSidebar,
   sessionTimer = { status: 'open', text: '', badge: '' },
   onOpenAddModal
 }) {
@@ -413,55 +416,43 @@ export default function NativeProChart({
     return () => unsubPrefs();
   }, []);
 
-  // Save indicator preferences to localStorage & Firebase Cloud
-  useEffect(() => {
-    try {
-      localStorage.setItem('terminal_chart_indicators', JSON.stringify(indicators));
-    } catch (e) {}
-
-    if (isApplyingCloudPreferencesRef.current) {
-      isApplyingCloudPreferencesRef.current = false;
-      return;
-    }
-
-    const timer = setTimeout(() => {
+  // Dedicated user-action toggle for indicators that updates state, localStorage, and Firestore
+  const toggleIndicator = useCallback((key) => {
+    setIndicators(prev => {
+      const updated = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem('terminal_chart_indicators', JSON.stringify(updated));
+      } catch (e) {}
       try {
         setDoc(doc(db, 'chart_preferences', 'settings'), {
-          indicators,
+          indicators: updated,
           updatedAt: Date.now()
         }, { merge: true });
       } catch (err) {
-        console.warn('Firestore indicators sync error:', err);
+        console.warn('Firestore toggleIndicator error:', err);
       }
-    }, 250);
+      return updated;
+    });
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [indicators]);
-
-  // Save indicator settings to localStorage & Firebase Cloud
-  useEffect(() => {
-    try {
-      localStorage.setItem('terminal_indicator_settings', JSON.stringify(indicatorSettings));
-    } catch (e) {}
-
-    if (isApplyingCloudSettingsRef.current) {
-      isApplyingCloudSettingsRef.current = false;
-      return;
-    }
-
-    const timer = setTimeout(() => {
+  // Dedicated user-action updater for indicator settings
+  const updateIndicatorSettings = useCallback((updater) => {
+    setIndicatorSettings(prev => {
+      const updated = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem('terminal_indicator_settings', JSON.stringify(updated));
+      } catch (e) {}
       try {
         setDoc(doc(db, 'chart_preferences', 'settings'), {
-          indicatorSettings,
+          indicatorSettings: updated,
           updatedAt: Date.now()
         }, { merge: true });
       } catch (err) {
-        console.warn('Firestore settings sync error:', err);
+        console.warn('Firestore updateIndicatorSettings error:', err);
       }
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [indicatorSettings]);
+      return updated;
+    });
+  }, []);
 
   // User persistent drawings per base symbol
   // { horizontals: [{ id, price, label, color }], trendlines: [{ id, p1: { time, price }, p2: { time, price }, color }] }
@@ -1405,7 +1396,7 @@ export default function NativeProChart({
 
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, ema20: !prev.ema20 }))}
+            onClick={() => toggleIndicator('ema20')}
             className={`chip-btn ${indicators.ema20 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema20 ? '#06b6d4' : 'inherit', borderColor: indicators.ema20 ? '#06b6d4' : 'rgba(255,255,255,0.1)' }}
           >
@@ -1414,7 +1405,7 @@ export default function NativeProChart({
 
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, ema50: !prev.ema50 }))}
+            onClick={() => toggleIndicator('ema50')}
             className={`chip-btn ${indicators.ema50 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema50 ? '#3b82f6' : 'inherit', borderColor: indicators.ema50 ? '#3b82f6' : 'rgba(255,255,255,0.1)' }}
             title="EMA 50 hareketli ortalama trend eğrisi (kesikli yatay fiyat çizgisi kapalı, sade görünüm)"
@@ -1424,7 +1415,7 @@ export default function NativeProChart({
 
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, ema200: !prev.ema200 }))}
+            onClick={() => toggleIndicator('ema200')}
             className={`chip-btn ${indicators.ema200 ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema200 ? '#f59e0b' : 'inherit', borderColor: indicators.ema200 ? '#f59e0b' : 'rgba(255,255,255,0.1)' }}
           >
@@ -1433,7 +1424,7 @@ export default function NativeProChart({
 
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, bollinger: !prev.bollinger }))}
+            onClick={() => toggleIndicator('bollinger')}
             className={`chip-btn ${indicators.bollinger ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.bollinger ? '#c084fc' : 'inherit', borderColor: indicators.bollinger ? '#c084fc' : 'rgba(255,255,255,0.1)' }}
           >
@@ -1442,7 +1433,7 @@ export default function NativeProChart({
 
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, volume: !prev.volume }))}
+            onClick={() => toggleIndicator('volume')}
             className={`chip-btn ${indicators.volume ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.volume ? '#38bdf8' : 'inherit', borderColor: indicators.volume ? '#38bdf8' : 'rgba(255,255,255,0.1)' }}
           >
@@ -1451,7 +1442,7 @@ export default function NativeProChart({
 
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, rsi: !prev.rsi }))}
+            onClick={() => toggleIndicator('rsi')}
             className={`chip-btn ${indicators.rsi ? 'active' : ''}`}
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.rsi ? '#ec4899' : 'inherit', borderColor: indicators.rsi ? '#ec4899' : 'rgba(255,255,255,0.1)' }}
           >
@@ -1461,7 +1452,7 @@ export default function NativeProChart({
           {/* Otomatik Destek - Direnç Toggle */}
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, autoSR: !prev.autoSR }))}
+            onClick={() => toggleIndicator('autoSR')}
             className={`chip-btn ${indicators.autoSR ? 'active' : ''}`}
             style={{ 
               fontSize: 9.5, 
@@ -1479,7 +1470,7 @@ export default function NativeProChart({
           {/* Dinamik Otomatik Fibonacci Toggle */}
           <button
             type="button"
-            onClick={() => setIndicators(prev => ({ ...prev, autoFib: !prev.autoFib }))}
+            onClick={() => toggleIndicator('autoFib')}
             className={`chip-btn ${indicators.autoFib ? 'active' : ''}`}
             style={{ 
               fontSize: 9.5, 
@@ -1497,7 +1488,7 @@ export default function NativeProChart({
           {holdingInfo && (
             <button
               type="button"
-              onClick={() => setIndicators(prev => ({ ...prev, costLine: !prev.costLine }))}
+              onClick={() => toggleIndicator('costLine')}
               className={`chip-btn ${indicators.costLine ? 'active' : ''}`}
               style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.costLine ? '#eab308' : 'inherit', borderColor: indicators.costLine ? '#eab308' : 'rgba(255,255,255,0.1)' }}
               title="Portföy maliyet çizgisini grafikte göster/gizle"
@@ -1657,6 +1648,29 @@ export default function NativeProChart({
                 </div>
               )}
             </div>
+          )}
+
+          {/* İzleme Listesi Göster / Gizle Toggle Butonu */}
+          {onToggleSidebar && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className={`chip-btn ${sidebarOpen ? 'active' : ''}`}
+              style={{ 
+                fontSize: 10, 
+                padding: '3px 8px', 
+                color: sidebarOpen ? 'var(--cyan)' : 'var(--text-muted)', 
+                borderColor: sidebarOpen ? 'var(--cyan)' : 'rgba(255,255,255,0.1)',
+                background: sidebarOpen ? 'rgba(0, 229, 255, 0.12)' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title={sidebarOpen ? 'İzleme Listesini Gizle (Tam Boy Grafik)' : 'İzleme Listesini Aç'}
+            >
+              <List size={12} />
+              <span>{sidebarOpen ? 'Liste' : 'Liste'}</span>
+            </button>
           )}
 
           {/* Tam Ekran Toggle */}
@@ -2005,7 +2019,7 @@ export default function NativeProChart({
                   min={2}
                   max={100}
                   value={indicatorSettings.rsiPeriod}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, rsiPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
+                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, rsiPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(236, 72, 153, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
@@ -2021,7 +2035,7 @@ export default function NativeProChart({
                   min={2}
                   max={500}
                   value={indicatorSettings.ema1Period}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, ema1Period: Math.max(2, parseInt(e.target.value) || 20) }))}
+                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema1Period: Math.max(2, parseInt(e.target.value) || 20) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(6, 182, 212, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
@@ -2037,7 +2051,7 @@ export default function NativeProChart({
                   min={2}
                   max={500}
                   value={indicatorSettings.ema2Period}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, ema2Period: Math.max(2, parseInt(e.target.value) || 50) }))}
+                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema2Period: Math.max(2, parseInt(e.target.value) || 50) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(59, 130, 246, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
@@ -2053,7 +2067,7 @@ export default function NativeProChart({
                   min={2}
                   max={500}
                   value={indicatorSettings.ema3Period}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, ema3Period: Math.max(2, parseInt(e.target.value) || 200) }))}
+                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema3Period: Math.max(2, parseInt(e.target.value) || 200) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
@@ -2070,7 +2084,7 @@ export default function NativeProChart({
                     min={5}
                     max={100}
                     value={indicatorSettings.bollingerPeriod}
-                    onChange={e => setIndicatorSettings(prev => ({ ...prev, bollingerPeriod: Math.max(5, parseInt(e.target.value) || 20) }))}
+                    onChange={e => updateIndicatorSettings(prev => ({ ...prev, bollingerPeriod: Math.max(5, parseInt(e.target.value) || 20) }))}
                     style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                     title="Periyot"
                   />
@@ -2080,7 +2094,7 @@ export default function NativeProChart({
                     max={5}
                     step={0.5}
                     value={indicatorSettings.bollingerStdDev}
-                    onChange={e => setIndicatorSettings(prev => ({ ...prev, bollingerStdDev: Math.max(1, parseFloat(e.target.value) || 2) }))}
+                    onChange={e => updateIndicatorSettings(prev => ({ ...prev, bollingerStdDev: Math.max(1, parseFloat(e.target.value) || 2) }))}
                     style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                     title="Sapma Çarpanı (StdDev)"
                   />
@@ -2098,7 +2112,7 @@ export default function NativeProChart({
                   min={20}
                   max={1000}
                   value={indicatorSettings.fibLookback}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, fibLookback: Math.max(20, parseInt(e.target.value) || 180) }))}
+                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, fibLookback: Math.max(20, parseInt(e.target.value) || 180) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
@@ -2114,7 +2128,7 @@ export default function NativeProChart({
                   min={20}
                   max={500}
                   value={indicatorSettings.srLookback}
-                  onChange={e => setIndicatorSettings(prev => ({ ...prev, srLookback: Math.max(20, parseInt(e.target.value) || 90) }))}
+                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, srLookback: Math.max(20, parseInt(e.target.value) || 90) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(16, 185, 129, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
@@ -2127,7 +2141,7 @@ export default function NativeProChart({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIndicatorSettings(prev => ({ ...prev, showLevelTitles: !prev.showLevelTitles }))}
+                  onClick={() => updateIndicatorSettings(prev => ({ ...prev, showLevelTitles: !prev.showLevelTitles }))}
                   className="chip-btn"
                   style={{
                     fontSize: 10,
@@ -2147,7 +2161,7 @@ export default function NativeProChart({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <button
                 type="button"
-                onClick={() => setIndicatorSettings({
+                onClick={() => updateIndicatorSettings({
                   rsiPeriod: 24,
                   ema1Period: 20,
                   ema2Period: 50,
