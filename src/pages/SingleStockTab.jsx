@@ -337,10 +337,31 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
   };
 }
 
+const TICKER_ALIAS_MAP = {
+  'APPLE': 'AAPL',
+  'AMAZON': 'AMZN',
+  'NVIDIA': 'NVDA',
+  'GOOGLE': 'GOOGL',
+  'ALPHABET': 'GOOGL',
+  'FACEBOOK': 'META',
+  'MICROSOFT': 'MSFT',
+  'TESLA': 'TSLA',
+  'THY': 'THYAO',
+  'TÜPRAŞ': 'TUPRS',
+  'TUPRAS': 'TUPRS',
+  'EREĞLİ': 'EREGL',
+  'EREGLI': 'EREGL',
+  'FORD': 'FROTO',
+  'ASELSAN': 'ASELS'
+};
+
 export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const { currentCurrency, usdtry, marketQuotes, fetchSingleQuote } = useApp();
-  const [currentTicker, setCurrentTicker] = useState(selectedTicker || 'NVDA');
-  const [liveQuote, setLiveQuote] = useState(null);
+  const [currentTicker, setCurrentTicker] = useState(() => {
+    const raw = (selectedTicker || 'NVDA').toUpperCase().trim().replace('.IS', '');
+    return TICKER_ALIAS_MAP[raw] || raw;
+  });
+  const [localQuotes, setLocalQuotes] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchBoxRef = useRef(null);
@@ -359,31 +380,32 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   useEffect(() => {
     if (selectedTicker) {
-      setCurrentTicker(selectedTicker);
+      const raw = selectedTicker.toUpperCase().trim().replace('.IS', '');
+      const clean = TICKER_ALIAS_MAP[raw] || raw;
+      setCurrentTicker(clean);
     }
   }, [selectedTicker]);
 
-  // Real-time quote fetcher whenever currentTicker changes
+  // Real-time quote fetcher strictly indexed by ticker
   useEffect(() => {
     let isMounted = true;
     const clean = currentTicker.toUpperCase().trim();
     const isBist = clean.endsWith('.IS') || ['THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK'].includes(clean);
     const resolvedSym = isBist && !clean.endsWith('.IS') ? `${clean}.IS` : clean;
 
-    const existing = marketQuotes[clean] || marketQuotes[resolvedSym];
-    if (existing && existing.price > 0) {
-      setLiveQuote(existing);
-    }
-
     if (fetchSingleQuote) {
       fetchSingleQuote(clean).then(q => {
         if (isMounted && q && q.price > 0) {
-          setLiveQuote(q);
+          setLocalQuotes(prev => ({
+            ...prev,
+            [clean]: q,
+            [resolvedSym]: q
+          }));
         }
       }).catch(() => {});
     }
     return () => { isMounted = false; };
-  }, [currentTicker, fetchSingleQuote, marketQuotes]);
+  }, [currentTicker, fetchSingleQuote]);
 
   // DCF Sliders State
   const [growthRate, setGrowthRate] = useState(22.0); // %
@@ -400,27 +422,42 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     activeStock = synthesizeGenericStock(currentTicker, marketQuotes);
   }
 
-  // Determine effective live market price from liveQuote / marketQuotes
+  // Determine effective live market price strictly for the active stock
   const cleanTickerUpper = currentTicker.toUpperCase().trim();
+  const isBist = cleanTickerUpper.endsWith('.IS') || ['THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK'].includes(cleanTickerUpper);
+  const bistSym = isBist ? (cleanTickerUpper.endsWith('.IS') ? cleanTickerUpper : `${cleanTickerUpper}.IS`) : null;
+
+  // STRICT TICKER ISOLATION: A quote can ONLY be used if it explicitly belongs to cleanTickerUpper or its BIST counterpart!
+  const candidateQuote = localQuotes[cleanTickerUpper] || 
+                         (bistSym ? localQuotes[bistSym] : null) || 
+                         marketQuotes[cleanTickerUpper] || 
+                         (bistSym ? marketQuotes[bistSym] : null);
+
   const effectiveLivePrice = Number(
-    liveQuote?.price ||
-    marketQuotes[cleanTickerUpper]?.price ||
-    marketQuotes[`${cleanTickerUpper}.IS`]?.price ||
+    candidateQuote?.price ||
     activeStock?.dcf?.current_price ||
     activeStock?.candlestick?.current_price ||
-    (cleanTickerUpper === 'NVDA' ? 238.90 : (cleanTickerUpper === 'AMZN' ? 251.40 : (cleanTickerUpper === 'SOFI' ? 15.92 : 150.0)))
+    (cleanTickerUpper === 'NVDA' ? 238.90 : 
+     cleanTickerUpper === 'AMZN' ? 251.40 : 
+     cleanTickerUpper === 'SOFI' ? 15.92 : 
+     cleanTickerUpper === 'AAPL' ? 332.89 : 
+     cleanTickerUpper === 'MSFT' ? 525.18 : 
+     cleanTickerUpper === 'TSLA' ? 378.73 : 
+     cleanTickerUpper === 'TSM' ? 485.80 : 
+     cleanTickerUpper === 'THYAO' ? 292.25 : 
+     cleanTickerUpper === 'TUPRS' ? 391.25 : 
+     cleanTickerUpper === 'FROTO' ? 74.55 : 
+     150.0)
   );
 
-  const effectiveChangePct = liveQuote?.changePct != null
-    ? liveQuote.changePct
-    : (marketQuotes[cleanTickerUpper]?.changePct != null 
-        ? marketQuotes[cleanTickerUpper].changePct 
-        : activeStock?.candlestick?.day_change_pct);
+  const effectiveChangePct = candidateQuote?.changePct != null
+    ? candidateQuote.changePct
+    : (activeStock?.candlestick?.day_change_pct != null ? activeStock.candlestick.day_change_pct : 0.85);
 
   const cData = {
     ...(activeStock?.candlestick || {}),
     current_price: effectiveLivePrice,
-    day_change_pct: effectiveChangePct != null ? effectiveChangePct : 0.85,
+    day_change_pct: effectiveChangePct,
     high_52w: Math.max(activeStock?.candlestick?.high_52w || 0, Math.round(effectiveLivePrice * 1.12 * 100) / 100)
   };
 
@@ -504,7 +541,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   };
 
   const handleSelect = (sym) => {
-    const clean = sym.toUpperCase().trim().replace('.IS', '');
+    const raw = sym.toUpperCase().trim().replace('.IS', '');
+    const clean = TICKER_ALIAS_MAP[raw] || raw;
     if (clean) {
       setCurrentTicker(clean);
       if (onSelectTicker) onSelectTicker(clean);
@@ -513,7 +551,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    const clean = searchQuery.toUpperCase().trim().replace('.IS', '');
+    const raw = searchQuery.toUpperCase().trim().replace('.IS', '');
+    const clean = TICKER_ALIAS_MAP[raw] || raw;
     if (clean) {
       setCurrentTicker(clean);
       if (onSelectTicker) onSelectTicker(clean);
