@@ -1,22 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
-import MarketPulseTab from './pages/MarketPulseTab';
-import OverviewTab from './pages/OverviewTab';
-import HoldingsTab from './pages/HoldingsTab';
-import BenchmarkTab from './pages/BenchmarkTab';
-import RiskRadarTab from './pages/RiskRadarTab';
-import ShieldTab from './pages/ShieldTab';
-import SingleStockTab from './pages/SingleStockTab';
-import Top10QuantTab from './pages/Top10QuantTab';
-import ModelPortfolioTab from './pages/ModelPortfolioTab';
-import TradeLedgerTab from './pages/TradeLedgerTab';
-import ManageTab from './pages/ManageTab';
-import PotentialStocksTab from './pages/PotentialStocksTab';
-import ProChartTab from './pages/ProChartTab';
-import BroadcastStudioTab from './pages/BroadcastStudioTab';
+
+// Code-split tabs via React.lazy for instant terminal launch and minimal initial bundle
+const MarketPulseTab = lazy(() => import('./pages/MarketPulseTab'));
+const OverviewTab = lazy(() => import('./pages/OverviewTab'));
+const HoldingsTab = lazy(() => import('./pages/HoldingsTab'));
+const BenchmarkTab = lazy(() => import('./pages/BenchmarkTab'));
+const RiskRadarTab = lazy(() => import('./pages/RiskRadarTab'));
+const ShieldTab = lazy(() => import('./pages/ShieldTab'));
+const SingleStockTab = lazy(() => import('./pages/SingleStockTab'));
+const Top10QuantTab = lazy(() => import('./pages/Top10QuantTab'));
+const ModelPortfolioTab = lazy(() => import('./pages/ModelPortfolioTab'));
+const TradeLedgerTab = lazy(() => import('./pages/TradeLedgerTab'));
+const ManageTab = lazy(() => import('./pages/ManageTab'));
+const PotentialStocksTab = lazy(() => import('./pages/PotentialStocksTab'));
+const ProChartTab = lazy(() => import('./pages/ProChartTab'));
+const BroadcastStudioTab = lazy(() => import('./pages/BroadcastStudioTab'));
+
 import {
   AddHoldingModal,
   SellHoldingModal,
@@ -36,7 +39,9 @@ function MainTerminal() {
   if (isObsPopout) {
     return (
       <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, background: '#040711', overflow: 'hidden' }}>
-        <BroadcastStudioTab isObsPopout={true} />
+        <Suspense fallback={<div style={{ color: '#fff', padding: 20 }}>Yayın Stüdyosu Yükleniyor...</div>}>
+          <BroadcastStudioTab isObsPopout={true} />
+        </Suspense>
       </div>
     );
   }
@@ -105,95 +110,102 @@ function MainTerminal() {
         />
 
         <main className="terminal-main">
-          {activeTab === 'pro_chart' && (
-            <ProChartTab
-              onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
-              onOpenSellModal={(h) => setSelectedSellHolding(h)}
-              selectedTicker={selectedStockTicker}
-              onSelectTicker={(t) => setSelectedStockTicker(t)}
-            />
-          )}
+          <Suspense fallback={
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
+              <div className="loading-spinner" style={{ margin: '0 auto 12px auto' }}></div>
+              <span>MODÜL YÜKLENİYOR...</span>
+            </div>
+          }>
+            {activeTab === 'pro_chart' && (
+              <ProChartTab
+                onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
+                onOpenSellModal={(h) => setSelectedSellHolding(h)}
+                selectedTicker={selectedStockTicker}
+                onSelectTicker={(t) => setSelectedStockTicker(t)}
+              />
+            )}
 
-          {activeTab === 'broadcast_studio' && <BroadcastStudioTab />}
+            {activeTab === 'broadcast_studio' && <BroadcastStudioTab />}
 
-          {activeTab === 'market' && <MarketPulseTab />}
+            {activeTab === 'market' && <MarketPulseTab />}
 
-          {activeTab === 'potential' && (
-            <PotentialStocksTab
-              onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
-              onSelectStockForAnalysis={(ticker) => {
-                setSelectedStockTicker(ticker);
-                setActiveTab('single_stock');
-              }}
-            />
-          )}
+            {activeTab === 'potential' && (
+              <PotentialStocksTab
+                onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
+                onSelectStockForAnalysis={(ticker) => {
+                  setSelectedStockTicker(ticker);
+                  setActiveTab('single_stock');
+                }}
+              />
+            )}
 
-          {activeTab === 'overview' && <OverviewTab />}
-          
-          {activeTab === 'holdings' && (
-            <HoldingsTab
-              onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
-              onOpenSellModal={(h) => setSelectedSellHolding(h)}
-              onOpenEditModal={(h) => setSelectedEditHolding(h)}
-              onOpenCashModal={() => setShowCashModal(true)}
-              onSelectStockForChart={(ticker) => {
-                setSelectedStockTicker(ticker);
-                setActiveTab('pro_chart');
-              }}
-            />
-          )}
+            {activeTab === 'overview' && <OverviewTab />}
+            
+            {activeTab === 'holdings' && (
+              <HoldingsTab
+                onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
+                onOpenSellModal={(h) => setSelectedSellHolding(h)}
+                onOpenEditModal={(h) => setSelectedEditHolding(h)}
+                onOpenCashModal={() => setShowCashModal(true)}
+                onSelectStockForChart={(ticker) => {
+                  setSelectedStockTicker(ticker);
+                  setActiveTab('pro_chart');
+                }}
+              />
+            )}
 
-          {activeTab === 'benchmark' && <BenchmarkTab />}
+            {activeTab === 'benchmark' && <BenchmarkTab />}
 
-          {activeTab === 'health' && (
-            <RiskRadarTab
-              onOpenSellModal={(h) => setSelectedSellHolding(h)}
-              onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
-            />
-          )}
+            {activeTab === 'health' && (
+              <RiskRadarTab
+                onOpenSellModal={(h) => setSelectedSellHolding(h)}
+                onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
+              />
+            )}
 
-          {activeTab === 'shield' && (
-            <ShieldTab
-              onOpenAddGoldModal={() => setShowAddGoldModal(true)}
-              onOpenPpfModal={() => setShowPpfModal(true)}
-              onOpenCashModal={() => setShowCashModal(true)}
-            />
-          )}
+            {activeTab === 'shield' && (
+              <ShieldTab
+                onOpenAddGoldModal={() => setShowAddGoldModal(true)}
+                onOpenPpfModal={() => setShowPpfModal(true)}
+                onOpenCashModal={() => setShowCashModal(true)}
+              />
+            )}
 
-          {activeTab === 'single_stock' && (
-            <SingleStockTab
-              selectedTicker={selectedStockTicker}
-              onSelectTicker={(t) => setSelectedStockTicker(t)}
-            />
-          )}
+            {activeTab === 'single_stock' && (
+              <SingleStockTab
+                selectedTicker={selectedStockTicker}
+                onSelectTicker={(t) => setSelectedStockTicker(t)}
+              />
+            )}
 
-          {activeTab === 'top10' && (
-            <Top10QuantTab
-              onSelectStock={(t) => {
-                setSelectedStockTicker(t);
-                setActiveTab('single_stock');
-              }}
-            />
-          )}
+            {activeTab === 'top10' && (
+              <Top10QuantTab
+                onSelectStock={(t) => {
+                  setSelectedStockTicker(t);
+                  setActiveTab('single_stock');
+                }}
+              />
+            )}
 
-          {activeTab === 'model' && <ModelPortfolioTab />}
+            {activeTab === 'model' && <ModelPortfolioTab />}
 
-          {activeTab === 'ledger' && (
-            <TradeLedgerTab
-              onOpenTransferModal={(amt) => setTransferModalAmount(amt || 7547.95)}
-            />
-          )}
+            {activeTab === 'ledger' && (
+              <TradeLedgerTab
+                onOpenTransferModal={(amt) => setTransferModalAmount(amt || 7547.95)}
+              />
+            )}
 
-          {activeTab === 'manage' && (
-            <ManageTab
-              onOpenAddModal={() => setShowAddModal(true)}
-              onOpenSellModal={(h) => setSelectedSellHolding(h)}
-              onOpenEditModal={(h) => setSelectedEditHolding(h)}
-              onOpenAddGoldModal={() => setShowAddGoldModal(true)}
-              onOpenPpfModal={() => setShowPpfModal(true)}
-              onOpenCashModal={() => setShowCashModal(true)}
-            />
-          )}
+            {activeTab === 'manage' && (
+              <ManageTab
+                onOpenAddModal={() => setShowAddModal(true)}
+                onOpenSellModal={(h) => setSelectedSellHolding(h)}
+                onOpenEditModal={(h) => setSelectedEditHolding(h)}
+                onOpenAddGoldModal={() => setShowAddGoldModal(true)}
+                onOpenPpfModal={() => setShowPpfModal(true)}
+                onOpenCashModal={() => setShowCashModal(true)}
+              />
+            )}
+          </Suspense>
         </main>
       </div>
 
