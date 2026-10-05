@@ -507,8 +507,8 @@ export const SEARCH_CATALOG = [
   { ticker: "COIN", name: "Coinbase Global", market: "NASDAQ", keywords: "coin coinbase kripto borsa bitcoin ethereum altyapı saklama" },
   { ticker: "MSTR", name: "MicroStrategy Inc.", market: "NASDAQ", keywords: "mstr microstrategy saylor bitcoin rezerv btc hazine" },
   { ticker: "NFLX", name: "Netflix Inc.", market: "NASDAQ", keywords: "nflx netflix yayın platformu dizi film streaming abone" },
-  { ticker: "DIS", name: "Walt Disney Company", market: "NYSE", keywords: "dis disney eğlence tema parkları marvel star wars disney+" },
   { ticker: "SPCX", name: "Space Exploration Tech Corp", market: "US", keywords: "spcx space exploration uzay portföy roket uydu" },
+  { ticker: "SOFI", name: "SoFi Technologies Inc.", market: "NASDAQ", keywords: "sofi neobank fintech galileo kredi dijital bankacılık öğrenci kredisi finans" },
 
   // US Dividend & Value Titans
   { ticker: "BRK.B", name: "Berkshire Hathaway Inc.", market: "NYSE", keywords: "brk brkb berkshire warren buffett sigorta nakit holding geico" },

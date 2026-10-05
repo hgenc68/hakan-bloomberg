@@ -19,10 +19,10 @@ export default function Navigation() {
     { id: 'pro_chart', label: 'PRO GRAFİK & TEKNİK', icon: LineChart, badge: 'CANLI TV', badgeColor: 'cyan', highlight: false },
     { id: 'broadcast_studio', label: 'YAYIN & BRİFİNG STÜDYOSU', icon: Radio, badge: 'PROMPTER', badgeColor: 'rose', highlight: true },
     { id: 'market', label: 'Piyasa Özeti (Canlı Nabız)', icon: Globe, badge: 'CANLI', badgeColor: 'cyan' },
+    { id: 'model', label: 'MODEL PORTFÖY', icon: Briefcase, badge: 'AYLIK', badgeColor: 'purple' },
     { id: 'potential', label: 'POTANSİYEL HİSSELER', icon: Rocket, badge: '8 FIRSAT', badgeColor: 'gold' },
     { id: 'top10', label: 'En Güçlü 10', icon: Trophy, badge: 'Quant', badgeColor: 'emerald' },
-    { id: 'single_stock', label: 'Tekil Hisse & DCF', icon: Target, badge: 'Değerleme', badgeColor: 'cyan' },
-    { id: 'model', label: 'Model Portföy', icon: Briefcase, badge: 'Hibrit', badgeColor: 'purple' }
+    { id: 'single_stock', label: 'Tekil Hisse & DCF', icon: Target, badge: 'Değerleme', badgeColor: 'cyan' }
   ];
 
   return (

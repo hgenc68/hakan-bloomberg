@@ -335,10 +335,17 @@ export const AppProvider = ({ children }) => {
 
       const symList = Array.from(symbolsToFetch).join(',');
       
-      // Try local/vercel API route first
+      const safetyTimer = setTimeout(() => {
+        setIsUpdatingMarket(false);
+      }, 5000);
+
+      // Try local/vercel API route first with 4s timeout
       let fetchedQuotes = {};
       try {
-        const res = await fetch(`/api/market?symbols=${encodeURIComponent(symList)}`);
+        const c1 = new AbortController();
+        const t1 = setTimeout(() => c1.abort(), 4000);
+        const res = await fetch(`/api/market?symbols=${encodeURIComponent(symList)}`, { signal: c1.signal });
+        clearTimeout(t1);
         if (res.ok) {
           const json = await res.json();
           if (json.status === 'success') {
@@ -349,7 +356,7 @@ export const AppProvider = ({ children }) => {
         // Fallback
       }
 
-      // If API empty or failed, fetch individually
+      // If API empty or failed, fetch individually with 2.5s timeout
       if (Object.keys(fetchedQuotes).length === 0) {
         const promises = Array.from(symbolsToFetch).map(async (s) => {
           try {
@@ -363,7 +370,10 @@ export const AppProvider = ({ children }) => {
                 cleanS = s;
               }
             }
-            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanS)}?interval=1d&range=5d`);
+            const c2 = new AbortController();
+            const t2 = setTimeout(() => c2.abort(), 2500);
+            const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanS)}?interval=1d&range=5d`, { signal: c2.signal });
+            clearTimeout(t2);
             if (!r.ok) return;
             const j = await r.json();
             const meta = j?.chart?.result?.[0]?.meta;

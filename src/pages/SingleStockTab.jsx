@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Target, Search, Sliders, Activity, TrendingUp, ShieldCheck, BarChart3, HelpCircle, Sparkles, Lightbulb, Compass, Info, Snowflake } from 'lucide-react';
 import { Bar, Radar } from 'react-chartjs-2';
@@ -18,6 +18,7 @@ import {
 import stocksData from '../data/stocksData.json';
 import potentialData from '../data/potentialStocksData.json';
 import { getHealthColorTheme } from './RiskRadarTab';
+import { searchCatalog } from './ProChartTab';
 
 ChartJS.register(
   CategoryScale,
@@ -340,6 +341,20 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const { currentCurrency, usdtry, marketQuotes } = useApp();
   const [currentTicker, setCurrentTicker] = useState(selectedTicker || 'NVDA');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchBoxRef = useRef(null);
+
+  const suggestions = searchQuery.trim().length > 0 ? searchCatalog(searchQuery, 8) : [];
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (selectedTicker) {
@@ -653,16 +668,127 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       {/* Search & Quick Picker Bar */}
       <div className="card" style={{ padding: 14, background: '#090d16', border: '1px solid var(--border)', marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 8 }}>
-            <div className="search-box" style={{ width: 280 }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 8, position: 'relative' }} ref={searchBoxRef}>
+            <div className="search-box" style={{ width: 320, position: 'relative' }}>
               <Search size={14} className="search-icon" />
               <input
                 type="text"
-                placeholder="Hisse Sembolü (NVDA, THYAO...)"
+                placeholder="Hisse Kodu veya Şirket Adı (AMZN, SOFI, THYAO...)"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
                 className="search-input"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setShowSuggestions(false); }}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: 12
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+
+              {/* Autocomplete Suggestion Dropdown */}
+              {showSuggestions && searchQuery.trim().length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    background: '#0a0f1d',
+                    border: '1px solid var(--cyan)',
+                    borderRadius: 6,
+                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.85)',
+                    zIndex: 9999,
+                    maxHeight: 320,
+                    overflowY: 'auto',
+                    padding: '4px 0'
+                  }}
+                >
+                  <div style={{ padding: '6px 12px', fontSize: 9.5, color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.06)', fontWeight: 700 }}>
+                    ÖNERİLEN HİSSELER ({suggestions.length})
+                  </div>
+
+                  {suggestions.map((item, idx) => {
+                    const clean = item.ticker.replace('.IS', '');
+                    const isBist = item.market === 'BIST' || item.ticker.endsWith('.IS');
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          handleSelect(item.ticker);
+                          setSearchQuery('');
+                          setShowSuggestions(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid rgba(255,255,255,0.03)',
+                          transition: 'background 0.12s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 229, 255, 0.12)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <span style={{ fontWeight: 800, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                            {clean}
+                          </span>
+                          <span style={{ color: '#e2e8f0', fontSize: 11, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.name}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 8.5, padding: '2px 5px', borderRadius: 3, background: isBist ? 'rgba(239, 68, 68, 0.18)' : 'rgba(56, 189, 248, 0.18)', color: isBist ? '#f87171' : '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700, flexShrink: 0, marginLeft: 6 }}>
+                          {item.market || (isBist ? 'BIST' : 'US')}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {/* Dynamic Fallback Action */}
+                  <div
+                    onClick={() => {
+                      handleSelect(searchQuery);
+                      setSearchQuery('');
+                      setShowSuggestions(false);
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      background: 'rgba(52, 211, 153, 0.08)',
+                      borderTop: '1px solid rgba(52, 211, 153, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 10.5,
+                      color: '#34d399',
+                      fontWeight: 700
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(52, 211, 153, 0.18)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(52, 211, 153, 0.08)'}
+                  >
+                    <span>⚡</span>
+                    <span>"{searchQuery.toUpperCase()}" için Dinamik Quant & DCF Başlat</span>
+                  </div>
+                </div>
+              )}
             </div>
             <button type="submit" className="btn-primary" style={{ padding: '0 14px' }}>
               Analiz Et
