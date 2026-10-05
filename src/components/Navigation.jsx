@@ -16,27 +16,27 @@ export default function Navigation() {
   const { activeTab, setActiveTab } = useApp();
 
   const researchTabs = [
-    { id: 'pro_chart', label: 'PRO GRAFİK & TEKNİK', icon: LineChart, badge: 'CANLI TV', badgeColor: 'cyan', highlight: false },
-    { id: 'broadcast_studio', label: 'YAYIN & BRİFİNG STÜDYOSU', icon: Radio, badge: 'PROMPTER', badgeColor: 'rose', highlight: true },
-    { id: 'market', label: 'Piyasa Özeti (Canlı Nabız)', icon: Globe, badge: 'CANLI', badgeColor: 'cyan' },
-    { id: 'model', label: 'MODEL PORTFÖY', icon: Briefcase, badge: 'AYLIK', badgeColor: 'purple' },
-    { id: 'potential', label: 'POTANSİYEL HİSSELER', icon: Rocket, badge: '8 FIRSAT', badgeColor: 'gold' },
+    { id: 'pro_chart', label: 'Pro Grafik', icon: LineChart, badge: 'TV', badgeColor: 'cyan', highlight: false },
+    { id: 'broadcast_studio', label: 'Yayın Stüdyosu', icon: Radio, badge: 'Prompter', badgeColor: 'rose', highlight: true },
+    { id: 'market', label: 'Piyasa Nabzı', icon: Globe, badge: 'Canlı', badgeColor: 'cyan' },
+    { id: 'model', label: 'Model Portföy', icon: Briefcase, badge: 'Aylık', badgeColor: 'purple' },
+    { id: 'potential', label: 'Potansiyel', icon: Rocket, badge: '8 Fırsat', badgeColor: 'gold' },
     { id: 'top10', label: 'En Güçlü 10', icon: Trophy, badge: 'Quant', badgeColor: 'emerald' },
-    { id: 'single_stock', label: 'Tekil Hisse & DCF', icon: Target, badge: 'Değerleme', badgeColor: 'cyan' }
+    { id: 'single_stock', label: 'Tekil Hisse', icon: Target, badge: 'DCF', badgeColor: 'cyan' }
   ];
 
   return (
-    <nav className="terminal-nav" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 20px', background: '#080c16', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 10 }}>
+    <nav className="terminal-nav" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', background: '#080c16', borderBottom: '1px solid var(--border)', flexWrap: 'nowrap', gap: 6, overflowX: 'auto' }}>
       {/* Left indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Compass size={15} style={{ color: 'var(--cyan)' }} />
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          PİYASA & ARAŞTIRMA RADARI
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <Compass size={14} style={{ color: 'var(--cyan)' }} />
+        <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em' }}>
+          RADAR
         </span>
       </div>
 
       {/* Tabs list */}
-      <div className="nav-container" style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }}>
+      <div className="nav-container" style={{ display: 'flex', gap: 5, overflowX: 'auto', scrollbarWidth: 'none', alignItems: 'center', flexWrap: 'nowrap' }}>
         {researchTabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
