@@ -355,14 +355,14 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       subtitle: 'FED Faiz Tahmini (CME), S&P 500 Mevsimsellik Döngüsü ve Sıcak Makro Veriler (TÜFE & PMI)',
       durationEst: '65 sn',
       metrics: [
-        { label: 'FED Faiz Tahmini (7 Kas)', val: '%88.2 (25 Bp)', chg: 0, note: '50 Bp İptal (NFP 254K)' },
+        { label: 'FED Faiz Beklentisi (CME)', val: '%78.4 Sabit', chg: 0, note: 'İndirim %0 • Pas/Sabit' },
         { label: 'S&P 500 Mevsimsellik', val: 'Q4 Ralli +%4.1', chg: 1.4, isUp: true, note: 'Seçim Yılı Döngüsü' },
         { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: 0, note: 'Aylık %2.97 • Reel Faiz +' },
         { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
       ],
       defaultScript: `Değerli dostlar, ekran başına ve bugünkü piyasa yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Hem küresel piyasalar hem de Borsa İstanbul açısından son derece kritik ve yön tayin edici verilerin açıklandığı bir gündeyiz.
 
-İlk olarak sunumumuzun ilk sayfasındaki en kritik göstergeye, yani FED faiz tahminlerine bakalım: CME FedWatch göstergelerinde tarihi bir kırılma yaşandı. Cuma günü ABD'den gelen 254 bin kişilik bomba tarım dışı istihdam verisi ve ardından açıklanan 54.9 seviyesindeki güçlü ISM Hizmetler PMI verisi, piyasadaki tüm resesyon çığırtkanlığını bir anda sildi süpürdü. Bu verilerin ardından Fed'in Kasım toplantısında 50 baz puanlık agresif indirim yapma ihtimali tamamen sıfırlandı. Şu an piyasa yüzde 88 ihtimalle 25 baz puanlık ölçülü bir indirim fiyatlıyor. Bu durum ABD 10 yıllık tahvil faizini yeniden yüzde 4'ün üzerine taşırken, dolar endeksi DXY 102.50 seviyesine yükseldi.
+İlk olarak sunumumuzun ilk sayfasındaki en kritik göstergeye, yani canlı CME FedWatch ekranına bakalım: Piyasa aylardır 'FED faiz indirecek' söylemiyle meşgul edilirken, ekranda gördüğünüz resmi veriler bambaşka bir gerçeği haykırıyor! Şu an yüzde 3.75 - 4.00 bandındaki mevcut faizin sabit bırakılma, yani pas geçilme olasılığı tam yüzde 78.4! Faiz indirimi ihtimali ise tam olarak yüzde 0'a çakılmış durumda. Hatta masada yüzde 21.6'lık bir faiz artışı riski bile fiyatlanıyor! Cuma günü gelen 254 bin kişilik bomba istihdam ve 54.9 seviyesindeki güçlü ISM Hizmetler PMI verisi, FED'in faiz indirimlerini neden tamamen dondurduğunu açıkça kanıtlıyor. Bu tablo ABD 10 yıllık tahvil faizini yeniden yüzde 4'ün üzerine taşırken, dolar endeksi DXY 102.50 seviyesinde güçleniyor.
 
 İkinci kritik grafiğimiz olan S&P 500 mevsimsellik eğrisine baktığımızda ise tam bir döngü eşiğindeyiz. Tarihsel olarak ABD Başkanlık Seçimi yıllarında Ekim ayının ilk iki haftası seçim belirsizliği ve kâr realizasyonlarıyla dalgalı geçer. Ancak geçmiş 70 yıllık veri gösteriyor ki, seçimlerin tamamlanmasıyla birlikte Kasım ve Aralık aylarında S&P 500 ortalama yüzde 4.1'lik muazzam bir yıl sonu rallisine imza atıyor. Yani Ekim'deki bu silkelemeler ve dalgalanmalar aslında kurumsal fonlar için bir alım fırsatı tabanı oluşturuyor.
 
@@ -888,7 +888,7 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           {[
-                            { id: 'fed', label: '🏛️ FED Faiz Tahmini', badge: '%88.2 İndirim' },
+                            { id: 'fed', label: '🏛️ FED Faiz Beklentisi', badge: '%78.4 Pas/Sabit' },
                             { id: 'seasonality', label: '📈 S&P 500 Mevsimsellik', badge: 'Q4 +%4.1' },
                             { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: 'TÜFE 49.38%' },
                             { id: 'matrix', label: '📊 Varlık Matrisi', badge: 'Canlı' }
@@ -932,78 +932,98 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
 
                       {/* VIEW 1: FED INTEREST RATE FORECAST (CME FedWatch) */}
                       {slide1SubTab === 'fed' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 9, flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
                           {/* CME FedWatch Header */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span>CME FEDWATCH FAİZ BEKLENTİLERİ</span>
                                 <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', fontWeight: 800 }}>
-                                  7 KASIM FOMC
+                                  CANLI TABLO
                                 </span>
                               </div>
                               <div style={{ fontSize: 8.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                                Mevcut Politika Faizi: <span style={{ color: '#fff', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>%4.75 - %5.00</span> | Konsensüs: <span style={{ color: 'var(--cyan)' }}>25 bp İndirim</span>
+                                Mevcut Politika Faizi: <span style={{ color: '#fff', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>%3.75 - %4.00</span> (375-400 bps)
                               </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>18 ARALIK YIL SONU</div>
-                              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>Toplam -50 bp (%78.4)</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>PİYASA KONSENSÜSÜ</div>
+                              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>Faizi Sabit Tutma (%78.4)</div>
                             </div>
                           </div>
 
-                          {/* Horizontal Bar Chart for 7 November FOMC */}
+                          {/* Horizontal Bar Chart for FOMC Probabilities */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(0,0,0,0.3)', padding: '9px 11px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                            {/* 25 bp Cut */}
+                            {/* 375-400 (Current / Pause) */}
                             <div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
                                 <span style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }}></span>
-                                  25 bp İndirim (Hedef: %4.50 - %4.75)
+                                  375-400 bps (Mevcut Faizi Koruma / Pas Geçme)
                                 </span>
-                                <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%88.2</span>
+                                <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%78.4</span>
                               </div>
                               <div style={{ height: 9, background: 'rgba(255,255,255,0.06)', borderRadius: 5, overflow: 'hidden' }}>
-                                <div style={{ width: '88.2%', height: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', borderRadius: 5 }}></div>
+                                <div style={{ width: '78.4%', height: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', borderRadius: 5 }}></div>
                               </div>
-                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Ezici piyasa konsensüsü — Tarım dışı istihdam (254K) sonrası yumuşak iniş teyidi</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Ezici piyasa beklentisi — 1 ay önce %54.4 iken istihdam verisiyle zirveye çıktı</div>
                             </div>
 
-                            {/* Unchanged / Pause */}
+                            {/* 400-425 (Upper / Tightening) */}
                             <div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
                                 <span style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }}></span>
-                                  Faiz Sabit / Pas (Hedef: %4.75 - %5.00)
+                                  400-425 bps (Üst Bant / Faiz Artışı Riski)
                                 </span>
-                                <span style={{ color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%11.8</span>
+                                <span style={{ color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%21.6</span>
                               </div>
                               <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{ width: '11.8%', height: '100%', background: '#f59e0b', borderRadius: 4 }}></div>
+                                <div style={{ width: '21.6%', height: '100%', background: '#f59e0b', borderRadius: 4 }}></div>
                               </div>
-                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Enflasyon katılığını izlemek isteyen şahin üyelerin beklentisi</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>1 hafta önce %70.9 idi; güçlü büyüme ve petrol şokuyla masada kalan risk</div>
                             </div>
 
-                            {/* 50 bp Aggressive Cut */}
+                            {/* 350-375 (Rate Cut) */}
                             <div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
                                 <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }}></span>
-                                  50 bp Agresif İndirim (Hedef: %4.25 - %4.50)
+                                  350-375 bps (25 bp Faiz İndirimi)
                                 </span>
                                 <span style={{ color: '#ef4444', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%0.0</span>
                               </div>
                               <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
                                 <div style={{ width: '0%', height: '100%', background: '#ef4444' }}></div>
                               </div>
-                              <div style={{ fontSize: 8, color: '#f87171', marginTop: 1 }}>Patlayan istihdam ve 54.9 ISM hizmetler verisi sonrası tamamen masadan kalktı</div>
+                              <div style={{ fontSize: 8, color: '#f87171', marginTop: 1 }}>1 ay önce %29.8 iken son 254K istihdam ve 54.9 PMI sonrası tamamen SIFIRLANDI!</div>
+                            </div>
+                          </div>
+
+                          {/* Historical Shift Summary Row */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
+                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>ŞİMDİ</div>
+                              <div style={{ fontSize: 9, fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>%78.4 Pas</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
+                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>1 GÜN ÖNCE</div>
+                              <div style={{ fontSize: 9, fontWeight: 800, color: '#cbd5e1', fontFamily: 'var(--font-mono)' }}>%77.9 Pas</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
+                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>1 HAFTA ÖNCE</div>
+                              <div style={{ fontSize: 9, fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>%29.1 Pas</div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
+                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>1 AY ÖNCE</div>
+                              <div style={{ fontSize: 9, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>%29.8 İndirim</div>
                             </div>
                           </div>
 
                           {/* Analytical Takeaway Box */}
-                          <div style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 5, padding: '7px 10px', fontSize: 8.5, color: '#cbd5e1', lineHeight: 1.45 }}>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 5, padding: '6px 9px', fontSize: 8.5, color: '#cbd5e1', lineHeight: 1.4 }}>
                             <span style={{ color: '#38bdf8', fontWeight: 800 }}>⚡ PİYASA YORUMU: </span>
-                            FED, acil resesyon fiyatlamasından ölçülü gevşeme sürecine geçti. ABD 10 yıllık tahvil faizleri %4.02 seviyesine tırmanırken, Dolar Endeksi (DXY) 102.50 bandında güçleniyor. Ons altında görülen kâr satışları bu getiri yükselişinden kaynaklanıyor.
+                            CME FedWatch verisi faiz indirimlerinin dondurulduğunu (%0.0) ve FED'in "bekle-gör" moduna geçtiğini (%78.4) resmileştirdi. Piyasada indirim bekleyenlerin aksine FED, sağlam istihdam ve canlı PMI verileriyle faizleri yüksek tutmaya devam ediyor.
                           </div>
                         </div>
                       )}
