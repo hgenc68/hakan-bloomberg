@@ -42,6 +42,11 @@ import {
 } from 'lucide-react';
 import macroPulseData from '../data/macroPulse.json';
 import latestQuotesData from '../data/latestQuotes.json';
+import { 
+  BROADCAST_THEMES, 
+  resolveEditionState, 
+  generateDailyScript 
+} from '../data/broadcastEditionService';
 
 export default function BroadcastStudioTab({ isObsPopout = false }) {
   const { marketQuotes, usdtry, fetchMarketData } = useApp();
@@ -82,6 +87,12 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         if (e.data && e.data.type === 'CHANGE_SLIDE1_SUBTAB' && e.data.subTab) {
           setSlide1SubTab(e.data.subTab);
         }
+        if (e.data && e.data.type === 'CHANGE_THEME' && e.data.themeId) {
+          setSelectedThemeId(e.data.themeId);
+        }
+        if (e.data && e.data.type === 'CHANGE_EDITION_SHIFT' && typeof e.data.shift === 'number') {
+          setCustomShift(e.data.shift);
+        }
       };
     } catch (e) {}
 
@@ -92,6 +103,12 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       }
       if (e.data && e.data.type === 'CHANGE_SLIDE1_SUBTAB' && e.data.subTab) {
         setSlide1SubTab(e.data.subTab);
+      }
+      if (e.data && e.data.type === 'CHANGE_THEME' && e.data.themeId) {
+        setSelectedThemeId(e.data.themeId);
+      }
+      if (e.data && e.data.type === 'CHANGE_EDITION_SHIFT' && typeof e.data.shift === 'number') {
+        setCustomShift(e.data.shift);
       }
     };
     window.addEventListener('message', handleWindowMsg);
@@ -111,6 +128,12 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       }
       if (e.key === 'broadcast_studio_slide1_subtab' && e.newValue) {
         setSlide1SubTab(e.newValue);
+      }
+      if (e.key === 'broadcast_studio_theme_id' && e.newValue) {
+        setSelectedThemeId(e.newValue);
+      }
+      if (e.key === 'broadcast_studio_edition_shift' && e.newValue) {
+        setCustomShift(Number(e.newValue) || 0);
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -132,6 +155,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           if (subRaw) {
             setSlide1SubTab(prev => (prev !== subRaw ? subRaw : prev));
           }
+          const themeRaw = localStorage.getItem('broadcast_studio_theme_id');
+          if (themeRaw) setSelectedThemeId(prev => (prev !== themeRaw ? themeRaw : prev));
+          const shiftRaw = localStorage.getItem('broadcast_studio_edition_shift');
+          if (shiftRaw !== null) setCustomShift(prev => (prev !== Number(shiftRaw) ? Number(shiftRaw) : prev));
         } catch (e) {}
       }, 200);
     }
@@ -214,17 +241,74 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(() => new Date());
 
-  // Dynamic Date calculation
-  const todayDateObj = new Date();
-  const dayNames = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
-  const dayName = dayNames[todayDateObj.getDay()];
-  const todayFullStr = `${todayDateObj.getDate()} ${todayDateObj.toLocaleDateString('tr-TR', { month: 'long' })} ${todayDateObj.getFullYear()} ${dayName}`;
-  const isMonday = todayDateObj.getDay() === 1;
+  // Selected Theme ('auto' or specific theme id)
+  const [selectedThemeId, setSelectedThemeId] = useState(() => {
+    try {
+      return localStorage.getItem('broadcast_studio_theme_id') || 'auto';
+    } catch {
+      return 'auto';
+    }
+  });
+
+  // Manual Edition Shift offset
+  const [customShift, setCustomShift] = useState(() => {
+    try {
+      return Number(localStorage.getItem('broadcast_studio_edition_shift') || 0);
+    } catch {
+      return 0;
+    }
+  });
+
+  // Minute-by-minute timer to auto-roll into the 16:00 edition when 16:00 TSİ strikes
+  const [currentTimeTick, setCurrentTimeTick] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTimeTick(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Compute daily edition state
+  const editionState = useMemo(() => {
+    return resolveEditionState(selectedThemeId, customShift);
+  }, [selectedThemeId, customShift, currentTimeTick]);
+
+  const activeTheme = editionState.activeTheme;
+  const variantIndex = editionState.variantIndex;
+  const todayFullStr = editionState.todayFullStr;
+
+  const handleSelectTheme = (themeId) => {
+    setSelectedThemeId(themeId);
+    try {
+      localStorage.setItem('broadcast_studio_theme_id', themeId);
+      if (syncChannelRef.current) {
+        syncChannelRef.current.postMessage({ type: 'CHANGE_THEME', themeId });
+      }
+    } catch {}
+  };
+
+  const handleAdvanceEdition = () => {
+    setCustomShift(prev => {
+      const next = prev + 1;
+      try {
+        localStorage.setItem('broadcast_studio_edition_shift', String(next));
+        if (syncChannelRef.current) {
+          syncChannelRef.current.postMessage({ type: 'CHANGE_EDITION_SHIFT', shift: next });
+        }
+      } catch {}
+      return next;
+    });
+  };
+
+  // Sync subtab to theme's preferred view
+  useEffect(() => {
+    if (activeTheme?.slide1SubTab) {
+      setSlide1SubTab(activeTheme.slide1SubTab);
+    }
+  }, [activeTheme?.id]);
 
   // Custom user overrides for scripts (persisted in localStorage)
   const [customScripts, setCustomScripts] = useState(() => {
     try {
-      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v2');
+      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v3');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -233,7 +317,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('broadcast_studio_custom_scripts_v2', JSON.stringify(customScripts));
+      localStorage.setItem('broadcast_studio_custom_scripts_v3', JSON.stringify(customScripts));
     } catch (e) {}
   }, [customScripts]);
 
@@ -369,183 +453,208 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     { name: 'Dolar / TL', symbol: 'USDTRY=X', price: currentUsdTry, today: 0.13, d5: 0.45, m1: 1.85, ytd: 18.40, y1: 32.10 }
   ];
 
-  // 9 Complete Television Slides (Macro to Micro)
-  const slides = useMemo(() => [
-    // SLIDE 1: Global Market Pulse (Matching MarketPulseTab + Fed Rates + S&P 500 Seasonality + Fresh Macro Data)
-    {
-      id: 1,
-      badge: 'GLOBAL MAKRO RADAR',
-      badgeColor: 'cyan',
-      title: 'Global Piyasa Nabzı & Makro Radar',
-      subtitle: 'FED Faiz Tahmini (CME), S&P 500 Mevsimsellik Döngüsü ve Sıcak Makro Veriler (TÜFE & PMI)',
-      durationEst: '65 sn',
-      metrics: [
-        { label: 'FED Faiz Beklentisi (CME)', val: '%78.4 Sabit', chg: 0, note: 'İndirim %0 • Pas/Sabit' },
-        { label: 'S&P 500 Mevsimsellik', val: 'Q4 Ralli +%4.1', chg: 1.4, isUp: true, note: 'Seçim Yılı Döngüsü' },
-        { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: 0, note: 'Aylık %2.97 • Reel Faiz +' },
-        { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
-      ],
-      defaultScript: `Değerli dostlar, ekran başına ve bugünkü piyasa yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Hem küresel piyasalar hem de Borsa İstanbul açısından son derece kritik ve yön tayin edici verilerin açıklandığı bir gündeyiz.
+  // 9 Television Slides dynamically populated with Edition Theme, Visual Variants & Live Quotes
+  const slides = useMemo(() => {
+    const quotes = {
+      fmt,
+      brent,
+      wti,
+      gold,
+      silver,
+      dxy,
+      us10y,
+      us2y,
+      sp500,
+      sp500Etf,
+      nasdaq,
+      nasdaqEtf,
+      dow,
+      dowEtf,
+      bist100,
+      btc,
+      eth,
+      total3,
+      currentUsdTry,
+      gramAltinTL,
+      fgScore,
+      fgLabel
+    };
 
-İlk olarak sunumumuzun ilk sayfasındaki en kritik göstergeye, yani canlı CME FedWatch ekranına bakalım: Piyasa aylardır 'FED faiz indirecek' söylemiyle meşgul edilirken, ekranda gördüğünüz resmi veriler bambaşka bir gerçeği haykırıyor! Şu an yüzde 3.75 - 4.00 bandındaki mevcut faizin sabit bırakılma, yani pas geçilme olasılığı tam yüzde 78.4! Faiz indirimi ihtimali ise tam olarak yüzde 0'a çakılmış durumda. Hatta masada yüzde 21.6'lık bir faiz artışı riski bile fiyatlanıyor! Cuma günü gelen 254 bin kişilik bomba istihdam ve 54.9 seviyesindeki güçlü ISM Hizmetler PMI verisi, FED'in faiz indirimlerini neden tamamen dondurduğunu açıkça kanıtlıyor. Bu tablo ABD 10 yıllık tahvil faizini yeniden yüzde 4'ün üzerine taşırken, dolar endeksi DXY 102.50 seviyesinde güçleniyor.
+    return [
+      // SLIDE 1: Global Market Pulse (Matching MarketPulseTab + Fed Rates + S&P 500 Seasonality + Fresh Macro Data)
+      {
+        id: 1,
+        badge: activeTheme.badge,
+        badgeColor: activeTheme.badgeColor,
+        title: activeTheme.title,
+        subtitle: activeTheme.description,
+        durationEst: '65 sn',
+        metrics: [
+          { label: 'FED Faiz Beklentisi (CME)', val: '%78.4 Sabit', chg: 0, note: 'İndirim %0 • Pas/Sabit' },
+          { label: 'S&P 500 Mevsimsellik', val: 'Q4 Ralli +%4.1', chg: 1.4, isUp: true, note: 'Seçim Yılı Döngüsü' },
+          { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: 0, note: 'Aylık %2.97 • Reel Faiz +' },
+          { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
+        ],
+        defaultScript: generateDailyScript(1, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-İkinci kritik grafiğimiz olan S&P 500 mevsimsellik eğrisine baktığımızda ise tam bir döngü eşiğindeyiz. Tarihsel olarak ABD Başkanlık Seçimi yıllarında Ekim ayının ilk iki haftası seçim belirsizliği ve kâr realizasyonlarıyla dalgalı geçer. Ancak geçmiş 70 yıllık veri gösteriyor ki, seçimlerin tamamlanmasıyla birlikte Kasım ve Aralık aylarında S&P 500 ortalama yüzde 4.1'lik muazzam bir yıl sonu rallisine imza atıyor. Yani Ekim'deki bu silkelemeler ve dalgalanmalar aslında kurumsal fonlar için bir alım fırsatı tabanı oluşturuyor.
+      // SLIDE 2: Geopolitics & Energy Corridor
+      {
+        id: 2,
+        badge: variantIndex === 1 ? 'OPEC+ & PETROL KOTALARI' : (variantIndex === 2 ? 'JEOPOLİTİK RİSK KATSAYISI' : 'JEOPOLİTİK RADAR & ENERJİ'),
+        badgeColor: 'rose',
+        title: variantIndex === 1 ? 'OPEC+ Üretim Kotaları & Rafineri Marjları' : (variantIndex === 2 ? 'Jeopolitik Risk Katsayısı & Güvenli Liman' : 'Jeopolitik Riskler & Enerji Koridoru'),
+        subtitle: variantIndex === 1 ? 'Suudi 9M Kota, ABD SPR 385M Varil ve Crack Spread Açılması' : (variantIndex === 2 ? '142 GPR Risk Puanı, Tanker Sigortası (+%28) ve Petrol Yayılımı' : 'Hürmüz & Kızıldeniz Koridoru, Navlun Maliyetleri ve Petrol Arzı'),
+        durationEst: '55 sn',
+        metrics: [
+          { label: 'Brent Ham Petrol', val: `$${fmt(brent.price, 2)}`, chg: brent.change, isUp: brent.change >= 0 },
+          { label: 'WTI Ham Petrol', val: `$${fmt(wti.price, 2)}`, chg: wti.change, isUp: wti.change >= 0 },
+          { label: variantIndex === 1 ? 'Crack Spread Marjı' : 'Navlun Risk Katsayısı', val: variantIndex === 1 ? '$24.80 / vrl' : '+%14.2', chg: 2.1, isUp: true, note: variantIndex === 1 ? 'Rafineri Baskısı' : 'Kızıldeniz & Ümit Burnu' },
+          { label: 'Enerji Enflasyon Riski', val: 'Yüksek Risk', chg: 0, isUp: true }
+        ],
+        defaultScript: generateDailyScript(2, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-Yurtiçine döndüğümüzde ise masamızda Türkiye'nin son TÜFE enflasyon karnesi var: Eylül ayı aylık TÜFE yüzde 2.97 gelirken, yıllık enflasyonumuz yüzde 49.38'e geriledi. Bu verinin piyasa açısından iki büyük anlamı var: Birincisi, TCMB'nin yüzde 50'lik politika faizi ilk kez resmi enflasyonun üzerine çıktı ve Türkiye net pozitif reel faiz bölgesine yerleşti. Ancak ikincisi, hizmet enflasyonundaki katılık nedeniyle Merkez Bankası'nın faiz indirimi beklentisi Kasım'dan Aralık veya Ocak ayına ötelendi. Borsa İstanbul'un 12.200 desteğinde bekleme moduna geçmesinin ana nedeni budur. 
+      // SLIDE 3: Central Banks & Real Yield Shield
+      {
+        id: 3,
+        badge: variantIndex === 1 ? 'MERKEZ BANKALARI QT BİLANÇOSU' : (variantIndex === 2 ? 'ENFLASYON KIRILIMI & FAİZ' : 'MERKEZ BANKALARI & REEL GETİRİ'),
+        badgeColor: 'amber',
+        title: variantIndex === 1 ? 'Bilanço Küçültmesi (QT) & Likidite Daralması' : (variantIndex === 2 ? 'Enflasyonun Anatomisi: Hizmet vs Mal Katılığı' : 'Merkez Bankaları & TL Reel Getiri Kalkanı'),
+        subtitle: variantIndex === 1 ? 'Fed -$60B/Ay Daralma, ECB €6.4T Bilanço ve TCMB Swap Hariç +$28B Rezerv' : (variantIndex === 2 ? 'Hizmet %72.8, Temel Mal %28.3 ve Faiz İndirimi Yol Haritası' : 'Fed 25 Bp Patikası, TÜİK %49.38 TÜFE ve TCMB %50 Politika Faizi'),
+        durationEst: '55 sn',
+        metrics: [
+          { label: 'TCMB Politika Faizi', val: '%50.00', chg: 0, isUp: true, note: '+%0.62 Net Reel Faiz' },
+          { label: 'Fed Fonlama Faizi', val: '%4.75 - %5.00', chg: 0, isUp: true, note: 'Kasım: 25 Bp İndirim' },
+          { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: -2.59, isUp: false, note: 'Aylık TÜFE: %2.97' },
+          { label: '5Y CDS Risk Primi', val: '216 bp', chg: -3.5, isUp: false, note: 'Düşüş Trendi' }
+        ],
+        defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 dolar tabanındaki ons altını da hesaba katarak şimdi 9 slaytlık profesyonel analizimize adım adım başlayalım.`
-    },
+      // SLIDE 4: Wall Street & AI Ecosystem
+      {
+        id: 4,
+        badge: variantIndex === 1 ? 'MAG-7 AI CAPEX YATIRIMI' : (variantIndex === 2 ? 'S&P 500 DEĞERLEME & F/K' : 'WALL STREET & YAPAY ZEKA'),
+        badgeColor: 'emerald',
+        title: variantIndex === 1 ? 'Mag-7 AI Sermaye Harcamaları & Çip Altyapısı' : (variantIndex === 2 ? 'S&P 500 Değerleme & F/K Çarpan Koridoru' : 'Wall Street: S&P 500 Mevsimsellik & AI Döngüsü'),
+        subtitle: variantIndex === 1 ? '205 Milyar Dolarlık AI Capex, Blackwell Teslimatları ve TSMC 3nm' : (variantIndex === 2 ? '21.4x İleri F/K, %10 Kâr Büyümesi ve Eşit Ağırlıklı S&P (RSP) Yayılımı' : 'Seçim Yılı Q4 Rallisi (+%4.1), Güçlü ISM Hizmetler (54.9) ve Büyük Teknoloji'),
+        durationEst: '50 sn',
+        metrics: [
+          { label: 'S&P 500 Endeksi', val: fmt(sp500.price, 2), chg: sp500.change, isUp: sp500.change >= 0 },
+          { label: 'Nasdaq 100 Endeksi', val: fmt(nasdaq.price, 2), chg: nasdaq.change, isUp: nasdaq.change >= 0 },
+          { label: variantIndex === 1 ? 'Yıllık AI Capex Bütçesi' : 'ISM Hizmetler PMI', val: variantIndex === 1 ? '$205 Milyar' : '54.9', chg: 3.2, isUp: true, note: variantIndex === 1 ? 'Tarihi Zirve' : '1.5 Yılın Zirvesi' },
+          { label: 'Tarihsel Q4 Getirisi', val: '+%4.1', chg: 0, isUp: true, note: 'Seçim Yılı Ortalaması' }
+        ],
+        defaultScript: generateDailyScript(4, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-    // SLIDE 2: Geopolitics & Energy Corridor
-    {
-      id: 2,
-      badge: 'JEOPOLİTİK RADAR & ENERJİ',
-      badgeColor: 'rose',
-      title: 'Jeopolitik Riskler & Enerji Koridoru',
-      subtitle: 'Hürmüz & Kızıldeniz Koridoru, Navlun Maliyetleri ve Petrol Arzı',
-      durationEst: '55 sn',
-      metrics: [
-        { label: 'Brent Ham Petrol', val: `$${fmt(brent.price, 2)}`, chg: brent.change, isUp: brent.change >= 0 },
-        { label: 'WTI Ham Petrol', val: `$${fmt(wti.price, 2)}`, chg: wti.change, isUp: wti.change >= 0 },
-        { label: 'Navlun Risk Katsayısı', val: '+%14.2', chg: 2.1, isUp: true, note: 'Kızıldeniz & Ümit Burnu' },
-        { label: 'Enerji Enflasyon Riski', val: 'Yüksek Risk', chg: 0, isUp: true }
-      ],
-      defaultScript: `İkinci durağımız olan jeopolitik ve enerji koridoruna baktığımızda, piyasanın sinir uçlarının nerede olduğunu çok net görüyoruz. Hürmüz Boğazı ve Kızıldeniz hattındaki tansiyon, küresel navlun ve sigorta primlerini diri tutmaya devam ediyor. Günlük 21 milyon varillik petrol trafiğinin geçtiği Hürmüz hattında Suudi Arabistan'ın Doğu-Batı boru hattı bypass kapasitesini devreye almasıyla Brent petrol yüzde 2,36 gerileyerek ${fmt(brent.price, 2)} dolar seviyesine, yani 100 dolar sınırının hemen altına indi. Burada dikkat etmemiz gereken neden-sonuç zinciri şu: Süveyş yerine Ümit Burnu'ndan dolaşan gemilerin sefer sürelerini 12 gün uzatması taşımacılık maliyetlerini artırıyor; bu durum petrol gevşese bile manşet enflasyonun düşüş hızını yavaşlatıyor ve merkez bankalarının faiz indirimlerini geciktirerek hisse senetleri üzerinde değerleme baskısı oluşturuyor.`
-    },
+      // SLIDE 5: Commodities: Gold & Silver
+      {
+        id: 5,
+        badge: variantIndex === 1 ? 'ALTIN / GÜMÜŞ RASYOSU' : (variantIndex === 2 ? 'TIPS REEL FAİZ AYRIŞMASI' : 'EMTİA & KIYMETLİ MADEN'),
+        badgeColor: 'amber',
+        title: variantIndex === 1 ? 'Altın / Gümüş Rasyosu & Endüstriyel Gümüş' : (variantIndex === 2 ? 'Altın vs Reel Faiz Ayrışması & BRICS Rezervleri' : 'Emtia Masası: Ons Altın & Gümüş'),
+        subtitle: variantIndex === 1 ? '68x Rasyo Kırılımı, Fotovoltaik Güneş Panelleri ve Çip Talebi' : (variantIndex === 2 ? 'Yüksek Faiz Ortamında Kesintisiz Fiziki Merkez Bankası Alımları' : '4.180$ Kurumsal Destek Tabanı, Altın/Gümüş Rasyosu ve Kapalıçarşı Gram Altın'),
+        durationEst: '50 sn',
+        metrics: [
+          { label: 'Ons Altın (XAU/USD)', val: `$${fmt(gold.price, 2)}`, chg: gold.change, isUp: gold.change >= 0 },
+          { label: 'Ons Gümüş (XAG/USD)', val: `$${fmt(silver.price, 2)}`, chg: silver.change, isUp: silver.change >= 0 },
+          { label: 'Gram Altın (Kapalıçarşı)', val: `${fmt(gramAltinTL, 0)} ₺`, chg: 0.15, isUp: true },
+          { label: 'Altın / Gümüş Rasyosu', val: `${fmt(gold.price / (silver.price || 60.96), 1)}x`, chg: 0, note: 'Tarihsel Eşik' }
+        ],
+        defaultScript: generateDailyScript(5, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-    // SLIDE 3: Central Banks & Real Yield Shield
-    {
-      id: 3,
-      badge: 'MERKEZ BANKALARI & REEL GETİRİ',
-      badgeColor: 'amber',
-      title: 'Merkez Bankaları & TL Reel Getiri Kalkanı',
-      subtitle: 'Fed 25 Bp Patikası, TÜİK %49.38 TÜFE ve TCMB %50 Politika Faizi',
-      durationEst: '55 sn',
-      metrics: [
-        { label: 'TCMB Politika Faizi', val: '%50.00', chg: 0, isUp: true, note: '+%0.62 Net Reel Faiz' },
-        { label: 'Fed Fonlama Faizi', val: '%4.75 - %5.00', chg: 0, isUp: true, note: 'Kasım: 25 Bp İndirim' },
-        { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: -2.59, isUp: false, note: 'Aylık TÜFE: %2.97' },
-        { label: '5Y CDS Risk Primi', val: '265 bp', chg: -3.5, isUp: false, note: 'Düşüş Trendi' }
-      ],
-      defaultScript: `Buradan merkez bankaları masamıza geçiyoruz. Küresel tarafta Fed, 254 bin kişilik istihdam ve 54.9'luk ISM PMI sonrası faiz indirim hızını yavaşlatıyor ve Kasım'da 25 baz puanlık ölçülü adıma hazırlanıyor. Peki Türkiye cephesinde ne oluyor? İşte en taze veri: TÜİK'in açıkladığı Eylül TÜFE'si aylık yüzde 2.97 geldi, yıllık enflasyon ise yüzde 49.38'e indi. Bu kritik bir dönüm noktası; çünkü TCMB'nin yüzde 50'lik politika faizi aylardır ilk defa yıllık enflasyonun üzerine çıktı ve Türkiye net pozitif reel faiz bölgesine girdi. Ancak eğitim ve kiralardaki katılık nedeniyle Merkez Bankası'nın faiz indirimine başlama tarihi Kasım'dan Aralık veya 2025 başına kaydı. Bu gecikme borsada bir miktar kâr realizasyonu yaratsa da, yüzde 50 faiz kuru baskılayarak dolar/TL üzerinde kur kalkanı görevini sürdürüyor.`
-    },
+      // SLIDE 6: Dollar & Yield Curve
+      {
+        id: 6,
+        badge: variantIndex === 1 ? 'DXY PARA SEPETİ' : (variantIndex === 2 ? 'KÜRESEL LİKİDİTE GÖSTERGELERİ' : 'DÖVİZ & TAHVİL PİYASASI'),
+        badgeColor: 'purple',
+        title: variantIndex === 1 ? 'DXY Para Sepeti Bileşenleri & Sermaye Akışı' : (variantIndex === 2 ? 'Küresel Likidite Göstergeleri: RRP & TGA' : 'Dolar Endeksi (DXY) & Verim Eğrisi'),
+        subtitle: variantIndex === 1 ? 'EUR %57.6, JPY %13.6, GBP %11.9 Karşısında Dolar Gücü' : (variantIndex === 2 ? 'Fed RRP $280B, Hazine Hesabı $750B ve Net Rezervler' : 'DXY 102 Eşiği, ABD 10Y ve 2Y Tahvil Farkı ile Yield Curve Normalleşmesi'),
+        durationEst: '50 sn',
+        metrics: [
+          { label: 'Dolar Endeksi (DXY)', val: fmt(dxy.price, 3), chg: dxy.change, isUp: dxy.change >= 0 },
+          { label: 'ABD 10Y Tahvil Getirisi', val: `%${fmt(us10y.price, 3)}`, chg: us10y.change, isUp: us10y.change >= 0 },
+          { label: 'ABD 2Y Tahvil Getirisi', val: `%${fmt(us2y.price, 3)}`, chg: us2y.change, isUp: us2y.change >= 0 },
+          { label: '2Y / 10Y Verim Farkı', val: '+54 bp', chg: 1.2, isUp: true, note: 'Normalleşen Pozitif Eğim' }
+        ],
+        defaultScript: generateDailyScript(6, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-    // SLIDE 4: Wall Street & AI Ecosystem
-    {
-      id: 4,
-      badge: 'WALL STREET & YAPAY ZEKA',
-      badgeColor: 'emerald',
-      title: 'Wall Street: S&P 500 Mevsimsellik & AI Döngüsü',
-      subtitle: 'Seçim Yılı Q4 Rallisi (+%4.1), Güçlü ISM Hizmetler (54.9) ve Büyük Teknoloji',
-      durationEst: '50 sn',
-      metrics: [
-        { label: 'S&P 500 Endeksi', val: fmt(sp500.price, 2), chg: sp500.change, isUp: sp500.change >= 0 },
-        { label: 'Nasdaq 100 Endeksi', val: fmt(nasdaq.price, 2), chg: nasdaq.change, isUp: nasdaq.change >= 0 },
-        { label: 'ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi' },
-        { label: 'Tarihsel Q4 Getirisi', val: '+%4.1', chg: 0, isUp: true, note: 'Seçim Yılı Ortalaması' }
-      ],
-      defaultScript: `Okyanusun ötesine, Wall Street'e baktığımızda ise yüksek tahvil faizine rağmen direnen güçlü bir Amerikan ekonomisi görüyoruz. ISM Hizmetler PMI'nın 54.9 ile son 1.5 yılın zirvesine çıkması ve 254 binlik tarım dışı istihdam, resesyon ihtimalini tamamen ortadan kaldırdı. S&P 500 endeksinde tarihsel mevsimsellik eğrimiz çok açık: ABD seçim yıllarında Ekim ayının ilk yarısı piyasada bir silkeleme ve düzeltme dönemi yaratır. Ancak seçim sonrasında Kasım ve Aralık aylarında endeks ortalama yüzde 4.1 yükselerek yılı tarihi zirvelerde tamamlama eğilimindedir. Nvidia'nın Blackwell çip teslimatları, kurumsal yapay zeka harcamaları ve güçlü şirket kârları bu rallinin en büyük yakıtı olmaya devam ediyor.`
-    },
+      // SLIDE 7: Crypto & Spot ETF Flows
+      {
+        id: 7,
+        badge: variantIndex === 1 ? 'BITCOIN DOMINANCE & TOTAL3' : (variantIndex === 2 ? 'ON-CHAIN ARZ & MADENCİ' : 'KRİPTO & LİKİDİTE'),
+        badgeColor: 'cyan',
+        title: variantIndex === 1 ? 'Bitcoin Dominansı (%58.8) & TOTAL3 Altcoinler' : (variantIndex === 2 ? 'Borsa Rezervleri (2.1M Dibi) & Madenci Maliyetleri' : 'Kripto Ekosistemi: Bitcoin & Spot ETF'),
+        subtitle: variantIndex === 1 ? 'Kurumsal Sermayenin Lider Kriptoda Yoğunlaşması ve Seçici Projeler' : (variantIndex === 2 ? '5 Yılın En Düşük Borsa Arzı, 64K$ Madenci Maliyeti ve Custody' : '85.000$ Tabanı, 87.000$ Direnci, Spot ETF Girişleri ve TOTAL3 Endeksi'),
+        durationEst: '45 sn',
+        metrics: [
+          { label: 'Bitcoin (BTC)', val: `$${fmt(btc.price, 0)}`, chg: btc.change, isUp: btc.change >= 0 },
+          { label: 'Ethereum (ETH)', val: `$${fmt(eth.price, 0)}`, chg: eth.change, isUp: eth.change >= 0 },
+          { label: 'TOTAL3 Altcoin Hacmi', val: `$${fmt(total3.price, 1)}B`, chg: total3.change, isUp: total3.change >= 0 },
+          { label: 'Kurumsal Spot ETF', val: '+$210M / Gün', chg: 3.4, isUp: true, note: 'BlackRock & Fidelity' }
+        ],
+        defaultScript: generateDailyScript(7, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-    // SLIDE 5: Commodities: Gold & Silver
-    {
-      id: 5,
-      badge: 'EMTİA & KIYMETLİ MADEN',
-      badgeColor: 'amber',
-      title: 'Emtia Masası: Ons Altın & Gümüş',
-      subtitle: '4.180$ Kurumsal Destek Tabanı, Altın/Gümüş Rasyosu ve Kapalıçarşı Gram Altın',
-      durationEst: '50 sn',
-      metrics: [
-        { label: 'Ons Altın (XAU/USD)', val: `$${fmt(gold.price, 2)}`, chg: gold.change, isUp: gold.change >= 0 },
-        { label: 'Ons Gümüş (XAG/USD)', val: `$${fmt(silver.price, 2)}`, chg: silver.change, isUp: silver.change >= 0 },
-        { label: 'Gram Altın (Kapalıçarşı)', val: `${fmt(gramAltinTL, 0)} ₺`, chg: 0.15, isUp: true },
-        { label: 'Altın / Gümüş Rasyosu', val: `${fmt(gold.price / (silver.price || 60.96), 1)}x`, chg: 0, note: 'Tarihsel Eşik' }
-      ],
-      defaultScript: `Emtia masamıza geldiğimizde ise en çok merak edilen soru altındaki fiyat dengesi. Ons altın şu an ${fmt(gold.price, 0)} dolar seviyesinde işlem görüyor ve 4.180 dolar bölgesinde çok sağlam bir kurumsal taban inşa etmiş durumda. Faizlerin yüksek kaldığı bir ortamda altının neden düşmediğinin iki somut nedeni var: Birincisi Çin başta olmak üzere gelişmekte olan merkez bankalarının dolardan bağımsız kesintisiz fiziki altın biriktirmesi; ikincisi ise jeopolitik sıcak noktaların tetiklediği güvenli liman talebi. Yurtiçinde ise dolar kuruyla birleştiğinde gram altının ${fmt(gramAltinTL, 0)} lira seviyelerinde seyretmesi yatırımcısına güçlü bir enflasyon kalkanı sunuyor. Gümüş tarafında ise ${fmt(silver.price, 2)} dolarda hem çip üretimi hem de sanayi talebi destek olmaya devam ediyor.`
-    },
+      // SLIDE 8: Borsa Istanbul & Sectors
+      {
+        id: 8,
+        badge: variantIndex === 1 ? 'YABANCI TAKAS & CDS' : (variantIndex === 2 ? 'BIST ÇARPANLARI & KREDİ NOTU' : 'BORSA İSTANBUL & BIST 100'),
+        badgeColor: 'emerald',
+        title: variantIndex === 1 ? 'Yabancı Takas Oranı & Cari Denge Kalkanı' : (variantIndex === 2 ? 'BIST 100 Küresel Değerleme & Kredi Not Artışı' : 'Borsa İstanbul: BIST 100 & Makro Taban'),
+        subtitle: variantIndex === 1 ? '%38.6 Takas Payı, 216 bp CDS ve Temmuz Cari Fazlası (+$779M)' : (variantIndex === 2 ? '7.4x F/K ile %44 Küresel İskonto, Moody\'s/Fitch Not Patikası' : '12.200 Tabanı, Sektörel Güç Ayrışmaları, Cari Fazla ve Kurumsal Talep'),
+        durationEst: '50 sn',
+        metrics: [
+          { label: 'BIST 100 Endeksi', val: fmt(bist100.price, 2), chg: bist100.change, isUp: bist100.change >= 0 },
+          { label: 'Temmuz Cari Fazlası', val: '+$779M', chg: 0, isUp: true, note: 'Döviz Desteği' },
+          { label: '5 Yıllık CDS Primi', val: '216 bp', chg: -2.1, isUp: false, note: 'Tarihi Dip' },
+          { label: 'Teknik Tepki Bandı', val: '12.200 - 13.500', chg: 0, note: 'Kurumsal Taban' }
+        ],
+        defaultScript: generateDailyScript(8, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      },
 
-    // SLIDE 6: Dollar & Yield Curve
-    {
-      id: 6,
-      badge: 'DÖVİZ & TAHVİL PİYASASI',
-      badgeColor: 'purple',
-      title: 'Dolar Endeksi (DXY) & Verim Eğrisi',
-      subtitle: 'DXY 102 Eşiği, ABD 10Y ve 2Y Tahvil Farkı ile Yield Curve Normalleşmesi',
-      durationEst: '50 sn',
-      metrics: [
-        { label: 'Dolar Endeksi (DXY)', val: fmt(dxy.price, 3), chg: dxy.change, isUp: dxy.change >= 0 },
-        { label: 'ABD 10Y Tahvil Getirisi', val: `%${fmt(us10y.price, 3)}`, chg: us10y.change, isUp: us10y.change >= 0 },
-        { label: 'ABD 2Y Tahvil Getirisi', val: `%${fmt(us2y.price, 3)}`, chg: us2y.change, isUp: us2y.change >= 0 },
-        { label: '2Y / 10Y Verim Farkı', val: '+54 bp', chg: 1.2, isUp: true, note: 'Normalleşen Pozitif Eğim' }
-      ],
-      defaultScript: `Tahvil ve dolar cephesine geçtiğimizde piyasaları en çok rahatlatan teknik gelişmeyle karşılaşıyoruz. Dolar endeksi DXY, ${fmt(dxy.price, 2)} seviyesinde sağlam duruyor. ABD 10 yıllık tahvil getirisi ise yüzde ${fmt(us10y.price, 2)} seviyesinde dengeleniyor. Ancak asıl kritik gösterge ekranınızdaki getiri eğrisidir. 2 yıllık ve 10 yıllık tahviller arasındaki fark artı 54 baz puana yükselerek pozitif bölgeye yerleşti. Bu normalleşme şu anlama geliyor: Aylardır piyasayı tedirgin eden derin resesyon korkusu masadan tamamen kalktı. Dolar/TL tarafında ise yüzde 37'lik cazip mevduat faizi ve güçlü rezervler sayesinde kur ${fmt(currentUsdTry, 2)} seviyesinde oldukça kontrollü ve ılımlı bir bantta hareket ediyor.`
-    },
-
-    // SLIDE 7: Crypto & Spot ETF Flows
-    {
-      id: 7,
-      badge: 'KRİPTO & LİKİDİTE',
-      badgeColor: 'cyan',
-      title: 'Kripto Ekosistemi: Bitcoin & Spot ETF',
-      subtitle: '85.000$ Tabanı, 87.000$ Direnci, Spot ETF Girişleri ve TOTAL3 Endeksi',
-      durationEst: '45 sn',
-      metrics: [
-        { label: 'Bitcoin (BTC)', val: `$${fmt(btc.price, 0)}`, chg: btc.change, isUp: btc.change >= 0 },
-        { label: 'Ethereum (ETH)', val: `$${fmt(eth.price, 0)}`, chg: eth.change, isUp: eth.change >= 0 },
-        { label: 'TOTAL3 Altcoin Hacmi', val: `$${fmt(total3.price, 1)}B`, chg: total3.change, isUp: total3.change >= 0 },
-        { label: 'Kurumsal Spot ETF', val: '+$210M / Gün', chg: 3.4, isUp: true, note: 'BlackRock & Fidelity' }
-      ],
-      defaultScript: `Kripto para masamızda ise kurumsal para girişlerinin ivme kazandırdığı güçlü bir tablo izliyoruz. Bitcoin ${fmt(btc.price, 0)} dolar seviyesinde hareket ederek 85.000 dolar tabanını sağlama aldı ve 87.000 dolar direncini sınıyor. Bu yükselişin arkasında bireysel heyecandan ziyade doğrudan BlackRock ve Fidelity spot ETF'lerine gelen günlük 210 milyon dolarlık net kurumsal sermaye girişi yatıyor. TOTAL3 altcoin hacmimiz 748 milyar dolar seviyesinde; yani likidite henüz körü körüne her coine yayılmıyor, daha çok gerçek kullanım alanı olan büyük projelere akıyor. 85.000 dolar tabanı korunduğu sürece bir sonraki psikolojik durağımız 90.000 dolar kapısı olacaktır.`
-    },
-
-    // SLIDE 8: Borsa Istanbul & Sectors
-    {
-      id: 8,
-      badge: 'BORSA İSTANBUL & BIST 100',
-      badgeColor: 'emerald',
-      title: 'Borsa İstanbul: BIST 100 & Makro Taban',
-      subtitle: '12.200 Tabanı, Sektörel Güç Ayrışmaları, Cari Fazla ve Kurumsal Talep',
-      durationEst: '50 sn',
-      metrics: [
-        { label: 'BIST 100 Endeksi', val: fmt(bist100.price, 2), chg: bist100.change, isUp: bist100.change >= 0 },
-        { label: 'Temmuz Cari Fazlası', val: '+$779M', chg: 0, isUp: true, note: 'Döviz Desteği' },
-        { label: '5 Yıllık CDS Primi', val: '216 bp', chg: -2.1, isUp: false, note: 'Tarihi Dip' },
-        { label: 'Teknik Tepki Bandı', val: '12.200 - 13.500', chg: 0, note: 'Kurumsal Taban' }
-      ],
-      defaultScript: `Kendi evimize, Borsa İstanbul'a döndüğümüzde ise endeksin ${fmt(bist100.price, 0)} puanda 12.200 ana taban bölgesinden kurumsal tepki alımlarıyla karşılaştığını görüyoruz. BIST 100 endeksinde panik satışlarının önünü kesen üç temel makro çıpa var: Birincisi TCMB'nin yüzde 37'lik faiz politikası, ikincisi 779 milyon dolarlık cari fazla ve üçüncüsü 216 baz puana gerileyen CDS risk primimiz. Sektörel tarafta sermaye yeterliliği güçlü bankacılık ve döviz pozisyonu kuvvetli ihracatçı sanayi şirketleri endeksi sırtlıyor. 12.200 tabanı korunduğu müddetçe kademeli alımlarla yukarıda ilk tepki hedefimiz 12.800 ve ardından 13.500 direnci olacaktır.`
-    },
-
-    // SLIDE 9: Strategy, Cash & 48h Calendar
-    {
-      id: 9,
-      badge: 'YATIRIMCI PUSULASI & TAKVİM',
-      badgeColor: 'rose',
-      title: 'Yatırımcı Pusulası & 48 Saatlik Takvim',
-      subtitle: 'Önümüzdeki 48 Saatin Randevuları, Nakit Kalkanı ve Portföy Disiplini',
-      durationEst: '45 sn',
-      metrics: [
-        { label: 'Takip Edilecek Veri', val: 'TÜİK TÜFE & ABD NFP', chg: 0, isUp: true },
-        { label: 'Merkez Bankası Kararı', val: '22 Ekim PPK', chg: 0, note: '%37 Politika Faizi' },
-        { label: 'Tavsiye Nakit Oranı', val: '%20 - %25', chg: 0, note: 'Likit Kalkan' },
-        { label: 'Piyasa Stratejisi', val: 'Seçici & Korumalı', chg: 0, note: 'Hisse Bazlı Ayrışma' }
-      ],
-      defaultScript: `Yayınımızı toparlarken önümüzdeki 48 saatin kritik yol haritasına bakalım. Önümüzdeki günlerde TÜİK resmi enflasyon rakamları ve ABD tarafından gelecek istihdam verileri yakından izlenecek. Piyasalarda dalgalanmalar sürerken bizim yatırımcı olarak izlememiz gereken altın kural son derece net: Asla FOMO'ya kapılıp yükselen varlıkların peşinden koşmamak, portföyde mutlaka yüzde 20 ile 25 aralığında nakit kalkan bulundurmak ve endeks tahmininden ziyade bilançosu ve kâr marjı güçlü şirketlerde disiplinli kalmaktır. Gelişmeleri adım adım takip edip aktarmaya devam edeceğiz. Kanalımıza abone olmayı ve görüşlerinizi yorumlarda paylaşmayı unutmayın, bir sonraki yayınımızda görüşmek üzere!`
-    }
-  ], [
+      // SLIDE 9: Strategy, Cash & 48h Calendar
+      {
+        id: 9,
+        badge: variantIndex === 1 ? 'PİRAMİT PORTFÖY MODELİ' : (variantIndex === 2 ? '3 KADEMELİ RİSK YÖNETİMİ' : 'YATIRIMCI PUSULASI & TAKVİM'),
+        badgeColor: 'rose',
+        title: variantIndex === 1 ? 'Piramit Portföy Tahsis Modeli & Bileşik Getiri' : (variantIndex === 2 ? '3 Kademeli Risk Yönetimi & Disiplin Çerçevesi' : 'Yatırımcı Pusulası & 48 Saatlik Takvim'),
+        subtitle: variantIndex === 1 ? '%25 Likit Kalkan, %45 Çekirdek Hisse, %20 Kıymetli Maden, %10 Fırsat' : (variantIndex === 2 ? 'Destek Testi (%30), Teyit (%40), Momentum (%30) Kademeli Alım' : 'Önümüzdeki 48 Saatin Randevuları, Nakit Kalkanı ve Portföy Disiplini'),
+        durationEst: '45 sn',
+        metrics: [
+          { label: 'Takip Edilecek Veri', val: 'TÜİK TÜFE & ABD NFP', chg: 0, isUp: true },
+          { label: 'Merkez Bankası Kararı', val: '22 Ekim PPK', chg: 0, note: '%50 Politika Faizi' },
+          { label: 'Tavsiye Nakit Oranı', val: '%20 - %25', chg: 0, note: 'Likit Kalkan' },
+          { label: 'Piyasa Stratejisi', val: 'Seçici & Korumalı', chg: 0, note: 'Hisse Bazlı Ayrışma' }
+        ],
+        defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+      }
+    ];
+  }, [
+    activeTheme,
+    variantIndex,
+    editionState,
     dxy, vix, brent, wti, gold, silver, us10y, us2y, sp500, sp500Etf, nasdaq, nasdaqEtf, dow, dowEtf, bist100, btc, eth, total3, currentUsdTry, gramAltinTL, fgScore, fgLabel
   ]);
 
   const activeSlide = slides[currentSlideIndex];
 
   // Current active script (user override or default)
-  const activeScript = customScripts[activeSlide.id] !== undefined 
-    ? customScripts[activeSlide.id] 
-    : activeSlide.defaultScript;
+  const activeScript = customScripts[`${editionState.editionKey}_${activeSlide.id}`] !== undefined 
+    ? customScripts[`${editionState.editionKey}_${activeSlide.id}`] 
+    : (customScripts[activeSlide.id] !== undefined
+      ? customScripts[activeSlide.id]
+      : activeSlide.defaultScript);
 
   // Handle script edit
   const handleScriptChange = (val) => {
     setCustomScripts(prev => ({
       ...prev,
+      [`${editionState.editionKey}_${activeSlide.id}`]: val,
       [activeSlide.id]: val
     }));
   };
@@ -553,6 +662,7 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
   const handleResetCurrentScript = () => {
     setCustomScripts(prev => {
       const copy = { ...prev };
+      delete copy[`${editionState.editionKey}_${activeSlide.id}`];
       delete copy[activeSlide.id];
       return copy;
     });
@@ -1289,461 +1399,1299 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
 
                 {/* SLIDE 2: Geopolitics & Energy Transmission Chain */}
                 {activeSlide.id === 2 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {/* Left: Strategic Bottlenecks */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                        <Flame size={14} />
-                        <span>STRATEJİK BOĞAZLAR & TEDARİK RİSKLERİ</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Hürmüz Boğazı & Petrol Akışı</div>
-                          <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Günlük 21M varil küresel petrol sevkiyatı; Suudi Doğu-Batı hattı bypass kapasitesi devrede.</div>
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: OPEC+ & Spare Capacity */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <Flame size={14} />
+                          <span>OPEC+ KOTALARI & ATIL ÜRETİM KAPASİTESİ</span>
                         </div>
-                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Kızıldeniz & Ümit Burnu Rotası</div>
-                          <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Süveyş geçişlerinde aksama: Gemiler Ümit Burnu'ndan dolaşıyor, sefer süreleri +12 gün uzadı.</div>
-                        </div>
-                        <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Navlun ve Sigorta Primleri</div>
-                          <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Taşımacılık navlun maliyetlerinde +%14 artış; ham madde maliyetlerini diri tutuyor.</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Cause-and-Effect Flow Pipeline */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                        <Zap size={14} />
-                        <span>ZİNCİRLEME PİYASA İLETİM MEKANİZMASI</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {[
-                          { step: '1', title: 'Sıcak Bölge Gerilimi', desc: 'Hürmüz ve Kızıldeniz ekseninde tanker güvenlik riskleri', color: '#ef4444' },
-                          { step: '2', title: 'Navlun & Petrol Sıçraması', desc: `Brent petrol $${fmt(brent.price, 2)} bandında tutunarak 100$ tabanını zorluyor`, color: '#f97316' },
-                          { step: '3', title: 'Yapışkan Manşet Enflasyon', desc: 'Enerji ve lojistik maliyetleri enflasyon düşüş hızını yavaşlatıyor', color: '#eab308' },
-                          { step: '4', title: 'Geciken Faiz İndirimleri', desc: 'Merkez bankaları faiz indirim adımlarını ötelemek zorunda kalıyor', color: '#38bdf8' },
-                          { step: '5', title: 'Güvenli Liman Talebi', desc: 'Ons altın ve nakit dolara kurumsal taban desteği oluşuyor', color: '#10b981' }
-                        ].map((item, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 4, borderLeft: `3px solid ${item.color}` }}>
-                            <span style={{ fontSize: 10, fontWeight: 900, color: item.color, background: `${item.color}20`, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {item.step}
-                            </span>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{item.title}</div>
-                              <div style={{ fontSize: 10, color: '#94a3b8' }}>{item.desc}</div>
-                            </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>Suudi Arabistan & BAE Atıl Kapasite Kalkanı</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Günlük 3.2M varillik anında devreye girebilir atıl kapasite, olası Hürmüz krizlerinde küresel fiyat tavanını sınırlıyor.</div>
                           </div>
-                        ))}
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>Rusya & Kazakistan Kota Telafisi</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>OPEC+ kotalarını aşan üretimler için telafi kesintileri devrede; Rus ham petrolü Asya rafinerilerine indirimli akıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>Rafineri Çatlak Marjları (Crack Spread: $18.40)</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Dizel ve jet yakıtı kraking marjları diri; ham petrol fiyatı sakin kalsa bile nihai yakıt maliyeti yapışkan kalıyor.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Global Reserves & Storage */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <Activity size={14} />
+                          <span>KÜRESEL STRATEJİK DEPOLAMA & TEDARİK GÜVENCESİ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 11px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>ABD Stratejik Petrol Rezervi (SPR)</span>
+                              <span style={{ color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>395M Varil</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Beyaz Saray 72$ altındaki geri alımlarla taban örüyor; acil durum arz tamponu korunuyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 11px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Avrupa Doğalgaz Depoları</span>
+                              <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%94 Doluluk</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Kış sezonu öncesi rekor doluluk; kıtada akut bir enerji krizi riskini bertaraf etti.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 11px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Çin Stratejik Stoklama Hızı</span>
+                              <span style={{ color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>+1.1M v/g Net</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Pekin ucuz petrol ortamında depolarını doldurarak küresel fiziki talebe taban oluşturuyor.</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: GPR Geopolitical Risk Index */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <ShieldAlert size={14} />
+                          <span>GPR JEOPOLİTİK RİSK ENDEKSİ (142.8 PUAN)</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 6, padding: '10px 12px', borderLeft: '3px solid #ef4444' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Hürmüz Gerilim Katsayısı: Ortalamanın +%38 Üstü</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Tanker harp sigortası (War Risk Premium) ton başına +%22 arttı; armatörler ihtiyatlı seyrediyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px', borderLeft: '3px solid #f59e0b' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Süveyş Geçişlerinde %55 Düşüş</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Kızıldeniz yerine Ümit Burnu'na sapan gemiler sefer başına 12-14 gün ek transit süresi yazıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px', borderLeft: '3px solid #38bdf8' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>LNG & Kritik Tedarik Zinciri</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Katar ve Körfez menşeli sıvılaştırılmış gaz sevkiyatı alternatif hatlarla Avrupa'ya taşınıyor.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: 4-Layer Crisis Transmission */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <Zap size={14} />
+                          <span>4 KATMANLI KRİZ SENARYOSU & PİYASA ETKİSİ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          {[
+                            { num: '1', title: 'Brent Petrol Fiyat Kalkanı', desc: `$${fmt(brent.price, 2)} seviyesinde tutunma; enflasyon düşüş hızına direnç oluşturuyor`, col: '#ef4444' },
+                            { num: '2', title: 'Güvenli Liman Rotasyonu', desc: 'Ons altında $4.180+ kurumsal dip desteği ve nakit dolara yönelim', col: '#f97316' },
+                            { num: '3', title: 'ABD Tahvil Faizi Eşiği', desc: '10 yıllık faizin %4.00 üzerinde kalması; küresel faiz indirimlerini erteleme riski', col: '#eab308' },
+                            { num: '4', title: 'Sektörel Ayrışma', desc: 'Savunma ve enerji şirketleri yükselirken, havacılık ve lojistikte yakıt marj baskısı', col: '#10b981' }
+                          ].map(item => (
+                            <div key={item.num} style={{ display: 'flex', alignItems: 'center', gap: 9, background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 4, borderLeft: `3px solid ${item.col}` }}>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: item.col, background: `${item.col}20`, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {item.num}
+                              </span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{item.title}</div>
+                                <div style={{ fontSize: 10, color: '#94a3b8' }}>{item.desc}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Strategic Bottlenecks */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <Flame size={14} />
+                          <span>STRATEJİK BOĞAZLAR & TEDARİK RİSKLERİ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Hürmüz Boğazı & Petrol Akışı</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Günlük 21M varil küresel petrol sevkiyatı; Suudi Doğu-Batı hattı bypass kapasitesi devrede.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Kızıldeniz & Ümit Burnu Rotası</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Süveyş geçişlerinde aksama: Gemiler Ümit Burnu'ndan dolaşıyor, sefer süreleri +12 gün uzadı.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Navlun ve Sigorta Primleri</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Taşımacılık navlun maliyetlerinde +%14 artış; ham madde maliyetlerini diri tutuyor.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Cause-and-Effect Flow Pipeline */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <Zap size={14} />
+                          <span>ZİNCİRLEME PİYASA İLETİM MEKANİZMASI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {[
+                            { step: '1', title: 'Sıcak Bölge Gerilimi', desc: 'Hürmüz ve Kızıldeniz ekseninde tanker güvenlik riskleri', color: '#ef4444' },
+                            { step: '2', title: 'Navlun & Petrol Sıçraması', desc: `Brent petrol $${fmt(brent.price, 2)} bandında tutunarak 100$ tabanını zorluyor`, color: '#f97316' },
+                            { step: '3', title: 'Yapışkan Manşet Enflasyon', desc: 'Enerji ve lojistik maliyetleri enflasyon düşüş hızını yavaşlatıyor', color: '#eab308' },
+                            { step: '4', title: 'Geciken Faiz İndirimleri', desc: 'Merkez bankaları faiz indirim adımlarını ötelemek zorunda kalıyor', color: '#38bdf8' },
+                            { step: '5', title: 'Güvenli Liman Talebi', desc: 'Ons altın ve nakit dolara kurumsal taban desteği oluşuyor', color: '#10b981' }
+                          ].map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 4, borderLeft: `3px solid ${item.color}` }}>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: item.color, background: `${item.color}20`, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {item.step}
+                              </span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{item.title}</div>
+                                <div style={{ fontSize: 10, color: '#94a3b8' }}>{item.desc}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {/* SLIDE 3: Central Banks & Real Yield Comparison */}
                 {activeSlide.id === 3 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 14 }}>
-                    {/* Left: Global Central Banks Real Yield Table */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 10 }}>
-                        🏛️ KÜRESEL REEL FAİZ KARŞILAŞTIRMASI
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 14 }}>
+                      {/* Left: QT Balance Sheet Reduction */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Activity size={14} />
+                          <span>FED BİLANÇO DARALMASI (QT) & KÜRESEL LİKİDİTE</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff' }}>Fed Bilanço Büyüklüğü</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Zirve $8.9 Trilyondan $1.8 Trilyon eritildi</div>
+                            </div>
+                            <span style={{ fontSize: 15, fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>$7.1 Trilyon</span>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff' }}>Gecelik Ters Repo (RRP) Bakiyesi</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>2T $'dan taban seviyesine indi</div>
+                            </div>
+                            <span style={{ fontSize: 15, fontWeight: 900, color: '#fbbf24', fontFamily: 'var(--font-mono)' }}>$245 Milyar</span>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff' }}>Banka Rezervleri (Ample Reserves)</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Konforlu eşiğin güvenli üzerinde</div>
+                            </div>
+                            <span style={{ fontSize: 15, fontWeight: 900, color: '#34d399', fontFamily: 'var(--font-mono)' }}>$3.2 Trilyon</span>
+                          </div>
+                        </div>
                       </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                            <th style={{ padding: '6px 8px' }}>Merkez Bankası</th>
-                            <th style={{ padding: '6px 8px', textAlign: 'right' }}>Faiz</th>
-                            <th style={{ padding: '6px 8px', textAlign: 'right' }}>Enflasyon</th>
-                            <th style={{ padding: '6px 8px', textAlign: 'right' }}>Net Reel Faiz</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(16, 185, 129, 0.08)' }}>
-                            <td style={{ padding: '8px 8px', fontWeight: 800, color: '#34d399' }}>🇹🇷 TCMB (Türkiye)</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%37.00</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%31.51</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+5.49 Puan</td>
-                          </tr>
-                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                            <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇺🇸 Fed (ABD)</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#fff' }}>%3.75 - 4.00</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%2.77</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#38bdf8' }}>+1.10 Puan</td>
-                          </tr>
-                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                            <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇪🇺 ECB (Euro Bölgesi)</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#fff' }}>%2.50</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%2.20</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#94a3b8' }}>+0.30 Puan</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇯🇵 BoJ (Japonya)</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#fff' }}>%1.25</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%2.80</td>
-                            <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#f87171' }}>-1.55 Puan</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
 
-                    {/* Right: Turkey 3-Layer Shield */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                        <ShieldCheck size={14} />
-                        <span>TÜRKİYE'NİN 3 KATMANLI MAKRO KALKANI</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>1. Pozitif Reel Faiz (+%5.5)</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>TL mevduat getirisi enflasyonu aşarak dolarizasyonu frenliyor ve yerel parayı cazip kılıyor.</div>
+                      {/* Right: Turkey Disinflation Dynamic */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <ShieldCheck size={14} />
+                          <span>TCMB DEZENFLASYON & REZERV TAHKİMİ</span>
                         </div>
-                        <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>2. Düşen Ülke Risk Primi (216 bp CDS)</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Tarihi dip seviyelerde seyreden CDS primi yabancı sermaye girişlerini ve tahvil talebini destekliyor.</div>
-                        </div>
-                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>3. Cari Denge Kalkanı (+$779M Cari Fazla)</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Dış ticaret dengesindeki toparlanma ve turizm gelirleri TCMB rezervlerini tahkim ediyor.</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>1. Swap Hariç Net Rezervler Artıda</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Tarihi toparlanma süreciyle TCMB'nin döviz kuru üzerindeki manevra alanı en yüksek seviyede.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>2. KKM Bakiyesi Düzenli Eriyor</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Tasarruf sahipleri kur garantili sistemden çıkarak doğrudan standart TL mevduata yöneliyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>3. Yabancı Tahvil ve Swap Girişleri</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Yüksek reel faiz TL varlıkları yabancı fonlar için küresel ölçekte en cazip carry trade kılıyor.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 14 }}>
+                      {/* Left: Services vs Goods Inflation */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Flame size={14} />
+                          <span>HİZMET vs MAL ENFLASYONU AYRIŞMASI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>ABD Çekirdek Hizmetler (Supercore)</span>
+                              <span style={{ color: '#f87171', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%3.8 (Yapışkan)</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Kira, sağlık ve işgücü maliyetleri Fed'in aceleci faiz indirimlerine set çekiyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Küresel Dayanıklı Mal Fiyatları</span>
+                              <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>-%0.6 (Deflasyonist)</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Çin'in ucuz fabrika ihracatı dünya genelinde mal enflasyonunu hızla aşağı çekiyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Türkiye Kira & Hizmet Atalet Eşiği</span>
+                              <span style={{ color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%55+ Yıllık</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>TCMB, dezenflasyonu kalıcı kılmak için iç talebi ve kredi büyümesini kısıtlamaya devam ediyor.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Central Banks Rate Cut Roadmap */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <Compass size={14} />
+                          <span>KÜRESEL MERKEZ BANKALARI İNDİRİM YOL HARİTASI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #38bdf8' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11 }}>🇺🇸 Federal Reserve (Fed)</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>25 baz puanlık kademeli adımlar; terminal faizin %3.25 - %3.50 bandında dengelenmesi.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #fbbf24' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11 }}>🇪🇺 Avrupa Merkez Bankası (ECB)</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Zayıflayan imalat PMI verileri sebebiyle Fed'den daha agresif indirim temposu.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #34d399' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11 }}>🇹🇷 TCMB (Türkiye)</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Politika faizi %37; enflasyon ana eğilimi teyit edildikçe ölçülü ve temkinli gevşeme.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 14 }}>
+                      {/* Left: Global Central Banks Real Yield Table */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 10 }}>
+                          🏛️ KÜRESEL REEL FAİZ KARŞILAŞTIRMASI
+                        </div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                              <th style={{ padding: '6px 8px' }}>Merkez Bankası</th>
+                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Faiz</th>
+                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Enflasyon</th>
+                              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Net Reel Faiz</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(16, 185, 129, 0.08)' }}>
+                              <td style={{ padding: '8px 8px', fontWeight: 800, color: '#34d399' }}>🇹🇷 TCMB (Türkiye)</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%37.00</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%31.51</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+5.49 Puan</td>
+                            </tr>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇺🇸 Fed (ABD)</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#fff' }}>%3.75 - 4.00</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%2.77</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#38bdf8' }}>+1.10 Puan</td>
+                            </tr>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇪🇺 ECB (Euro Bölgesi)</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#fff' }}>%2.50</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%2.20</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#94a3b8' }}>+0.30 Puan</td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇯🇵 BoJ (Japonya)</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#fff' }}>%1.25</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%2.80</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#f87171' }}>-1.55 Puan</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Right: Turkey 3-Layer Shield */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <ShieldCheck size={14} />
+                          <span>TÜRKİYE'NİN 3 KATMANLI MAKRO KALKANI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>1. Pozitif Reel Faiz (+%5.5)</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>TL mevduat getirisi enflasyonu aşarak dolarizasyonu frenliyor ve yerel parayı cazip kılıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>2. Düşen Ülke Risk Primi (216 bp CDS)</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Tarihi dip seviyelerde seyreden CDS primi yabancı sermaye girişlerini ve tahvil talebini destekliyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>3. Cari Denge Kalkanı (+$779M Cari Fazla)</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Dış ticaret dengesindeki toparlanma ve turizm gelirleri TCMB rezervlerini tahkim ediyor.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
-                {/* SLIDE 4: Wall Street & AI Ecosystem (No numbers clutter!) */}
+                {/* SLIDE 4: Wall Street & AI Ecosystem */}
                 {activeSlide.id === 4 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {/* Left: Sectoral Momentum Barometer */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <BarChart3 size={14} />
-                        <span>SEKTÖREL SERMAYE & LİKİDİTE GÜCÜ</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {[
-                          { name: 'Yapay Zeka & Yarı İletkenler (Semi)', pct: 94, status: 'Lider / Çok Güçlü', color: '#10b981' },
-                          { name: 'Bulut Bilişim & Kurumsal Yazılım', pct: 82, status: 'Güçlü Nakit Akışı', color: '#38bdf8' },
-                          { name: 'Büyük Bankacılık & Finans', pct: 76, status: 'Dengeli / Dayanıklı', color: '#818cf8' },
-                          { name: 'Geleneksel Sanayi & Üretim', pct: 58, status: 'Temkinli / Seçici', color: '#f59e0b' },
-                          { name: 'Tüketici & Perakende', pct: 48, status: 'Yüksek Faiz Baskısı', color: '#ef4444' }
-                        ].map((sec, idx) => (
-                          <div key={idx}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 3 }}>
-                              <span style={{ fontWeight: 700, color: '#fff' }}>{sec.name}</span>
-                              <span style={{ color: sec.color, fontWeight: 800 }}>{sec.status}</span>
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Big Tech AI Capex */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <BarChart3 size={14} />
+                          <span>BİG TECH YAPAY ZEKA CAPEX ($205B YILLIK REKOR)</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {[
+                            { sym: 'MICROSOFT', amount: '$58 Milyar', note: 'Azure AI altyapısı & OpenAI süper küme yatırımları', col: '#38bdf8' },
+                            { sym: 'ALPHABET (GOOGLE)', amount: '$52 Milyar', note: 'TPU v5/v6 veri merkezleri & Gemini model mimarisi', col: '#818cf8' },
+                            { sym: 'AMAZON (AWS)', amount: '$55 Milyar', note: 'AWS veri merkezleri & Trainium/Inferentia çipleri', col: '#fbbf24' },
+                            { sym: 'META', amount: '$40 Milyar', note: 'Llama açık kaynak modelleri & yapay zeka reklam motoru', col: '#ec4899' }
+                          ].map((c, i) => (
+                            <div key={i} style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${c.col}25`, borderRadius: 6, padding: '7px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{c.sym}</div>
+                                <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{c.note}</div>
+                              </div>
+                              <span style={{ fontSize: 13, fontWeight: 900, color: c.col, fontFamily: 'var(--font-mono)' }}>{c.amount}</span>
                             </div>
-                            <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-                              <div style={{ width: `${sec.pct}%`, height: '100%', background: sec.color, borderRadius: 3 }} />
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Right: Big Tech / AI Ecosystem Leaders */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Sparkles size={14} />
-                        <span>YAPAY ZEKA DEVLERİ & TEMATİK DÖNGÜ</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        {[
-                          { sym: 'NVIDIA', note: 'Blackwell B200 Çip Sevkiyatları', tag: 'AI Lokomotif', color: '#10b981' },
-                          { sym: 'AMAZON', note: 'AWS Bulut Marjları & Nakit Akışı', tag: 'Bulut Gücü', color: '#38bdf8' },
-                          { sym: 'ALPHABET', note: 'Gemini AI & 22 F/K Çarpanı', tag: 'Makul Değer', color: '#818cf8' },
-                          { sym: 'META', note: 'AI Destekli Reklam Gelirleri', tag: 'Yüksek Marj', color: '#ec4899' },
-                          { sym: 'TESLA', note: 'Robotaxi & Otonom Sürüş Ölçeği', tag: 'Vizyon Primi', color: '#f59e0b' },
-                          { sym: 'MICROSOFT', note: 'Azure & Copilot Kurumsal Lisans', tag: 'Kurumsal Güç', color: '#60a5fa' }
-                        ].map((tech, idx) => (
-                          <div key={idx} style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${tech.color}30`, borderRadius: 6, padding: '8px 10px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontWeight: 900, color: '#fff', fontSize: 11 }}>{tech.sym}</span>
-                              <span style={{ fontSize: 8.5, color: tech.color, fontWeight: 800, background: `${tech.color}15`, padding: '1px 5px', borderRadius: 3 }}>
-                                {tech.tag}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 3 }}>{tech.note}</div>
+                      {/* Right: AI Value Chain */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Sparkles size={14} />
+                          <span>YAPAY ZEKA DEĞER ZİNCİRİ KATMANLARI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #10b981' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>1. Çip & Dökümhane (NVIDIA, TSMC, Broadcom)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Yapay zeka modellerinin eğitildiği temel işlemciler; %90+ pazar hâkimiyeti.</div>
                           </div>
-                        ))}
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #38bdf8' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>2. Optik Ağ & Donanım (Arista Networks, Supermicro)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Binlerce GPU'yu birbirine bağlayan ultra hızlı sunucu ve optik anahtar ağı.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #f59e0b' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>3. Temiz Enerji & Nükleer (Constellation, Vistra)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Yapay zeka sunucularının devasa 7/24 elektrik ihtiyacı için nükleer enerji anlaşmaları.</div>
+                          </div>
+                          <div style={{ background: 'rgba(192, 132, 252, 0.08)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #c084fc' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>4. Kurumsal Yazılım (Microsoft Copilot, Palantir)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Yapay zekayı doğrudan şirketlerin nakit akışına ve kârlılığına dönüştüren yazılımlar.</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: S&P 500 Valuation & Forward P/E */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <BarChart3 size={14} />
+                          <span>S&P 500 İLERİ F/K ÇARPANLARI & DEĞERLEME</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff' }}>S&P 500 Ağırlıklı F/K</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>5 yıllık ortalama 19.2x; teknoloji devlerinin ağırlığı yüksek</div>
+                            </div>
+                            <span style={{ fontSize: 15, fontWeight: 900, color: '#fbbf24', fontFamily: 'var(--font-mono)' }}>21.4x</span>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff' }}>Eşit Ağırlıklı S&P 500 (RSP) F/K</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Tarihsel ortalamaya çok daha yakın ve makul değer</div>
+                            </div>
+                            <span style={{ fontSize: 15, fontWeight: 900, color: '#34d399', fontFamily: 'var(--font-mono)' }}>16.8x</span>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff' }}>Mag-7 Dışı Kâr Büyümesi</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Geniş tabanlı sektörlerde kârlılık ivmeleniyor</div>
+                            </div>
+                            <span style={{ fontSize: 15, fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>+%7.4 Yıllık</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Market Breadth & Rotation */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Zap size={14} />
+                          <span>SERMAYE ROTASYONU & PİYASA DERİNLİĞİ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Finans & Büyük Bankalar</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Sağlam kredi portföyleri ve birleşme/satın alma (M&A) gelirleriyle defansif güç.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Russell 2000 Küçük Ölçekli Şirketler</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Düşen faizlerle birlikte borç maliyetleri rahatlayan KOBİ'lerde toparlanma potansiyeli.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Sanayi & İmalat (Onshoring)</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Fabrika yatırımlarının ABD'ye dönüşü altyapı ve mühendislik şirketlerini destekliyor.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Sectoral Momentum Barometer */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <BarChart3 size={14} />
+                          <span>SEKTÖREL SERMAYE & LİKİDİTE GÜCÜ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {[
+                            { name: 'Yapay Zeka & Yarı İletkenler (Semi)', pct: 94, status: 'Lider / Çok Güçlü', color: '#10b981' },
+                            { name: 'Bulut Bilişim & Kurumsal Yazılım', pct: 82, status: 'Güçlü Nakit Akışı', color: '#38bdf8' },
+                            { name: 'Büyük Bankacılık & Finans', pct: 76, status: 'Dengeli / Dayanıklı', color: '#818cf8' },
+                            { name: 'Geleneksel Sanayi & Üretim', pct: 58, status: 'Temkinli / Seçici', color: '#f59e0b' },
+                            { name: 'Tüketici & Perakende', pct: 48, status: 'Yüksek Faiz Baskısı', color: '#ef4444' }
+                          ].map((sec, idx) => (
+                            <div key={idx}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 3 }}>
+                                <span style={{ fontWeight: 700, color: '#fff' }}>{sec.name}</span>
+                                <span style={{ color: sec.color, fontWeight: 800 }}>{sec.status}</span>
+                              </div>
+                              <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ width: `${sec.pct}%`, height: '100%', background: sec.color, borderRadius: 3 }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Right: Big Tech / AI Ecosystem Leaders */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Sparkles size={14} />
+                          <span>YAPAY ZEKA DEVLERİ & TEMATİK DÖNGÜ</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          {[
+                            { sym: 'NVIDIA', note: 'Blackwell B200 Çip Sevkiyatları', tag: 'AI Lokomotif', color: '#10b981' },
+                            { sym: 'AMAZON', note: 'AWS Bulut Marjları & Nakit Akışı', tag: 'Bulut Gücü', color: '#38bdf8' },
+                            { sym: 'ALPHABET', note: 'Gemini AI & 22 F/K Çarpanı', tag: 'Makul Değer', color: '#818cf8' },
+                            { sym: 'META', note: 'AI Destekli Reklam Gelirleri', tag: 'Yüksek Marj', color: '#ec4899' },
+                            { sym: 'TESLA', note: 'Robotaxi & Otonom Sürüş Ölçeği', tag: 'Vizyon Primi', color: '#f59e0b' },
+                            { sym: 'MICROSOFT', note: 'Azure & Copilot Kurumsal Lisans', tag: 'Kurumsal Güç', color: '#60a5fa' }
+                          ].map((tech, idx) => (
+                            <div key={idx} style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${tech.color}30`, borderRadius: 6, padding: '8px 10px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 900, color: '#fff', fontSize: 11 }}>{tech.sym}</span>
+                                <span style={{ fontSize: 8.5, color: tech.color, fontWeight: 800, background: `${tech.color}15`, padding: '1px 5px', borderRadius: 3 }}>
+                                  {tech.tag}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 3 }}>{tech.note}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {/* SLIDE 5: Commodities (Gold & Silver Channels) */}
                 {activeSlide.id === 5 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {/* Left: Gold Technical Channel */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                        <Coins size={14} />
-                        <span>ONS ALTIN FİYAT KANALI & SEVİYE HARİTASI</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>4.300$ - 4.360$ Seviyesi</span>
-                            <span style={{ fontSize: 9, color: '#f87171', fontWeight: 800, background: 'rgba(239,68,68,0.2)', padding: '2px 6px', borderRadius: 4 }}>DİRENÇ BÖLGESİ</span>
-                          </div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Kâr realizasyonlarının geldiği kısa vadeli psikolojik tavan.</div>
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Gold / Silver Ratio */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Coins size={14} />
+                          <span>ALTIN / GÜMÜŞ RASYOSU (GOLD/SILVER RATIO: ~68.5x)</span>
                         </div>
-
-                        <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>4.250$ Seviyesi</span>
-                            <span style={{ fontSize: 9, color: '#38bdf8', fontWeight: 800, background: 'rgba(56,189,248,0.2)', padding: '2px 6px', borderRadius: 4 }}>ARA DENGE</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>Gümüşte Sanayi ve Fotovoltaik Patlaması</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Güneş paneli ve elektrikli araç üretimi gümüş talebini tarihin en yüksek seviyesine çıkardı.</div>
                           </div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>İlk tepki ve dengelenme koridoru.</div>
-                        </div>
-
-                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 800, color: '#34d399', fontSize: 12 }}>4.180$ Kurumsal Destek Tabanı</span>
-                            <span style={{ fontSize: 9, color: '#34d399', fontWeight: 800, background: 'rgba(16,185,129,0.2)', padding: '2px 6px', borderRadius: 4 }}>GÜÇLÜ TABAN</span>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>Arz Açığı: Üst Üste 4. Yıl Açık Veriliyor</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Maden üretimi yeni sanayi talebine yetişemiyor; yer üstü stokları hızla eriyor.</div>
                           </div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Merkez bankalarının ve kurumsal fonların fiziki alım yaptığı ana destek tabanı.</div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#34d399', fontSize: 12 }}>Rasyoda Normalleşme Potansiyeli</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Rasyonun 65x seviyelerine çekilmesi durumunda gümüşün altına göre daha yüksek prim yapması bekleniyor.</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Right: 2 Giant Pillars */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 10 }}>
-                        🏛️ ALTINI AYAKTA TUTAN 2 BÜYÜK MOTOR
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 12 }}>1. Merkez Bankaları Fiziki Rezerv Talebi</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Çin (PBoC), Hindistan ve küresel merkez bankaları rezervlerini dolardan bağımsız kılmak için fiyata bakmaksızın fiziki altın topluyor.</div>
+                      {/* Right: Commodity Supercycle & Strategic Metals */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 10 }}>
+                          🏛️ EMTİA SÜPER DÖNGÜSÜ & STRATEJİK METALLER
                         </div>
-
-                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>2. Jeopolitik Güvenli Liman Primi</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Hürmüz ve Orta Doğu gerilimleri altına taban desteği oluşturarak olası satış dalgalarını anında emiyor.</div>
-                        </div>
-
-                        <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399' }}>Kapalıçarşı Gram Altın</div>
-                            <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Ons ({fmt(gold.price, 0)}$) × USDTRY ({fmt(currentUsdTry, 2)}₺)</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 11.5 }}>Bakır (Dr. Copper): $9.800 / Ton Desteği</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Yapay zeka veri merkezleri ve şebeke modernizasyonu küresel bakır talebini diri tutuyor.</div>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>
-                            {fmt(gramAltinTL, 0)} ₺
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 11.5 }}>Platin & Paladyum: Katalizör & Hidrojen</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Hibrit araç satışlarının artması paladyum talebini desteklerken arz kısıtları devrede.</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399' }}>Kapalıçarşı Gram Altın</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Ons ({fmt(gold.price, 0)}$) × USDTRY ({fmt(currentUsdTry, 2)}₺)</div>
+                            </div>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>
+                              {fmt(gramAltinTL, 0)} ₺
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Real Yields vs Gold Decoupling */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Coins size={14} />
+                          <span>ALTIN vs REEL FAİZ AYRIŞMASI (YENİ PARADİGMA)</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>Tarihsel Kural Yıkıldı</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>ABD 10Y Reel Getirisi (TIPS) %1.85 gibi yüksek seviyedeyken normalde düşmesi gereken altın rekor kırıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>Rezerv Güvenliği Kalkanı</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Yaptırım riskleri karşısında merkez bankaları Batı devlet tahvillerini satıp fiziki altına dönüştürüyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#34d399', fontSize: 12 }}>Rezervlerde Dolar Payı Geriliyor</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Küresel rezervlerde dolar payı %71'den %58'e inerken altın payı %18 seviyesine tırmandı.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: BRICS Gold Accumulation */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 10 }}>
+                          🏛️ BRICS FİZİKİ ALTIN AKIŞI & ŞANGHAY PRİMİ
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 11.5 }}>Şanghay Altın Borsası (SGE) Primi</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Londra ve New York fiyatlarına göre fiziki teslimatlı altın ons başına +$15 - $25 primli işlem görüyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 11.5 }}>İkili Ticarette Altın Teminatı</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Enerji ve hammadde takaslarında yerel paraların karşılığı fiziki altın depolarıyla garanti altına alınıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399' }}>Kapalıçarşı Gram Altın</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Ons ({fmt(gold.price, 0)}$) × USDTRY ({fmt(currentUsdTry, 2)}₺)</div>
+                            </div>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>
+                              {fmt(gramAltinTL, 0)} ₺
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Gold Technical Channel */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Coins size={14} />
+                          <span>ONS ALTIN FİYAT KANALI & SEVİYE HARİTASI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>4.300$ - 4.360$ Seviyesi</span>
+                              <span style={{ fontSize: 9, color: '#f87171', fontWeight: 800, background: 'rgba(239,68,68,0.2)', padding: '2px 6px', borderRadius: 4 }}>DİRENÇ BÖLGESİ</span>
+                            </div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Kâr realizasyonlarının geldiği kısa vadeli psikolojik tavan.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 12 }}>4.250$ Seviyesi</span>
+                              <span style={{ fontSize: 9, color: '#38bdf8', fontWeight: 800, background: 'rgba(56,189,248,0.2)', padding: '2px 6px', borderRadius: 4 }}>ARA DENGE</span>
+                            </div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>İlk tepki ve dengelenme koridoru.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#34d399', fontSize: 12 }}>4.180$ Kurumsal Destek Tabanı</span>
+                              <span style={{ fontSize: 9, color: '#34d399', fontWeight: 800, background: 'rgba(16,185,129,0.2)', padding: '2px 6px', borderRadius: 4 }}>GÜÇLÜ TABAN</span>
+                            </div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Merkez bankalarının ve kurumsal fonların fiziki alım yaptığı ana destek tabanı.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: 2 Giant Pillars */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 10 }}>
+                          🏛️ ALTINI AYAKTA TUTAN 2 BÜYÜK MOTOR
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 12 }}>1. Merkez Bankaları Fiziki Rezerv Talebi</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Çin (PBoC), Hindistan ve küresel merkez bankaları rezervlerini dolardan bağımsız kılmak için fiyata bakmaksızın fiziki altın topluyor.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>2. Jeopolitik Güvenli Liman Primi</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Hürmüz ve Orta Doğu gerilimleri altına taban desteği oluşturarak olası satış dalgalarını anında emiyor.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399' }}>Kapalıçarşı Gram Altın</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Ons ({fmt(gold.price, 0)}$) × USDTRY ({fmt(currentUsdTry, 2)}₺)</div>
+                            </div>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>
+                              {fmt(gramAltinTL, 0)} ₺
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {/* SLIDE 6: Dollar & Yield Curve Normalization */}
                 {activeSlide.id === 6 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {/* Left: Yield Curve Normalization */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                        <Activity size={14} />
-                        <span>ABD GETİRİ EĞRİSİ (YIELD CURVE) NORMALLEŞMESİ</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 12, fontWeight: 800, color: '#34d399' }}>2Y / 10Y Eğri Farkı: +54 bp</span>
-                            <span style={{ fontSize: 9, color: '#34d399', fontWeight: 800, background: 'rgba(16,185,129,0.2)', padding: '2px 6px', borderRadius: 4 }}>POZİTİF BÖLGEDE</span>
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: DXY Basket Currencies */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <DollarSign size={14} />
+                          <span>DXY DOLAR SEPETİ DAĞILIMI & PARİTELER</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Euro (EUR/USD - %57.6 Sepet)</span>
+                              <span style={{ color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>1.0820</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Avrupa sanayi yavaşlaması ve ECB indirimleri pariteyi baskılıyor.</div>
                           </div>
-                          <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 4 }}>
-                            2 yıllık faiz (%{fmt(us2y.price, 2)}) 10 yıllık faizin (%{fmt(us10y.price, 2)}) altına indi. Ters getiri eğrisi tamamen sona erdi.
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Japon Yeni (USD/JPY - %13.6 Sepet)</span>
+                              <span style={{ color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>148.50</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>BoJ faiz artışı sinyalleri Carry Trade çözülme hassasiyetini diri tutuyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>DXY Endeks Mukavemeti</span>
+                              <span style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>{fmt(dxy.price, 3)}</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>100 kritik tabanının üzerinde kalarak gelişmekte olan paralara karşı güçlü.</div>
                           </div>
                         </div>
+                      </div>
 
-                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>Piyasa Ne Anlatıyor?</div>
-                          <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2 }}>
-                            Aylardır süren resesyon korkusu gündemden kalktı; piyasa artık sert bir durgunluğu değil, Fed sonrası faizlerin nerede dengeleneceğini fiyatlıyor.
+                      {/* Right: Turkish Lira & Carry Trade */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 12 }}>
+                          🇹🇷 TÜRK LİRASI & CARRY TRADE VERİMİ
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Net TL Carry Trade Üstünlüğü</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%37 politika faizi ve kontrollü kur oynaklığı TL'yi gelişmekte olan piyasalar arasında 1 numara yapıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>USD / TRY Kontrollü Patika</span>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#34d399' }}>{fmt(currentUsdTry, 2)} ₺</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Aylık kur artışının enflasyonun altında kalması yerli ve yabancı yatırımcıyı TL'de tutuyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Yıllık Bileşik TL Mevduat Getirisi</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%45 - %48 aralığındaki risksiz getiri dolar talebini tamamen dizginliyor.</div>
                           </div>
                         </div>
                       </div>
                     </div>
-
-                    {/* Right: Currency Dynamics */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
-                        💵 DÖVİZ VE LİKİDİTE DENGESİ
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>DXY Dolar Endeksi</span>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--cyan)' }}>{fmt(dxy.price, 3)}</span>
-                          </div>
-                          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>100 kritik eşiğinin üzerinde sağlam kalmaya devam ederek majör paritelere baskı uyguluyor.</div>
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: US Debt & Treasury Auctions */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Activity size={14} />
+                          <span>ABD HAZİNE İHALELERİ & BORÇLANMA TEMPOSU</span>
                         </div>
-
-                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>USD / TRY Kontrollü Seyir</span>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#34d399' }}>{fmt(currentUsdTry, 2)} ₺</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>35 Trilyon Dolar Kamu Borcu</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Yıllık 1 Trilyon Doları aşan faiz ödemeleri ABD bütçesinde yapısal açık oluşturuyor.</div>
                           </div>
-                          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>TCMB rezervleri ve yüzde 37'lik yüksek TL mevduat getirisi sayesinde kur son derece sakin seyrediyor.</div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Birincil Bayi Talep Oranı (2.52x)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>10 yıllık tahvil ihalelerinde yabancı merkez bankaları ve kurumsal fonların talebi sağlıklı.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>ABD 10 Yıllık Tahvil Faizi</span>
+                              <span style={{ color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>%{fmt(us10y.price, 2)}</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Faizlerin %4 civarında kalması hisse senedi çarpanlarına sınır koyuyor.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Turkey Eurobond & CDS */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 12 }}>
+                          🇹🇷 TÜRKİYE EUROBOND & 216 BP CDS
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>5 Yıllık CDS: 216 Baz Puan</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Son 4 yılın en olumlu risk algısı; Hazine ve bankaların borçlanma maliyeti hızla düşüyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Hazine Eurobond İhraçları</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>10 yıllık dolar cinsi tahvil faizi %6.80 bandında istikrar kazandı; talep katlanarak artıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Kredi Notu Artış Beklentisi</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Uluslararası derecelendirme kuruluşlarının pozitif görünümü sermaye girişini tetikliyor.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Yield Curve Normalization */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Activity size={14} />
+                          <span>ABD GETİRİ EĞRİSİ (YIELD CURVE) NORMALLEŞMESİ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: '#34d399' }}>2Y / 10Y Eğri Farkı: +54 bp</span>
+                              <span style={{ fontSize: 9, color: '#34d399', fontWeight: 800, background: 'rgba(16,185,129,0.2)', padding: '2px 6px', borderRadius: 4 }}>POZİTİF BÖLGEDE</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 4 }}>
+                              2 yıllık faiz (%{fmt(us2y.price, 2)}) 10 yıllık faizin (%{fmt(us10y.price, 2)}) altına indi. Ters getiri eğrisi tamamen sona erdi.
+                            </div>
+                          </div>
+
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>Piyasa Ne Anlatıyor?</div>
+                            <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2 }}>
+                              Aylardır süren resesyon korkusu gündemden kalktı; piyasa artık sert bir durgunluğu değil, Fed sonrası faizlerin nerede dengeleneceğini fiyatlıyor.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Currency Dynamics */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
+                          💵 DÖVİZ VE LİKİDİTE DENGESİ
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>DXY Dolar Endeksi</span>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--cyan)' }}>{fmt(dxy.price, 3)}</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>100 kritik eşiğinin üzerinde sağlam kalmaya devam ederek majör paritelere baskı uyguluyor.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>USD / TRY Kontrollü Seyir</span>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: '#34d399' }}>{fmt(currentUsdTry, 2)} ₺</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>TCMB rezervleri ve yüzde 37'lik yüksek TL mevduat getirisi sayesinde kur son derece sakin seyrediyor.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {/* SLIDE 7: Crypto & Spot ETF */}
                 {activeSlide.id === 7 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {/* Left: ETF Flows */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                        <Coins size={14} />
-                        <span>KURUMSAL SPOT ETF GİRİŞLERİ</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: 6, padding: '12px 14px' }}>
-                          <div style={{ fontSize: 11, color: '#cbd5e1' }}>Son Seans Net Kurumsal Giriş</div>
-                          <div style={{ fontSize: 24, fontWeight: 900, color: '#a78bfa', fontFamily: 'var(--font-mono)', marginTop: 2 }}>+$210.000.000</div>
-                          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>BlackRock (IBIT) ve Fidelity spot fonlarına kurumsal talep kesintisiz sürüyor.</div>
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: BTC Dominance & Altcoins */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Coins size={14} />
+                          <span>BTC DOMINANCE (%58.8) & SERMAYE DÖNGÜSÜ</span>
                         </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(139, 92, 246, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Bitcoin Hakimiyeti (%58.8) Tepe Bölgesinde</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Kurumsal para öncelikle Bitcoin'e girdi; tarihsel döngülerde BTC konsolide olmadan altcoin rallisi başlamaz.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Ethereum / Bitcoin (ETH/BTC: 0.038) Dibi</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>ETH/BTC paritesi çok yıllık dipte; kurumsal staking getirisi ve L2 ekosistemi taban arıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>TOTAL3 Altcoin Hacmi</span>
+                              <span style={{ color: '#a78bfa', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>${fmt(total3.price, 1)}B</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Seçici Layer-1 ve yapay zeka projelerinde kurumsal akümülasyon sürüyor.</div>
+                          </div>
+                        </div>
+                      </div>
 
-                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>TOTAL3 Altcoin Hacmi: ${fmt(total3.price, 1)}B</div>
-                          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Sermaye henüz genele yayılmadı; Layer-1 ve yapay zeka projelerinde toplanıyor.</div>
+                      {/* Right: Thematic Crypto Sectors */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
+                          🚀 TEMATİK KRİPTO EKOSİSTEMİ & LİDERLERİ
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px', borderLeft: '3px solid #10b981' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Yapay Zeka & DePIN (Near, Render, Bittensor)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Dağıtık GPU işlem gücü ve veri madenciliği sağlayan gerçek kullanım odaklı ağlar.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px', borderLeft: '3px solid #38bdf8' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Gerçek Dünya Varlıkları (RWA - ONDO, BUIDL)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>BlackRock ve Wall Street'in ABD Hazine tahvillerini blokzincir üzerine taşıma hamlesi.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px', borderLeft: '3px solid #f59e0b' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Yüksek Hızlı Katman-1 (Solana, Sui, Aptos)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Düşük işlem maliyeti ve saniyede binlerce transfer kapasitesiyle perakende liderliği.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-
-                    {/* Right: Bitcoin Levels Radar */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
-                        🎯 BİTCOİN SEVİYE RADARI & YOL HARİTASI
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Exchange Reserves & Miners */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Activity size={14} />
+                          <span>BORSALARDAKİ BTC REZERVLERİ (TARİHİ DİP)</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(139, 92, 246, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Borsa Rezervi: 2.1M BTC</span>
+                              <span style={{ color: '#a78bfa', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>6 Yılın Dibi</span>
+                            </div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Borsalardan soğuk cüzdanlara çekilen coinler arz şoku zeminini hazırlıyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Uzun Vadeli Yatırımcı (LTH) Payı: %74</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Dolaşımdaki arzın dörtte üçü 6 aydan uzun süredir el değiştirmeyerek kilitli duruyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Madenci Maliyet Tabanı: $64.000</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Halving sonrası ortalama elektrik maliyeti madencilerin bu seviye altında satışını engelliyor.</div>
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '8px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#34d399', fontSize: 11.5 }}>85.000$ Taban Desteği</div>
-                          <div style={{ fontSize: 10, color: '#cbd5e1' }}>Kurumsal maliyetlenme ve ETF alımlarının koruduğu ana destek tabanı.</div>
-                        </div>
 
-                        <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6, padding: '8px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 11.5 }}>87.000$ Ara Kırılım Direnci</div>
-                          <div style={{ fontSize: 10, color: '#cbd5e1' }}>Hacimli geçilmesi halinde kısa vadeli satış baskısı tamamen kalkar.</div>
+                      {/* Right: Macro & Regulatory Catalysts */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
+                          🎯 DÜZENLEME & KURUMSAL BİRİKİM RADARI
                         </div>
-
-                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: '8px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 11.5 }}>90.000$ Tarihi Psikolojik Hedef</div>
-                          <div style={{ fontSize: 10, color: '#cbd5e1' }}>87.500$ üzerinde kalıcılık sağlandığında doğrudan aralanacak büyük hedef kapısı.</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>ABD Kripto Mevzuatı & SEC Netleşmesi</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Hukuki çerçevenin berraklaşması emeklilik fonları ve sigorta devlerini cesaretlendiriyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Kurumsal Şirket Hazine Stratejileri</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>MicroStrategy ve benzeri şirketler hisse ve borçlanma yoluyla kesintisiz BTC topluyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#34d399', fontSize: 11.5 }}>Kritik Koridor: $85.000 Destek / $90.000 Hedef</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>87.500$ üzerinde haftalık kapanış tarihi psikolojik hedef kapısını aralar.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: ETF Flows */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Coins size={14} />
+                          <span>KURUMSAL SPOT ETF GİRİŞLERİ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: 6, padding: '12px 14px' }}>
+                            <div style={{ fontSize: 11, color: '#cbd5e1' }}>Son Seans Net Kurumsal Giriş</div>
+                            <div style={{ fontSize: 24, fontWeight: 900, color: '#a78bfa', fontFamily: 'var(--font-mono)', marginTop: 2 }}>+$210.000.000</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>BlackRock (IBIT) ve Fidelity spot fonlarına kurumsal talep kesintisiz sürüyor.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>TOTAL3 Altcoin Hacmi: ${fmt(total3.price, 1)}B</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Sermaye henüz genele yayılmadı; Layer-1 ve yapay zeka projelerinde toplanıyor.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Bitcoin Levels Radar */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
+                          🎯 BİTCOİN SEVİYE RADARI & YOL HARİTASI
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '8px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#34d399', fontSize: 11.5 }}>85.000$ Taban Desteği</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Kurumsal maliyetlenme ve ETF alımlarının koruduğu ana destek tabanı.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6, padding: '8px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 11.5 }}>87.000$ Ara Kırılım Direnci</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>Hacimli geçilmesi halinde kısa vadeli satış baskısı tamamen kalkar.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: '8px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 11.5 }}>90.000$ Tarihi Psikolojik Hedef</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1' }}>87.500$ üzerinde kalıcılık sağlandığında doğrudan aralanacak büyük hedef kapısı.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {/* SLIDE 8: BIST 100 & Sectors */}
                 {activeSlide.id === 8 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {/* Left: Sectors */}
-                    <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
-                        🏢 BIST SEKTÖREL GÜÇ & AYRIŞMA
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Foreign Share & CDS */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 12 }}>
+                          📈 YABANCI TAKAS ORANI (%38.6) & SERMAYE GİRİŞİ
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Yabancı Takas Payı: %38.6</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>2023 dip seviyesi olan %27'ye kıyasla istikrarlı kurumsal giriş gerçekleşti.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>216 bp CDS ile Azalan Sermaye Maliyeti</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Düşen ülke riski Türk şirketlerinin yurt dışı borçlanma faizini aşağı çekti.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Girişler BIST 30 Lokomotiflerinde Yoğun</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Yabancı fonlar spekülatif tahtalara değil, derinliği olan büyük hisselere giriyor.</div>
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '8px 12px', borderLeft: '3px solid #38bdf8' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>BIST Banka (XBANK)</div>
-                          <div style={{ fontSize: 10, color: '#94a3b8' }}>Güçlü sermaye yeterlilik rasyoları ve enflasyon muhasebesi muafiyetiyle tabanı sırtlıyor.</div>
-                        </div>
 
-                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '8px 12px', borderLeft: '3px solid #10b981' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>BIST Sanayi (XUSIN)</div>
-                          <div style={{ fontSize: 10, color: '#94a3b8' }}>Döviz pozisyonu artıda olan ihracatçı şirketlerde seçici toparlanma emareleri.</div>
+                      {/* Right: Valuation & Discount Advantage */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
+                          💎 BIST 100 DEĞERLEME & ÇARPAN AVANTAJI
                         </div>
-
-                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '8px 12px', borderLeft: '3px solid #f59e0b' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>BIST Holding (XHOLD)</div>
-                          <div style={{ fontSize: 10, color: '#94a3b8' }}>Net aktif değer iskonto kapanışı kurumsal yatırımcıların ilgisini çekiyor.</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#fff' }}>BIST 100 İleri F/K Çarpanı</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Gelişmekte olan ülkeler (GOÜ) ortalaması 13.2x</div>
+                            </div>
+                            <span style={{ fontSize: 15, fontWeight: 900, color: '#34d399', fontFamily: 'var(--font-mono)' }}>7.4x (%44 İskonto)</span>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Dolar Bazlı Endeks (3.20$ Desteği)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>3.10$ - 3.40$ bandında sağlam akümülasyon; tarihi 5.10$ zirvesine geniş marj var.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Yüksek Nakit Temettü Verimi</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Kâr dağıtan sanayi ve holding şirketleri enflasyona karşı güçlü kalkan sunuyor.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-
-                    {/* Right: Technical Levels Compass */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 12 }}>
-                        🧭 BIST 100 TEKNİK SEVİYE PUSULASI
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: TMS 29 Inflation Accounting */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', marginBottom: 12 }}>
+                          📑 ENFLASYON MUHASEBESİ (TMS 29) & AYRIŞMA
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Finans Sektörü Muafiyeti</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Bankalar ve sigortalar TMS 29 dışında kalarak net kâr berraklığını ve cazibesini koruyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Duran Varlık Yoğun Şirketler</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Özsermayesi ve gayrimenkul/makine parkı güçlü şirketler bilançolarını tahkim ediyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Serbest Nakit Akışı Takibi Şart</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Muhasebesel kâr yerine şirketin kasasına fiilen giren operasyonel nakit izlenmeli.</div>
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#34d399', fontSize: 12 }}>12.200 - 12.000 Destek Tabanı</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Kurumsal talebin ve yabancı girişlerinin yoğunlaştığı kritik ana destek bölgesi.</div>
-                        </div>
 
-                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 12 }}>12.800 Ara Tepki Direnci</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>İlk rahatlama ve momentum kazanma eşiği.</div>
+                      {/* Right: Index Drivers & Heavyweights */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
+                          🏢 BIST 100 ENDEKS AĞIRLIKLARI & LOKOMOTİFLER
                         </div>
-
-                        <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>13.500 Hedef Koridoru</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Son çeyrek bilançoları ve kredi derecelendirme beklentileriyle hedeflenen ana bölge.</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Endeks Taşıyıcıları (Big 5)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>THYAO, TUPRS, KCHOL, BIMAS ve AKBNK endeksin toplam ağırlığının %40'tan fazlasını sürüklüyor.</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#34d399', fontSize: 11.5 }}>12.000 - 12.200 Taban Desteği</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Kurumsal fonların ve emeklilik şirketlerinin alım iştahının koruduğu ana zemin.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 11.5 }}>12.800 ve 13.500 Hedef Koridoru</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Hacimli kırılımlarla hedeflenen son çeyrek bilanço rallisi koridoru.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Sectors */}
+                      <div style={{ background: '#070a12', border: '1px solid var(--border)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', marginBottom: 12 }}>
+                          🏢 BIST SEKTÖREL GÜÇ & AYRIŞMA
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '8px 12px', borderLeft: '3px solid #38bdf8' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>BIST Banka (XBANK)</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Güçlü sermaye yeterlilik rasyoları ve enflasyon muhasebesi muafiyetiyle tabanı sırtlıyor.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '8px 12px', borderLeft: '3px solid #10b981' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>BIST Sanayi (XUSIN)</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Döviz pozisyonu artıda olan ihracatçı şirketlerde seçici toparlanma emareleri.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '8px 12px', borderLeft: '3px solid #f59e0b' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>BIST Holding (XHOLD)</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>Net aktif değer iskonto kapanışı kurumsal yatırımcıların ilgisini çekiyor.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Technical Levels Compass */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 12 }}>
+                          🧭 BIST 100 TEKNİK SEVİYE PUSULASI
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#34d399', fontSize: 12 }}>12.200 - 12.000 Destek Tabanı</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Kurumsal talebin ve yabancı girişlerinin yoğunlaştığı kritik ana destek bölgesi.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: 12 }}>12.800 Ara Tepki Direnci</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>İlk rahatlama ve momentum kazanma eşiği.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>13.500 Hedef Koridoru</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Son çeyrek bilançoları ve kredi derecelendirme beklentileriyle hedeflenen ana bölge.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
 
                 {/* SLIDE 9: Strategy, Cash & 48h Calendar */}
                 {activeSlide.id === 9 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {/* Left: 48h Calendar Timeline */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                        <Calendar size={14} />
-                        <span>48 SAATLİK KRİTİK EKONOMİK TAKVİM</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {[
-                          { time: 'Pazartesi 10:00', event: 'TÜİK Yıllık ve Aylık TÜFE Enflasyonu', note: 'Önceki %31.51 / Beklenti Kritik' },
-                          { time: 'Çarşamba 21:00', event: 'Fed FOMC Tutanakları & Yetkili Mesajları', note: 'Warsh Şahin Faiz Yönlendirmesi' },
-                          { time: 'Cuma 15:30', event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik', note: 'Küresel Risk İştahı Barometresi' },
-                          { time: '22 Ekim PPK', event: 'TCMB Para Politikası Kurulu Faiz Kararı', note: '%37 Politika Faizi Kararı' }
-                        ].map((cal, idx) => (
-                          <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  variantIndex === 1 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: Pyramid Portfolio Model */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <PieChart size={14} />
+                          <span>PİRAMİT PORTFÖY TAHSİS MODELİ (DÖNEMSEL)</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                              <div style={{ fontSize: 10, color: 'var(--cyan)', fontWeight: 800 }}>{cal.time}</div>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{cal.event}</div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>%40 Hisse Senedi (BIST 30 & Wall St)</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Enflasyon üzeri büyüyen teknoloji ve temettü liderleri</div>
                             </div>
-                            <span style={{ fontSize: 8.5, color: '#cbd5e1', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4 }}>
-                              {cal.note}
-                            </span>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: '#38bdf8' }}>Büyüme</span>
                           </div>
-                        ))}
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>%25 TL Para Piyasası Fonu & Mevduat</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Düşüşlerde kurşun ve risksiz %45+ bileşik getiri</div>
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: '#34d399' }}>Nakit</span>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>%20 Fiziki Altın & Gümüş</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Jeopolitik krizler ve küresel borç şoklarına sigorta</div>
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: '#fbbf24' }}>Sigorta</span>
+                          </div>
+                          <div style={{ background: 'rgba(139, 92, 246, 0.08)', borderRadius: 6, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>%15 Kripto & Asimetrik Varlıklar</div>
+                              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>Bitcoin ve seçici Layer-1 projeleri ile yüksek alfa</div>
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: '#a78bfa' }}>Alfa</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Portfolio Discipline Rules */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Compass size={14} />
+                          <span>DİSİPLİNLİ PORTFÖY YÖNETİM KURALLARI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>1. Kademeli Maliyetlenme Disiplini</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Tek tuşla tüm sermayeyi bağlamayın; piyasa düzeltmelerine en az 3 eşit parça ayırın.</div>
+                          </div>
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>2. Kâr Realizasyonu Alışkanlığı</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Direnç hedeflerine ulaşıldığında kârın en az %20'sini nakde veya altına çekmeyi unutmayın.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>3. Gerçek Çeşitlendirme (Korelasyon)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Birbiriyle aynı yönde hareket eden 10 hisse almak riskinizi dağıtmaz, riski yoğunlaştırır.</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Right: Portfolio Principles */}
-                    <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                        <Compass size={14} />
-                        <span>HAKAN GENÇ FİNANS - SAĞLIKLI PORTFÖY PUSULASI</span>
+                  ) : variantIndex === 2 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: 3-Tier Risk Matrix */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Activity size={14} />
+                          <span>3 KADEMELİ PİYASA VOLATİLİTE VE RİSK MATRİSİ</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px', borderLeft: '3px solid #10b981' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>🟢 Sakin Dönem (VIX &lt; 15)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Risk iştahı güçlü; hisse ve teknoloji payını %50 üzerine çıkarın, trendin tadını çıkarın.</div>
+                          </div>
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '9px 12px', borderLeft: '3px solid #f59e0b' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>🟡 Dalgalı Dönem (VIX 15 - 22)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Uyarı bölgesi; nakit oranını %25-30 seviyesine yükseltin, kaldıraçlı işlemden kesinlikle kaçının.</div>
+                          </div>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 6, padding: '9px 12px', borderLeft: '3px solid #ef4444' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>🔴 Panik / Kriz Dönemi (VIX &gt; 22)</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Panikle satış yapma zamanı değil; nakit kalkanıyla kurumsal taban seviyelerini toplama zamanı.</div>
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>1. Asla FOMO ile İşlem Yapmayın</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Hızlı yükselen varlıkların peşinden koşmak yerine kurumsal destek seviyelerini bekleyin.</div>
-                        </div>
 
-                        <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>2. %20 - %25 Nakit Kalkanınızı Koruyun</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Portföyde likit nakit bulundurmak piyasa geri çekilmelerini büyük fırsata çevirir.</div>
+                      {/* Right: Investor Philosophy */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Compass size={14} />
+                          <span>HAKAN GENÇ FİNANS - YATIRIMCI FELSEFESİ</span>
                         </div>
-
-                        <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                          <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>3. Endeks Tahmini Değil Şirket Seçimi</div>
-                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Kâr marjlarını ve nakit akışını enflasyonun üzerinde büyüten şirketler her dönem kazandırır.</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>"Fiyat gürültüdür; bilanço ve serbest nakit akışı gerçektir."</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Günlük fiyat dalgalanmaları yatırım pusulanızı saptırmasın.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>"Düşüşler servet transferinin gerçekleştiği anlardır."</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Panikleyen zararına satar, hazırlıklı ve nakdi olan yatırımcı kurumsal tabandan toplar.</div>
+                          </div>
+                          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>"Nakit her krizde ve döngüde kraldır."</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Alım gücünüzü ve psikolojik rahatlığınızı sağlayan en güçlü savunma nakdinizdir.</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {/* Left: 48h Calendar Timeline */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Calendar size={14} />
+                          <span>48 SAATLİK KRİTİK EKONOMİK TAKVİM</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {[
+                            { time: 'Pazartesi 10:00', event: 'TÜİK Yıllık ve Aylık TÜFE Enflasyonu', note: 'Önceki %31.51 / Beklenti Kritik' },
+                            { time: 'Çarşamba 21:00', event: 'Fed FOMC Tutanakları & Yetkili Mesajları', note: 'Warsh Şahin Faiz Yönlendirmesi' },
+                            { time: 'Cuma 15:30', event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik', note: 'Küresel Risk İştahı Barometresi' },
+                            { time: '22 Ekim PPK', event: 'TCMB Para Politikası Kurulu Faiz Kararı', note: '%37 Politika Faizi Kararı' }
+                          ].map((cal, idx) => (
+                            <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontSize: 10, color: 'var(--cyan)', fontWeight: 800 }}>{cal.time}</div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{cal.event}</div>
+                              </div>
+                              <span style={{ fontSize: 8.5, color: '#cbd5e1', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: 4 }}>
+                                {cal.note}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Right: Portfolio Principles */}
+                      <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <Compass size={14} />
+                          <span>HAKAN GENÇ FİNANS - SAĞLIKLI PORTFÖY PUSULASI</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>1. Asla FOMO ile İşlem Yapmayın</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Hızlı yükselen varlıkların peşinden koşmak yerine kurumsal destek seviyelerini bekleyin.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>2. %20 - %25 Nakit Kalkanınızı Koruyun</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Portföyde likit nakit bulundurmak piyasa geri çekilmelerini büyük fırsata çevirir.</div>
+                          </div>
+
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>3. Endeks Tahmini Değil Şirket Seçimi</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Kâr marjlarını ve nakit akışını enflasyonun üzerinde büyüten şirketler her dönem kazandırır.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
 
@@ -2009,6 +2957,142 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
           >
             {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
             <span>{isFullscreen ? 'Küçült' : '⛶ Tam Ekran'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 📅 GÜNLÜK YAYIN EDİSYONU & TEMA ÇUBUĞU */}
+      <div 
+        style={{
+          background: 'linear-gradient(90deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.75) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: 8,
+          padding: '8px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.25)'
+        }}
+      >
+        {/* Left: Slot & Edition Key */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 7, 
+              background: 'rgba(0,0,0,0.4)', 
+              border: `1px solid ${activeTheme.accentColor}40`, 
+              borderRadius: 6, 
+              padding: '4px 10px' 
+            }}
+          >
+            <Clock size={13} style={{ color: activeTheme.accentColor }} />
+            <span style={{ fontSize: 11, fontWeight: 900, color: '#f8fafc' }}>
+              {editionState.slotTitle}
+            </span>
+            <span 
+              style={{ 
+                fontSize: 9, 
+                padding: '1px 6px', 
+                borderRadius: 4, 
+                background: `${activeTheme.accentColor}25`, 
+                color: activeTheme.accentColor, 
+                border: `1px solid ${activeTheme.accentColor}40`,
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 800
+              }}
+            >
+              {editionState.isAfter1600 ? '16:00 TSİ Sonrası (ABD & Kapanış)' : '16:00 Öncesi (Sabah/Öğle)'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#94a3b8' }}>
+            <span>Görsel Çizim Varyantı:</span>
+            <span 
+              style={{ 
+                background: 'rgba(255,255,255,0.06)', 
+                color: '#e2e8f0', 
+                padding: '2px 8px', 
+                borderRadius: 4, 
+                fontFamily: 'var(--font-mono)', 
+                fontWeight: 800,
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}
+            >
+              #{variantIndex + 1} ({['Stratejik Odak', 'Altyapı & Çarpanlar', 'Derinlik & Ayrışma'][variantIndex]})
+            </span>
+          </div>
+        </div>
+
+        {/* Center / Right: Theme Selector Chips & Advance Button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700 }}>Yayın Teması:</span>
+          
+          {/* Auto Chip */}
+          <button
+            type="button"
+            onClick={() => handleSelectTheme('auto')}
+            className={`chip-btn ${selectedThemeId === 'auto' ? 'active' : ''}`}
+            style={{
+              fontSize: 9.5,
+              padding: '3px 8px',
+              fontWeight: selectedThemeId === 'auto' ? 800 : 500,
+              borderColor: selectedThemeId === 'auto' ? '#38bdf8' : 'rgba(255,255,255,0.1)',
+              background: selectedThemeId === 'auto' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(0,0,0,0.3)',
+              color: selectedThemeId === 'auto' ? '#38bdf8' : '#cbd5e1'
+            }}
+            title="Her gün 16:00 döngüsüne ve gün sırasına göre temayı otomatik belirler"
+          >
+            <span>🤖 Otomatik Döngü</span>
+          </button>
+
+          {/* Individual Theme Chips */}
+          {BROADCAST_THEMES.map(th => {
+            const isSelected = selectedThemeId === th.id;
+            return (
+              <button
+                key={th.id}
+                type="button"
+                onClick={() => handleSelectTheme(th.id)}
+                className={`chip-btn ${isSelected ? 'active' : ''}`}
+                style={{
+                  fontSize: 9.5,
+                  padding: '3px 8px',
+                  fontWeight: isSelected ? 800 : 500,
+                  borderColor: isSelected ? th.accentColor : 'rgba(255,255,255,0.08)',
+                  background: isSelected ? `${th.accentColor}20` : 'rgba(0,0,0,0.3)',
+                  color: isSelected ? '#ffffff' : '#94a3b8'
+                }}
+                title={th.desc}
+              >
+                <span>{th.icon} {th.title}</span>
+              </button>
+            );
+          })}
+
+          {/* Advance Edition Button */}
+          <button
+            type="button"
+            onClick={handleAdvanceEdition}
+            className="chip-btn"
+            style={{
+              fontSize: 9.5,
+              padding: '3px 9px',
+              fontWeight: 800,
+              borderColor: '#f59e0b',
+              background: 'rgba(245, 158, 11, 0.12)',
+              color: '#fbbf24',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+            title="Bir sonraki görsel grafik varyantına ve güncellenmiş metne geç"
+          >
+            <Sparkles size={11} />
+            <span>Farklı Edisyon Üret</span>
           </button>
         </div>
       </div>
