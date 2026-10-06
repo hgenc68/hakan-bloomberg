@@ -432,6 +432,8 @@ export default async function handler(req, res) {
     } catch (err) {
       return res.status(500).json({ status: 'error', message: err.message });
     }
+  }
+
   // Handle candles request for Native Pro Chart
   if (type === 'candles') {
     const rawSymbol = req.query.symbol || 'SPCX';
@@ -602,5 +604,4 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });
   }
-}
 }

@@ -93,7 +93,8 @@ export const KNOWN_CRYPTO_SET = new Set([
 const DEFAULT_INITIAL_QUOTES = {
   'USDTRY=X': { symbol: 'USDTRY=X', price: 49.03, currency: 'TRY', changePct: 0.12 },
   'GC=F': { symbol: 'GC=F', price: 4200.0, currency: 'USD', changePct: 0.38 },
-  'BYDNR.IS': { symbol: 'BYDNR.IS', price: 33.64, currency: 'TRY', changePct: 0.5 },
+  'BYDNR.IS': { symbol: 'BYDNR.IS', price: 21.30, currency: 'TRY', changePct: 0.5 },
+  'BYDNR': { symbol: 'BYDNR', price: 21.30, currency: 'TRY', changePct: 0.5 },
   'SPCX': { symbol: 'SPCX', price: 30.50, currency: 'USD', changePct: 0.2 },
   'DRAM': { symbol: 'DRAM', price: 27.80, currency: 'USD', changePct: -0.3 },
   'ETH-USD': { symbol: 'ETH-USD', price: 2684.38, currency: 'USD', changePct: -2.12 },
@@ -329,7 +330,7 @@ export const AppProvider = ({ children }) => {
         // US Tech & Wall Street Core Leaders
         'NVDA', 'AMZN', 'SOFI', 'AAPL', 'MSFT', 'TSLA', 'GOOGL', 'META', 'PLTR', 'AMD', 'TSM', 'AVGO',
         // BIST Core Leaders
-        'THYAO.IS', 'TUPRS.IS', 'FROTO.IS', 'EREGL.IS', 'ASELS.IS', 'BIMAS.IS', 'KCHOL.IS', 'SISE.IS', 'GARAN.IS', 'AKBNK.IS',
+        'THYAO.IS', 'TUPRS.IS', 'FROTO.IS', 'EREGL.IS', 'ASELS.IS', 'BIMAS.IS', 'KCHOL.IS', 'SISE.IS', 'GARAN.IS', 'AKBNK.IS', 'BYDNR.IS', 'BYDNR',
         // Potential & Radar Stocks
         'SPCX', 'DRAM', 'VRT', 'ALAB', 'CAMT', 'MRVL', 'POET'
       ]);
