@@ -176,6 +176,31 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
   const presentationContainerRef = useRef(null);
+  const prompterScrollRef = useRef(null);
+
+  // Prompter font size state (persisted)
+  const [scriptFontSize, setScriptFontSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem('broadcast_studio_font_size');
+      return saved ? parseFloat(saved) : 14.5;
+    } catch {
+      return 14.5;
+    }
+  });
+
+  const handleSetFontSize = (size) => {
+    setScriptFontSize(size);
+    try {
+      localStorage.setItem('broadcast_studio_font_size', String(size));
+    } catch {}
+  };
+
+  // Auto-reset prompter scroll to top when slide changes
+  useEffect(() => {
+    if (prompterScrollRef.current) {
+      prompterScrollRef.current.scrollTop = 0;
+    }
+  }, [currentSlideIndex]);
 
   // Auto-play / Presentation Timer state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -2057,7 +2082,12 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
           alignItems: 'stretch',
           background: isFullscreen ? '#040711' : 'transparent',
           padding: isFullscreen ? 16 : 0,
-          borderRadius: 8
+          borderRadius: 8,
+          boxSizing: 'border-box',
+          height: isFullscreen ? '100vh' : (viewMode === 'split' ? 'calc(100vh - 185px)' : 'auto'),
+          minHeight: isFullscreen ? '100vh' : 640,
+          maxHeight: isFullscreen ? '100vh' : (viewMode === 'split' ? 'calc(100vh - 185px)' : 'none'),
+          overflow: isFullscreen ? 'hidden' : 'visible'
         }}
       >
         
@@ -2074,8 +2104,11 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
               borderRadius: 10, 
               overflow: 'hidden',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
-              position: 'relative',
-              minHeight: isFullscreen ? 'calc(100vh - 32px)' : 640
+              position: viewMode === 'split' ? 'sticky' : 'relative',
+              top: isFullscreen ? 16 : 8,
+              height: viewMode === 'split' ? '100%' : 'auto',
+              maxHeight: viewMode === 'split' ? '100%' : 'none',
+              minHeight: isFullscreen ? 'calc(100vh - 32px)' : (viewMode === 'split' ? 0 : 640)
             }}
           >
             {renderSlideContent(false)}
@@ -2094,7 +2127,10 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
               border: '1px solid rgba(255, 255, 255, 0.1)', 
               borderRadius: 10, 
               overflow: 'hidden',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)'
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+              height: viewMode === 'split' ? '100%' : (viewMode === 'prompter_only' ? 'calc(100vh - 185px)' : 'auto'),
+              maxHeight: viewMode === 'split' ? '100%' : (viewMode === 'prompter_only' ? 'calc(100vh - 185px)' : 'none'),
+              minHeight: viewMode === 'split' ? 0 : 640
             }}
           >
             {/* Prompter Top Toolbar */}
@@ -2105,7 +2141,8 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
                 borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                 display: 'flex', 
                 justifyContent: 'space-between', 
-                alignItems: 'center' 
+                alignItems: 'center',
+                flexShrink: 0
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2119,6 +2156,40 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {/* Font Size Adjuster Controls */}
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 2, 
+                    background: 'rgba(255, 255, 255, 0.05)', 
+                    borderRadius: 5, 
+                    padding: '2px 4px', 
+                    border: '1px solid rgba(255, 255, 255, 0.08)' 
+                  }}
+                  title="Prompter yazı boyutunu ayarla"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize(Math.max(12, scriptFontSize - 1.5))}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '1px 5px', fontSize: 10, fontWeight: 800, lineHeight: 1 }}
+                    title="Yazıyı küçült"
+                  >
+                    A-
+                  </button>
+                  <span style={{ fontSize: 9.5, color: 'var(--cyan)', fontWeight: 700, minWidth: 26, textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+                    {Math.round(scriptFontSize)}px
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize(Math.min(24, scriptFontSize + 1.5))}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '1px 5px', fontSize: 10, fontWeight: 800, lineHeight: 1 }}
+                    title="Yazıyı büyüt"
+                  >
+                    A+
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setIsEditingScript(!isEditingScript)}
@@ -2156,11 +2227,22 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
               </div>
             </div>
 
-            {/* Script Display / Editor Box */}
-            <div style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-              
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic' }}>
-                💡 Hakan Genç'in doğal ekran diline göre hazırlanmıştır. Neden-sonuç bağlantıları yapay başlıklar yerine konuşmanın organik akışına yedirilmiştir.
+            {/* Script Display / Editor Box (Independent Scrollable Container) */}
+            <div 
+              ref={prompterScrollRef}
+              className="prompter-scroll-container"
+              style={{ 
+                flex: 1, 
+                minHeight: 0,
+                padding: '16px 20px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                overflowY: 'auto',
+                overscrollBehavior: 'contain'
+              }}
+            >
+              <div style={{ flexShrink: 0, fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span>💡 Hakan Genç'in doğal ekran diline göre hazırlanmıştır. Neden-sonuç bağlantıları konuşmanın organik akışındadır.</span>
               </div>
 
               {isEditingScript ? (
@@ -2175,10 +2257,10 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
                     border: '1px solid var(--cyan)',
                     borderRadius: 6,
                     padding: 14,
-                    fontSize: 13.5,
+                    fontSize: `${scriptFontSize}px`,
                     lineHeight: 1.6,
                     fontFamily: 'inherit',
-                    resize: 'vertical'
+                    resize: 'none'
                   }}
                   placeholder="Kendi konuşma metninizi buraya yazabilirsiniz..."
                 />
@@ -2186,26 +2268,51 @@ Orta Doğu gerilimiyle 78 dolar sınırında dalgalanan Brent petrolü ve 4.180 
                 <div 
                   style={{ 
                     flex: 1, 
-                    fontSize: 'clamp(13px, 1.25vw, 15px)', 
+                    fontSize: `${scriptFontSize}px`, 
                     color: '#f1f5f9', 
-                    lineHeight: 1.7, 
+                    lineHeight: 1.75, 
                     background: 'rgba(255, 255, 255, 0.02)', 
                     padding: '18px 20px', 
                     borderRadius: 8, 
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    whiteSpace: 'pre-wrap'
+                    border: '1px solid rgba(255, 255, 255, 0.05)', 
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    letterSpacing: '0.01em'
                   }}
                 >
                   {activeScript}
                 </div>
               )}
+            </div>
 
-              {/* Bottom Prompter Stats */}
-              <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: 'var(--text-muted)' }}>
-                <span>Kelime Sayısı: ~{activeScript.split(/\s+/).filter(Boolean).length} kelime</span>
-                <span>Tahmini Konuşma Süresi: ~{Math.round(activeScript.split(/\s+/).filter(Boolean).length / 2.3)} saniye</span>
+            {/* Bottom Prompter Stats (Fixed Bar) */}
+            <div 
+              style={{ 
+                flexShrink: 0,
+                padding: '10px 16px', 
+                background: 'rgba(15, 23, 42, 0.85)', 
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                fontSize: 10, 
+                color: 'var(--text-muted)' 
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <FileText size={11} style={{ color: 'var(--cyan)' }} />
+                  <span>Kelime: ~{activeScript.split(/\s+/).filter(Boolean).length}</span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Clock size={11} style={{ color: '#fb7185' }} />
+                  <span>Tahmini Süre: ~{Math.round(activeScript.split(/\s+/).filter(Boolean).length / 2.3)} sn</span>
+                </span>
               </div>
-
+              <span style={{ fontSize: 9, color: '#34d399', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981' }}></span>
+                Bağımsız Prompter Kaydırma Aktif
+              </span>
             </div>
 
           </div>
