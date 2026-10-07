@@ -180,30 +180,17 @@ export default function BenchmarkTab() {
     }
   }, [portfolioScope, selectedTickers]);
 
-  const portColor = useMemo(() => {
-    switch (portfolioScope) {
-      case 'ex_bydnr':
-        return '#10b981'; // Emerald
-      case 'recent':
-        return '#c084fc'; // Purple / Violet
-      case 'all':
-        return '#ffffff'; // White
-      case 'custom':
-        return '#f59e0b'; // Amber
-      case 'equity':
-      default:
-        return '#00e5ff'; // Cyan
-    }
-  }, [portfolioScope]);
+  // User's portfolio is always distinct RED across all scopes and charts
+  const portColor = '#ef4444';
 
   const scopeBadge = useMemo(() => {
     switch (portfolioScope) {
-      case 'ex_bydnr': return { label: 'BYDNR Hariç', color: 'emerald' };
-      case 'recent': return { label: 'Yeni Alımlar', color: 'purple' };
-      case 'custom': return { label: 'Özel Sepet', color: 'amber' };
-      case 'all': return { label: 'Tüm Portföy', color: 'gray' };
+      case 'ex_bydnr': return { label: 'BYDNR Hariç', color: 'rose' };
+      case 'recent': return { label: 'Yeni Alımlar', color: 'rose' };
+      case 'custom': return { label: 'Özel Sepet', color: 'rose' };
+      case 'all': return { label: 'Tüm Portföy', color: 'rose' };
       case 'equity':
-      default: return { label: 'Hisse & ETF', color: 'cyan' };
+      default: return { label: 'Hisse & ETF', color: 'rose' };
     }
   }, [portfolioScope]);
 
@@ -440,11 +427,12 @@ export default function BenchmarkTab() {
     perfDatasets.push({
       label: portLabel,
       data: rebaseSeries(dynamicBasketSeries),
-      borderColor: portColor,
-      backgroundColor: `${portColor}15`,
-      borderWidth: 2.5,
+      borderColor: '#ef4444',
+      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+      borderWidth: 3.8, // Thicker than all benchmark lines!
       pointRadius: 0,
-      tension: 0.2
+      tension: 0.2,
+      order: -1
     });
   }
   if (activeSeries.SP500 && series[`SP500_${curKey}`]) {
@@ -471,7 +459,7 @@ export default function BenchmarkTab() {
     perfDatasets.push({
       label: 'BIST 100 (XU100.IS)',
       data: rebaseSeries(series[`BIST100_${curKey}`]),
-      borderColor: '#ef4444',
+      borderColor: '#06b6d4', // Turkuaz / Cyan for BIST 100
       borderWidth: 1.8,
       pointRadius: 0,
       tension: 0.2
@@ -558,10 +546,10 @@ export default function BenchmarkTab() {
     'Bitcoin'
   ];
   const barColors = [
-    portColor,
+    '#ef4444',
     '#3b82f6',
     '#a855f7',
-    '#ef4444',
+    '#06b6d4',
     '#eab308',
     '#f97316'
   ];
@@ -590,12 +578,16 @@ export default function BenchmarkTab() {
         label: `${timeframe} Kümülatif Getiri (%)`,
         data: barPeriodReturns,
         backgroundColor: barColors,
+        borderColor: barColors.map((c, i) => i === 0 ? '#ff7878' : 'transparent'),
+        borderWidth: [2, 0, 0, 0, 0, 0],
         borderRadius: 4
       },
       {
         label: 'Yıllıklandırılmış Getiri (CAGR %)',
         data: barCAGRReturns,
-        backgroundColor: barColors.map(c => c + '77'), // transparent version
+        backgroundColor: barColors.map((c, i) => i === 0 ? 'rgba(239, 68, 68, 0.65)' : c + '77'),
+        borderColor: barColors.map((c, i) => i === 0 ? '#ff7878' : 'transparent'),
+        borderWidth: [2, 0, 0, 0, 0, 0],
         borderRadius: 4
       }
     ]
@@ -826,7 +818,7 @@ export default function BenchmarkTab() {
     },
     { key: 'SP500', name: 'S&P 500', code: '^GSPC', color: '#3b82f6' },
     { key: 'NASDAQ', name: 'Nasdaq 100', code: '^NDX', color: '#a855f7' },
-    { key: 'BIST100', name: 'BIST 100', code: 'XU100.IS', color: '#ef4444' },
+    { key: 'BIST100', name: 'BIST 100', code: 'XU100.IS', color: '#06b6d4' },
     { key: 'GOLD', name: 'Altın (Ons)', code: 'GC=F', color: '#eab308' },
     { key: 'BITCOIN', name: 'Bitcoin', code: 'BTC-USD', color: '#f97316' }
   ];
@@ -1268,7 +1260,7 @@ export default function BenchmarkTab() {
         {/* Alpha vs BIST 100 */}
         <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#06b6d4' }}>
               BIST 100 ALFA / SPREAD
             </span>
             <span className={`nav-badge ${alphaVsBIST >= 0 ? 'emerald' : 'red'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
@@ -1359,11 +1351,12 @@ export default function BenchmarkTab() {
                 style={{ 
                   borderColor: activeSeries.portfolio ? portColor : 'transparent', 
                   color: portColor,
-                  background: activeSeries.portfolio ? `${portColor}18` : 'transparent' 
+                  background: activeSeries.portfolio ? `${portColor}20` : 'transparent',
+                  fontWeight: 800
                 }}
                 onClick={() => toggleSeries('portfolio')}
               >
-                {portLabel}
+                🔴 {portLabel}
               </button>
               <button
                 type="button"
@@ -1384,10 +1377,10 @@ export default function BenchmarkTab() {
               <button
                 type="button"
                 className={`chip-btn ${activeSeries.BIST100 ? 'active' : ''}`}
-                style={{ borderColor: activeSeries.BIST100 ? '#ef4444' : 'transparent', color: '#ef4444' }}
+                style={{ borderColor: activeSeries.BIST100 ? '#06b6d4' : 'transparent', color: '#06b6d4' }}
                 onClick={() => toggleSeries('BIST100')}
               >
-                🔴 BIST 100
+                🇹🇷 BIST 100
               </button>
               <button
                 type="button"

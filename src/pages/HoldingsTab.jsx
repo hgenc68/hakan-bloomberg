@@ -286,19 +286,19 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
           benchmarkReturns.gold
         ],
         backgroundColor: [
-          benchmarkReturns.equity >= 0 ? '#10b981' : '#00e5ff',
+          '#ef4444',
           '#3b82f6',
           '#a855f7',
-          '#ef4444',
+          '#06b6d4',
           '#f59e0b'
         ],
         borderRadius: 5,
-        borderWidth: 1,
+        borderWidth: [2, 1, 1, 1, 1],
         borderColor: [
-          benchmarkReturns.equity >= 0 ? '#34d399' : '#38bdf8',
+          '#ff7878',
           '#60a5fa',
           '#c084fc',
-          '#f87171',
+          '#22d3ee',
           '#fbbf24'
         ]
       }
