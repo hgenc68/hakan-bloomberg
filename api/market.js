@@ -258,6 +258,8 @@ export default async function handler(req, res) {
       let reqRange = req.query.range;
       if (!reqRange) {
         if (reqInterval === '1wk') reqRange = '5y';
+        else if (reqInterval === '1mo') reqRange = '10y';
+        else if (reqInterval === '3mo') reqRange = '15y';
         else if (reqInterval === '1h') reqRange = '3mo';
         else reqRange = '2y';
       }
@@ -277,7 +279,7 @@ export default async function handler(req, res) {
         const eQuote = eResp?.chart?.result?.[0]?.indicators?.quote?.[0] || {};
 
         const candles = [];
-        const isIntraday = reqInterval.includes('m') || reqInterval.includes('h');
+        const isIntraday = (reqInterval.includes('m') && !reqInterval.includes('mo')) || reqInterval.includes('h');
 
         for (let i = 0; i < bTimes.length; i++) {
           const bClose = bQuote.close?.[i];
@@ -342,7 +344,7 @@ export default async function handler(req, res) {
         const vols = q.volume || [];
 
         const candles = [];
-        const isIntraday = reqInterval.includes('m') || reqInterval.includes('h');
+        const isIntraday = (reqInterval.includes('m') && !reqInterval.includes('mo')) || reqInterval.includes('h');
 
         for (let i = 0; i < timestamps.length; i++) {
           const c = closes[i];

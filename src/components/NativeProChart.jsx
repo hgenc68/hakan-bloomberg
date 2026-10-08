@@ -113,6 +113,76 @@ function resampleCandles(candles, groupSize) {
   return res;
 }
 
+// Resample monthly candles into 2-month or 3-month calendar buckets
+function resampleMonths(candles, monthsPerBucket = 2) {
+  if (!candles || candles.length === 0 || monthsPerBucket <= 1) return candles;
+  const groups = new Map();
+  for (const c of candles) {
+    const parts = String(c.time).split('-');
+    if (parts.length >= 2) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // 0-indexed month
+      const bucket = Math.floor(month / monthsPerBucket);
+      const key = `${year}_${bucket}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(c);
+    } else {
+      const key = c.time;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(c);
+    }
+  }
+
+  const res = [];
+  for (const [, chunk] of groups.entries()) {
+    if (!chunk.length) continue;
+    res.push({
+      time: chunk[0].time,
+      open: chunk[0].open,
+      high: Math.max(...chunk.map(item => item.high)),
+      low: Math.min(...chunk.map(item => item.low)),
+      close: chunk[chunk.length - 1].close,
+      volume: chunk.reduce((acc, item) => acc + (item.volume || 0), 0)
+    });
+  }
+  return res;
+}
+
+// Heikin Ashi Candlestick Calculator
+function calcHeikinAshi(candles) {
+  if (!candles || candles.length === 0) return [];
+  const ha = [];
+  let prevHaOpen = (candles[0].open + candles[0].close) / 2;
+  let prevHaClose = (candles[0].open + candles[0].high + candles[0].low + candles[0].close) / 4;
+
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    let haOpen, haClose;
+    if (i === 0) {
+      haOpen = prevHaOpen;
+      haClose = prevHaClose;
+    } else {
+      haOpen = (prevHaOpen + prevHaClose) / 2;
+      haClose = (c.open + c.high + c.low + c.close) / 4;
+      prevHaOpen = haOpen;
+      prevHaClose = haClose;
+    }
+    const haHigh = Math.max(c.high, haOpen, haClose);
+    const haLow = Math.min(c.low, haOpen, haClose);
+    const decimals = c.close < 0.1 ? 6 : c.close < 10 ? 4 : 2;
+
+    ha.push({
+      time: c.time,
+      open: Number(haOpen.toFixed(decimals)),
+      high: Number(haHigh.toFixed(decimals)),
+      low: Number(haLow.toFixed(decimals)),
+      close: Number(haClose.toFixed(decimals)),
+      volume: c.volume || 0
+    });
+  }
+  return ha;
+}
+
 // Universal ticker normalizer across aliases (e.g. BTCUSDT -> BTC, BTC-USD -> BTC, THYAO.IS -> THYAO)
 export function normalizeTicker(t) {
   if (!t) return '';
@@ -317,7 +387,12 @@ export default function NativeProChart({
   const horizontalPriceLinesMapRef = useRef(new Map());
 
   // Component state
-  const [chartInterval, setChartInterval] = useState('1G'); // '1G', '1H', '4S', '2S', '1S'
+  const [chartInterval, setChartInterval] = useState(() => {
+    try { return localStorage.getItem('terminal_chart_interval') || '1G'; } catch (e) { return '1G'; }
+  });
+  const [candleType, setCandleType] = useState(() => {
+    try { return localStorage.getItem('terminal_candle_type') || 'candles'; } catch (e) { return 'candles'; }
+  });
   const [candles, setCandles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -408,12 +483,43 @@ export default function NativeProChart({
             localStorage.setItem('terminal_indicator_settings', JSON.stringify(data.indicatorSettings));
           } catch (e) {}
         }
+        if (data && data.chartInterval) {
+          setChartInterval(data.chartInterval);
+          try { localStorage.setItem('terminal_chart_interval', data.chartInterval); } catch (e) {}
+        }
+        if (data && data.candleType) {
+          setCandleType(data.candleType);
+          try { localStorage.setItem('terminal_candle_type', data.candleType); } catch (e) {}
+        }
       }
     }, (err) => {
       console.warn('Firestore preferences subscription error:', err);
     });
 
     return () => unsubPrefs();
+  }, []);
+
+  // Timeframe and Candle Type Action Handlers
+  const handleSetChartInterval = useCallback((tf) => {
+    setChartInterval(tf);
+    try { localStorage.setItem('terminal_chart_interval', tf); } catch (e) {}
+    try {
+      setDoc(doc(db, 'chart_preferences', 'settings'), {
+        chartInterval: tf,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (e) {}
+  }, []);
+
+  const handleSetCandleType = useCallback((type) => {
+    setCandleType(type);
+    try { localStorage.setItem('terminal_candle_type', type); } catch (e) {}
+    try {
+      setDoc(doc(db, 'chart_preferences', 'settings'), {
+        candleType: type,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (e) {}
   }, []);
 
   // Dedicated user-action toggle for indicators that updates state, localStorage, and Firestore
@@ -591,10 +697,21 @@ export default function NativeProChart({
     let yInterval = '1d';
     let yRange = '2y';
     let resampleGroup = 1;
+    let resampleMonthsCount = 0;
 
     if (chartInterval === '1H') {
       yInterval = '1wk';
       yRange = '5y';
+    } else if (chartInterval === '1A') {
+      yInterval = '1mo';
+      yRange = '10y';
+    } else if (chartInterval === '2A') {
+      yInterval = '1mo';
+      yRange = '10y';
+      resampleMonthsCount = 2;
+    } else if (chartInterval === '3A') {
+      yInterval = '3mo';
+      yRange = '15y';
     } else if (chartInterval === '4S') {
       yInterval = '1h';
       yRange = '3mo';
@@ -618,7 +735,7 @@ export default function NativeProChart({
         const lows = q.low || [];
         const closes = q.close || [];
         const vols = q.volume || [];
-        const isIntraday = yInterval.includes('m') || yInterval.includes('h');
+        const isIntraday = (yInterval.includes('m') && !yInterval.includes('mo')) || yInterval.includes('h');
         const parsed = [];
 
         for (let i = 0; i < timestamps.length; i++) {
@@ -750,12 +867,32 @@ export default function NativeProChart({
         } catch (e) {}
       }
 
+      // Fallback for 3A: if native 3mo yields nothing, fetch 1mo and group into 3-month buckets
+      if ((!dataCandles || dataCandles.length === 0) && chartInterval === '3A') {
+        try {
+          const directUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=1mo&range=10y`;
+          const resp = await fetch(directUrl);
+          if (resp.ok) {
+            const j = await resp.json();
+            const parsed = parseYahooJson(j);
+            if (parsed.length > 0) {
+              dataCandles = resampleMonths(parsed, 3);
+            }
+          }
+        } catch (e) {}
+      }
+
       if (!dataCandles || dataCandles.length === 0) {
         throw new Error(`${cleanTicker || symbol} için mum verisi bulunamadı.`);
       }
 
+      // Resample multi-month if 2A requested
+      if (resampleMonthsCount > 1 && dataCandles && dataCandles.length > 0) {
+        dataCandles = resampleMonths(dataCandles, resampleMonthsCount);
+      }
+
       // Resample if 2S or 4S requested
-      if (resampleGroup > 1) {
+      if (resampleGroup > 1 && dataCandles && dataCandles.length > 0) {
         dataCandles = resampleCandles(dataCandles, resampleGroup);
       }
 
@@ -880,7 +1017,7 @@ export default function NativeProChart({
     // Add Overlay Indicators
     if (indicators.ema20) {
       ema20SeriesRef.current = mainChart.addSeries(LineSeries, {
-        color: '#06b6d4',
+        color: '#ef4444',
         lineWidth: 1.5,
         priceLineVisible: false,
         lastValueVisible: true,
@@ -1057,12 +1194,15 @@ export default function NativeProChart({
   useEffect(() => {
     if (!candles || candles.length === 0 || !candlestickSeriesRef.current) return;
 
+    // Standard Candlesticks vs Heikin Ashi
+    const dataToRender = candleType === 'heikin_ashi' ? calcHeikinAshi(candles) : candles;
+
     // 1. Set Candlestick Data
-    candlestickSeriesRef.current.setData(candles);
+    candlestickSeriesRef.current.setData(dataToRender);
 
     // 2. Set Volume Data
     if (volumeSeriesRef.current) {
-      const volData = candles.map(c => ({
+      const volData = dataToRender.map(c => ({
         time: c.time,
         value: c.volume || 0,
         color: c.close >= c.open ? 'rgba(16, 185, 129, 0.45)' : 'rgba(239, 68, 68, 0.45)'
@@ -1070,21 +1210,20 @@ export default function NativeProChart({
       volumeSeriesRef.current.setData(volData);
     }
 
-    // 3. Set EMA Series
     // 3. Set EMA Series with user customizable periods
     if (ema20SeriesRef.current) {
-      ema20SeriesRef.current.setData(calcEMA(candles, indicatorSettings.ema1Period || 20));
+      ema20SeriesRef.current.setData(calcEMA(dataToRender, indicatorSettings.ema1Period || 20));
     }
     if (ema50SeriesRef.current) {
-      ema50SeriesRef.current.setData(calcEMA(candles, indicatorSettings.ema2Period || 50));
+      ema50SeriesRef.current.setData(calcEMA(dataToRender, indicatorSettings.ema2Period || 50));
     }
     if (ema200SeriesRef.current) {
-      ema200SeriesRef.current.setData(calcEMA(candles, indicatorSettings.ema3Period || 200));
+      ema200SeriesRef.current.setData(calcEMA(dataToRender, indicatorSettings.ema3Period || 200));
     }
 
     // 4. Set Bollinger Bands with user customizable period & std dev
     if (bbUpperSeriesRef.current && bbMiddleSeriesRef.current && bbLowerSeriesRef.current) {
-      const bb = calcBollinger(candles, indicatorSettings.bollingerPeriod || 20, indicatorSettings.bollingerStdDev || 2);
+      const bb = calcBollinger(dataToRender, indicatorSettings.bollingerPeriod || 20, indicatorSettings.bollingerStdDev || 2);
       bbUpperSeriesRef.current.setData(bb.upper);
       bbMiddleSeriesRef.current.setData(bb.middle);
       bbLowerSeriesRef.current.setData(bb.lower);
@@ -1092,7 +1231,7 @@ export default function NativeProChart({
 
     // 5. Set RSI Series with user customizable period (e.g. 14 or 24)
     if (rsiSeriesRef.current) {
-      rsiSeriesRef.current.setData(calcRSI(candles, indicatorSettings.rsiPeriod || 14));
+      rsiSeriesRef.current.setData(calcRSI(dataToRender, indicatorSettings.rsiPeriod || 14));
     }
 
     // 6. Draw / Update Portfolio Cost Line
@@ -1194,7 +1333,7 @@ export default function NativeProChart({
     }
     requestAnimationFrame(() => recalcSvgLines());
     setTimeout(() => recalcSvgLines(), 150);
-  }, [candles, indicators, indicatorSettings, activeHolding, isBist, recalcSvgLines]);
+  }, [candles, candleType, indicators, indicatorSettings, activeHolding, isBist, recalcSvgLines]);
 
   // Synchronize Horizontal Drawings on Price Scale
   useEffect(() => {
@@ -1303,9 +1442,10 @@ export default function NativeProChart({
 
   // Last Candle Details for HUD
   const lastBar = useMemo(() => {
-    if (!candles || candles.length === 0) return null;
-    return candles[candles.length - 1];
-  }, [candles]);
+    const dataToUse = candleType === 'heikin_ashi' ? calcHeikinAshi(candles) : candles;
+    if (!dataToUse || dataToUse.length === 0) return null;
+    return dataToUse[dataToUse.length - 1];
+  }, [candles, candleType]);
 
   const displayBar = hoverData || lastBar;
   const barChangePct = useMemo(() => {
@@ -1362,18 +1502,21 @@ export default function NativeProChart({
             {[
               { id: '1G', label: '1G (Günlük)' },
               { id: '1H', label: '1H (Haftalık)' },
-              { id: '4S', label: '4S' },
-              { id: '2S', label: '2S' },
-              { id: '1S', label: '1S' }
+              { id: '1A', label: '1A (Aylık)' },
+              { id: '2A', label: '2A (2 Aylık)' },
+              { id: '3A', label: '3A (3 Aylık / Çeyreklik)' },
+              { id: '4S', label: '4S (4 Saatlik)' },
+              { id: '2S', label: '2S (2 Saatlik)' },
+              { id: '1S', label: '1S (1 Saatlik)' }
             ].map(tf => (
               <button
                 key={tf.id}
                 type="button"
-                onClick={() => setChartInterval(tf.id)}
+                onClick={() => handleSetChartInterval(tf.id)}
                 className={`chip-btn ${chartInterval === tf.id ? 'active' : ''}`}
                 style={{ 
                   fontSize: 10, 
-                  padding: '3px 8px', 
+                  padding: '3px 7px', 
                   fontWeight: chartInterval === tf.id ? 700 : 500,
                   background: chartInterval === tf.id ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
                   borderColor: chartInterval === tf.id ? 'var(--cyan)' : 'transparent',
@@ -1386,7 +1529,45 @@ export default function NativeProChart({
             ))}
           </div>
 
-          <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+          <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
+
+          {/* 🕯️ Mum Tipi Seçici (Standart vs Heikin Ashi) */}
+          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <button
+              type="button"
+              onClick={() => handleSetCandleType('candles')}
+              className={`chip-btn ${candleType === 'candles' ? 'active' : ''}`}
+              style={{
+                fontSize: 10,
+                padding: '3px 7px',
+                fontWeight: candleType === 'candles' ? 700 : 500,
+                background: candleType === 'candles' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                borderColor: candleType === 'candles' ? '#10b981' : 'transparent',
+                color: candleType === 'candles' ? '#34d399' : 'var(--text-muted)'
+              }}
+              title="Klasik Japon Mumları"
+            >
+              🕯️ Standart
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetCandleType('heikin_ashi')}
+              className={`chip-btn ${candleType === 'heikin_ashi' ? 'active' : ''}`}
+              style={{
+                fontSize: 10,
+                padding: '3px 7px',
+                fontWeight: candleType === 'heikin_ashi' ? 700 : 500,
+                background: candleType === 'heikin_ashi' ? 'rgba(168, 85, 247, 0.2)' : 'transparent',
+                borderColor: candleType === 'heikin_ashi' ? '#a855f7' : 'transparent',
+                color: candleType === 'heikin_ashi' ? '#c084fc' : 'var(--text-muted)'
+              }}
+              title="Heikin Ashi Trend Mumları (Trend yumuşatma ve gürültü filtreleme)"
+            >
+              🎋 Heikin Ashi
+            </button>
+          </div>
+
+          <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)', margin: '0 3px' }} />
 
           {/* 📊 İndikatör Toggle Butonları */}
           <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -1398,7 +1579,15 @@ export default function NativeProChart({
             type="button"
             onClick={() => toggleIndicator('ema20')}
             className={`chip-btn ${indicators.ema20 ? 'active' : ''}`}
-            style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.ema20 ? '#06b6d4' : 'inherit', borderColor: indicators.ema20 ? '#06b6d4' : 'rgba(255,255,255,0.1)' }}
+            style={{ 
+              fontSize: 9.5, 
+              padding: '2px 7px', 
+              color: indicators.ema20 ? '#ef4444' : 'inherit', 
+              borderColor: indicators.ema20 ? '#ef4444' : 'rgba(255,255,255,0.1)',
+              background: indicators.ema20 ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+              fontWeight: indicators.ema20 ? 700 : 500
+            }}
+            title="EMA 20 hareketli ortalama trend eğrisi (Kırmızı)"
           >
             EMA {indicatorSettings.ema1Period || 20}
           </button>
@@ -1760,10 +1949,20 @@ export default function NativeProChart({
           fontFamily: 'monospace'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 800, color: 'var(--cyan)', fontSize: 13 }}>
             {cleanTicker || symbol}
           </span>
+
+          <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '1px 6px' }}>
+            {chartInterval}
+          </span>
+
+          {candleType === 'heikin_ashi' && (
+            <span className="nav-badge" style={{ fontSize: 9.5, padding: '1px 6px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
+              HEIKIN ASHI
+            </span>
+          )}
 
           {displayBar && (
             <>
@@ -2025,9 +2224,9 @@ export default function NativeProChart({
               </div>
 
               {/* EMA 1 Periyodu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(6, 182, 212, 0.05)', borderRadius: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 6 }}>
                 <div>
-                  <div style={{ fontWeight: 600, color: '#06b6d4' }}>EMA 1 (Hızlı)</div>
+                  <div style={{ fontWeight: 600, color: '#ef4444' }}>EMA 1 (Hızlı - Kırmızı)</div>
                   <div style={{ fontSize: 10, color: '#94a3b8' }}>Kısa vadeli momentum (Varsayılan: 20)</div>
                 </div>
                 <input
@@ -2036,7 +2235,7 @@ export default function NativeProChart({
                   max={500}
                   value={indicatorSettings.ema1Period}
                   onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema1Period: Math.max(2, parseInt(e.target.value) || 20) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(6, 182, 212, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
 
