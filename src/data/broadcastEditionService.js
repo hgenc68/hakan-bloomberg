@@ -153,20 +153,16 @@ BIST 100 endeksinin ${fmt(bist100.price, 0)} puanda 12.200 ana taban seviyesinde
 Dolar kurunun ${fmt(currentUsdTry, 2)} lirada dengelendiği bu seansta hangi sektörlerin öne çıktığını 9 slaytlık brifingimizde ayrıntılarıyla aktarıyoruz.`;
       }
       // metals_haven
-      return `Değerli dostlar, ${slotTitle} yayınımıza hoş geldiniz. Bugün ${todayFullStr}. Gündemimizin en sıcak başlığı kıymetli madenler, güvenli liman arayışı ve kripto likidite akışları.
+      return `Değerli dostlar, ${slotTitle} yayınımıza hoş geldiniz. Bugün ${todayFullStr}. Masamızın merkezinde kıymetli madenler, güvenli liman arayışı ve piyasaları sarsan son dakika sıcak şokları var.
 
-Ons altın ${fmt(gold.price, 0)} dolar seviyesinde rekor zirvelerine yakın seyrederken, Kapalıçarşı'da gram altın ${fmt(gramAltinTL, 0)} lira seviyesinde yatırımcısına güçlü bir kalkan sunuyor. Gümüş ${fmt(silver.price, 2)} dolarda sanayi talebiyle diri dururken, Bitcoin ${fmt(btc.price, 0)} dolar bandında kurumsal ETF girişleriyle taban yapıyor.
+Dün İran'ın Katar açıklarında bir petrol tankerine saldırmasıyla petrol fiyatlarının sıçraması, buna karşılık Trump'ın 'ara seçimlere kadar İran'a askeri müdahale yapmayacağız' çıkışı ve yapay zeka devi OpenAI'ın beklentilerin 20 milyar dolar gerisinde devasa bir nakit açığı bildirmesi piyasaları sarstı. Tüm bu jeopolitik ve teknoloji çalkantısının ortasında küresel sermayenin güvenli limanı olan ons altın ${fmt(gold.price, 0)} dolar bandında, gümüş ${fmt(silver.price, 2)} dolarda ve Kapalıçarşı gram altın ${fmt(gramAltinTL, 0)} lirada tarihi bir koruma kalkanı sunuyor.
 
-Piyasalardaki bu sermaye göçünün arka planını ve yatırımcının izlemesi gereken yol haritasını şimdi adım adım konuşuyoruz.`;
+Bugün altın ve gümüş ağırlıklı analizimizle paranın rotasını ve yapılması gereken hamleleri 9 slaytlık brifingimizle adım adım masaya yatırıyoruz.`;
 
     case 2:
-      if (theme.variantIndex === 1) {
-        return `İkinci durağımızda OPEC+ üretim dengesi ve küresel petrol arz-talep koridorunu inceliyoruz. Suudi Arabistan'ın günlük 9 milyon varillik kotayı koruması ve ABD stratejik petrol rezervlerinin 385 milyon varilde seyretmesi, Brent petrolün ${fmt(brent.price, 2)} dolar bandında tutunmasını sağlıyor. Rafineri marjlarındaki açılma ise akaryakıt fiyatlarını diri tutarak enerji kaynaklı enflasyon baskısını canlı tutuyor.`;
-      }
-      if (theme.variantIndex === 2) {
-        return `Jeopolitik risk endeksimize baktığımızda 142 puan ile yüksek risk bölgesindeyiz. Hürmüz Boğazı ve Kızıldeniz hattında tanker sigorta primlerinin yüzde 28 yükselmesi navlun maliyetlerini yukarı taşıyor. Brent petrol ${fmt(brent.price, 2)} dolarda seyrederken, WTI ham petrolü ${fmt(wti.price, 2)} dolarda bu maliyet artışını fiyatlıyor. Bu iletim zinciri faiz indirimlerini geciktirerek hisse senetleri üzerinde değerleme baskısı oluşturuyor.`;
-      }
-      return `İkinci slaytımızda deniz ticaretinin can damarı olan stratejik boğazlara bakıyoruz. Günlük 21 milyon varillik petrolün geçtiği Hürmüz Boğazı ve Süveyş yerine Ümit Burnu'ndan dolaşmak zorunda kalan gemiler, sefer sürelerini 12 gün uzattı. Brent petrolün ${fmt(brent.price, 2)} dolar tabanında tutunması tam olarak bu navlun ve arz güvenliği risklerinden kaynaklanıyor.`;
+      return `İkinci slaytımızda dünün en sıcak kırılması olan Orta Doğu ve enerji cephesine bakıyoruz. Dün İran'ın Katar açıklarında bir ham petrol tankerine yönelik İHA ve füze saldırısı düzenlemesiyle Brent petrol anında $${fmt(brent.price, 2)} seviyesine sıçradı; Hürmüz Boğazı ve Kızıldeniz hattında tanker harp sigortası primleri yüzde 28 tırmandı.
+
+Tam bu tansiyon yükselirken Trump'tan çok kritik bir denge mesajı geldi: 'Ara seçimlere kadar İran'a doğrudan askeri müdahale yapılmayacak.' Neden? Çünkü Washington yönetimi, petrolün 100 doların üzerine fırlayarak seçim öncesi benzin ve manşet enflasyonu patlatmasından çekiniyor. Trump'ın bu mesajı sıcak bir çatışmayı şimdilik öteleyip piyasaya geçici bir soluk aldırdı ancak jeopolitik risk primini kalıcı hale getirdi. Enerjideki bu yapışkan maliyet Fed'in faiz indirimlerini geciktirirken, kurumsal fonları en güçlü güvenli liman olan fiziki altın ve gümüşe yönlendiriyor.`;
 
     case 3:
       if (theme.variantIndex === 1) {
@@ -178,22 +174,14 @@ Piyasalardaki bu sermaye göçünün arka planını ve yatırımcının izlemesi
       return `Merkez bankaları masamıza geldiğimizde Türkiye'nin 3 katmanlı makro kalkanı dikkat çekiyor. Yıllık enflasyonun yüzde 49.38'e inmesiyle TCMB'nin yüzde 50 politika faizi ilk kez pozitif reel getiri sağladı (+%0.62). 5 yıllık CDS primimizin 216 baz puana gerilemesi ve cari dengedeki toparlanma, kur üzerindeki spekülatif baskıları tamamen kırdı.`;
 
     case 4:
-      if (theme.variantIndex === 1) {
-        return `Wall Street tarafında büyük teknoloji devlerinin yapay zekaya ayırdığı sermaye harcamaları, yani Capex bütçeleri tarihi zirvelerde. Microsoft, Alphabet, Meta ve Amazon toplamda 205 milyar dolarlık AI altyapı yatırımı yapıyor. Nvidia'nın Blackwell çip sevkiyatları ve veri merkezi enerji yatırımları bu teknoloji rallisinin en güçlü motoru olmaya devam ediyor.`;
-      }
-      if (theme.variantIndex === 2) {
-        return `S&P 500 değerleme çarpanlarına baktığımızda, ileriye dönük F/K çarpanının 21.4 kat olduğunu görüyoruz. Şirket kârlarının yüzde 10 büyümesi değerlemeleri makul kılarken, eşit ağırlıklı S&P 500 endeksinin de ralliye katılması yükselişin genele yayılmaya başladığını kanıtlıyor. S&P ${fmt(sp500.price, 0)} puanda ralli tabanını koruyor.`;
-      }
-      return `Wall Street ve AI ekosistemine baktığımızda sektör liderlerinin gücünü koruduğunu görüyoruz. Nvidia, Amazon, Alphabet ve Meta'nın güçlü nakit akışları Nasdaq endeksini ${fmt(nasdaq.price, 0)} puana taşırken, yarı iletken ve bulut bilişim sektörleri küresel büyümenin öncüsü konumunda kalmaya devam ediyor.`;
+      return `Dördüncü durağımızda Wall Street ve yapay zeka ekosisteminde dengeleri sarsan büyük bir bilanço şokunu konuşuyoruz: OpenAI'ın yıllık finansal sonuçlarında beklentilerin tam 20 milyar dolar gerisinde kalarak devasa bir nakit açığı ve zarar yazması teknoloji dünyasına bomba gibi düştü!
+
+Büyük teknoloji devleri—Microsoft, Alphabet, Amazon ve Meta—yıllık 205 milyar dolarlık devasa AI Capex yatırımı yaparken, OpenAI'ın bu açığı Wall Street'te şu soruyu manşete taşıdı: 'Yüz milyarlarca dolarlık bu harcama ne zaman kâra ve serbest nakit akışına dönecek?' Bu sorgulama Nasdaq ve çip hisselerinde kâr realizasyonlarını tetiklerken, akıllı kurumsal sermaye aşırı şişkin teknoloji değerlemelerinden çıkarak gerçek, dokunulabilir varlıklara—yani fiziki altın, gümüş ve nakit akışı üreten şirketlere—rotasyon yapıyor.`;
 
     case 5:
-      if (theme.variantIndex === 1) {
-        return `Kıymetli madenler masamızda altın/gümüş rasyosu 68 kat seviyesinde dengeleniyor. Ons gümüş ${fmt(silver.price, 2)} dolarda fotovoltaik güneş panelleri ve çip sanayisinin güçlü talebiyle destekleniyor. Ons altının ${fmt(gold.price, 0)} dolarda kalması ise Kapalıçarşı'da gram altını ${fmt(gramAltinTL, 0)} lira seviyesinde tutarak yatırımcısına çifte kalkan sağlıyor.`;
-      }
-      if (theme.variantIndex === 2) {
-        return `Altının yüksek faize rağmen neden düşmediği sorusunun cevabı ekranınızda: ABD 10 yıllık reel faizleri yükselmesine rağmen, Çin ve küresel merkez bankalarının kesintisiz fiziki altın alımları geleneksel modelleri yıktı. Ons altın ${fmt(gold.price, 0)} dolarda tarihi tabanını kurdu; gram altın ise ${fmt(gramAltinTL, 0)} lirada enflasyona karşı ana koruma aracı olmaya devam ediyor.`;
-      }
-      return `Emtia masamızda ons altının ${fmt(gold.price, 0)} dolarda 4.180 dolar kurumsal destek tabanını sağlama aldığını izliyoruz. Merkez bankalarının rezerv alımları ve jeopolitik güvenli liman primi altını diri tutarken, Kapalıçarşı gram altının ${fmt(gramAltinTL, 0)} lira seviyesindeki seyri yerel yatırımcı için sağlam bir getiri çıpasıdır.`;
+      return `Ve geldik bugünkü yayınımızın kalbine: Kıymetli madenler, ons altın ve gümüş masası! Hem Körfez'deki tanker saldırısı ve petrol şoku, hem de OpenAI fırtınasıyla teknolojide başlayan kâr realizasyonu küresel sermayeyi güvenli limanlara kilitledi.
+
+Ons altın $${fmt(gold.price, 0)} seviyesinde 4.180 - 4.300 dolar bandında tarihi direncini test ederken, asıl büyük patlama hikayesi gümüşte yazılıyor! Altın/gümüş rasyosu 68 kat seviyesine gerilerken, güneş panelleri ve yapay zeka donanım sanayisinin devasa fiziki talebi gümüşte 4 yıldır süren küresel arz açığını patlama noktasına getirdi. Kapalıçarşı'da gram altının ${fmt(gramAltinTL, 0)} lira seviyesinde sunduğu çifte kalkan ise yerel yatırımcı için bu çalkantılı Ekim döneminde en sağlam sigortadır. Şimdi kritik seviyeleri ve alım stratejimizi netleştirelim.`;
 
     case 6:
       if (theme.variantIndex === 1) {

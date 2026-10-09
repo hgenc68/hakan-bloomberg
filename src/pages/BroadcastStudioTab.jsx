@@ -1023,6 +1023,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           {[
+                            { id: 'breaking_news', label: '🔥 Sıcak Haberler & Şoklar', badge: 'Tanker/Trump/AI' },
                             { id: 'fed', label: '🏛️ FED Faiz Beklentisi', badge: '%78.4 Pas/Sabit' },
                             { id: 'seasonality', label: '📈 S&P 500 Mevsimsellik', badge: 'Q4 +%4.1' },
                             { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: 'TÜFE 49.38%' },
@@ -1393,6 +1394,66 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           </div>
                         </div>
                       )}
+
+                      {/* VIEW 5: BREAKING NEWS & MARKET SHOCKS */}
+                      {slide1SubTab === 'breaking_news' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, flex: 1, minWidth: 0, overflowY: 'auto' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Flame size={13} />
+                              <span>SON 24 SAATİN SICAK GELİŞMELERİ & PİYASA ETKİSİ</span>
+                            </div>
+                            <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', fontWeight: 800 }}>
+                              CANLI RADAR
+                            </span>
+                          </div>
+
+                          {/* 1. İran - Katar Açıkları Tanker Saldırısı */}
+                          <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6, padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: '#fca5a5' }}>💥 İRAN'IN KATAR AÇIKLARINDA TANKERE SALDIRISI</span>
+                              <span style={{ fontSize: 8, color: '#ef4444', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>BRENT: $78-$80 SIÇRAMASI</span>
+                            </div>
+                            <div style={{ fontSize: 9.5, color: '#e2e8f0', marginTop: 3, lineHeight: 1.4 }}>
+                              Katar açıklarında petrol tankerine yönelik İHA/füze saldırısı navlun ve savaş sigortası primlerini (+%28) tırmandırdı. Hürmüz risk primi petrolü yukarı iterken küresel enflasyon katılığı tezini güçlendiriyor.
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>Brent Petrol: Sıçrama</span>
+                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>Altın & Gümüş: Güvenli Liman Alımı</span>
+                            </div>
+                          </div>
+
+                          {/* 2. Trump'ın İran Mesajı */}
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: '#fde047' }}>🗳️ TRUMP'TAN İRAN ÇIKIŞI: "ARA SEÇİMLERE KADAR SALDIRI YOK"</span>
+                              <span style={{ fontSize: 8, color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>PETROL ŞOKUNA FREN</span>
+                            </div>
+                            <div style={{ fontSize: 9.5, color: '#e2e8f0', marginTop: 3, lineHeight: 1.4 }}>
+                              Trump, benzin fiyatlarının 100$ üstüne çıkarak tüketiciyi vurmasını önlemek için ara seçimlere kadar İran'a doğrudan askeri harekât yapılmayacağını açıkladı. Bu açıklama tansiyonu kısmen frenlese de riski Kasım sonrasına erteledi.
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>Beyaz Saray: Seçim Baskısı</span>
+                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>Piyasa: Belirsizliğin Ertelenmesi</span>
+                            </div>
+                          </div>
+
+                          {/* 3. OpenAI 20 Milyar $ Açık Şoku */}
+                          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6, padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: '#93c5fd' }}>💻 OPENAI 20 MİLYAR $ ZARAR ŞOKU & AI SORGULAMASI</span>
+                              <span style={{ fontSize: 8, color: '#60a5fa', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>TEKNOLOJİ ÇALKANTISI</span>
+                            </div>
+                            <div style={{ fontSize: 9.5, color: '#e2e8f0', marginTop: 3, lineHeight: 1.4 }}>
+                              OpenAI'ın devasa model eğitimi ve sunucu maliyetleri nedeniyle 20 milyar dolar zarar yazması, Big Tech'in 205 milyar $'lık yapay zeka harcamalarında "kârlılık ne zaman gelecek?" sorgulamasını başlattı; paradan fiziki emtiaya rotasyon hızlandı.
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>Mag-7: Kâr Baskısı</span>
+                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>Reel Varlıklar: Altın & Gümüş Kaçışı</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1514,16 +1575,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Hürmüz Boğazı & Petrol Akışı</div>
-                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Günlük 21M varil küresel petrol sevkiyatı; Suudi Doğu-Batı hattı bypass kapasitesi devrede.</div>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>💥 Katar Açıkları Tanker Saldırısı & Hürmüz Hattı</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Dün Katar açıklarında petrol tankerine İHA/füze saldırısı; harp sigortası +%28 arttı, petrol anında $80 bandını zorladı.</div>
                           </div>
                           <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Kızıldeniz & Ümit Burnu Rotası</div>
-                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Süveyş geçişlerinde aksama: Gemiler Ümit Burnu'ndan dolaşıyor, sefer süreleri +12 gün uzadı.</div>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>🗳️ Trump'tan Sinyal: "Ara Seçimlere Kadar İran'a Saldırı Yok"</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Petrolün 100$ üstüne fırlayıp enflasyonu patlatmasını önlemek için sıcak çatışma ertelendi; jeopolitik risk primi kalıcılaştı.</div>
                           </div>
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Navlun ve Sigorta Primleri</div>
-                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Taşımacılık navlun maliyetlerinde +%14 artış; ham madde maliyetlerini diri tutuyor.</div>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Navlun Maliyetleri & Altına Güvenli Liman Akışı</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Ümit Burnu'na sapan gemiler ve navlun primleri ham maddeyi diri tutarken sermayeyi güvenli limana çekiyor.</div>
                           </div>
                         </div>
                       </div>
@@ -1536,11 +1597,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {[
-                            { step: '1', title: 'Sıcak Bölge Gerilimi', desc: 'Hürmüz ve Kızıldeniz ekseninde tanker güvenlik riskleri', color: '#ef4444' },
-                            { step: '2', title: 'Navlun & Petrol Sıçraması', desc: `Brent petrol $${fmt(brent.price, 2)} bandında tutunarak 100$ tabanını zorluyor`, color: '#f97316' },
-                            { step: '3', title: 'Yapışkan Manşet Enflasyon', desc: 'Enerji ve lojistik maliyetleri enflasyon düşüş hızını yavaşlatıyor', color: '#eab308' },
-                            { step: '4', title: 'Geciken Faiz İndirimleri', desc: 'Merkez bankaları faiz indirim adımlarını ötelemek zorunda kalıyor', color: '#38bdf8' },
-                            { step: '5', title: 'Güvenli Liman Talebi', desc: 'Ons altın ve nakit dolara kurumsal taban desteği oluşuyor', color: '#10b981' }
+                            { step: '1', title: 'Tanker Saldırısı & Körfez Şoku', desc: 'Katar açıklarında vurulan tanker sonrası Hürmüz gerilimi', color: '#ef4444' },
+                            { step: '2', title: 'Trump Dengelemesi & Petrol Sıçraması', desc: `Brent petrol $${fmt(brent.price, 2)} bandında; seçim baskısıyla 100$ tavanı kontrol ediliyor`, color: '#f97316' },
+                            { step: '3', title: 'Yapışkan Manşet Enflasyon', desc: 'Enerji ve navlun artışı manşet enflasyonun düşüşünü frenliyor', color: '#eab308' },
+                            { step: '4', title: 'Geciken Faiz İndirimleri', desc: 'Fed ve küresel merkez bankaları gevşemeyi ötelemek zorunda kalıyor', color: '#38bdf8' },
+                            { step: '5', title: 'Güvenli Limana Kaçış (Altın & Gümüş)', desc: 'Ons altın ve gümüşe tarihi kurumsal taban desteği oluşuyor', color: '#10b981' }
                           ].map((item, idx) => (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 4, borderLeft: `3px solid ${item.color}` }}>
                               <span style={{ fontSize: 10, fontWeight: 900, color: item.color, background: `${item.color}20`, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1755,7 +1816,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             { sym: 'MICROSOFT', amount: '$58 Milyar', note: 'Azure AI altyapısı & OpenAI süper küme yatırımları', col: '#38bdf8' },
                             { sym: 'ALPHABET (GOOGLE)', amount: '$52 Milyar', note: 'TPU v5/v6 veri merkezleri & Gemini model mimarisi', col: '#818cf8' },
                             { sym: 'AMAZON (AWS)', amount: '$55 Milyar', note: 'AWS veri merkezleri & Trainium/Inferentia çipleri', col: '#fbbf24' },
-                            { sym: 'META', amount: '$40 Milyar', note: 'Llama açık kaynak modelleri & yapay zeka reklam motoru', col: '#ec4899' }
+                            { sym: 'META', amount: '$40 Milyar', note: 'Llama açık kaynak modelleri & yapay zeka reklam motoru', col: '#ec4899' },
+                            { sym: 'OPENAI ŞOKU', amount: '-$20 Milyar', note: 'Beklenti altı gelir, 20B$ nakit açığı & kârlılık sorgusu', col: '#ef4444' }
                           ].map((c, i) => (
                             <div key={i} style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${c.col}25`, borderRadius: 6, padding: '7px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
@@ -1887,10 +1949,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                           {[
                             { sym: 'NVIDIA', note: 'Blackwell B200 Çip Sevkiyatları', tag: 'AI Lokomotif', color: '#10b981' },
+                            { sym: 'OPENAI', note: 'Beklenti Altı Gelir, -$20B Nakit Açığı', tag: 'Kârlılık Şoku', color: '#ef4444' },
                             { sym: 'AMAZON', note: 'AWS Bulut Marjları & Nakit Akışı', tag: 'Bulut Gücü', color: '#38bdf8' },
                             { sym: 'ALPHABET', note: 'Gemini AI & 22 F/K Çarpanı', tag: 'Makul Değer', color: '#818cf8' },
                             { sym: 'META', note: 'AI Destekli Reklam Gelirleri', tag: 'Yüksek Marj', color: '#ec4899' },
-                            { sym: 'TESLA', note: 'Robotaxi & Otonom Sürüş Ölçeği', tag: 'Vizyon Primi', color: '#f59e0b' },
                             { sym: 'MICROSOFT', note: 'Azure & Copilot Kurumsal Lisans', tag: 'Kurumsal Güç', color: '#60a5fa' }
                           ].map((tech, idx) => (
                             <div key={idx} style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${tech.color}30`, borderRadius: 6, padding: '8px 10px' }}>
@@ -2058,8 +2120,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           </div>
 
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>2. Jeopolitik Güvenli Liman Primi</div>
-                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Hürmüz ve Orta Doğu gerilimleri altına taban desteği oluşturarak olası satış dalgalarını anında emiyor.</div>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>2. Jeopolitik & Teknoloji Güvenli Liman Primi</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Katar açıklarındaki tanker saldırısı, petrol sıçraması ve OpenAI'ın $20B açığıyla sarsılan Wall Street sermayesi fiziki altın ve gümüşe sığınıyor.</div>
                           </div>
 
                           <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
