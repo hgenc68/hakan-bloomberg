@@ -236,6 +236,14 @@ export function getTradingViewSymbol(ticker) {
   // If already prefixed
   if (clean.includes(':')) return clean;
 
+  // Major Indices (BIST & Global)
+  if (clean === 'XU100' || clean === 'BIST100' || clean === 'XU100.IS') return 'BIST:XU100';
+  if (clean === 'XU030' || clean === 'BIST30' || clean === 'XU030.IS') return 'BIST:XU030';
+  if (clean === 'SPX' || clean === 'SP500' || clean === 'S&P500' || clean === '^GSPC') return 'INDEX:SPX';
+  if (clean === 'NDX' || clean === 'NASDAQ' || clean === 'NASDAQ100' || clean === 'COMP' || clean === '^IXIC' || clean === '^NDX') return 'INDEX:NDX';
+  if (clean === 'DJI' || clean === 'DOW' || clean === 'DJIA' || clean === '^DJI') return 'INDEX:DJI';
+  if (clean === 'RUT' || clean === 'R2000' || clean === 'RUSSELL' || clean === 'RUSSELL2000' || clean === '^RUT') return 'INDEX:RUT';
+
   // Macro Indicators
   if (clean === 'DXY') return 'CAPITALCOM:DXY';
   if (clean === 'VIX') return 'CBOE:VIX';
@@ -401,7 +409,22 @@ const PRESET_WATCHLISTS = {
     { ticker: 'OTHERS', name: 'Diğer Küçük/Orta Altcoinler', desc: 'Top 10 Hariç Asimetrik Fırsat Endeksi ($)', tv: 'CRYPTOCAP:OTHERS' },
     { ticker: 'TOTALDEFI', name: 'DeFi Ekosistem Toplamı', desc: 'Merkeziyetsiz Finans Protokol Büyüklüğü ($)', tv: 'CRYPTOCAP:TOTALDEFI' }
   ],
+  indices: [
+    { ticker: 'XU100', name: 'BIST 100 Endeksi', desc: 'Borsa İstanbul Gösterge Endeksi', tv: 'BIST:XU100' },
+    { ticker: 'XU030', name: 'BIST 30 Endeksi', desc: 'Borsa İstanbul 30 Dev Şirket', tv: 'BIST:XU030' },
+    { ticker: 'SPX', name: 'S&P 500 Endeksi (SPX)', desc: 'ABD 500 Büyük Şirket Göstergesi', tv: 'INDEX:SPX' },
+    { ticker: 'NDX', name: 'Nasdaq 100 Endeksi (NDX)', desc: 'ABD Teknoloji & Büyüme Liderleri', tv: 'INDEX:NDX' },
+    { ticker: 'DJI', name: 'Dow Jones Endeksi (DJI)', desc: 'ABD 30 Mavi Çip Sanayi Devi', tv: 'INDEX:DJI' },
+    { ticker: 'RUT', name: 'Russell 2000 Endeksi (RUT)', desc: 'ABD Küçük Ölçekli (Small Cap) Şirketler', tv: 'INDEX:RUT' },
+    { ticker: 'VIX', name: 'CBOE Volatilite Endeksi', desc: 'Wall Street Korku & Oynaklık İbresi', tv: 'CBOE:VIX' },
+    { ticker: 'DXY', name: 'US Dollar Index', desc: 'Doların Küresel Sepet Karşısındaki Gücü', tv: 'CAPITALCOM:DXY' }
+  ],
   macro: [
+    { ticker: 'XU100', name: 'BIST 100 Endeksi', desc: 'Borsa İstanbul Gösterge Endeksi', tv: 'BIST:XU100' },
+    { ticker: 'SPX', name: 'S&P 500 Endeksi', desc: 'ABD 500 Büyük Şirket Göstergesi', tv: 'INDEX:SPX' },
+    { ticker: 'NDX', name: 'Nasdaq 100 Endeksi', desc: 'ABD Teknoloji & Büyüme Liderleri', tv: 'INDEX:NDX' },
+    { ticker: 'DJI', name: 'Dow Jones Endeksi', desc: 'ABD 30 Mavi Çip Sanayi Devi', tv: 'INDEX:DJI' },
+    { ticker: 'RUT', name: 'Russell 2000 Endeksi', desc: 'ABD Küçük Ölçekli Şirketler (Small Cap)', tv: 'INDEX:RUT' },
     { ticker: 'DXY', name: 'US Dollar Index', desc: 'Doların Küresel Sepet Karşısındaki Gücü', tv: 'CAPITALCOM:DXY' },
     { ticker: 'VIX', name: 'CBOE Volatilite Endeksi', desc: 'Wall Street Korku & Oynaklık İbresi', tv: 'CBOE:VIX' },
     { ticker: 'BRENT', name: 'Brent Ham Petrol', desc: 'Küresel Enerji & Jeopolitik Fiyatlama', tv: 'TVC:UKOIL' },
@@ -576,7 +599,17 @@ export const SEARCH_CATALOG = [
   { ticker: "VIX", name: "CBOE Volatilite Endeksi", market: "MAKRO", keywords: "vix korku endeksi volatilite oynaklık s&p 500 opsiyon" },
   { ticker: "US10Y", name: "ABD 10 Yıllık Hazine Tahvil Faizi", market: "MAKRO", keywords: "us10y tahvil faizi risksiz getiri dcf iskonto 10y bono" },
   { ticker: "US02Y", name: "ABD 2 Yıllık Tahvil Faizi", market: "MAKRO", keywords: "us02y 2 yıllık tahvil faizi fed faiz beklentisi eğri spread" },
-  { ticker: "USDTRY", name: "Dolar / Türk Lirası Paritesi", market: "DÖVİZ", keywords: "usdtry dolar tl kur tcmb döviz parite türk lirası" }
+  { ticker: "USDTRY", name: "Dolar / Türk Lirası Paritesi", market: "DÖVİZ", keywords: "usdtry dolar tl kur tcmb döviz parite türk lirası" },
+
+  // Major Indices (Endeksler - BIST & Global)
+  { ticker: "XU100", name: "BIST 100 Endeksi", market: "ENDEKS", keywords: "xu100 bist 100 bist100 borsa istanbul endeks turkiye turk borsa hisse xu100.is gosterge" },
+  { ticker: "XU030", name: "BIST 30 Endeksi", market: "ENDEKS", keywords: "xu030 bist 30 bist30 borsa istanbul buyuk 30 sirket dev endeks xu030.is" },
+  { ticker: "SPX", name: "S&P 500 Endeksi (SPX)", market: "ENDEKS", keywords: "spx sp500 s&p 500 s&p500 gspc standard and poors abd gosterge borsa endeksi broad market" },
+  { ticker: "NDX", name: "Nasdaq 100 Endeksi (NDX)", market: "ENDEKS", keywords: "ndx nasdaq nasdaq100 qqq teknoloji buyume devleri abd teknoloji endeksi ixic" },
+  { ticker: "COMP", name: "Nasdaq Bileşik Endeksi", market: "ENDEKS", keywords: "comp nasdaq ixic bilesik endeks abd teknoloji tum sirketler" },
+  { ticker: "DJI", name: "Dow Jones Endeksi (DJI)", market: "ENDEKS", keywords: "dji dow dow jones djia sanayi 30 mavi cip blue chip abd endeks" },
+  { ticker: "RUT", name: "Russell 2000 Endeksi (RUT)", market: "ENDEKS", keywords: "rut russell 2000 r2000 small cap kucuk olcekli abd sirketleri iwm endeks" },
+  { ticker: "R2000", name: "Russell 2000 (R2000)", market: "ENDEKS", keywords: "r2000 rut russell 2000 small cap kucuk olcekli endeks iwm" }
 ];
 
 export const searchCatalog = (query, limit = 8) => {
@@ -1096,6 +1129,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const isBistStock = useMemo(() => {
     const rawClean = cleanActiveTicker.replace('.IS', '');
     const bistList = [
+      'XU100', 'BIST100', 'XU030', 'BIST30',
       'BYDNR', 'TUPRS', 'THYAO', 'ASELS', 'EREGL', 'KCHOL', 'BIMAS', 'SISE', 
       'FROTO', 'ASTOR', 'SAHOL', 'GARAN', 'AKBNK', 'YKBNK', 'ISCTR', 'PGSUS', 
       'TCELL', 'PETKM', 'TTKOM', 'ENKAI', 'KOZAL', 'SASA', 'HEKTS', 'KONTR',
@@ -1203,15 +1237,17 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       const cleanT = t.toUpperCase().trim();
       if (!items.some(it => it.ticker.toUpperCase() === cleanT || it.rawTicker?.toUpperCase() === cleanT)) {
         const tv = getTradingViewSymbol(cleanT);
-        const name = stocksData[cleanT]?.name || potentialStocksData[cleanT]?.name || cleanT;
+        const catalogItem = SEARCH_CATALOG.find(c => c.ticker === cleanT || c.ticker === cleanT.replace('.IS', ''));
+        const name = catalogItem?.name || stocksData[cleanT]?.name || potentialStocksData[cleanT]?.name || cleanT;
+        const type = catalogItem?.market === 'ENDEKS' ? 'Endeks' : 'Manuel';
         items.push({
           ticker: cleanT,
           rawTicker: cleanT,
           name,
-          desc: 'Manuel Eklenen Varlık',
+          desc: catalogItem?.market === 'ENDEKS' ? 'Küresel / BIST Endeksi' : 'Manuel Eklenen Varlık',
           tv,
           isHolding: false,
-          type: 'Manuel',
+          type,
           isManual: true
         });
       }
@@ -1235,8 +1271,16 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       `${clean}USDT`,
       `${clean}-USD`,
       `${clean}USD`,
-      `${clean}.IS`
+      `${clean}.IS`,
+      `^${clean}`
     ];
+
+    if (clean === 'SPX' || clean === 'SP500') keysToTry.push('^GSPC', 'SPY');
+    if (clean === 'NDX' || clean === 'NASDAQ') keysToTry.push('^IXIC', '^NDX', 'QQQ');
+    if (clean === 'DJI' || clean === 'DOW') keysToTry.push('^DJI', 'DIA');
+    if (clean === 'RUT' || clean === 'R2000' || clean === 'RUSSELL') keysToTry.push('^RUT', 'IWM');
+    if (clean === 'XU100' || clean === 'BIST100') keysToTry.push('XU100.IS', 'XU100');
+    if (clean === 'XU030' || clean === 'BIST30') keysToTry.push('XU030.IS', 'XU030');
 
     // Special crypto symbol aliases
     if (clean === 'BIO') keysToTry.push('BIO34812-USD', 'BIO-USD');
@@ -1296,7 +1340,13 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
       return { price: Number(b.value || 0), changePct: Number(b.change || 0), currency: 'USD' };
     }
 
-    // Fallbacks for macro indicators
+    // Fallbacks for macro indicators & major indices
+    if (rawTicker === 'XU100' || rawTicker === 'BIST100' || rawTicker === 'XU100.IS') return { price: 12253.96, changePct: 1.15, currency: 'TRY', formattedPrice: '12.253,96 ₺' };
+    if (rawTicker === 'XU030' || rawTicker === 'BIST30' || rawTicker === 'XU030.IS') return { price: 15156.21, changePct: 1.25, currency: 'TRY', formattedPrice: '15.156,21 ₺' };
+    if (rawTicker === 'SPX' || rawTicker === 'SP500' || rawTicker === '^GSPC') return { price: 7765.36, changePct: 0.45, currency: 'USD', formattedPrice: '7,765.36' };
+    if (rawTicker === 'NDX' || rawTicker === 'NASDAQ' || rawTicker === '^IXIC' || rawTicker === '^NDX') return { price: 30725.81, changePct: 0.65, currency: 'USD', formattedPrice: '30,725.81' };
+    if (rawTicker === 'DJI' || rawTicker === 'DOW' || rawTicker === '^DJI') return { price: 51231.64, changePct: 0.28, currency: 'USD', formattedPrice: '51,231.64' };
+    if (rawTicker === 'RUT' || rawTicker === 'R2000' || rawTicker === 'RUSSELL' || rawTicker === '^RUT') return { price: 2794.13, changePct: 0.85, currency: 'USD', formattedPrice: '2,794.13' };
     if (rawTicker === 'DXY') return { price: 104.25, changePct: 0.12, currency: 'USD', formattedPrice: '104.25' };
     if (rawTicker === 'VIX') return { price: 14.80, changePct: -1.35, currency: 'USD', formattedPrice: '14.80' };
     if (rawTicker === 'BRENT') return { price: 78.40, changePct: 0.65, currency: 'USD', formattedPrice: '$78.40' };
@@ -1335,6 +1385,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     let list = [];
     if (activeCategory === 'portfolio') {
       list = portfolioItems;
+    } else if (activeCategory === 'indices') {
+      list = PRESET_WATCHLISTS.indices;
     } else if (activeCategory === 'us_stocks') {
       list = PRESET_WATCHLISTS.us_stocks;
     } else if (activeCategory === 'etf') {
@@ -1348,8 +1400,10 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
     } else if (isCustomActive && currentCustomList) {
       list = currentCustomList.tickers.map(t => {
         const tv = getTradingViewSymbol(t);
-        const name = stocksData[t]?.name || potentialStocksData[t]?.name || t;
-        return { ticker: t, name, desc: `${currentCustomList.name} Varlığı`, tv };
+        const catalogItem = SEARCH_CATALOG.find(c => c.ticker === t || c.ticker === t.toUpperCase() || c.ticker === t.replace('.IS', ''));
+        const name = catalogItem?.name || stocksData[t]?.name || potentialStocksData[t]?.name || t;
+        const desc = catalogItem?.market === 'ENDEKS' ? 'Küresel / BIST Endeksi' : `${currentCustomList.name} Varlığı`;
+        return { ticker: t, name, desc, tv };
       });
     }
 
@@ -2018,6 +2072,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                 </optgroup>
                 <optgroup label="📊 HAZIR PİYASA LİSTELERİ" style={{ background: '#080c16', color: '#94a3b8' }}>
                   <option value="portfolio" style={{ color: '#f8fafc', background: '#0a0f1d' }}>💼 Portföyüm ({portfolioItems.length} Varlık)</option>
+                  <option value="indices" style={{ color: '#f8fafc', background: '#0a0f1d' }}>🏆 Küresel & BIST Endeksleri ({PRESET_WATCHLISTS.indices.length})</option>
                   <option value="us_stocks" style={{ color: '#f8fafc', background: '#0a0f1d' }}>📈 ABD Hisse ({PRESET_WATCHLISTS.us_stocks.length})</option>
                   <option value="etf" style={{ color: '#f8fafc', background: '#0a0f1d' }}>🏛️ ETF Sepeti ({PRESET_WATCHLISTS.etf.length})</option>
                   <option value="bist" style={{ color: '#f8fafc', background: '#0a0f1d' }}>🇹🇷 BIST 100 ({PRESET_WATCHLISTS.bist.length})</option>
@@ -2193,10 +2248,11 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
               </div>
             )}
 
-            {/* Quick 4-Pill Shortcut Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, marginBottom: 8 }}>
+            {/* Quick 5-Pill Shortcut Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, marginBottom: 8 }}>
               {[
                 { id: 'portfolio', label: '💼 Portföy' },
+                { id: 'indices', label: '🏆 Endeks' },
                 { id: 'us_stocks', label: '📈 ABD' },
                 { id: 'crypto', label: '⚡ Kripto' },
                 { id: currentCustomList ? currentCustomList.id : (customWatchlists[0]?.id || 'custom_default'), label: `⭐ ${currentCustomList ? (currentCustomList.name.length > 7 ? currentCustomList.name.slice(0, 6) + '..' : currentCustomList.name) : 'Özel'}` }
@@ -2334,6 +2390,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                   {filteredSuggestions.map((item, idx) => {
                     const isHighlighted = idx === selectedSuggestionIndex;
                     const marketBadgeColor = 
+                      item.market === 'ENDEKS' ? 'rgba(251, 191, 36, 0.25)' :
                       item.market === 'BIST' ? 'rgba(239, 68, 68, 0.2)' :
                       item.market === 'NASDAQ' ? 'rgba(59, 130, 246, 0.2)' :
                       item.market === 'NYSE' ? 'rgba(99, 102, 241, 0.2)' :
@@ -2341,6 +2398,7 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
                       item.market === 'ETF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(168, 85, 247, 0.2)';
 
                     const marketBadgeText = 
+                      item.market === 'ENDEKS' ? '#fbbf24' :
                       item.market === 'BIST' ? '#f87171' :
                       item.market === 'NASDAQ' ? '#60a5fa' :
                       item.market === 'NYSE' ? '#818cf8' :

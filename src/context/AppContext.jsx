@@ -77,7 +77,21 @@ const TICKER_MAP = {
   'ALAB': 'ALAB',
   'CAMT': 'CAMT',
   'MRVL': 'MRVL',
-  'POET': 'POET'
+  'POET': 'POET',
+  // Major Indices
+  'SPX': '^GSPC',
+  'SP500': '^GSPC',
+  'NDX': '^IXIC',
+  'NASDAQ': '^IXIC',
+  'DJI': '^DJI',
+  'DOW': '^DJI',
+  'RUT': '^RUT',
+  'R2000': '^RUT',
+  'RUSSELL': '^RUT',
+  'XU100': 'XU100.IS',
+  'BIST100': 'XU100.IS',
+  'XU030': 'XU030.IS',
+  'BIST30': 'XU030.IS'
 };
 
 // Known crypto tickers to ensure classification consistency
@@ -154,7 +168,20 @@ const DEFAULT_INITIAL_QUOTES = {
   'ALAB': { symbol: 'ALAB', price: 362.34, currency: 'USD', changePct: 3.43 },
   'CAMT': { symbol: 'CAMT', price: 162.05, currency: 'USD', changePct: -1.90 },
   'MRVL': { symbol: 'MRVL', price: 271.25, currency: 'USD', changePct: -0.38 },
-  'POET': { symbol: 'POET', price: 7.81, currency: 'USD', changePct: 0.26 }
+  'POET': { symbol: 'POET', price: 7.81, currency: 'USD', changePct: 0.26 },
+  // Major Indices Initial Quotes
+  '^GSPC': { symbol: '^GSPC', price: 7765.36, currency: 'USD', changePct: 0.45 },
+  'SPX': { symbol: 'SPX', price: 7765.36, currency: 'USD', changePct: 0.45 },
+  '^IXIC': { symbol: '^IXIC', price: 27193.34, currency: 'USD', changePct: 0.65 },
+  'NDX': { symbol: 'NDX', price: 30725.81, currency: 'USD', changePct: 0.65 },
+  '^DJI': { symbol: '^DJI', price: 51231.64, currency: 'USD', changePct: 0.28 },
+  'DJI': { symbol: 'DJI', price: 51231.64, currency: 'USD', changePct: 0.28 },
+  '^RUT': { symbol: '^RUT', price: 2794.13, currency: 'USD', changePct: 0.85 },
+  'RUT': { symbol: 'RUT', price: 2794.13, currency: 'USD', changePct: 0.85 },
+  'XU100.IS': { symbol: 'XU100.IS', price: 12253.96, currency: 'TRY', changePct: 1.15 },
+  'XU100': { symbol: 'XU100', price: 12253.96, currency: 'TRY', changePct: 1.15 },
+  'XU030.IS': { symbol: 'XU030.IS', price: 15156.21, currency: 'TRY', changePct: 1.25 },
+  'XU030': { symbol: 'XU030', price: 15156.21, currency: 'TRY', changePct: 1.25 }
 };
 
 export const AppProvider = ({ children }) => {
@@ -324,8 +351,8 @@ export const AppProvider = ({ children }) => {
     setIsUpdatingMarket(true);
     try {
       const symbolsToFetch = new Set([
-        'USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'BTC-USD', 'ETH-USD',
-        'SPY', 'QQQ', 'DIA', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F',
+        'USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'XU030.IS', '^IXIC', '^DJI', '^RUT', 'BTC-USD', 'ETH-USD',
+        'SPY', 'QQQ', 'DIA', 'IWM', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F',
         'DX-Y.NYB', 'SI=F', 'CL=F', '2YY=F',
         // US Tech & Wall Street Core Leaders
         'NVDA', 'AMZN', 'SOFI', 'AAPL', 'MSFT', 'TSLA', 'GOOGL', 'META', 'PLTR', 'AMD', 'TSM', 'AVGO',
@@ -461,8 +488,12 @@ export const AppProvider = ({ children }) => {
               if (s === '^TNX') fetchedQuotes['US10Y'] = quoteObj;
               if (s === '2YY=F') fetchedQuotes['US2Y'] = quoteObj;
               if (s === '^VIX') fetchedQuotes['VIX'] = quoteObj;
-              if (s === '^GSPC') fetchedQuotes['SP500'] = quoteObj;
-              if (s === 'XU100.IS') fetchedQuotes['BIST100'] = quoteObj;
+              if (s === '^GSPC') { fetchedQuotes['SP500'] = quoteObj; fetchedQuotes['SPX'] = quoteObj; }
+              if (s === '^IXIC' || s === '^NDX') { fetchedQuotes['NDX'] = quoteObj; fetchedQuotes['NASDAQ'] = quoteObj; }
+              if (s === '^DJI') { fetchedQuotes['DJI'] = quoteObj; fetchedQuotes['DOW'] = quoteObj; }
+              if (s === '^RUT') { fetchedQuotes['RUT'] = quoteObj; fetchedQuotes['R2000'] = quoteObj; fetchedQuotes['RUSSELL'] = quoteObj; }
+              if (s === 'XU100.IS') { fetchedQuotes['BIST100'] = quoteObj; fetchedQuotes['XU100'] = quoteObj; }
+              if (s === 'XU030.IS') { fetchedQuotes['BIST30'] = quoteObj; fetchedQuotes['XU030'] = quoteObj; }
               if (s === 'BTC-USD') fetchedQuotes['BTC'] = quoteObj;
               if (s === 'ETH-USD') fetchedQuotes['ETH'] = quoteObj;
             }

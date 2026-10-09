@@ -857,7 +857,17 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                             {item.name}
                           </span>
                         </div>
-                        <span style={{ fontSize: 8.5, padding: '2px 5px', borderRadius: 3, background: isBist ? 'rgba(239, 68, 68, 0.18)' : 'rgba(56, 189, 248, 0.18)', color: isBist ? '#f87171' : '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700, flexShrink: 0, marginLeft: 6 }}>
+                        <span style={{ 
+                          fontSize: 8.5, 
+                          padding: '2px 5px', 
+                          borderRadius: 3, 
+                          background: item.market === 'ENDEKS' ? 'rgba(251, 191, 36, 0.2)' : isBist ? 'rgba(239, 68, 68, 0.18)' : 'rgba(56, 189, 248, 0.18)', 
+                          color: item.market === 'ENDEKS' ? '#fbbf24' : isBist ? '#f87171' : '#38bdf8', 
+                          fontFamily: 'var(--font-mono)', 
+                          fontWeight: 700, 
+                          flexShrink: 0, 
+                          marginLeft: 6 
+                        }}>
                           {item.market || (isBist ? 'BIST' : 'US')}
                         </span>
                       </div>
