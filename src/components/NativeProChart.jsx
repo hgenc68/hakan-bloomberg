@@ -66,8 +66,18 @@ function calcBollinger(data, period = 20, multiplier = 2) {
 }
 
 function calcRSI(data, period = 14) {
-  if (!data || data.length <= period) return [];
+  if (!data || data.length === 0) return [];
+  if (data.length <= period) {
+    return data.map(d => ({ time: d.time }));
+  }
+
   const rsi = [];
+  // Add whitespace data for initial bars prior to period so the RSI series
+  // perfectly matches the exact same bar indices and timestamps as the candlestick chart!
+  for (let i = 0; i < period; i++) {
+    rsi.push({ time: data[i].time });
+  }
+
   let gains = 0;
   let losses = 0;
 
@@ -385,6 +395,18 @@ export default function NativeProChart({
 
   // Horizontal price lines refs mapping
   const horizontalPriceLinesMapRef = useRef(new Map());
+
+  // Reference to current active candles for range sync calculations
+  const candlesRef = useRef([]);
+
+  // Persistent user chart view (zoom level & right margin offset)
+  const lastViewConfigRef = useRef((() => {
+    try {
+      const saved = localStorage.getItem('terminal_chart_view_config');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return { barCount: 95, rightOffset: 8 };
+  })());
 
   // Component state
   const [chartInterval, setChartInterval] = useState(() => {
@@ -978,7 +1000,10 @@ export default function NativeProChart({
       timeScale: {
         borderColor: 'rgba(255, 255, 255, 0.1)',
         timeVisible: chartInterval.includes('S'),
-        secondsVisible: false
+        secondsVisible: false,
+        rightOffset: 8,
+        barSpacing: 9,
+        minBarSpacing: 0.5
       }
     });
 
@@ -1104,7 +1129,10 @@ export default function NativeProChart({
         },
         timeScale: {
           visible: false,
-          borderColor: 'transparent'
+          borderColor: 'transparent',
+          rightOffset: 8,
+          barSpacing: 9,
+          minBarSpacing: 0.5
         }
       });
       rsiChartInstanceRef.current = rsiChart;
@@ -1132,11 +1160,41 @@ export default function NativeProChart({
         title: 'Aşırı Satım (30)'
       });
 
-      // Synchronize visible time range between Main and RSI Chart
+      // Synchronize visible time range between Main and RSI Chart & persist user zoom/scroll
+      let isSyncingRange = false;
+
       mainChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-        if (range && rsiChartInstanceRef.current) {
-          rsiChartInstanceRef.current.timeScale().setVisibleLogicalRange(range);
+        if (!range) return;
+
+        // Persist user view zoom (barCount) and right offset margin
+        const total = candlesRef.current?.length || 0;
+        if (total > 0 && typeof range.from === 'number' && typeof range.to === 'number') {
+          const barCount = Math.max(15, Math.round(range.to - range.from));
+          const offset = Math.round(range.to - (total - 1));
+          lastViewConfigRef.current = {
+            barCount,
+            rightOffset: Math.max(4, Math.min(50, offset > 0 ? offset : 8))
+          };
+          try {
+            localStorage.setItem('terminal_chart_view_config', JSON.stringify(lastViewConfigRef.current));
+          } catch (e) {}
         }
+
+        if (isSyncingRange || !rsiChartInstanceRef.current) return;
+        isSyncingRange = true;
+        try {
+          rsiChartInstanceRef.current.timeScale().setVisibleLogicalRange(range);
+        } catch (e) {}
+        isSyncingRange = false;
+      });
+
+      rsiChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+        if (isSyncingRange || !range || !chartInstanceRef.current) return;
+        isSyncingRange = true;
+        try {
+          chartInstanceRef.current.timeScale().setVisibleLogicalRange(range);
+        } catch (e) {}
+        isSyncingRange = false;
       });
     } else {
       rsiSeriesRef.current = null;
@@ -1327,9 +1385,23 @@ export default function NativeProChart({
       }
     }
 
-    // Fit content smoothly on initial data load and recalculate SVG lines
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.timeScale().fitContent();
+    // Update active candles ref for range tracking
+    candlesRef.current = dataToRender;
+
+    // Apply preserved user view with comfortable right offset so the latest candle is never glued to the edge
+    const totalBars = dataToRender.length;
+    if (totalBars > 0 && chartInstanceRef.current) {
+      const viewConfig = lastViewConfigRef.current || { barCount: 95, rightOffset: 8 };
+      const rightOffset = typeof viewConfig.rightOffset === 'number' ? Math.max(4, viewConfig.rightOffset) : 8;
+      const barCount = typeof viewConfig.barCount === 'number' ? Math.max(15, viewConfig.barCount) : 95;
+
+      const targetTo = totalBars - 1 + rightOffset;
+      const targetFrom = Math.max(0, targetTo - barCount);
+
+      chartInstanceRef.current.timeScale().setVisibleLogicalRange({ from: targetFrom, to: targetTo });
+      if (rsiChartInstanceRef.current) {
+        rsiChartInstanceRef.current.timeScale().setVisibleLogicalRange({ from: targetFrom, to: targetTo });
+      }
     }
     requestAnimationFrame(() => recalcSvgLines());
     setTimeout(() => recalcSvgLines(), 150);
@@ -1439,6 +1511,24 @@ export default function NativeProChart({
       setShowDrawingsList(false);
     }
   };
+
+  // Reset chart zoom level and right-edge margin to clean standard view
+  const handleResetView = useCallback(() => {
+    lastViewConfigRef.current = { barCount: 95, rightOffset: 8 };
+    try {
+      localStorage.setItem('terminal_chart_view_config', JSON.stringify(lastViewConfigRef.current));
+    } catch (e) {}
+
+    const totalBars = candlesRef.current?.length || 0;
+    if (totalBars > 0 && chartInstanceRef.current) {
+      const targetTo = totalBars - 1 + 8;
+      const targetFrom = Math.max(0, targetTo - 95);
+      chartInstanceRef.current.timeScale().setVisibleLogicalRange({ from: targetFrom, to: targetTo });
+      if (rsiChartInstanceRef.current) {
+        rsiChartInstanceRef.current.timeScale().setVisibleLogicalRange({ from: targetFrom, to: targetTo });
+      }
+    }
+  }, []);
 
   // Last Candle Details for HUD
   const lastBar = useMemo(() => {
@@ -1861,6 +1951,18 @@ export default function NativeProChart({
               <span>{sidebarOpen ? 'Liste' : 'Liste'}</span>
             </button>
           )}
+
+          {/* Görünüm ve Sağ Marj Sıfırlama Butonu */}
+          <button
+            type="button"
+            onClick={handleResetView}
+            className="chip-btn"
+            style={{ fontSize: 10, padding: '3px 8px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}
+            title="Grafik yakınlaştırmasını ve sağ boşluk marjını standart görünüme sıfırla"
+          >
+            <RotateCcw size={11} />
+            <span>Sıfırla</span>
+          </button>
 
           {/* Tam Ekran Toggle */}
           {onToggleFullscreen && (
