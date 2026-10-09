@@ -5,7 +5,8 @@ import {
   LineSeries, 
   HistogramSeries, 
   LineStyle, 
-  CrosshairMode 
+  CrosshairMode,
+  createSeriesMarkers
 } from 'lightweight-charts';
 import { 
   TrendingUp, 
@@ -102,6 +103,178 @@ function calcRSI(data, period = 14) {
   }
 
   return rsi;
+}
+
+// Calculate Moving Average on RSI series (default 14 SMA)
+function calcRsiMA(rsiData, period = 14) {
+  if (!rsiData || rsiData.length === 0) return [];
+  const result = [];
+  const validValues = [];
+  for (let i = 0; i < rsiData.length; i++) {
+    const item = rsiData[i];
+    if (typeof item.value !== 'number' || isNaN(item.value)) {
+      result.push({ time: item.time });
+      continue;
+    }
+    validValues.push(item.value);
+    if (validValues.length < period) {
+      result.push({ time: item.time });
+    } else {
+      const slice = validValues.slice(-period);
+      const sum = slice.reduce((acc, v) => acc + v, 0);
+      const avg = Number((sum / period).toFixed(2));
+      result.push({ time: item.time, value: avg });
+    }
+  }
+  return result;
+}
+
+// Calculate Bullish (PU) and Bearish (NU) Divergences between Price and RSI
+function calcDivergences(candles, rsiData, lookbackRadius = 2) {
+  if (!candles || !rsiData || candles.length < 20) return { candleMarkers: [], rsiMarkers: [], latest: null };
+  const points = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const r = rsiData[i];
+    const rsiVal = (r && typeof r.value === 'number') ? r.value : null;
+    points.push({ time: c.time, low: c.low, high: c.high, close: c.close, rsi: rsiVal, idx: i });
+  }
+
+  const r = lookbackRadius;
+  const pivotLows = [];
+  const pivotHighs = [];
+
+  for (let i = r; i < points.length - r; i++) {
+    const curr = points[i];
+    if (curr.rsi === null) continue;
+
+    let isLow = true;
+    for (let j = 1; j <= r; j++) {
+      if (points[i - j].low < curr.low || points[i + j].low < curr.low) {
+        isLow = false;
+        break;
+      }
+    }
+    if (isLow) pivotLows.push(curr);
+
+    let isHigh = true;
+    for (let j = 1; j <= r; j++) {
+      if (points[i - j].high > curr.high || points[i + j].high > curr.high) {
+        isHigh = false;
+        break;
+      }
+    }
+    if (isHigh) pivotHighs.push(curr);
+  }
+
+  const rawEvents = [];
+
+  // Pozitif Uyumsuzluk (PU / Bullish): Fiyat daha düşük dip, RSI daha yüksek dip
+  for (let i = 1; i < pivotLows.length; i++) {
+    const curr = pivotLows[i];
+    for (let j = i - 1; j >= 0; j--) {
+      const prev = pivotLows[j];
+      const dist = curr.idx - prev.idx;
+      if (dist < 4) continue;
+      if (dist > 45) break;
+
+      if (curr.low < prev.low * 0.998 && curr.rsi > prev.rsi + 1.2 && curr.rsi <= 65) {
+        rawEvents.push({
+          type: 'PU',
+          title: 'Pozitif Uyumsuzluk (PU - Alış)',
+          time: curr.time,
+          idx: curr.idx,
+          price: curr.low,
+          prevPrice: prev.low,
+          rsi: curr.rsi,
+          prevRsi: prev.rsi
+        });
+        break;
+      }
+    }
+  }
+
+  // Negatif Uyumsuzluk (NU / Bearish): Fiyat daha yüksek tepe, RSI daha düşük tepe
+  for (let i = 1; i < pivotHighs.length; i++) {
+    const curr = pivotHighs[i];
+    for (let j = i - 1; j >= 0; j--) {
+      const prev = pivotHighs[j];
+      const dist = curr.idx - prev.idx;
+      if (dist < 4) continue;
+      if (dist > 45) break;
+
+      if (curr.high > prev.high * 1.002 && curr.rsi < prev.rsi - 1.2 && curr.rsi >= 35) {
+        rawEvents.push({
+          type: 'NU',
+          title: 'Negatif Uyumsuzluk (NU - Satış)',
+          time: curr.time,
+          idx: curr.idx,
+          price: curr.high,
+          prevPrice: prev.high,
+          rsi: curr.rsi,
+          prevRsi: prev.rsi
+        });
+        break;
+      }
+    }
+  }
+
+  // Sort raw events by time
+  rawEvents.sort((a, b) => (a.time > b.time ? 1 : a.time < b.time ? -1 : 0));
+
+  // Debounce consecutive signals of same type within 5 bars
+  const filtered = [];
+  for (const ev of rawEvents) {
+    const lastSame = filtered.filter(f => f.type === ev.type).pop();
+    if (!lastSame || (ev.idx - lastSame.idx) >= 5) {
+      filtered.push(ev);
+    }
+  }
+
+  const candleMarkers = [];
+  const rsiMarkers = [];
+
+  for (const ev of filtered) {
+    if (ev.type === 'PU') {
+      candleMarkers.push({
+        time: ev.time,
+        position: 'belowBar',
+        color: '#10b981',
+        shape: 'arrowUp',
+        text: 'PU',
+        size: 1
+      });
+      rsiMarkers.push({
+        time: ev.time,
+        position: 'belowBar',
+        color: '#10b981',
+        shape: 'circle',
+        text: 'PU',
+        size: 1
+      });
+    } else {
+      candleMarkers.push({
+        time: ev.time,
+        position: 'aboveBar',
+        color: '#ef4444',
+        shape: 'arrowDown',
+        text: 'NU',
+        size: 1
+      });
+      rsiMarkers.push({
+        time: ev.time,
+        position: 'aboveBar',
+        color: '#ef4444',
+        shape: 'circle',
+        text: 'NU',
+        size: 1
+      });
+    }
+  }
+
+  const latest = filtered.length > 0 ? filtered[filtered.length - 1] : null;
+
+  return { candleMarkers, rsiMarkers, latest };
 }
 
 // Resample 1h candles into 2h or 4h buckets
@@ -392,6 +565,9 @@ export default function NativeProChart({
   const bbMiddleSeriesRef = useRef(null);
   const bbLowerSeriesRef = useRef(null);
   const rsiSeriesRef = useRef(null);
+  const rsiMaSeriesRef = useRef(null);
+  const candleMarkersPluginRef = useRef(null);
+  const rsiMarkersPluginRef = useRef(null);
 
   // Horizontal price lines refs mapping
   const horizontalPriceLinesMapRef = useRef(new Map());
@@ -432,6 +608,7 @@ export default function NativeProChart({
 
   // Modal for Indicator Settings
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [latestDivergence, setLatestDivergence] = useState(null);
 
   // Flags to avoid feedback loop between Firestore subscription and local state updates
   const isApplyingCloudPreferencesRef = useRef(false);
@@ -442,10 +619,11 @@ export default function NativeProChart({
   const [indicatorSettings, setIndicatorSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('terminal_indicator_settings');
-      if (saved) return JSON.parse(saved);
+      if (saved) return { rsiMaPeriod: 14, ...JSON.parse(saved) };
     } catch (e) {}
     return {
       rsiPeriod: 24,
+      rsiMaPeriod: 14,
       ema1Period: 20,
       ema2Period: 50,
       ema3Period: 200,
@@ -461,7 +639,7 @@ export default function NativeProChart({
   const [indicators, setIndicators] = useState(() => {
     try {
       const saved = localStorage.getItem('terminal_chart_indicators');
-      if (saved) return JSON.parse(saved);
+      if (saved) return { rsiMa: true, rsiDivergence: true, ...JSON.parse(saved) };
     } catch (e) {}
     return {
       ema20: false,
@@ -470,6 +648,8 @@ export default function NativeProChart({
       bollinger: false,
       volume: true,
       rsi: true,
+      rsiMa: true,
+      rsiDivergence: true,
       costLine: false,
       autoSR: false,
       autoFib: true
@@ -483,26 +663,35 @@ export default function NativeProChart({
         const data = docSnap.data();
         if (data && data.indicators) {
           isApplyingCloudPreferencesRef.current = true;
+          const mergedIndicators = {
+            rsiMa: true,
+            rsiDivergence: true,
+            ...data.indicators
+          };
           setIndicators(prev => {
-            if (JSON.stringify(prev) !== JSON.stringify(data.indicators)) {
-              return data.indicators;
+            if (JSON.stringify(prev) !== JSON.stringify(mergedIndicators)) {
+              return mergedIndicators;
             }
             return prev;
           });
           try {
-            localStorage.setItem('terminal_chart_indicators', JSON.stringify(data.indicators));
+            localStorage.setItem('terminal_chart_indicators', JSON.stringify(mergedIndicators));
           } catch (e) {}
         }
         if (data && data.indicatorSettings) {
           isApplyingCloudSettingsRef.current = true;
+          const mergedSettings = {
+            rsiMaPeriod: 14,
+            ...data.indicatorSettings
+          };
           setIndicatorSettings(prev => {
-            if (JSON.stringify(prev) !== JSON.stringify(data.indicatorSettings)) {
-              return data.indicatorSettings;
+            if (JSON.stringify(prev) !== JSON.stringify(mergedSettings)) {
+              return mergedSettings;
             }
             return prev;
           });
           try {
-            localStorage.setItem('terminal_indicator_settings', JSON.stringify(data.indicatorSettings));
+            localStorage.setItem('terminal_indicator_settings', JSON.stringify(mergedSettings));
           } catch (e) {}
         }
         if (data && data.chartInterval) {
@@ -1020,6 +1209,7 @@ export default function NativeProChart({
       lastValueVisible: true
     });
     candlestickSeriesRef.current = candleSeries;
+    candleMarkersPluginRef.current = createSeriesMarkers(candleSeries, []);
 
     // Add Volume Series (at bottom 20%)
     if (indicators.volume) {
@@ -1140,9 +1330,23 @@ export default function NativeProChart({
       const rsiSeries = rsiChart.addSeries(LineSeries, {
         color: '#ec4899',
         lineWidth: 2,
-        title: 'RSI (14)'
+        title: `RSI (${indicatorSettings.rsiPeriod || 14})`
       });
       rsiSeriesRef.current = rsiSeries;
+      rsiMarkersPluginRef.current = createSeriesMarkers(rsiSeries, []);
+
+      // RSI Moving Average (SMA - Vibrant Yellow #facc15)
+      if (indicators.rsiMa) {
+        rsiMaSeriesRef.current = rsiChart.addSeries(LineSeries, {
+          color: '#facc15',
+          lineWidth: 1.5,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          title: `RSI MA (${indicatorSettings.rsiMaPeriod || 14})`
+        });
+      } else {
+        rsiMaSeriesRef.current = null;
+      }
 
       // Add 70 (Overbought) and 30 (Oversold) lines
       rsiSeries.createPriceLine({
@@ -1198,6 +1402,8 @@ export default function NativeProChart({
       });
     } else {
       rsiSeriesRef.current = null;
+      rsiMaSeriesRef.current = null;
+      rsiMarkersPluginRef.current = null;
     }
 
     // Subscribe to crosshair move for HUD inspection
@@ -1237,6 +1443,9 @@ export default function NativeProChart({
 
     return () => {
       resizeObserver.disconnect();
+      candleMarkersPluginRef.current = null;
+      rsiMarkersPluginRef.current = null;
+      rsiMaSeriesRef.current = null;
       if (chartInstanceRef.current) {
         chartInstanceRef.current.remove();
         chartInstanceRef.current = null;
@@ -1246,7 +1455,7 @@ export default function NativeProChart({
         rsiChartInstanceRef.current = null;
       }
     };
-  }, [indicators, chartInterval, recalcSvgLines]);
+  }, [indicators, indicatorSettings.rsiPeriod, indicatorSettings.rsiMaPeriod, chartInterval, recalcSvgLines]);
 
   // Push candle data & indicators to series whenever candles update
   useEffect(() => {
@@ -1287,9 +1496,34 @@ export default function NativeProChart({
       bbLowerSeriesRef.current.setData(bb.lower);
     }
 
-    // 5. Set RSI Series with user customizable period (e.g. 14 or 24)
+    // 5. Set RSI Series, RSI MA, and Divergences
+    const rsiData = calcRSI(dataToRender, indicatorSettings.rsiPeriod || 14);
     if (rsiSeriesRef.current) {
-      rsiSeriesRef.current.setData(calcRSI(dataToRender, indicatorSettings.rsiPeriod || 14));
+      rsiSeriesRef.current.setData(rsiData);
+    }
+
+    if (rsiMaSeriesRef.current && indicators.rsiMa) {
+      const rsiMaData = calcRsiMA(rsiData, indicatorSettings.rsiMaPeriod || 14);
+      rsiMaSeriesRef.current.setData(rsiMaData);
+    }
+
+    if (indicators.rsiDivergence) {
+      const { candleMarkers, rsiMarkers, latest } = calcDivergences(dataToRender, rsiData, 2);
+      if (candleMarkersPluginRef.current) {
+        candleMarkersPluginRef.current.setMarkers(candleMarkers);
+      }
+      if (rsiMarkersPluginRef.current) {
+        rsiMarkersPluginRef.current.setMarkers(rsiMarkers);
+      }
+      setLatestDivergence(latest);
+    } else {
+      if (candleMarkersPluginRef.current) {
+        candleMarkersPluginRef.current.setMarkers([]);
+      }
+      if (rsiMarkersPluginRef.current) {
+        rsiMarkersPluginRef.current.setMarkers([]);
+      }
+      setLatestDivergence(null);
     }
 
     // 6. Draw / Update Portfolio Cost Line
@@ -1726,6 +1960,40 @@ export default function NativeProChart({
             style={{ fontSize: 9.5, padding: '2px 7px', color: indicators.rsi ? '#ec4899' : 'inherit', borderColor: indicators.rsi ? '#ec4899' : 'rgba(255,255,255,0.1)' }}
           >
             RSI ({indicatorSettings.rsiPeriod || 14})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => toggleIndicator('rsiMa')}
+            className={`chip-btn ${indicators.rsiMa ? 'active' : ''}`}
+            style={{ 
+              fontSize: 9.5, 
+              padding: '2px 7px', 
+              color: indicators.rsiMa ? '#facc15' : 'inherit', 
+              borderColor: indicators.rsiMa ? '#facc15' : 'rgba(255,255,255,0.1)',
+              background: indicators.rsiMa ? 'rgba(250, 204, 21, 0.15)' : 'transparent',
+              fontWeight: indicators.rsiMa ? 700 : 500
+            }}
+            title="RSI Hareketli Ortalaması (Varsayılan 14 SMA)"
+          >
+            🟡 RSI MA
+          </button>
+
+          <button
+            type="button"
+            onClick={() => toggleIndicator('rsiDivergence')}
+            className={`chip-btn ${indicators.rsiDivergence ? 'active' : ''}`}
+            style={{ 
+              fontSize: 9.5, 
+              padding: '2px 7px', 
+              color: indicators.rsiDivergence ? '#38bdf8' : 'inherit', 
+              borderColor: indicators.rsiDivergence ? '#38bdf8' : 'rgba(255,255,255,0.1)',
+              background: indicators.rsiDivergence ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+              fontWeight: indicators.rsiDivergence ? 700 : 500
+            }}
+            title="Pozitif (PU) ve Negatif (NU) RSI Uyumsuzluk Tespiti ve Mum/RSI Ok Sinyalleri"
+          >
+            ⚡ Uyumsuzluk
           </button>
 
           {/* Otomatik Destek - Direnç Toggle */}
@@ -2231,11 +2499,69 @@ export default function NativeProChart({
               zIndex: 5,
               display: 'flex',
               alignItems: 'center',
-              gap: 6
+              gap: 8
             }}
           >
             <span>RSI ({indicatorSettings.rsiPeriod || 14})</span>
-            <span style={{ color: '#64748b' }}>• 70 / 30 Seviyeleri</span>
+            {indicators.rsiMa && (
+              <span style={{ color: '#facc15' }}>• MA ({indicatorSettings.rsiMaPeriod || 14})</span>
+            )}
+            <span style={{ color: '#64748b' }}>• 70/30</span>
+
+            {/* Quick in-panel toggles */}
+            <button
+              type="button"
+              onClick={() => toggleIndicator('rsiMa')}
+              style={{
+                background: indicators.rsiMa ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                color: indicators.rsiMa ? '#facc15' : '#94a3b8',
+                border: `1px solid ${indicators.rsiMa ? 'rgba(250, 204, 21, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                borderRadius: 4,
+                padding: '1px 5px',
+                fontSize: 8.5,
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+              title="RSI Hareketli Ortalamasını Aç/Kapat"
+            >
+              🟡 MA
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleIndicator('rsiDivergence')}
+              style={{
+                background: indicators.rsiDivergence ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                color: indicators.rsiDivergence ? '#38bdf8' : '#94a3b8',
+                border: `1px solid ${indicators.rsiDivergence ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                borderRadius: 4,
+                padding: '1px 5px',
+                fontSize: 8.5,
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+              title="RSI Uyumsuzluklarını Aç/Kapat"
+            >
+              ⚡ Uyumsuzluk
+            </button>
+
+            {/* Son Uyumsuzluk Rozeti */}
+            {indicators.rsiDivergence && latestDivergence && (
+              <span
+                style={{
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  fontSize: 8.5,
+                  fontWeight: 700,
+                  backgroundColor: latestDivergence.type === 'PU' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                  color: latestDivergence.type === 'PU' ? '#10b981' : '#ef4444',
+                  border: `1px solid ${latestDivergence.type === 'PU' ? '#10b981' : '#ef4444'}`
+                }}
+                title={`Son Sinyal: ${latestDivergence.title} (${latestDivergence.time})`}
+              >
+                {latestDivergence.type === 'PU' ? '🟢 Son: PU' : '🔴 Son: NU'}
+              </span>
+            )}
           </div>
           <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
         </div>
@@ -2322,6 +2648,22 @@ export default function NativeProChart({
                   value={indicatorSettings.rsiPeriod}
                   onChange={e => updateIndicatorSettings(prev => ({ ...prev, rsiPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
                   style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(236, 72, 153, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                />
+              </div>
+
+              {/* RSI MA Periyodu */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(250, 204, 21, 0.05)', borderRadius: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#facc15' }}>RSI MA (Hareketli Ortalama) Periyodu</div>
+                  <div style={{ fontSize: 10, color: '#94a3b8' }}>RSI için yumuşatılmış SMA eğrisi (Varsayılan: 14)</div>
+                </div>
+                <input
+                  type="number"
+                  min={2}
+                  max={100}
+                  value={indicatorSettings.rsiMaPeriod || 14}
+                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, rsiMaPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
+                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(250, 204, 21, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
 
