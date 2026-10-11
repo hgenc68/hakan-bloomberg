@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Shield, Plus, DollarSign, Award, Trash2, AlertTriangle, ShieldCheck, TrendingUp, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS } from '../data/sectorConfig';
 
 export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCashModal }) {
   const { goldPurchases, portfolioSummary, deleteGoldPurchase, usdtry } = useApp();
@@ -72,6 +73,62 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCa
     { key: 'bist_domestic', label: 'BIST İç Pazar', color: '#f59e0b', target: 5.0, coef: 0.15 },
     { key: 'crypto', label: 'Kripto Varlıklar', color: '#8b5cf6', target: 5.0, coef: 1.0 }
   ];
+
+  // Sektörel & Tematik Konsantrasyon Analizi
+  const sectorTotals = {};
+  Object.keys(SECTOR_DEFINITIONS).forEach(k => {
+    sectorTotals[k] = {
+      ...SECTOR_DEFINITIONS[k],
+      valTRY: 0,
+      valUSD: 0,
+      tickers: []
+    };
+  });
+
+  holdings.forEach(h => {
+    const sym = (h.ticker || '').toUpperCase();
+    const clean = sym.replace('.IS', '').replace('-USD', '');
+    const sec = getTickerSector(sym, h.type);
+    const val = h.valTRY || 0;
+    if (sectorTotals[sec.id]) {
+      sectorTotals[sec.id].valTRY += val;
+      sectorTotals[sec.id].valUSD += (usdtry > 0 ? val / usdtry : 0);
+      sectorTotals[sec.id].tickers.push(clean);
+    }
+  });
+
+  if (physicalGoldValTRY > 0 && sectorTotals.gold_shield) {
+    sectorTotals.gold_shield.valTRY += physicalGoldValTRY;
+    sectorTotals.gold_shield.valUSD += (usdtry > 0 ? physicalGoldValTRY / usdtry : 0);
+    sectorTotals.gold_shield.tickers.push('Fiziki Gram');
+  }
+
+  const liquidTRY = ppfBalTRY + totalFreeCashTRY;
+  if (liquidTRY > 0 && sectorTotals.cash_liquid) {
+    sectorTotals.cash_liquid.valTRY += liquidTRY;
+    sectorTotals.cash_liquid.valUSD += (usdtry > 0 ? liquidTRY / usdtry : 0);
+    sectorTotals.cash_liquid.tickers.push('PPF & Nakit');
+  }
+
+  const activeSectorList = Object.values(sectorTotals)
+    .filter(s => s.valTRY > 0)
+    .map(s => {
+      const weight = totalValTRY > 0 ? (s.valTRY / totalValTRY) * 100 : 0;
+      const delta = weight - s.targetCapPct;
+      const targetPct = s.targetCapPct || 1;
+      const progressRatio = Math.round((weight / targetPct) * 100);
+      const isBreached = delta > 0.5;
+      const isWarning = delta > -1.5 && delta <= 0.5;
+      return {
+        ...s,
+        weight,
+        delta,
+        progressRatio,
+        isBreached,
+        isWarning
+      };
+    })
+    .sort((a, b) => b.weight - a.weight);
 
   // Natural FX Hedge Ratio (USD cash has 1.0 hedge coefficient)
   let hedgedValTRY = 0;
@@ -387,6 +444,124 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCa
                               width: `${barFillWidth}%`,
                               height: '100%',
                               background: progressColor,
+                              borderRadius: 4,
+                              transition: 'width 0.6s ease'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 📊 Sektörel & Tematik Risk Konsantrasyonu ve Tavan Kontrolü */}
+      <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>🧬</span>
+            <span>SEKTÖREL & TEMATİK RİSK KONSANTRASYONU VE TAVAN KONTROLÜ</span>
+            <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>
+              UCITS Sektör Tavanları
+            </span>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Varlık Sınıfları Alt Kırılımı ve Tavan İlerlemesi
+          </span>
+        </div>
+
+        <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12, lineHeight: 1.5 }}>
+          Her bir sektörün tüm portföy içindeki azami risk tavanı (Örn: Yarı İletken max %15, Büyük Teknoloji max %15, Sağlık max %10). 
+          Bir sektör tavanı aştığında tekil hisseler kârda olsa dahi konsantrasyon körlüğüne karşı otomatik risk kalkanı devreye girer.
+        </div>
+
+        <div className="table-responsive">
+          <table className="terminal-table" style={{ fontSize: 11.5 }}>
+            <thead>
+              <tr>
+                <th>Sektör / Tema</th>
+                <th>İçindeki Varlıklar</th>
+                <th className="text-right">Mevcut Değer (TRY)</th>
+                <th className="text-right">Mevcut Değer (USD)</th>
+                <th className="text-right">Mevcut Pay (%)</th>
+                <th className="text-right">Tavan Pay (%)</th>
+                <th className="text-right">Sapma (Delta)</th>
+                <th style={{ width: 190 }}>Tavan İlerlemesi (Durum)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeSectorList.map(sec => {
+                const isOver = sec.isBreached;
+                const isWarn = sec.isWarning;
+                const barFill = Math.min(100, sec.progressRatio);
+                let barColor = sec.color;
+                let statusLabel = `%${sec.progressRatio} (Kapasite Var)`;
+                if (isOver) {
+                  barColor = '#ef4444';
+                  statusLabel = `⚠️ %${sec.progressRatio} (Tavan Aşıldı!)`;
+                } else if (isWarn) {
+                  barColor = '#f59e0b';
+                  statusLabel = `⚖️ %${sec.progressRatio} (Tavana Yakın)`;
+                } else if (sec.progressRatio >= 70) {
+                  barColor = '#10b981';
+                  statusLabel = `🟢 %${sec.progressRatio} (Dengede)`;
+                }
+
+                return (
+                  <tr key={sec.id} className="table-row">
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 15 }}>{sec.icon}</span>
+                        <div>
+                          <strong style={{ color: '#fff' }}>{sec.name}</strong>
+                          <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>{sec.desc}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {Array.from(new Set(sec.tickers)).map((t, idx) => (
+                          <span key={idx} className="nav-badge" style={{ fontSize: 9, padding: '1px 5px', background: `${sec.color}20`, color: sec.color, border: `1px solid ${sec.color}40` }}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="text-right mono font-medium">
+                      ₺{sec.valTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="text-right mono text-muted">
+                      ${sec.valUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="text-right mono font-bold" style={{ color: isOver ? '#ef4444' : sec.color }}>
+                      %{sec.weight.toFixed(2)}
+                    </td>
+                    <td className="text-right mono text-muted">
+                      %{sec.targetCapPct.toFixed(1)}
+                    </td>
+                    <td className="text-right mono font-bold" style={{ color: sec.delta > 0 ? (isOver ? '#ef4444' : '#f59e0b') : 'var(--emerald)' }}>
+                      {sec.delta >= 0 ? '+' : ''}{sec.delta.toFixed(2)}%
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                          <span style={{ color: barColor, fontWeight: 800 }}>
+                            {statusLabel}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                            %{sec.weight.toFixed(1)} / %{sec.targetCapPct.toFixed(0)}
+                          </span>
+                        </div>
+                        <div style={{ width: '100%', height: 7, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: `${barFill}%`,
+                              height: '100%',
+                              background: barColor,
                               borderRadius: 4,
                               transition: 'width 0.6s ease'
                             }}

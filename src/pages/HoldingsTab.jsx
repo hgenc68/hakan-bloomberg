@@ -11,6 +11,7 @@ import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
 import { getHealthColorTheme } from './RiskRadarTab';
+import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS } from '../data/sectorConfig';
 
 ChartJS.register(...registerables);
 
@@ -548,9 +549,78 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     ]
   };
 
-  // Rebalance Assistant List
+  // Sector & Thematic Concentration Analysis
+  const sectorConcentration = useMemo(() => {
+    const totalVal = portfolioSummary?.totalValTRY || 1;
+    const totals = {};
+
+    Object.keys(SECTOR_DEFINITIONS).forEach(k => {
+      totals[k] = {
+        ...SECTOR_DEFINITIONS[k],
+        valTRY: 0,
+        valUSD: 0,
+        tickers: []
+      };
+    });
+
+    holdings.forEach(h => {
+      const sym = (h.ticker || '').toUpperCase();
+      const clean = sym.replace('.IS', '').replace('-USD', '');
+      const sec = getTickerSector(sym, h.type);
+      const val = h.valTRY || 0;
+      if (totals[sec.id]) {
+        totals[sec.id].valTRY += val;
+        totals[sec.id].valUSD += (usdtry > 0 ? val / usdtry : 0);
+        totals[sec.id].tickers.push(clean);
+      }
+    });
+
+    const physicalGoldValTRY = portfolioSummary?.totalGoldValTRY || 0;
+    if (physicalGoldValTRY > 0 && totals.gold_shield) {
+      totals.gold_shield.valTRY += physicalGoldValTRY;
+      totals.gold_shield.valUSD += (usdtry > 0 ? physicalGoldValTRY / usdtry : 0);
+      totals.gold_shield.tickers.push('Fiziki Gram');
+    }
+
+    const ppfAndCashTRY = (portfolioSummary?.ppfBalanceTRY || 0) + (portfolioSummary?.totalFreeCashTRY || 0);
+    if (ppfAndCashTRY > 0 && totals.cash_liquid) {
+      totals.cash_liquid.valTRY += ppfAndCashTRY;
+      totals.cash_liquid.valUSD += (usdtry > 0 ? ppfAndCashTRY / usdtry : 0);
+      totals.cash_liquid.tickers.push('PPF & Nakit');
+    }
+
+    return Object.values(totals)
+      .filter(s => s.valTRY > 0)
+      .map(s => {
+        const weight = totalVal > 0 ? (s.valTRY / totalVal) * 100 : 0;
+        const delta = weight - s.targetCapPct;
+        const targetPct = s.targetCapPct || 1;
+        const progressRatio = Math.round((weight / targetPct) * 100);
+        const isBreached = delta > 0.5;
+        const isWarning = delta > -1.5 && delta <= 0.5;
+        return {
+          ...s,
+          weight,
+          delta,
+          progressRatio,
+          isBreached,
+          isWarning
+        };
+      })
+      .sort((a, b) => b.weight - a.weight);
+  }, [holdings, portfolioSummary, usdtry]);
+
+  // Rebalance Assistant List with Single Stock Cap & Sector Cap Rules
   const totalValAll = portfolioSummary?.totalValTRY || 1;
   const rebalanceList = useMemo(() => {
+    const sectorWeightMap = {};
+    sectorConcentration.forEach(s => {
+      sectorWeightMap[s.id] = s.weight;
+    });
+
+    const softCap = DEFAULT_CONCENTRATION_LIMITS.SINGLE_STOCK_SOFT_CAP_PCT; // 7.5%
+    const hardCap = DEFAULT_CONCENTRATION_LIMITS.SINGLE_STOCK_HARD_CAP_PCT; // 10.0%
+
     return equityHoldings.map(h => {
       const symTicker = (h.ticker || '').toUpperCase();
       const clean = symTicker.replace('.IS', '').replace('-USD', '');
@@ -561,51 +631,69 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
       const category = h.type === 'ETF' ? 'Tematik ETF' : (isUS ? 'ABD Hisse' : 'BIST 100');
       const weightPct = ((h.valTRY || 0) / totalValAll) * 100;
 
+      const sector = getTickerSector(symTicker, h.type);
+      const sectorWeight = sectorWeightMap[sector.id] || 0;
+      const isSectorBreached = sectorWeight > sector.targetCapPct;
+
+      // Sub-class internal share (share within US bucket or BIST bucket)
+      const subBucketVal = isUS ? (segmentStats.equity.valTRY * 0.65 || 1) : (segmentStats.equity.valTRY * 0.35 || 1);
+      const internalSharePct = subBucketVal > 0 ? ((h.valTRY || 0) / subBucketVal) * 100 : 0;
+
       let action = 'HOLD';
       let badgeColor = 'cyan';
       let actionTitle = '🛡️ TUT / KORU';
       let reason = 'Mevcut ağırlık dengeli, büyüme ve bilanço yapısı hedeflerle uyumlu.';
 
-      if (weightPct > 15.0) {
-        action = 'TRIM';
+      if (weightPct > hardCap) {
+        action = 'TRIM_HARD';
         badgeColor = 'red';
-        actionTitle = '🚪 KISMEN ÇIK / AZALT';
-        reason = `Portföyün %${weightPct.toFixed(1)}'ini oluşturuyor. %7.5 tek varlık tavanını aştı; kâr alıp kalkanı güçlendirin.`;
-      } else if (weightPct > 7.5) {
-        action = 'TRIM_MILD';
+        actionTitle = `🚨 SERT TAVAN AŞIMI (%${hardCap}+)`;
+        reason = `Portföyün %${weightPct.toFixed(1)}'ini kaplıyor (%${hardCap} sert tavan aşıldı). Aşırı konsantrasyon riski var; kâr alıp kalkanı (altın/nakit) besleyin.`;
+      } else if (weightPct > softCap) {
+        action = 'TRIM_SOFT';
         badgeColor = 'amber';
-        actionTitle = '⚖️ AĞIRLIK AZALT';
-        reason = `Mevcut pay (%${weightPct.toFixed(1)}) üst sınırda. Yeni ekleme yapmayın, kâr realizasyonunu değerlendirin.`;
-      } else if (quantScore >= 82.0 && weightPct < 6.0) {
+        actionTitle = `⚖️ İDEAL TAVAN ÜSTÜ (%${softCap}+)`;
+        reason = `Mevcut pay (%${weightPct.toFixed(1)}) ideal risk tavanının (%${softCap}) üzerinde. Yeni alım yapmayın, kademeli kâr realizasyonunu değerlendirin.`;
+      } else if (isSectorBreached && weightPct >= 4.0) {
+        action = 'SECTOR_CAP';
+        badgeColor = 'amber';
+        actionTitle = `⚠️ SEKTÖR TAVANI AŞILDI`;
+        reason = `${sector.shortName} sektörü toplamda %${sectorWeight.toFixed(1)} oldu (Sektör Tavanı: %${sector.targetCapPct}). Bu sektöre yeni ekleme yapmayın.`;
+      } else if (quantScore >= 82.0 && weightPct < 5.0 && !isSectorBreached) {
         action = 'ACCUMULATE';
         badgeColor = 'emerald';
         actionTitle = '✨ EKLE / BİRİKTİR';
-        reason = `Quant Skoru ${quantScore.toFixed(1)} (A+) ile güçlü boğa trendinde. Ağırlığı düşük (%${weightPct.toFixed(1)}), kademeli eklenebilir.`;
+        reason = `Quant Skoru ${quantScore.toFixed(1)} (A+) güçlü trendde ve pozisyon payı (%${weightPct.toFixed(1)}) tavanın altında. Kademeli biriktirilebilir.`;
       } else if (quantScore < 65.0) {
         action = 'EXIT';
         badgeColor = 'red';
         actionTitle = '🚪 MODEL DIŞI / ÇIK';
-        reason = `Quant skoru ${quantScore.toFixed(1)} seviyesine geriledi. Momentum ve bilanço zayıfladı.`;
+        reason = `Quant skoru ${quantScore.toFixed(1)} seviyesine geriledi. Bilanço ve teknik ivme zayıfladı.`;
       } else {
         action = 'HOLD';
         badgeColor = 'cyan';
         actionTitle = '🛡️ TUT / KORU';
-        reason = `Quant Skoru ${quantScore.toFixed(1)} ile istikrarlı. Pozisyon ağırlığı (%${weightPct.toFixed(1)}) makul seviyede.`;
+        reason = `Quant Skoru ${quantScore.toFixed(1)} ile istikrarlı. Pozisyon ağırlığı (%${weightPct.toFixed(1)}) ve ${sector.shortName} sektörü tavan dahilinde.`;
       }
 
       return {
         ...h,
         clean,
         category,
+        sector,
         quantScore,
         weightPct,
+        softCap,
+        hardCap,
+        internalSharePct,
+        isSectorBreached,
         action,
         badgeColor,
         actionTitle,
         reason
       };
     });
-  }, [equityHoldings, totalValAll, isTRY, usdtry]);
+  }, [equityHoldings, totalValAll, sectorConcentration, segmentStats]);
 
   // Lookup map for fast O(1) rebalance item access
   const rebalanceMap = useMemo(() => {
@@ -1711,7 +1799,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     <React.Fragment key={h.id}>
                       <tr className="table-row">
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <div className="ticker-cell">
                               <strong className="ticker-symbol mono">{h.ticker}</strong>
                               <span className="ticker-desc">{h.name || h.ticker}</span>
@@ -1719,21 +1807,51 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                             <span className={`badge-type ${h.type?.toLowerCase() || 'hisse'}`} style={{ fontSize: 9, padding: '1px 5px' }}>
                               {reb?.category || h.type}
                             </span>
+                            {reb?.sector && (
+                              <span 
+                                className="nav-badge" 
+                                style={{ 
+                                  fontSize: 8.5, 
+                                  padding: '1px 5px', 
+                                  background: `${reb.sector.color}18`, 
+                                  color: reb.sector.color, 
+                                  border: `1px solid ${reb.sector.color}40`,
+                                  fontWeight: 700 
+                                }}
+                                title={`${reb.sector.name} (Sektör Tavanı: %${reb.sector.targetCapPct})`}
+                              >
+                                {reb.sector.icon} {reb.sector.shortName}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="text-right">
-                          <div className="mono font-bold" style={{ fontSize: 12, color: weightPct > 15 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : '#f8fafc') }}>
-                            %{weightPct.toFixed(1)}
-                          </div>
-                          <div style={{ width: 55, height: 3.5, background: 'rgba(255,255,255,0.08)', borderRadius: 2, marginLeft: 'auto', marginTop: 3 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                            <div className="mono font-bold" style={{ fontSize: 12, color: weightPct > 10.0 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : '#f8fafc') }}>
+                              %{weightPct.toFixed(1)}
+                            </div>
                             <div 
-                              style={{ 
-                                width: `${Math.min(100, weightPct * 5)}%`, 
-                                height: '100%', 
-                                background: weightPct > 15 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : 'var(--cyan)'), 
-                                borderRadius: 2 
-                              }} 
-                            />
+                              style={{ width: 62, height: 4.5, background: 'rgba(255,255,255,0.08)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}
+                              title={`Sepet Payı: %${weightPct.toFixed(1)} • İdeal Tavan: %7.5 • Sert Tavan: %10.0 • Sınıf İçi Payı: %${(reb?.internalSharePct || 0).toFixed(1)}`}
+                            >
+                              <div 
+                                style={{ 
+                                  width: `${Math.min(100, (weightPct / 10.0) * 100)}%`, 
+                                  height: '100%', 
+                                  background: weightPct > 10.0 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : 'var(--cyan)'), 
+                                  borderRadius: 2 
+                                }} 
+                              />
+                            </div>
+                            <div style={{ fontSize: 8.5, fontWeight: 700, marginTop: 1 }}>
+                              {weightPct > 10.0 ? (
+                                <span style={{ color: '#ef4444' }}>⚠️ &gt;%10 Aşım</span>
+                              ) : weightPct > 7.5 ? (
+                                <span style={{ color: '#f59e0b' }}>⚖️ &gt;%7.5 Tavan</span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)' }}>Max %7.5</span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="text-right mono">
@@ -1860,7 +1978,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                                     {reb?.reason}
                                   </div>
                                   <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-                                    Kural: Tek varlık tavanı %7.5 (kritik üst sınır %15.0). Quant skoru ≥82 alım, &lt;65 model dışı bölgesidir.
+                                    Kural: Tek hisse ideal tavanı %7.5 (sert üst sınır %10.0, kurumsal UCITS kuralı). Sektör tavanı aşıldığında yeni alım kilitlenir. Quant skoru ≥82 alım, &lt;65 model dışı bölgesidir.
                                   </div>
                                 </div>
                               </div>
@@ -1910,16 +2028,60 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   return (
                     <tr key={h.id} className="table-row">
                       <td>
-                        <div className="ticker-cell">
-                          <strong className="ticker-symbol mono">{h.ticker}</strong>
-                          <span className="ticker-desc">{h.name || h.ticker}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <div className="ticker-cell">
+                            <strong className="ticker-symbol mono">{h.ticker}</strong>
+                            <span className="ticker-desc">{h.name || h.ticker}</span>
+                          </div>
+                          {reb?.sector && (
+                            <span 
+                              className="nav-badge" 
+                              style={{ 
+                                fontSize: 8.5, 
+                                padding: '1px 5px', 
+                                background: `${reb.sector.color}18`, 
+                                color: reb.sector.color, 
+                                border: `1px solid ${reb.sector.color}40`,
+                                fontWeight: 700 
+                              }}
+                              title={`${reb.sector.name} (Sektör Tavanı: %${reb.sector.targetCapPct})`}
+                            >
+                              {reb.sector.icon} {reb.sector.shortName}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
                         <span className="badge-type hisse" style={{ fontSize: 9.5 }}>{reb?.category || h.type}</span>
                       </td>
-                      <td className="text-right mono font-bold" style={{ color: weightPct > 15 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : '#f8fafc') }}>
-                        %{weightPct.toFixed(1)}
+                      <td className="text-right">
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <div className="mono font-bold" style={{ fontSize: 11.5, color: weightPct > 10.0 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : '#f8fafc') }}>
+                            %{weightPct.toFixed(1)}
+                          </div>
+                          <div 
+                            style={{ width: 54, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}
+                            title={`Sepet Payı: %${weightPct.toFixed(1)} • İdeal Tavan: %7.5 • Sert Tavan: %10.0 • Sektör: %${(reb?.sectorWeight || 0).toFixed(1)}`}
+                          >
+                            <div 
+                              style={{ 
+                                width: `${Math.min(100, (weightPct / 10.0) * 100)}%`, 
+                                height: '100%', 
+                                background: weightPct > 10.0 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : 'var(--cyan)'), 
+                                borderRadius: 2 
+                              }} 
+                            />
+                          </div>
+                          <div style={{ fontSize: 8.5, fontWeight: 700 }}>
+                            {weightPct > 10.0 ? (
+                              <span style={{ color: '#ef4444' }}>⚠️ &gt;%10 Aşım</span>
+                            ) : weightPct > 7.5 ? (
+                              <span style={{ color: '#f59e0b' }}>⚖️ &gt;%7.5 Tavan</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)' }}>Max %7.5</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="text-center mono font-bold text-cyan">
                         {reb?.quantScore?.toFixed(1) || '78.0'}
@@ -1967,9 +2129,27 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 return (
                   <tr key={h.id} className="table-row">
                     <td>
-                      <div className="ticker-cell">
-                        <strong className="ticker-symbol mono">{h.ticker}</strong>
-                        <span className="ticker-desc">{h.name || h.ticker}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <div className="ticker-cell">
+                          <strong className="ticker-symbol mono">{h.ticker}</strong>
+                          <span className="ticker-desc">{h.name || h.ticker}</span>
+                        </div>
+                        {reb?.sector && (
+                          <span 
+                            className="nav-badge" 
+                            style={{ 
+                              fontSize: 8.5, 
+                              padding: '1px 5px', 
+                              background: `${reb.sector.color}18`, 
+                              color: reb.sector.color, 
+                              border: `1px solid ${reb.sector.color}40`,
+                              fontWeight: 700 
+                            }}
+                            title={`${reb.sector.name} (Sektör Tavanı: %${reb.sector.targetCapPct})`}
+                          >
+                            {reb.sector.icon} {reb.sector.shortName}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td>
