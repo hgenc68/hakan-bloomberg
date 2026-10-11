@@ -362,7 +362,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     return evaluateStockConstraints({
       ticker: currentTicker,
       type: currentTicker.endsWith('.IS') ? 'BIST' : 'Hisse',
-      holdings,
+      holdings: portfolioSummary?.enrichedHoldings || holdings,
       portfolioSummary,
       allocation,
       usdtry
@@ -1089,7 +1089,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>SİNYAL</div>
               <span className="nav-badge emerald" style={{ fontSize: 12, padding: '4px 10px', fontWeight: 800 }}>
-                GÜÇLÜ AL
+                {analysis?.verdict ? String(analysis.verdict).toUpperCase() : 'GÜÇLÜ AL'}
               </span>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -1171,11 +1171,13 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div>
               <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>BU HİSSEDEN MEVCUT PAY</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                <span className="mono font-bold" style={{ fontSize: 13, color: constraintInfo.singleStockWeightPct > 7.5 ? '#f59e0b' : '#fff' }}>
+                <span className="mono font-bold" style={{ fontSize: 13, color: constraintInfo.singleStockWeightPct > 10.0 ? '#ef4444' : (constraintInfo.singleStockWeightPct > 7.5 ? '#f59e0b' : '#fff') }}>
                   %{constraintInfo.singleStockWeightPct.toFixed(1)} / Max %7.5
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  {constraintInfo.singleStockWeightPct > 0 ? `(Portföyde Mevcut)` : `(Portföyde Henüz Yok)`}
+                <span style={{ fontSize: 10, color: constraintInfo.singleStockWeightPct > 10.0 ? '#ef4444' : (constraintInfo.singleStockWeightPct > 7.5 ? '#f59e0b' : 'var(--text-muted)'), fontWeight: 600 }}>
+                  {constraintInfo.singleStockWeightPct > 0 
+                    ? `(Portföyde ${Number(constraintInfo.existingHolding?.shares || 0).toLocaleString('tr-TR')} Lot Mevcut)` 
+                    : `(Portföyde Henüz Yok)`}
                 </span>
               </div>
             </div>

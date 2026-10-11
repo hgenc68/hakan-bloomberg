@@ -91,7 +91,7 @@ export function AddHoldingModal({ initialTicker, onClose }) {
     return evaluateStockConstraints({
       ticker,
       type,
-      holdings,
+      holdings: portfolioSummary?.enrichedHoldings || holdings,
       portfolioSummary,
       allocation,
       usdtry

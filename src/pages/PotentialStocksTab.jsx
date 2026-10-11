@@ -48,11 +48,12 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
   // Her potansiyel hisse için kurumsal portföy tavan ve sektörel uygunluk analizi
   const constraintsMap = useMemo(() => {
     const map = {};
+    const effectiveHoldings = portfolioSummary?.enrichedHoldings || holdings;
     stocks.forEach(s => {
       map[s.ticker] = evaluateStockConstraints({
         ticker: s.ticker,
         type: 'Hisse',
-        holdings,
+        holdings: effectiveHoldings,
         portfolioSummary,
         allocation,
         usdtry

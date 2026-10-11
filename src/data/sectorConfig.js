@@ -297,33 +297,73 @@ export function evaluateStockConstraints({
     };
   }
 
-  const cleanTicker = String(ticker).toUpperCase().trim().replace('.IS', '').replace('-USD', '');
+  const cleanTarget = String(ticker).toUpperCase().trim().replace('.IS', '').replace('-USD', '');
   const sector = getTickerSector(ticker, type);
   const sectorCap = sector.targetCapPct || 10.0;
 
-  // 1. Toplam Portföy Değeri (TRY)
-  let totalValTRY = portfolioSummary?.totalValTRY || 0;
-  if (!totalValTRY || totalValTRY <= 0) {
-    (holdings || []).forEach(h => {
-      totalValTRY += (h.valTRY || 0);
+  // 1. Aktif Portföy Pozisyonlarını Belirle (Öncelikle zenginleştirilmiş enrichedHoldings listesi)
+  const activeHoldings = (portfolioSummary?.enrichedHoldings && portfolioSummary.enrichedHoldings.length > 0)
+    ? portfolioSummary.enrichedHoldings
+    : (Array.isArray(holdings) && holdings.length > 0 ? holdings : []);
+
+  // Pozisyon değerini TRY cinsinden her senaryoda hatasız hesaplama
+  const getHoldingValTRY = (h) => {
+    if (!h) return 0;
+    if (h.valTRY != null && !isNaN(h.valTRY) && Number(h.valTRY) > 0) return Number(h.valTRY);
+    if (h.val_try != null && !isNaN(h.val_try) && Number(h.val_try) > 0) return Number(h.val_try);
+    if (h.valUSD != null && !isNaN(h.valUSD) && Number(h.valUSD) > 0) {
+      const rate = Number(usdtry) || 49.03;
+      return Number(h.valUSD) * rate;
+    }
+    const shares = Number(h.shares) || 0;
+    const price = Number(h.livePriceTRY || h.livePrice || h.current_price || h.currentPrice || h.last_price || h.avg_cost) || 0;
+    const isUSD = h.currency === 'USD' || (Number(h.cost_rate) > 1.5) || h.isHoldingUSD;
+    const rate = Number(usdtry) || 49.03;
+    return isUSD ? (shares * price * rate) : (shares * price);
+  };
+
+  // Bir varlığın hedef hisse ile eşleşip eşleşmediğini kontrol eden esnek eşleştirici
+  const isHoldingMatch = (h, target) => {
+    if (!h || !target) return false;
+    const tClean = String(target).toUpperCase().trim().replace('.IS', '').replace('-USD', '');
+    const candidates = [
+      h.ticker,
+      h.clean_ticker,
+      h.cleanTicker,
+      h.symbol,
+      h.clean
+    ].filter(Boolean).map(s => String(s).toUpperCase().trim());
+
+    return candidates.some(c => {
+      const cClean = c.replace('.IS', '').replace('-USD', '');
+      return c === String(target).toUpperCase().trim() || cClean === tClean;
     });
-    totalValTRY += (portfolioSummary?.totalGoldValTRY || 0);
-    totalValTRY += (portfolioSummary?.ppfBalanceTRY || 0);
-    totalValTRY += (portfolioSummary?.totalFreeCashTRY || 0);
+  };
+
+  // 2. Toplam Portföy Değeri (TRY)
+  let totalValTRY = Number(portfolioSummary?.totalValTRY) || 0;
+  if (!totalValTRY || totalValTRY <= 0) {
+    activeHoldings.forEach(h => {
+      totalValTRY += getHoldingValTRY(h);
+    });
+    totalValTRY += Number(portfolioSummary?.totalGoldValTRY) || 0;
+    totalValTRY += Number(portfolioSummary?.ppfBalanceTRY) || 0;
+    totalValTRY += Number(portfolioSummary?.totalFreeCashTRY) || 0;
   }
 
-  // 2. Sektörel Mevcut Dağılım Hesabı
+  // 3. Sektörel Mevcut Dağılım Hesabı
   let currentSectorValTRY = 0;
   const sectorHoldingsList = [];
 
-  (holdings || []).forEach(h => {
-    const hSector = getTickerSector(h.ticker, h.type);
+  activeHoldings.forEach(h => {
+    const hTicker = h.ticker || h.clean_ticker || h.cleanTicker || '';
+    const hSector = getTickerSector(hTicker, h.type);
     if (hSector.id === sector.id) {
-      const v = h.valTRY || 0;
+      const v = getHoldingValTRY(h);
       currentSectorValTRY += v;
       sectorHoldingsList.push({
-        ticker: h.ticker,
-        name: h.name || h.ticker,
+        ticker: hTicker,
+        name: h.name || hTicker,
         valTRY: v,
         shares: h.shares
       });
@@ -331,9 +371,9 @@ export function evaluateStockConstraints({
   });
 
   if (sector.id === 'gold_shield') {
-    currentSectorValTRY += (portfolioSummary?.totalGoldValTRY || 0);
+    currentSectorValTRY += (Number(portfolioSummary?.totalGoldValTRY) || 0);
   } else if (sector.id === 'cash_liquid') {
-    currentSectorValTRY += ((portfolioSummary?.ppfBalanceTRY || 0) + (portfolioSummary?.totalFreeCashTRY || 0));
+    currentSectorValTRY += ((Number(portfolioSummary?.ppfBalanceTRY) || 0) + (Number(portfolioSummary?.totalFreeCashTRY) || 0));
   }
 
   const sectorWeightPct = totalValTRY > 0 ? (currentSectorValTRY / totalValTRY) * 100 : 0;
@@ -342,24 +382,19 @@ export function evaluateStockConstraints({
   const isSectorNearCap = sectorDelta > -1.5 && sectorDelta <= 0.5;
   const sectorRemainingCapPct = Math.max(0, sectorCap - sectorWeightPct);
 
-  // 3. Tek Hisse Mevcut Payı Hesabı
-  const existingHolding = (holdings || []).find(h => {
-    const hSym = (h.ticker || '').toUpperCase().trim();
-    const hClean = hSym.replace('.IS', '').replace('-USD', '');
-    return hSym === ticker.toUpperCase().trim() || hClean === cleanTicker;
-  });
-
-  const existingHoldingValTRY = existingHolding?.valTRY || 0;
+  // 4. Tek Hisse Mevcut Payı Hesabı
+  const existingHolding = activeHoldings.find(h => isHoldingMatch(h, ticker));
+  const existingHoldingValTRY = existingHolding ? getHoldingValTRY(existingHolding) : 0;
   const singleStockWeightPct = totalValTRY > 0 ? (existingHoldingValTRY / totalValTRY) * 100 : 0;
   const singleStockSoftCap = DEFAULT_CONCENTRATION_LIMITS.SINGLE_STOCK_SOFT_CAP_PCT; // 7.5%
   const singleStockHardCap = DEFAULT_CONCENTRATION_LIMITS.SINGLE_STOCK_HARD_CAP_PCT; // 10.0%
   const isSingleStockHardBreached = singleStockWeightPct >= singleStockHardCap;
   const isSingleStockSoftBreached = singleStockWeightPct >= singleStockSoftCap;
 
-  // 4. Makro Varlık Sınıfı Hesabı
-  const knownBist = ticker.endsWith('.IS') || type === 'BIST' || ['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS', 'BYDNR', 'BIMAS', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK', 'KCHOL', 'SAHOL'].includes(cleanTicker);
-  const knownCrypto = type === 'Kripto' || ['BTC', 'ETH', 'SOL', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(cleanTicker);
-  const knownGold = type === 'Altın' || cleanTicker.includes('XAUT') || cleanTicker.includes('GOLD');
+  // 5. Makro Varlık Sınıfı Hesabı
+  const knownBist = ticker.endsWith('.IS') || type === 'BIST' || ['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS', 'BYDNR', 'BIMAS', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK', 'KCHOL', 'SAHOL'].includes(cleanTarget);
+  const knownCrypto = type === 'Kripto' || ['BTC', 'ETH', 'SOL', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(cleanTarget);
+  const knownGold = type === 'Altın' || cleanTarget.includes('XAUT') || cleanTarget.includes('GOLD');
 
   let macroKey = 'us_equities_etf';
   let macroLabel = 'ABD Hisse & Global';
@@ -384,10 +419,10 @@ export function evaluateStockConstraints({
   }
 
   let currentMacroValTRY = 0;
-  (holdings || []).forEach(h => {
+  activeHoldings.forEach(h => {
     const hSym = (h.ticker || '').toUpperCase();
     const hClean = hSym.replace('.IS', '').replace('-USD', '');
-    const v = h.valTRY || 0;
+    const v = getHoldingValTRY(h);
     if (macroKey === 'crypto' && (h.type === 'Kripto' || ['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(hClean))) {
       currentMacroValTRY += v;
     } else if (macroKey === 'gold_metals' && (h.type === 'Altın' || hClean.includes('XAUT'))) {
@@ -402,7 +437,7 @@ export function evaluateStockConstraints({
   const macroWeightPct = totalValTRY > 0 ? (currentMacroValTRY / totalValTRY) * 100 : 0;
   const isMacroBreached = macroWeightPct > (macroTargetPct + 3.0);
 
-  // 5. Nihai Karar ve Uyarı Metinleri
+  // 6. Nihai Karar ve Uyarı Metinleri
   let status = 'APPROVED';
   let badgeText = '';
   let badgeColor = 'emerald';
@@ -418,7 +453,7 @@ export function evaluateStockConstraints({
     badgeIcon = '🚨';
     badgeText = `SERT TAVAN AŞIMI (%${singleStockWeightPct.toFixed(1)})`;
     title = `🚨 Tek Hisse Sert Tavanı Aşıldı (%${singleStockHardCap.toFixed(0)}+ Kurumsal Sınır)`;
-    warningText = `Bu hisse zaten portföyünüzün %${singleStockWeightPct.toFixed(1)}'ini kaplıyor. Kurumsal UCITS risk kuralına (%10 sert tavan) göre yeni alım yapmak risklidir; kâr alarak nakit/altın kalkanını beslemeniz önerilir.`;
+    warningText = `Bu hisse tek başına portföyünüzün %${singleStockWeightPct.toFixed(1)}'ini kaplıyor. Kurumsal UCITS risk kuralına (%10 sert tavan) göre yeni alım yapmak risklidir; kâr alarak nakit/altın kalkanını beslemeniz önerilir.`;
     recommendation = 'KÂR REALİZASYONU YAPILMALI (YENİ ALIM KİLİTLİ)';
     actionAllowed = false;
   } else if (isSingleStockSoftBreached) {
@@ -436,7 +471,7 @@ export function evaluateStockConstraints({
     badgeIcon = '⚠️';
     badgeText = `SEKTÖR TAVANI AŞILDI (%${sectorWeightPct.toFixed(1)} / %${sectorCap.toFixed(0)})`;
     title = `⚠️ Sektörel Risk Tavanı Aşıldı (%${sectorCap.toFixed(0)} Barajı)`;
-    const otherTickers = sectorHoldingsList.filter(item => item.ticker !== ticker).map(i => i.ticker).join(', ');
+    const otherTickers = sectorHoldingsList.filter(item => !isHoldingMatch(item, ticker)).map(i => i.ticker).join(', ');
     warningText = `${sector.name} sektörü portföyünüzde zaten %${sectorWeightPct.toFixed(1)} ağırlığa ulaştı (Tavan: %${sectorCap.toFixed(0)}). Hisse analizi 'GÜÇLÜ AL' olsa dahi, sektörel tavan aşıldığı için yeni alım yapmak portföyün risk dengesini bozar.${otherTickers ? ` Bu hisseye girmek istiyorsanız önce sektördeki diğer varlıklardan (${otherTickers}) kısmi kâr satışı yapıp yer açmalısınız.` : ''}`;
     recommendation = 'SEKTÖR KONSANTRASYON ENGELİ (ÖNCE YER AÇIN)';
     actionAllowed = false;
@@ -464,7 +499,7 @@ export function evaluateStockConstraints({
     badgeIcon = '🛡️';
     badgeText = `KOTA UYGUN (+%${sectorRemainingCapPct.toFixed(1)} Boşluk)`;
     title = `🟢 Portföy ve Sektör Kotası Uygun`;
-    warningText = `Bu hisse 'GÜÇLÜ AL' bölgesinde olup portföy risk tavanlarına takılmamaktadır. ${sector.name} sektöründe %${sectorRemainingCapPct.toFixed(1)} boş kapasite mevcuttur. Tek hisse üst sınırı olan %${singleStockSoftCap}'e kadar güvenle pozisyon açılabilir.`;
+    warningText = `Bu hisse portföy risk tavanlarına takılmamaktadır. ${sector.name} sektöründe %${sectorRemainingCapPct.toFixed(1)} boş kapasite mevcuttur. Tek hisse üst sınırı olan %${singleStockSoftCap}'e kadar güvenle pozisyon açılabilir.`;
     recommendation = 'GÜVENLE EKLENEBİLİR (KOTA MÜSAİT)';
     actionAllowed = true;
   }
