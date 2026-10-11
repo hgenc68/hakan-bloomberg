@@ -50,11 +50,11 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
             <span className="badge-pill emerald">Cebe Giren</span>
           </div>
           <div className="kpi-val mono text-emerald">
-            +₺{portfolioSummary.realizedProfitTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            +₺{(Number(portfolioSummary?.realizedProfitTRY) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="kpi-sub mono">
             <span>Dolar Karşılığı:</span>
-            <strong style={{ color: '#fff' }}>+${portfolioSummary.realizedProfitUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong>
+            <strong style={{ color: '#fff' }}>+${(Number(portfolioSummary?.realizedProfitUSD) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong>
           </div>
         </div>
 
@@ -65,11 +65,11 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
             <span className="badge-pill cyan">Nakit Likidite</span>
           </div>
           <div className="kpi-val mono text-cyan">
-            ₺{portfolioSummary.totalProceedsTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₺{(Number(portfolioSummary?.totalProceedsTRY) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="kpi-sub mono">
             <span>Dolar Karşılığı:</span>
-            <strong style={{ color: '#fff' }}>${portfolioSummary.totalProceedsUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong>
+            <strong style={{ color: '#fff' }}>${(Number(portfolioSummary?.totalProceedsUSD) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong>
           </div>
         </div>
 
@@ -80,11 +80,11 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
             <span className="badge-pill gold">Kapanan Pozisyon</span>
           </div>
           <div className="kpi-val mono text-gold">
-            %{portfolioSummary.winRatePct.toFixed(1)}
+            %{(Number(portfolioSummary?.winRatePct) || 100).toFixed(1)}
           </div>
           <div className="kpi-sub mono">
             <span>Tamamlanan İşlem:</span>
-            <strong style={{ color: '#fff' }}>{portfolioSummary.tradesCount} İşlem ({portfolioSummary.winningTrades} Kârlı)</strong>
+            <strong style={{ color: '#fff' }}>{portfolioSummary?.tradesCount || 0} İşlem ({portfolioSummary?.winningTrades || 0} Kârlı)</strong>
           </div>
         </div>
 

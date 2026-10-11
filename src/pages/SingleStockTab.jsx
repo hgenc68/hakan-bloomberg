@@ -7,7 +7,7 @@ import stocksData from '../data/stocksData.json';
 import potentialData from '../data/potentialStocksData.json';
 import { getHealthColorTheme } from './RiskRadarTab';
 import { searchCatalog } from './ProChartTab';
-import { evaluateStockConstraints } from '../data/sectorConfig';
+import { evaluateStockConstraints, isBistTicker } from '../data/sectorConfig';
 
 ChartJS.register(...registerables);
 
@@ -361,7 +361,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const constraintInfo = useMemo(() => {
     return evaluateStockConstraints({
       ticker: currentTicker,
-      type: currentTicker.endsWith('.IS') ? 'BIST' : 'Hisse',
+      type: isBistTicker(currentTicker) ? 'BIST' : 'Hisse',
       holdings: portfolioSummary?.enrichedHoldings || holdings,
       portfolioSummary,
       allocation,
@@ -393,7 +393,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   useEffect(() => {
     let isMounted = true;
     const clean = currentTicker.toUpperCase().trim();
-    const isBist = clean.endsWith('.IS') || ['THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK'].includes(clean);
+    const isBist = isBistTicker(clean);
     const resolvedSym = isBist && !clean.endsWith('.IS') ? `${clean}.IS` : clean;
 
     if (fetchSingleQuote) {
@@ -427,7 +427,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   // Determine effective live market price strictly for the active stock
   const cleanTickerUpper = currentTicker.toUpperCase().trim();
-  const isBist = cleanTickerUpper.endsWith('.IS') || ['THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK'].includes(cleanTickerUpper);
+  const isBist = isBistTicker(cleanTickerUpper);
   const bistSym = isBist ? (cleanTickerUpper.endsWith('.IS') ? cleanTickerUpper : `${cleanTickerUpper}.IS`) : null;
 
   // STRICT TICKER ISOLATION: A quote can ONLY be used if it explicitly belongs to cleanTickerUpper or its BIST counterpart!

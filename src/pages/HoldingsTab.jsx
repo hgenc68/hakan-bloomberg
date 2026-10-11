@@ -122,14 +122,16 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
         shortLabel: 'KUR KALKANI',
         icon: '🛡️',
         color: '#fbbf24',
-        count: ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0,
-        valTRY: portfolioSummary?.totalGoldValTRY || 0,
-        valUSD: (portfolioSummary?.totalGoldValTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
-        costTRY: portfolioSummary?.totalGoldCostTRY || 0,
-        costUSD: (portfolioSummary?.totalGoldCostTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
+        count: (((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0) +
+               (((portfolioSummary?.ppfBalanceTRY) || 0) > 0 ? 1 : 0) +
+               (((portfolioSummary?.totalFreeCashTRY) || 0) > 0 ? 1 : 0),
+        valTRY: (portfolioSummary?.totalGoldValTRY || 0) + (portfolioSummary?.ppfBalanceTRY || 0) + (portfolioSummary?.totalFreeCashTRY || 0),
+        valUSD: ((portfolioSummary?.totalGoldValTRY || 0) + (portfolioSummary?.ppfBalanceTRY || 0) + (portfolioSummary?.totalFreeCashTRY || 0)) / (portfolioSummary?.usdtry || usdtry || 1),
+        costTRY: (portfolioSummary?.totalGoldCostTRY || 0) + (portfolioSummary?.ppfBalanceTRY || 0) + (portfolioSummary?.totalFreeCashTRY || 0),
+        costUSD: ((portfolioSummary?.totalGoldCostTRY || 0) + (portfolioSummary?.ppfBalanceTRY || 0) + (portfolioSummary?.totalFreeCashTRY || 0)) / (portfolioSummary?.usdtry || usdtry || 1),
         profitTRY: portfolioSummary?.goldProfitTRY || 0,
         profitUSD: (portfolioSummary?.goldProfitTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
-        returnPct: portfolioSummary?.goldReturnPct || 0,
+        returnPct: (portfolioSummary?.totalGoldCostTRY || 0) > 0 ? ((portfolioSummary?.goldProfitTRY || 0) / portfolioSummary.totalGoldCostTRY) * 100 : 0,
         dayPLTRY: 0,
         dayPLUSD: 0,
         dayPLPct: 0,
@@ -2301,6 +2303,98 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   <td className="text-right">
                     <span className="nav-badge gold" style={{ fontSize: 10, padding: '2px 8px' }}>
                       Kalkan Havuzunda
+                    </span>
+                  </td>
+                </tr>
+              )}
+
+              {/* Sentetik PPF Satırı (Yalnızca TÜM PORTFÖY modunda gösterilir) */}
+              {activeMainTab === 'all' && ((portfolioSummary?.ppfBalanceTRY) || 0) > 0 && (selectedSegment === 'all' || selectedSegment === 'shield') && (
+                <tr className="table-row synthetic-ppf">
+                  <td>
+                    <div className="ticker-cell">
+                      <strong className="ticker-symbol mono text-emerald">PPF_FON</strong>
+                      <span className="ticker-desc">Para Piyasası Fonları (Bileşik Faiz & Kuru Barut)</span>
+                    </div>
+                  </td>
+                  <td><span className="badge-type ppf" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>🟢 PPF / Likit</span></td>
+                  <td className="text-right mono text-emerald">1 Havuz</td>
+                  <td className="text-right mono text-muted">
+                    {sym}{fmt(isTRY ? portfolioSummary?.ppfBalanceTRY : ((portfolioSummary?.ppfBalanceTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1)), 2)}
+                  </td>
+                  <td className="text-right mono text-emerald">
+                    {sym}{fmt(isTRY ? portfolioSummary?.ppfBalanceTRY : ((portfolioSummary?.ppfBalanceTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1)), 2)}
+                  </td>
+                  <td className="text-right mono">
+                    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <span className="change-pill up">▲ Likit Getiri</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        Risksiz Faiz
+                      </span>
+                    </div>
+                  </td>
+                  <td className="text-right mono text-emerald" style={{ fontWeight: 800 }}>
+                    {sym}{fmt(isTRY ? portfolioSummary?.ppfBalanceTRY : ((portfolioSummary?.ppfBalanceTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1)), 2)}
+                  </td>
+                  <td className="text-right mono">
+                    <span className="text-up" style={{ fontWeight: 700 }}>
+                      +{sym}0.00
+                    </span>
+                  </td>
+                  <td className="text-right mono">
+                    <span className="return-badge up">
+                      +0.00%
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    <span className="nav-badge emerald" style={{ fontSize: 10, padding: '2px 8px' }}>
+                      Kuru Barut
+                    </span>
+                  </td>
+                </tr>
+              )}
+
+              {/* Sentetik Serbest Nakit Satırı (Yalnızca TÜM PORTFÖY modunda gösterilir) */}
+              {activeMainTab === 'all' && ((portfolioSummary?.totalFreeCashTRY) || 0) > 0 && (selectedSegment === 'all' || selectedSegment === 'shield') && (
+                <tr className="table-row synthetic-cash">
+                  <td>
+                    <div className="ticker-cell">
+                      <strong className="ticker-symbol mono text-cyan">SERBEST_NAKİT</strong>
+                      <span className="ticker-desc">Kullanılabilir Alım Gücü (TRY & USD Serbest Bakiye)</span>
+                    </div>
+                  </td>
+                  <td><span className="badge-type nakit" style={{ background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.3)' }}>💵 Serbest Nakit</span></td>
+                  <td className="text-right mono text-cyan">Alım Gücü</td>
+                  <td className="text-right mono text-muted">
+                    {sym}{fmt(isTRY ? portfolioSummary?.totalFreeCashTRY : ((portfolioSummary?.totalFreeCashUSD) || 0), 2)}
+                  </td>
+                  <td className="text-right mono text-cyan">
+                    {sym}{fmt(isTRY ? portfolioSummary?.totalFreeCashTRY : ((portfolioSummary?.totalFreeCashUSD) || 0), 2)}
+                  </td>
+                  <td className="text-right mono">
+                    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <span className="change-pill up">● Hazır Nakit</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        Dip Fırsatı
+                      </span>
+                    </div>
+                  </td>
+                  <td className="text-right mono text-cyan" style={{ fontWeight: 800 }}>
+                    {sym}{fmt(isTRY ? portfolioSummary?.totalFreeCashTRY : ((portfolioSummary?.totalFreeCashUSD) || 0), 2)}
+                  </td>
+                  <td className="text-right mono">
+                    <span className="text-muted" style={{ fontWeight: 700 }}>
+                      {sym}0.00
+                    </span>
+                  </td>
+                  <td className="text-right mono">
+                    <span className="return-badge flat" style={{ background: 'rgba(148, 163, 184, 0.12)', color: '#94a3b8' }}>
+                      0.00%
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    <span className="nav-badge cyan" style={{ fontSize: 10, padding: '2px 8px' }}>
+                      Alıma Hazır
                     </span>
                   </td>
                 </tr>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import stocksData from '../data/stocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
+import { KNOWN_EXPORTERS } from '../data/sectorConfig';
 
 ChartJS.register(...registerables);
 
@@ -132,7 +133,7 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
 
     // EKSEN 5: Enflasyon & Kur Kalkanı (FX Hedge)
     let hedgedValTRY = goldVal + (portfolioSummary?.cashUSD || 0) * (usdtry || 49.03);
-    const knownExporters = new Set(['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS']);
+    const knownExporters = KNOWN_EXPORTERS;
     enriched.forEach(h => {
       if (h.isUS) {
         hedgedValTRY += (h.valTRY || 0);

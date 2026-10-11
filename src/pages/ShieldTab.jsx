@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Shield, Plus, DollarSign, Award, Trash2, AlertTriangle, ShieldCheck, TrendingUp, Zap, ChevronDown, ChevronUp } from 'lucide-react';
-import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS } from '../data/sectorConfig';
+import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS, getMacroAssetClass } from '../data/sectorConfig';
 
 export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCashModal }) {
   const { goldPurchases, portfolioSummary, deleteGoldPurchase, usdtry } = useApp();
@@ -34,26 +34,17 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCa
   let holdingsGoldValTRY = 0;
   let holdingsGoldCostTRY = 0;
 
-  const knownExporters = new Set(['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS']);
-
   holdings.forEach(h => {
-    const sym = (h.ticker || '').toUpperCase();
-    const clean = sym.replace('.IS', '').replace('-USD', '');
-    const val = h.valTRY || 0;
-    const cost = h.costTRY || 0;
+    const val = Number(h.valTRY) || 0;
+    const cost = Number(h.costTRY) || 0;
+    const macroClass = getMacroAssetClass(h);
 
-    if (h.type === 'Kripto' || ['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(clean)) {
-      catTotalsTRY.crypto += val;
-    } else if (h.type === 'Altın' || clean.includes('XAUT') || clean.includes('GOLD')) {
+    if (macroClass === 'gold_metals') {
       catTotalsTRY.gold_metals += val;
       holdingsGoldValTRY += val;
       holdingsGoldCostTRY += cost;
-    } else if (h.isHoldingUSD || ['SPCX', 'DRAM', 'NVDA', 'TSM', 'ABBV', 'AAPL', 'MSFT'].includes(clean)) {
-      catTotalsTRY.us_equities_etf += val;
-    } else if (knownExporters.has(clean)) {
-      catTotalsTRY.bist_export += val;
-    } else {
-      catTotalsTRY.bist_domestic += val;
+    } else if (catTotalsTRY[macroClass] !== undefined) {
+      catTotalsTRY[macroClass] += val;
     }
   });
 

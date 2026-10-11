@@ -113,7 +113,7 @@ export const SECTOR_DEFINITIONS = {
 };
 
 export const TICKER_SECTOR_MAP = {
-  // Yarı İletken & Donanım
+  // Yarı İletken & AI Donanım
   'NVDA': 'semiconductor',
   'TSM': 'semiconductor',
   'DRAM': 'semiconductor',
@@ -125,8 +125,12 @@ export const TICKER_SECTOR_MAP = {
   'TXN': 'semiconductor',
   'INTC': 'semiconductor',
   'QCOM': 'semiconductor',
+  'ALAB': 'semiconductor',
+  'CAMT': 'semiconductor',
+  'MRVL': 'semiconductor',
+  'POET': 'semiconductor',
 
-  // Büyük Teknoloji & Bulut
+  // Büyük Teknoloji, Bulut & AI Altyapı
   'MSFT': 'bigtech_cloud',
   'AMZN': 'bigtech_cloud',
   'GOOGL': 'bigtech_cloud',
@@ -139,6 +143,14 @@ export const TICKER_SECTOR_MAP = {
   'SNOW': 'bigtech_cloud',
   'CRM': 'bigtech_cloud',
   'IBM': 'bigtech_cloud',
+  'VRT': 'bigtech_cloud',
+  'IONQ': 'bigtech_cloud',
+  'TCELL': 'bigtech_cloud',
+  'TCELL.IS': 'bigtech_cloud',
+  'TTKOM': 'bigtech_cloud',
+  'TTKOM.IS': 'bigtech_cloud',
+  'KONTRA': 'bigtech_cloud',
+  'KONTRA.IS': 'bigtech_cloud',
 
   // Sağlık & Biyoteknoloji
   'ABBV': 'healthcare',
@@ -146,6 +158,8 @@ export const TICKER_SECTOR_MAP = {
   'JNJ': 'healthcare',
   'MRK': 'healthcare',
   'PFE': 'healthcare',
+  'VKTX': 'healthcare',
+  'RXRX': 'healthcare',
 
   // Sanayi, Havacılık & Savunma
   'SPCX': 'industrials_defense',
@@ -154,8 +168,14 @@ export const TICKER_SECTOR_MAP = {
   'BA': 'industrials_defense',
   'ASELS': 'industrials_defense',
   'ASELS.IS': 'industrials_defense',
+  'OTKAR': 'industrials_defense',
+  'OTKAR.IS': 'industrials_defense',
+  'TKFEN': 'industrials_defense',
+  'TKFEN.IS': 'industrials_defense',
+  'KORDS': 'industrials_defense',
+  'KORDS.IS': 'industrials_defense',
 
-  // Enerji & Emtia
+  // Enerji, Rafineri & Emtia
   'TUPRS': 'energy_materials',
   'TUPRS.IS': 'energy_materials',
   'XOM': 'energy_materials',
@@ -166,8 +186,40 @@ export const TICKER_SECTOR_MAP = {
   'EREGL.IS': 'energy_materials',
   'KRDMD': 'energy_materials',
   'KRDMD.IS': 'energy_materials',
+  'ASTOR': 'energy_materials',
+  'ASTOR.IS': 'energy_materials',
+  'SASA': 'energy_materials',
+  'SASA.IS': 'energy_materials',
+  'GUBRF': 'energy_materials',
+  'GUBRF.IS': 'energy_materials',
+  'HEKTS': 'energy_materials',
+  'HEKTS.IS': 'energy_materials',
+  'SMRTG': 'energy_materials',
+  'SMRTG.IS': 'energy_materials',
+  'EUPWR': 'energy_materials',
+  'EUPWR.IS': 'energy_materials',
+  'CWENE': 'energy_materials',
+  'CWENE.IS': 'energy_materials',
+  'ENJSA': 'energy_materials',
+  'ENJSA.IS': 'energy_materials',
+  'AKSEN': 'energy_materials',
+  'AKSEN.IS': 'energy_materials',
+  'ODAS': 'energy_materials',
+  'ODAS.IS': 'energy_materials',
+  'KOZAA': 'energy_materials',
+  'KOZAA.IS': 'energy_materials',
+  'IPEKE': 'energy_materials',
+  'IPEKE.IS': 'energy_materials',
+  'BRSAN': 'energy_materials',
+  'BRSAN.IS': 'energy_materials',
+  'OYAKC': 'energy_materials',
+  'OYAKC.IS': 'energy_materials',
+  'CIMSA': 'energy_materials',
+  'CIMSA.IS': 'energy_materials',
+  'KCAER': 'energy_materials',
+  'KCAER.IS': 'energy_materials',
 
-  // Tüketim & Perakende
+  // Tüketim, Gıda & Perakende
   'BIMAS': 'consumer_retail',
   'BIMAS.IS': 'consumer_retail',
   'SOKM': 'consumer_retail',
@@ -178,6 +230,20 @@ export const TICKER_SECTOR_MAP = {
   'CCOLA.IS': 'consumer_retail',
   'BYDNR': 'consumer_retail',
   'BYDNR.IS': 'consumer_retail',
+  'TABGD': 'consumer_retail',
+  'TABGD.IS': 'consumer_retail',
+  'ULKER': 'consumer_retail',
+  'ULKER.IS': 'consumer_retail',
+  'AEFES': 'consumer_retail',
+  'AEFES.IS': 'consumer_retail',
+  'ARCLK': 'consumer_retail',
+  'ARCLK.IS': 'consumer_retail',
+  'VESTL': 'consumer_retail',
+  'VESTL.IS': 'consumer_retail',
+  'VESBE': 'consumer_retail',
+  'VESBE.IS': 'consumer_retail',
+  'MAVI': 'consumer_retail',
+  'MAVI.IS': 'consumer_retail',
   'KO': 'consumer_retail',
   'PEP': 'consumer_retail',
   'COST': 'consumer_retail',
@@ -192,6 +258,10 @@ export const TICKER_SECTOR_MAP = {
   'FROTO.IS': 'mobility_auto',
   'TOASO': 'mobility_auto',
   'TOASO.IS': 'mobility_auto',
+  'TTRAK': 'mobility_auto',
+  'TTRAK.IS': 'mobility_auto',
+  'TAVHL': 'mobility_auto',
+  'TAVHL.IS': 'mobility_auto',
   'TSLA': 'mobility_auto',
 
   // Finans & Fintech
@@ -208,6 +278,8 @@ export const TICKER_SECTOR_MAP = {
   'VAKBN.IS': 'financials',
   'HALKB': 'financials',
   'HALKB.IS': 'financials',
+  'ISMEN': 'financials',
+  'ISMEN.IS': 'financials',
   'JPM': 'financials',
   'V': 'financials',
   'MA': 'financials',
@@ -221,14 +293,26 @@ export const TICKER_SECTOR_MAP = {
   'SISE.IS': 'other_equity',
   'ENKAI': 'other_equity',
   'ENKAI.IS': 'other_equity',
+  'ALARK': 'other_equity',
+  'ALARK.IS': 'other_equity',
+  'DOHOL': 'other_equity',
+  'DOHOL.IS': 'other_equity',
+  'BERA': 'other_equity',
+  'BERA.IS': 'other_equity',
   'TRGYO': 'other_equity',
   'TRGYO.IS': 'other_equity',
+  'EKGYO': 'other_equity',
+  'EKGYO.IS': 'other_equity',
+  'ISGYO': 'other_equity',
+  'ISGYO.IS': 'other_equity',
 
   // Altın / Kalkan
   'XAUT': 'gold_shield',
   'XAUT-USD': 'gold_shield',
   'GRAM_ALTIN': 'gold_shield',
   'ALTIN': 'gold_shield',
+  'KOZAL': 'gold_shield',
+  'KOZAL.IS': 'gold_shield',
 
   // Kripto
   'BTC-USD': 'crypto',
@@ -274,6 +358,29 @@ export function getTickerSector(ticker, type) {
 export const KNOWN_EXPORTERS = new Set(['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS']);
 export const KNOWN_CRYPTO = new Set(['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO', 'SOL', 'AVAX', 'XRP', 'LINK', 'BNB', 'DOGE-USD', 'BTC-USD', 'ETH-USD', 'BIO-USD']);
 
+// BIST 100 & Popüler Türk Şirketleri Havuzu
+export const BIST_TICKERS = new Set([
+  'THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 
+  'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK',
+  'PGSUS', 'CCOLA', 'TOASO', 'TRGYO', 'ENKAI', 'VAKBN', 'HALKB',
+  'ASTOR', 'SASA', 'KRDMD', 'ARCLK', 'VESTL', 'VESBE', 'TCELL',
+  'TTKOM', 'TAVHL', 'TTRAK', 'OTKAR', 'GUBRF', 'HEKTS', 'KONTRA',
+  'SMRTG', 'EUPWR', 'CWENE', 'ALARK', 'ENJSA', 'AKSEN', 'ODAS',
+  'KOZAL', 'KOZAA', 'IPEKE', 'TKFEN', 'DOHOL', 'EKGYO', 'ISGYO',
+  'MAVI', 'ULKER', 'AEFES', 'BRSAN', 'KORDS', 'OYAKC', 'CIMSA',
+  'BERA', 'KCAER', 'ISMEN', 'TABGD', 'SOKM', 'MGROS', 'PETKM'
+]);
+
+/**
+ * Bir hissenin BIST (Borsa İstanbul) hissesi olup olmadığını tespit eder.
+ */
+export function isBistTicker(ticker) {
+  if (!ticker) return false;
+  const sym = String(ticker).toUpperCase().trim();
+  const clean = sym.replace('.IS', '').replace('-USD', '');
+  return sym.endsWith('.IS') || BIST_TICKERS.has(clean);
+}
+
 /**
  * Bir varlığın Kur Kalkanı'ndaki 6 makro varlık sınıfından hangisine ait olduğunu belirler.
  */
@@ -292,13 +399,18 @@ export function getMacroAssetClass(h) {
   if (type === 'PPF' || type === 'Nakit' || clean === 'PPF' || clean === 'CASH') {
     return 'cash_ppf';
   }
-  if (h.isHoldingUSD || h.currency === 'USD' || ['SPCX', 'DRAM', 'NVDA', 'TSM', 'ABBV', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SOFI', 'PLTR', 'TSLA', 'AMD', 'AVGO', 'ASML', 'LLY', 'NVO', 'XOM', 'CVX'].includes(clean)) {
-    return 'us_equities_etf';
+
+  // BIST Kontrolü: Sembol sonu .IS, tipi BIST, TRY para birimi veya BIST listesinde ise
+  const isBist = sym.endsWith('.IS') || type === 'BIST' || h.currency === 'TRY' || BIST_TICKERS.has(clean);
+  if (isBist) {
+    if (KNOWN_EXPORTERS.has(clean)) {
+      return 'bist_export';
+    }
+    return 'bist_domestic';
   }
-  if (KNOWN_EXPORTERS.has(clean)) {
-    return 'bist_export';
-  }
-  return 'bist_domestic';
+
+  // ABD Hisse Senedi & Global ETF
+  return 'us_equities_etf';
 }
 
 /**
@@ -422,14 +534,10 @@ export function evaluateStockConstraints({
   const isSingleStockSoftBreached = singleStockWeightPct >= singleStockSoftCap;
 
   // 5. Makro Varlık Sınıfı Hesabı (Kur Kalkanı ile Birebir Uyumlu)
-  const isBistStock = ticker.endsWith('.IS') || 
+  const isBistStock = isBistTicker(ticker) || 
                       type === 'BIST' || 
                       existingHolding?.currency === 'TRY' ||
-                      (!existingHolding?.isHoldingUSD && existingHolding?.currency !== 'USD' && [
-                        'THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 
-                        'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK',
-                        'PGSUS', 'CCOLA', 'TOASO', 'TRGYO', 'ENKAI', 'VAKBN', 'HALKB'
-                      ].includes(cleanTarget));
+                      (!existingHolding?.isHoldingUSD && existingHolding?.currency !== 'USD' && isBistTicker(cleanTarget));
 
   const assetCurrency = existingHolding?.currency || (isBistStock ? 'TRY' : 'USD');
   const targetMacroKey = getMacroAssetClass({ 
