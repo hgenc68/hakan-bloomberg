@@ -267,6 +267,7 @@ export const AppProvider = ({ children }) => {
   // Active UI tab & Currency
   // Default to 'market' (Global Piyasa Nabzı / Piyasa Özeti) as in original terminal
   const [activeTab, setActiveTab] = useState('market'); 
+  const [lastNavigatedFrom, setLastNavigatedFrom] = useState(null);
   const [currentCurrency, setCurrentCurrency] = useState('try'); // 'try' or 'usd'
   const [toast, setToast] = useState(null);
 
@@ -1215,6 +1216,8 @@ export const AppProvider = ({ children }) => {
     fetchSingleQuote,
     activeTab,
     setActiveTab,
+    lastNavigatedFrom,
+    setLastNavigatedFrom,
     currentCurrency,
     setCurrentCurrency,
     toast,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Target, Search, Sliders, Activity, TrendingUp, ShieldCheck, BarChart3, HelpCircle, Sparkles, Lightbulb, Compass, Info, Snowflake } from 'lucide-react';
+import { Target, Search, Sliders, Activity, TrendingUp, ShieldCheck, BarChart3, HelpCircle, Sparkles, Lightbulb, Compass, Info, Snowflake, ChevronLeft } from 'lucide-react';
 import { Bar, Radar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -356,7 +356,7 @@ const TICKER_ALIAS_MAP = {
 };
 
 export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
-  const { currentCurrency, usdtry, marketQuotes, fetchSingleQuote } = useApp();
+  const { currentCurrency, usdtry, marketQuotes, fetchSingleQuote, setActiveTab, lastNavigatedFrom, setLastNavigatedFrom } = useApp();
   const [currentTicker, setCurrentTicker] = useState(() => {
     const raw = (selectedTicker || 'NVDA').toUpperCase().trim().replace('.IS', '');
     return TICKER_ALIAS_MAP[raw] || raw;
@@ -751,8 +751,62 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
+      {/* 🔙 Tek Tuşla En Güçlü 10'a Dönüş Banner'ı (Top 10'dan gelindiyse) */}
+      {lastNavigatedFrom === 'top10' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 78, 59, 0.25) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.4)',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 16,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🏆</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>
+                En Güçlü 10 Listesinden geldiniz: <span style={{ color: 'var(--cyan)' }}>{currentTicker}</span> analiz ediliyor
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                İncelemenizi tamamladıktan sonra tek tuşla listeye dönebilirsiniz.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (setLastNavigatedFrom) setLastNavigatedFrom(null);
+              if (setActiveTab) setActiveTab('top10');
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+              borderRadius: 6,
+              color: '#ffffff',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.45)',
+              transition: 'all 0.15s ease'
+            }}
+            title="En Güçlü 10 Listesine Geri Dön"
+          >
+            <ChevronLeft size={16} />
+            <span>En Güçlü 10 Listesine Geri Dön</span>
+          </button>
+        </div>
+      )}
+
       {/* Workspace Header */}
-      <div className="workspace-header" style={{ marginBottom: 16 }}>
+      <div className="workspace-header" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 className="workspace-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Target size={20} className="text-cyan" />
@@ -765,6 +819,31 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             TradingView mum grafiği, dinamik indirgenmiş nakit akımı (DCF) simülatörü, değerleme koridoru ve Qualtrim 4-metrik bilanço analizi.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (setLastNavigatedFrom) setLastNavigatedFrom(null);
+            if (setActiveTab) setActiveTab('top10');
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            background: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            borderRadius: 6,
+            color: '#10b981',
+            fontSize: 11.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          title="En Güçlü 10 Tablosuna Git"
+        >
+          <ChevronLeft size={14} />
+          <span>En Güçlü 10 Tablosuna Dön</span>
+        </button>
       </div>
 
       {/* Search & Quick Picker Bar */}

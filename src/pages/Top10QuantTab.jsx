@@ -3,8 +3,136 @@ import { useApp } from '../context/AppContext';
 import { Trophy, Search, Filter, ShieldCheck, Flame, TrendingUp, Sparkles, ChevronRight } from 'lucide-react';
 import quantData from '../data/quantLeaderboard.json';
 
+export const TICKER_COMPANY_MAP = {
+  // BIST 100
+  'TUPRS': 'Tüpraş',
+  'TUPRS.IS': 'Tüpraş',
+  'AGHOL': 'Anadolu Grubu Holding',
+  'AGHOL.IS': 'Anadolu Grubu Holding',
+  'KRDMD': 'Kardemir (D)',
+  'KRDMD.IS': 'Kardemir (D)',
+  'BIMAS': 'BİM Mağazalar',
+  'BIMAS.IS': 'BİM Mağazalar',
+  'SOKM': 'Şok Marketler',
+  'SOKM.IS': 'Şok Marketler',
+  'CCOLA': 'Coca-Cola İçecek',
+  'CCOLA.IS': 'Coca-Cola İçecek',
+  'KCHOL': 'Koç Holding',
+  'KCHOL.IS': 'Koç Holding',
+  'EREGL': 'Ereğli Demir Çelik',
+  'EREGL.IS': 'Ereğli Demir Çelik',
+  'BRSAN': 'Borusan Boru',
+  'BRSAN.IS': 'Borusan Boru',
+  'VAKBN': 'VakıfBank',
+  'VAKBN.IS': 'VakıfBank',
+  'TRGYO': 'Torunlar GYO',
+  'TRGYO.IS': 'Torunlar GYO',
+  'AEFES': 'Anadolu Efes',
+  'AEFES.IS': 'Anadolu Efes',
+  'HALKB': 'Halkbank',
+  'HALKB.IS': 'Halkbank',
+  'ASELS': 'Aselsan',
+  'ASELS.IS': 'Aselsan',
+  'TOASO': 'Tofaş Otomobil',
+  'TOASO.IS': 'Tofaş Otomobil',
+  'THYAO': 'Türk Hava Yolları',
+  'THYAO.IS': 'Türk Hava Yolları',
+  'SISE': 'Şişecam',
+  'SISE.IS': 'Şişecam',
+  'FROTO': 'Ford Otosan',
+  'FROTO.IS': 'Ford Otosan',
+  'SAHOL': 'Sabancı Holding',
+  'SAHOL.IS': 'Sabancı Holding',
+  'GARAN': 'Garanti BBVA',
+  'GARAN.IS': 'Garanti BBVA',
+  'AKBNK': 'Akbank',
+  'AKBNK.IS': 'Akbank',
+  'ISCTR': 'İş Bankası (C)',
+  'ISCTR.IS': 'İş Bankası (C)',
+  'PGSUS': 'Pegasus',
+  'PGSUS.IS': 'Pegasus',
+  'TCELL': 'Turkcell',
+  'TCELL.IS': 'Turkcell',
+  'PETKM': 'Petkim',
+  'PETKM.IS': 'Petkim',
+  'TTKOM': 'Türk Telekom',
+  'TTKOM.IS': 'Türk Telekom',
+  'ASTOR': 'Astor Enerji',
+  'ASTOR.IS': 'Astor Enerji',
+  'BYDNR': 'Baydöner',
+  'BYDNR.IS': 'Baydöner',
+  'MGROS': 'Migros',
+  'MGROS.IS': 'Migros',
+  'KOZAL': 'Koza Altın',
+  'KOZAL.IS': 'Koza Altın',
+  'SASA': 'SASA Polyester',
+  'SASA.IS': 'SASA Polyester',
+  'HEKTS': 'Hektaş',
+  'HEKTS.IS': 'Hektaş',
+  'KONTR': 'Kontrolmatik',
+  'KONTR.IS': 'Kontrolmatik',
+  'ENKAI': 'Enka İnşaat',
+  'ENKAI.IS': 'Enka İnşaat',
+
+  // US Stocks
+  'CVX': 'Chevron',
+  'TSM': 'TSMC',
+  'XOM': 'Exxon Mobil',
+  'ABBV': 'AbbVie',
+  'TXN': 'Texas Instruments',
+  'AMD': 'AMD',
+  'NVDA': 'NVIDIA',
+  'MRK': 'Merck & Co.',
+  'JPM': 'JPMorgan Chase',
+  'LLY': 'Eli Lilly',
+  'AAPL': 'Apple',
+  'GOOGL': 'Alphabet (Google)',
+  'GOOG': 'Alphabet (Google)',
+  'JNJ': 'Johnson & Johnson',
+  'QCOM': 'Qualcomm',
+  'CSCO': 'Cisco Systems',
+  'MSFT': 'Microsoft',
+  'AMZN': 'Amazon',
+  'META': 'Meta Platforms',
+  'TSLA': 'Tesla',
+  'PLTR': 'Palantir',
+  'VRT': 'Vertiv',
+  'ALAB': 'Astera Labs',
+  'AVGO': 'Broadcom',
+  'ARM': 'Arm Holdings',
+  'ASML': 'ASML',
+  'MU': 'Micron Technology',
+  'CRWD': 'CrowdStrike',
+  'SNOW': 'Snowflake',
+  'SOFI': 'SoFi Technologies',
+  'SPCX': 'Space Exploration',
+  'DRAM': 'D-RAM Tech ETF',
+  'CUSD': 'Coinbase USD Yield',
+  'V': 'Visa',
+  'MA': 'Mastercard',
+  'DIS': 'Walt Disney',
+  'WMT': 'Walmart',
+  'KO': 'Coca-Cola (US)',
+  'PEP': 'PepsiCo',
+  'COST': 'Costco',
+  'ORCL': 'Oracle',
+  'INTC': 'Intel',
+  'NFLX': 'Netflix',
+  'CRM': 'Salesforce',
+  'IBM': 'IBM'
+};
+
+export function getCompanyShortName(ticker) {
+  if (!ticker) return '';
+  const clean = ticker.toUpperCase().trim();
+  const raw = clean.replace('.IS', '');
+  if (TICKER_COMPANY_MAP[clean]) return TICKER_COMPANY_MAP[clean];
+  if (TICKER_COMPANY_MAP[raw]) return TICKER_COMPANY_MAP[raw];
+  return raw;
+}
+
 export default function Top10QuantTab({ onSelectStock }) {
-  const { setActiveTab, marketQuotes } = useApp();
+  const { setActiveTab, marketQuotes, setLastNavigatedFrom } = useApp();
   const [marketFilter, setMarketFilter] = useState('all'); // 'all', 'bist', 'us'
   const [styleFilter, setStyleFilter] = useState('all'); // 'all', 'value', 'growth'
   const [search, setSearch] = useState('');
@@ -35,6 +163,7 @@ export default function Top10QuantTab({ onSelectStock }) {
       const q = search.toLowerCase();
       combined = combined.filter(item =>
         item.ticker.toLowerCase().includes(q) ||
+        getCompanyShortName(item.ticker).toLowerCase().includes(q) ||
         (item.style_label || '').toLowerCase().includes(q) ||
         (item.catalyst || '').toLowerCase().includes(q)
       );
@@ -164,15 +293,16 @@ export default function Top10QuantTab({ onSelectStock }) {
             <thead>
               <tr>
                 <th style={{ width: 45, textAlign: 'center' }}>Sıra</th>
-                <th style={{ width: 140 }}>Varlık</th>
-                <th style={{ width: 90, textAlign: 'center' }}>Piyasa</th>
-                <th style={{ width: 130 }}>Yatırım Stili</th>
+                <th style={{ width: 90 }}>Varlık</th>
+                <th style={{ width: 145 }}>Şirket Adı</th>
+                <th style={{ width: 85, textAlign: 'center' }}>Piyasa</th>
+                <th style={{ width: 125 }}>Yatırım Stili</th>
                 <th style={{ width: 90, textAlign: 'right' }}>Fiyat</th>
-                <th style={{ textAlign: 'center', width: 220 }}>5 Sütun Faktör Notları</th>
+                <th style={{ textAlign: 'center', width: 215 }}>5 Sütun Faktör Notları</th>
                 <th style={{ width: 85, textAlign: 'center' }}>Quant Skor</th>
-                <th style={{ width: 100, textAlign: 'center' }}>Sinyal</th>
+                <th style={{ width: 95, textAlign: 'center' }}>Sinyal</th>
                 <th>Yükseliş Katalizörü & Temel Bilanço Yapısı</th>
-                <th style={{ width: 90, textAlign: 'center' }}>İşlem</th>
+                <th style={{ width: 95, textAlign: 'center' }}>İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -196,6 +326,11 @@ export default function Top10QuantTab({ onSelectStock }) {
                         <strong className="ticker-symbol mono" style={{ color: 'var(--cyan)' }}>
                           {item.ticker}
                         </strong>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {getCompanyShortName(item.ticker)}
                       </div>
                     </td>
                     <td style={{ textAlign: 'center' }}>
@@ -256,6 +391,7 @@ export default function Top10QuantTab({ onSelectStock }) {
                         className="btn-action-row"
                         style={{ background: 'rgba(0, 229, 255, 0.1)', color: 'var(--cyan)', border: '1px solid var(--cyan)', padding: '4px 8px', borderRadius: 4, fontSize: 10 }}
                         onClick={() => {
+                          if (setLastNavigatedFrom) setLastNavigatedFrom('top10');
                           if (onSelectStock) onSelectStock(item.ticker);
                           setActiveTab('single_stock');
                         }}
