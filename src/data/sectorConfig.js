@@ -271,6 +271,36 @@ export function getTickerSector(ticker, type) {
   return SECTOR_DEFINITIONS.other_equity;
 }
 
+export const KNOWN_EXPORTERS = new Set(['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS']);
+export const KNOWN_CRYPTO = new Set(['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO', 'SOL', 'AVAX', 'XRP', 'LINK', 'BNB', 'DOGE-USD', 'BTC-USD', 'ETH-USD', 'BIO-USD']);
+
+/**
+ * Bir varlığın Kur Kalkanı'ndaki 6 makro varlık sınıfından hangisine ait olduğunu belirler.
+ */
+export function getMacroAssetClass(h) {
+  if (!h) return 'us_equities_etf';
+  const sym = String(h.ticker || h.clean_ticker || h.cleanTicker || '').toUpperCase().trim();
+  const clean = sym.replace('.IS', '').replace('-USD', '');
+  const type = h.type || '';
+
+  if (type === 'Kripto' || KNOWN_CRYPTO.has(clean) || sym.includes('-USD') || sym.endsWith('USDT')) {
+    return 'crypto';
+  }
+  if (type === 'Altın' || type === 'Emtia' || clean.includes('XAUT') || clean.includes('GOLD') || clean.includes('GRAM') || clean.includes('ALTIN')) {
+    return 'gold_metals';
+  }
+  if (type === 'PPF' || type === 'Nakit' || clean === 'PPF' || clean === 'CASH') {
+    return 'cash_ppf';
+  }
+  if (h.isHoldingUSD || h.currency === 'USD' || ['SPCX', 'DRAM', 'NVDA', 'TSM', 'ABBV', 'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'SOFI', 'PLTR', 'TSLA', 'AMD', 'AVGO', 'ASML', 'LLY', 'NVO', 'XOM', 'CVX'].includes(clean)) {
+    return 'us_equities_etf';
+  }
+  if (KNOWN_EXPORTERS.has(clean)) {
+    return 'bist_export';
+  }
+  return 'bist_domestic';
+}
+
 /**
  * Bir hissenin mevcut portföy risk tavanlarına (Tekil hisse, Sektör ve Varlık Sınıfı)
  * takılıp takılmadığını kurumsal UCITS kurallarına göre analiz eder.
@@ -391,27 +421,43 @@ export function evaluateStockConstraints({
   const isSingleStockHardBreached = singleStockWeightPct >= singleStockHardCap;
   const isSingleStockSoftBreached = singleStockWeightPct >= singleStockSoftCap;
 
-  // 5. Makro Varlık Sınıfı Hesabı
-  const knownBist = ticker.endsWith('.IS') || type === 'BIST' || ['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS', 'BYDNR', 'BIMAS', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK', 'KCHOL', 'SAHOL'].includes(cleanTarget);
-  const knownCrypto = type === 'Kripto' || ['BTC', 'ETH', 'SOL', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(cleanTarget);
-  const knownGold = type === 'Altın' || cleanTarget.includes('XAUT') || cleanTarget.includes('GOLD');
+  // 5. Makro Varlık Sınıfı Hesabı (Kur Kalkanı ile Birebir Uyumlu)
+  const isBistStock = ticker.endsWith('.IS') || 
+                      type === 'BIST' || 
+                      existingHolding?.currency === 'TRY' ||
+                      (!existingHolding?.isHoldingUSD && existingHolding?.currency !== 'USD' && [
+                        'THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 
+                        'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK',
+                        'PGSUS', 'CCOLA', 'TOASO', 'TRGYO', 'ENKAI', 'VAKBN', 'HALKB'
+                      ].includes(cleanTarget));
 
-  let macroKey = 'us_equities_etf';
+  const assetCurrency = existingHolding?.currency || (isBistStock ? 'TRY' : 'USD');
+  const targetMacroKey = getMacroAssetClass({ 
+    ticker, 
+    type: isBistStock ? 'BIST' : type, 
+    currency: assetCurrency,
+    isHoldingUSD: !isBistStock && assetCurrency === 'USD'
+  });
+  
+  let macroKey = targetMacroKey;
   let macroLabel = 'ABD Hisse & Global';
   let macroTargetPct = 35.0;
 
-  if (knownCrypto) {
-    macroKey = 'crypto';
+  if (targetMacroKey === 'crypto') {
     macroLabel = 'Kripto Varlıklar';
     macroTargetPct = 5.0;
-  } else if (knownGold) {
-    macroKey = 'gold_metals';
+  } else if (targetMacroKey === 'gold_metals') {
     macroLabel = 'Gram Altın & Emtia';
     macroTargetPct = 20.0;
-  } else if (knownBist) {
-    macroKey = 'bist';
-    macroLabel = 'BIST Hisse Senetleri';
-    macroTargetPct = 25.0;
+  } else if (targetMacroKey === 'bist_export') {
+    macroLabel = 'BIST İhracatçı';
+    macroTargetPct = 20.0;
+  } else if (targetMacroKey === 'bist_domestic') {
+    macroLabel = 'BIST İç Pazar';
+    macroTargetPct = 5.0;
+  } else if (targetMacroKey === 'cash_ppf') {
+    macroLabel = 'PPF & Likit Nakit';
+    macroTargetPct = 15.0;
   } else {
     macroKey = 'us_equities_etf';
     macroLabel = 'ABD Hisse & Global';
@@ -420,19 +466,16 @@ export function evaluateStockConstraints({
 
   let currentMacroValTRY = 0;
   activeHoldings.forEach(h => {
-    const hSym = (h.ticker || '').toUpperCase();
-    const hClean = hSym.replace('.IS', '').replace('-USD', '');
-    const v = getHoldingValTRY(h);
-    if (macroKey === 'crypto' && (h.type === 'Kripto' || ['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(hClean))) {
-      currentMacroValTRY += v;
-    } else if (macroKey === 'gold_metals' && (h.type === 'Altın' || hClean.includes('XAUT'))) {
-      currentMacroValTRY += v;
-    } else if (macroKey === 'bist' && (hSym.endsWith('.IS') || (h.currency === 'TRY' && !h.isHoldingUSD && !hSym.includes('-USD')))) {
-      currentMacroValTRY += v;
-    } else if (macroKey === 'us_equities_etf' && (h.isHoldingUSD || h.currency === 'USD' || !hSym.endsWith('.IS'))) {
-      currentMacroValTRY += v;
+    if (getMacroAssetClass(h) === macroKey) {
+      currentMacroValTRY += getHoldingValTRY(h);
     }
   });
+
+  if (macroKey === 'gold_metals') {
+    currentMacroValTRY += (Number(portfolioSummary?.totalGoldValTRY) || 0);
+  } else if (macroKey === 'cash_ppf') {
+    currentMacroValTRY += ((Number(portfolioSummary?.ppfBalanceTRY) || 0) + (Number(portfolioSummary?.totalFreeCashTRY) || 0));
+  }
 
   const macroWeightPct = totalValTRY > 0 ? (currentMacroValTRY / totalValTRY) * 100 : 0;
   const isMacroBreached = macroWeightPct > (macroTargetPct + 3.0);
