@@ -431,6 +431,123 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     }
   };
 
+  // Consolidated Total Portfolio Snowflake (Tüm Portföy Kar Tanesi) Calculation
+  const totalSnowflake = useMemo(() => {
+    const totalVal = portfolioSummary?.totalValTRY || 1;
+    const eqVal = segmentStats.equity.valTRY || 0;
+    const goldVal = portfolioSummary?.totalGoldValTRY || 0;
+    const ppfVal = portfolioSummary?.ppfBalanceTRY || 0;
+    const cashVal = portfolioSummary?.totalFreeCashTRY || 0;
+    const shieldTotalVal = goldVal + ppfVal + cashVal; // Total defensive liquidity & gold
+    const cryptoVal = segmentStats.crypto.valTRY || 0;
+
+    const eqPct = totalVal > 0 ? (eqVal / totalVal) * 100 : 0;
+    const goldPct = totalVal > 0 ? (goldVal / totalVal) * 100 : 0;
+    const cashPpfPct = totalVal > 0 ? ((ppfVal + cashVal) / totalVal) * 100 : 0;
+    const totalDefensivePct = totalVal > 0 ? (shieldTotalVal / totalVal) * 100 : 0;
+    const cryptoPct = totalVal > 0 ? (cryptoVal / totalVal) * 100 : 0;
+
+    // 1. Varlık Dağılımı & Çeşitlendirme (Asset Diversification)
+    let allocScore = 85;
+    if (eqPct >= 40 && eqPct <= 75 && totalDefensivePct >= 15 && totalDefensivePct <= 45) {
+      allocScore = 95;
+    } else if (eqPct > 85) {
+      allocScore = Math.max(55, 90 - (eqPct - 85) * 2.2);
+    } else if (totalDefensivePct > 65) {
+      allocScore = Math.max(65, 88 - (totalDefensivePct - 65) * 1.5);
+    } else if (cryptoPct > 25) {
+      allocScore = Math.max(50, 85 - (cryptoPct - 25) * 2.5);
+    } else {
+      allocScore = 82;
+    }
+
+    // 2. Kalkan & Likidite Güvencesi (Defensive Shield & Cash Cushion)
+    let shieldScore = 80;
+    if (totalDefensivePct >= 20 && totalDefensivePct <= 35) {
+      shieldScore = 96;
+    } else if (totalDefensivePct >= 15 && totalDefensivePct < 20) {
+      shieldScore = 88;
+    } else if (totalDefensivePct >= 10 && totalDefensivePct < 15) {
+      shieldScore = 78;
+    } else if (totalDefensivePct < 10) {
+      shieldScore = Math.max(45, 52 + totalDefensivePct * 2.5);
+    } else {
+      shieldScore = Math.max(75, 96 - (totalDefensivePct - 35) * 0.7);
+    }
+
+    // 3. Varlık Kalitesi (Consolidated Asset Quality & Quant Balance)
+    const eqQuality = weightedSnowflake.composite || 80;
+    const goldQuality = 94; // Sovereign hedge & capital preservation
+    const cashQuality = 92; // Liquid risk-free yield
+    const cryptoQuality = 72; // Volatility discount
+    const sumWeightedQuality = (eqVal * eqQuality) + (goldVal * goldQuality) + ((ppfVal + cashVal) * cashQuality) + (cryptoVal * cryptoQuality);
+    const qualityScore = totalVal > 0 ? Math.round((sumWeightedQuality / totalVal) * 10) / 10 : 85;
+
+    // 4. Düşüş Direnci & Risk Koruması (Crash & Drawdown Protection)
+    const eqRisk = weightedSnowflake.risk || 75;
+    const defensiveBoost = Math.min(20, totalDefensivePct * 0.65);
+    const riskScore = Math.min(97, Math.round((eqRisk * 0.72 + 22 + defensiveBoost) * 10) / 10);
+
+    // 5. Getiri & Büyüme İvmesi (Consolidated Return Momentum)
+    const totalReturn = portfolioSummary?.unrealizedReturnPct || 0;
+    const dayPLPct = portfolioSummary?.dayPLPct || 0;
+    let returnScore = 78;
+    if (totalReturn >= 35) returnScore = 95;
+    else if (totalReturn >= 20) returnScore = 89;
+    else if (totalReturn >= 10) returnScore = 84;
+    else if (totalReturn >= 0) returnScore = 78;
+    else if (totalReturn >= -10) returnScore = 68;
+    else returnScore = Math.max(45, 60 + totalReturn);
+
+    if (dayPLPct > 0.5) returnScore = Math.min(98, returnScore + 3);
+    else if (dayPLPct < -1.0) returnScore = Math.max(45, returnScore - 3);
+
+    const composite = Math.round(((allocScore + shieldScore + qualityScore + riskScore + returnScore) / 5) * 10) / 10;
+
+    return {
+      alloc: Math.round(allocScore * 10) / 10,
+      shield: Math.round(shieldScore * 10) / 10,
+      quality: Math.round(qualityScore * 10) / 10,
+      risk: Math.round(riskScore * 10) / 10,
+      return: Math.round(returnScore * 10) / 10,
+      composite,
+      eqPct: Math.round(eqPct * 10) / 10,
+      goldPct: Math.round(goldPct * 10) / 10,
+      cashPpfPct: Math.round(cashPpfPct * 10) / 10,
+      totalDefensivePct: Math.round(totalDefensivePct * 10) / 10,
+      shieldTotalVal: isTRY ? shieldTotalVal : (usdtry > 0 ? shieldTotalVal / usdtry : 0),
+      eqVal: isTRY ? eqVal : (usdtry > 0 ? eqVal / usdtry : 0),
+      liquidCashVal: isTRY ? (ppfVal + cashVal) : (usdtry > 0 ? (ppfVal + cashVal) / usdtry : 0),
+      goldVal: isTRY ? goldVal : (usdtry > 0 ? goldVal / usdtry : 0)
+    };
+  }, [portfolioSummary, segmentStats, weightedSnowflake, isTRY, usdtry]);
+
+  const totalSnowflakeTheme = getHealthColorTheme(totalSnowflake.composite);
+
+  const totalSnowflakeChartData = {
+    labels: ['Varlık Dağılımı', 'Zırh & Likidite', 'Varlık Kalitesi', 'Düşüş Koruması', 'Getiri İvmesi'],
+    datasets: [
+      {
+        label: 'Tüm Portföy Konsolide Profili',
+        data: [
+          totalSnowflake.alloc,
+          totalSnowflake.shield,
+          totalSnowflake.quality,
+          totalSnowflake.risk,
+          totalSnowflake.return
+        ],
+        backgroundColor: totalSnowflakeTheme.bgRgba,
+        borderColor: totalSnowflakeTheme.color,
+        borderWidth: 2.2,
+        pointBackgroundColor: totalSnowflakeTheme.pointBg,
+        pointBorderColor: '#ffffff',
+        pointHoverBackgroundColor: '#ffffff',
+        pointHoverBorderColor: totalSnowflakeTheme.color,
+        pointRadius: 4
+      }
+    ]
+  };
+
   // Rebalance Assistant List
   const totalValAll = portfolioSummary?.totalValTRY || 1;
   const rebalanceList = useMemo(() => {
@@ -1200,6 +1317,197 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
             </div>
           </div>
 
+          {/* 🌟 2-Column Dashboard: Konsolide Sermaye & Zırh Dengesi + TÜM PORTFÖY KAR TANESİ RADARI */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 14, marginBottom: 16 }}>
+            
+            {/* Sol Kolon: Konsolide Sermaye Yapısı & Koruma Dağılımı */}
+            <div 
+              className="card" 
+              style={{ 
+                padding: 16, 
+                background: '#090d16', 
+                border: '1px solid var(--border)', 
+                borderRadius: 8, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'space-between' 
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <div style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <ShieldCheck size={16} className="text-amber" />
+                    <span>SERMAYE DAĞILIMI & ZIRH DENGESİ</span>
+                  </div>
+                  <span className="nav-badge gold" style={{ fontSize: 9 }}>
+                    All-Weather Portföy Mimarisi
+                  </span>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  Büyüme varlıklarınız (Hisse & Kripto) ile kriz tamponlarınız (Altın, PPF & Nakit) arasındaki koruma ve getiri optimizasyonu.
+                </div>
+              </div>
+
+              {/* 3 Katmanlı Dağılım İlerleme Çubuğu */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, marginBottom: 5 }}>
+                  <span style={{ color: '#38bdf8' }}>📈 Çekirdek Büyüme (%{totalSnowflake.eqPct})</span>
+                  <span style={{ color: '#fbbf24' }}>🛡️ Kur Kalkanı & Nakit (%{totalSnowflake.totalDefensivePct})</span>
+                </div>
+                <div style={{ width: '100%', height: 12, background: '#040711', borderRadius: 6, overflow: 'hidden', display: 'flex', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div 
+                    title={`Hisse & ETF: %${totalSnowflake.eqPct}`} 
+                    style={{ width: `${Math.max(2, totalSnowflake.eqPct)}%`, background: 'linear-gradient(90deg, #0284c7, #38bdf8)', transition: 'all 0.3s ease' }} 
+                  />
+                  <div 
+                    title={`Altın Kalkanı: %${totalSnowflake.goldPct}`} 
+                    style={{ width: `${Math.max(2, totalSnowflake.goldPct)}%`, background: 'linear-gradient(90deg, #d97706, #fbbf24)', transition: 'all 0.3s ease' }} 
+                  />
+                  <div 
+                    title={`PPF & Serbest Nakit: %${totalSnowflake.cashPpfPct}`} 
+                    style={{ width: `${Math.max(2, totalSnowflake.cashPpfPct)}%`, background: 'linear-gradient(90deg, #059669, #10b981)', transition: 'all 0.3s ease' }} 
+                  />
+                  {segmentStats.crypto.weightPct > 0 && (
+                    <div 
+                      title={`Kripto: %${segmentStats.crypto.weightPct.toFixed(1)}`} 
+                      style={{ width: `${Math.max(2, segmentStats.crypto.weightPct)}%`, background: 'linear-gradient(90deg, #7c3aed, #c084fc)', transition: 'all 0.3s ease' }} 
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* 3-Sütunlu Sermaye Özet Paneli */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, background: 'rgba(0,0,0,0.5)', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 10, marginBottom: 8 }}>
+                <div>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 9 }}>Büyüme Motoru</span>
+                  <strong className="mono" style={{ fontSize: 12.5, color: '#38bdf8' }}>
+                    {sym}{fmt(totalSnowflake.eqVal, 0)}
+                  </strong>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>
+                    %{totalSnowflake.eqPct} Portföy
+                  </div>
+                </div>
+
+                <div style={{ borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', paddingLeft: 8, paddingRight: 8 }}>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 9 }}>Altın Zırhı</span>
+                  <strong className="mono" style={{ fontSize: 12.5, color: '#fbbf24' }}>
+                    {sym}{fmt(totalSnowflake.goldVal, 0)}
+                  </strong>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>
+                    %{totalSnowflake.goldPct} Kalkan
+                  </div>
+                </div>
+
+                <div>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 9 }}>Nakit & PPF (Barut)</span>
+                  <strong className="mono" style={{ fontSize: 12.5, color: '#10b981' }}>
+                    {sym}{fmt(totalSnowflake.liquidCashVal, 0)}
+                  </strong>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>
+                    %{totalSnowflake.cashPpfPct} Likidite
+                  </div>
+                </div>
+              </div>
+
+              {/* Stratejik Portföy Yorumu / Kalkan Tespiti */}
+              <div style={{ background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.15)', borderRadius: 6, padding: '7px 10px', fontSize: 9.5, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={13} style={{ color: 'var(--cyan)', flexShrink: 0 }} />
+                <span>
+                  {totalSnowflake.totalDefensivePct >= 18
+                    ? `Zırh ve nakit tamponunuz (%${totalSnowflake.totalDefensivePct}), hisse düzeltmelerine karşı dengeli bir koruma kalkanı ve alım gücü sağlamaktadır.`
+                    : `Savunma zırhı ve nakit oranınız (%${totalSnowflake.totalDefensivePct}) düşük; piyasa dalgalanmalarına karşı altın veya PPF takviyesi direnci artırabilir.`}
+                </span>
+              </div>
+            </div>
+
+            {/* Sağ Kolon: TÜM PORTFÖY KONSOLİDE KAR TANESİ RADARI */}
+            <div 
+              className="card" 
+              style={{ 
+                padding: 16, 
+                background: '#090d16', 
+                border: `1px solid ${totalSnowflakeTheme.color}50`, 
+                boxShadow: `0 0 16px ${totalSnowflakeTheme.color}18`, 
+                borderRadius: 8, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'space-between',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <div style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <Snowflake size={16} style={{ color: totalSnowflakeTheme.color }} />
+                    <span>TÜM PORTFÖY KONSOLİDE SAĞLIK KAR TANESİ</span>
+                  </div>
+                  <span 
+                    className="nav-badge" 
+                    style={{ 
+                      fontSize: 9.5, 
+                      fontWeight: 800, 
+                      background: `${totalSnowflakeTheme.color}22`, 
+                      color: totalSnowflakeTheme.color, 
+                      border: `1px solid ${totalSnowflakeTheme.color}66`,
+                      padding: '3px 8px'
+                    }}
+                  >
+                    {totalSnowflakeTheme.icon} {totalSnowflake.composite.toFixed(1)} / 100 Puan
+                  </span>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  Konsolide çoklu varlık sağlık ve direnç profili: <strong style={{ color: totalSnowflakeTheme.color }}>{totalSnowflakeTheme.label}</strong>
+                </div>
+              </div>
+
+              {/* Radar Chart Container */}
+              <div style={{ height: 185, width: '100%', position: 'relative', margin: '2px 0' }}>
+                <Radar data={totalSnowflakeChartData} options={snowflakeChartOptions} />
+              </div>
+
+              {/* 5 Pillar Mini Scores Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, background: 'rgba(0,0,0,0.5)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center', marginBottom: 6 }}>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Dağılım</div>
+                  <strong className="mono" style={{ color: totalSnowflake.alloc >= 70 ? 'var(--cyan)' : 'var(--amber)' }}>{totalSnowflake.alloc}</strong>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Zırh/Nakit</div>
+                  <strong className="mono" style={{ color: totalSnowflake.shield >= 70 ? 'var(--gold)' : 'var(--amber)' }}>{totalSnowflake.shield}</strong>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Kalite</div>
+                  <strong className="mono" style={{ color: totalSnowflake.quality >= 70 ? 'var(--emerald)' : 'var(--amber)' }}>{totalSnowflake.quality}</strong>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Direnç</div>
+                  <strong className="mono" style={{ color: totalSnowflake.risk >= 70 ? '#a855f7' : 'var(--red)' }}>{totalSnowflake.risk}</strong>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>Getiri</div>
+                  <strong className="mono" style={{ color: totalSnowflake.return >= 70 ? 'var(--cyan)' : 'var(--amber)' }}>{totalSnowflake.return}</strong>
+                </div>
+              </div>
+
+              {/* 4-Tier Color Legend Bar */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, background: 'rgba(0,0,0,0.5)', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center' }}>
+                <div style={{ color: '#ef4444', fontWeight: totalSnowflakeTheme.status === 'critical' ? 900 : 500, background: totalSnowflakeTheme.status === 'critical' ? 'rgba(239,68,68,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🔴 &lt;50 Zayıf
+                </div>
+                <div style={{ color: '#f59e0b', fontWeight: totalSnowflakeTheme.status === 'warning' ? 900 : 500, background: totalSnowflakeTheme.status === 'warning' ? 'rgba(245,158,11,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🟡 50-69 Orta
+                </div>
+                <div style={{ color: '#00e5ff', fontWeight: totalSnowflakeTheme.status === 'healthy' ? 900 : 500, background: totalSnowflakeTheme.status === 'healthy' ? 'rgba(0,229,255,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🔵 70-84 Sağlıklı
+                </div>
+                <div style={{ color: '#10b981', fontWeight: totalSnowflakeTheme.status === 'excellent' ? 900 : 500, background: totalSnowflakeTheme.status === 'excellent' ? 'rgba(16,185,129,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🟢 ≥85 Mükemmel
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       )}
 
@@ -1942,6 +2250,21 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         >
                           {displayedHoldings.length + (!isEqMode && (selectedSegment === 'all' || selectedSegment === 'shield') && ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0)} Varlık
                         </span>
+                        {!isEqMode && selectedSegment === 'all' && (
+                          <span 
+                            className="nav-badge" 
+                            style={{ 
+                              fontSize: 9.5, 
+                              background: `${totalSnowflakeTheme.color}22`, 
+                              color: totalSnowflakeTheme.color, 
+                              border: `1px solid ${totalSnowflakeTheme.color}55`,
+                              padding: '2px 8px',
+                              fontWeight: 800
+                            }}
+                          >
+                            ❄️ Kar Tanesi: {totalSnowflake.composite.toFixed(1)}/100
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="text-right mono text-muted" style={{ fontWeight: 800 }}>
