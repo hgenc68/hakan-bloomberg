@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Shield, Plus, DollarSign, ShoppingCart, Edit3, Sparkles, Check, Search } from 'lucide-react';
+import { evaluateStockConstraints } from '../data/sectorConfig';
 
 export function ModalWrapper({ title, icon: Icon, onClose, children }) {
   return (
@@ -75,7 +76,7 @@ export const POPULAR_ASSETS = [
 
 // 1. Yeni Varlık Ekle / Alım Yap Modalı (Akıllı Otomatik Tamamlama, Mevcut Pozisyon Tespiti & Ağırlıklı Ortalama Maliyet)
 export function AddHoldingModal({ initialTicker, onClose }) {
-  const { addHolding, usdtry, marketQuotes, holdings } = useApp();
+  const { addHolding, usdtry, marketQuotes, holdings, portfolioSummary, allocation } = useApp();
   const [ticker, setTicker] = useState(initialTicker ? initialTicker.toUpperCase() : '');
   const [name, setName] = useState('');
   const [type, setType] = useState('Hisse');
@@ -83,6 +84,19 @@ export function AddHoldingModal({ initialTicker, onClose }) {
   const [avgCost, setAvgCost] = useState('');
   const [currency, setCurrency] = useState('TRY');
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Kurumsal Portföy Tavan ve Sektörel Uygunluk Analizi
+  const constraintInfo = useMemo(() => {
+    if (!ticker) return null;
+    return evaluateStockConstraints({
+      ticker,
+      type,
+      holdings,
+      portfolioSummary,
+      allocation,
+      usdtry
+    });
+  }, [ticker, type, holdings, portfolioSummary, allocation, usdtry]);
 
   // Check if ticker already exists in holdings (matching ticker or clean ticker)
   const existingHolding = useMemo(() => {
@@ -358,6 +372,30 @@ export function AddHoldingModal({ initialTicker, onClose }) {
             />
           </div>
         </div>
+
+        {/* Kurumsal Portföy Tavan ve Sektörel Uygunluk Uyarısı */}
+        {constraintInfo && (constraintInfo.isSectorBreached || constraintInfo.isSingleStockSoftBreached || constraintInfo.isMacroBreached) && (
+          <div style={{
+            background: constraintInfo.level === 'danger' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+            border: `1px solid ${constraintInfo.level === 'danger' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+            borderRadius: 6,
+            padding: '10px 12px',
+            marginBottom: 12
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div style={{ fontWeight: 800, fontSize: 11.5, color: constraintInfo.level === 'danger' ? '#fca5a5' : '#fde68a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>{constraintInfo.badgeIcon}</span>
+                <span>{constraintInfo.title}</span>
+              </div>
+              <span className="nav-badge" style={{ fontSize: 9, padding: '1px 6px', background: `${constraintInfo.sector.color}25`, color: constraintInfo.sector.color, border: `1px solid ${constraintInfo.sector.color}50` }}>
+                {constraintInfo.sector.name} (%{constraintInfo.sectorWeightPct.toFixed(1)} / %{constraintInfo.sectorCapPct.toFixed(0)})
+              </span>
+            </div>
+            <div style={{ fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.4 }}>
+              {constraintInfo.warningText}
+            </div>
+          </div>
+        )}
 
         <div className="modal-actions">
           <button type="button" className="btn-secondary" onClick={onClose}>İptal</button>

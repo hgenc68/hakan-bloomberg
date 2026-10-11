@@ -27,9 +27,10 @@ import {
 } from 'lucide-react';
 import potentialData from '../data/potentialStocksData.json';
 import { useApp } from '../context/AppContext';
+import { evaluateStockConstraints } from '../data/sectorConfig';
 
 export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAnalysis }) {
-  const { currentCurrency, usdtry, marketQuotes } = useApp();
+  const { currentCurrency, usdtry, marketQuotes, holdings, portfolioSummary, allocation } = useApp();
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
@@ -43,6 +44,22 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
   const [showMethodology, setShowMethodology] = useState(true);
 
   const stocks = potentialData.stocks || [];
+
+  // Her potansiyel hisse için kurumsal portföy tavan ve sektörel uygunluk analizi
+  const constraintsMap = useMemo(() => {
+    const map = {};
+    stocks.forEach(s => {
+      map[s.ticker] = evaluateStockConstraints({
+        ticker: s.ticker,
+        type: 'Hisse',
+        holdings,
+        portfolioSummary,
+        allocation,
+        usdtry
+      });
+    });
+    return map;
+  }, [stocks, holdings, portfolioSummary, allocation, usdtry]);
 
   // Filter logic
   const filteredStocks = useMemo(() => {
@@ -359,26 +376,51 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
                     </div>
                   </div>
 
-                  {/* Conviction Badge */}
-                  <span 
-                    className="nav-badge" 
-                    style={{ 
-                      background: convStyle.bg, 
-                      color: convStyle.color, 
-                      borderColor: convStyle.border,
-                      borderWidth: 1,
-                      borderStyle: 'solid',
-                      padding: '4px 10px',
-                      fontSize: 10.5,
-                      fontWeight: 800,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4
-                    }}
-                  >
-                    <span>{convStyle.icon}</span>
-                    <span>{stock.conviction}</span>
-                  </span>
+                  {/* Conviction & Risk Constraint Badges */}
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span 
+                      className="nav-badge" 
+                      style={{ 
+                        background: convStyle.bg, 
+                        color: convStyle.color, 
+                        borderColor: convStyle.border,
+                        borderWidth: 1,
+                        borderStyle: 'solid',
+                        padding: '4px 9px',
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <span>{convStyle.icon}</span>
+                      <span>{stock.conviction}</span>
+                    </span>
+
+                    {(() => {
+                      const c = constraintsMap[stock.ticker];
+                      if (!c) return null;
+                      return (
+                        <span 
+                          className={`nav-badge ${c.badgeColor}`}
+                          style={{
+                            fontSize: 9.5,
+                            padding: '3px 7px',
+                            fontWeight: 700,
+                            border: c.level === 'danger' ? '1px solid #ef4444' : (c.level === 'warning' ? '1px solid #f59e0b' : '1px solid rgba(16,185,129,0.3)'),
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3
+                          }}
+                          title={c.warningText}
+                        >
+                          <span>{c.badgeIcon}</span>
+                          <span>{c.isSectorBreached ? 'Sektör Dolu' : (c.isSingleStockSoftBreached ? 'Tavan Dolu' : 'Kota Uygun')}</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Price, Target & Upside Pill Row */}
@@ -600,19 +642,39 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
                       })()}
 
                       <td className="text-center">
-                        <span 
-                          className="nav-badge" 
-                          style={{ 
-                            background: convStyle.bg, 
-                            color: convStyle.color, 
-                            borderColor: convStyle.border,
-                            fontSize: 9.5, 
-                            padding: '2px 7px',
-                            fontWeight: 800 
-                          }}
-                        >
-                          {stock.conviction}
-                        </span>
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                          <span 
+                            className="nav-badge" 
+                            style={{ 
+                              background: convStyle.bg, 
+                              color: convStyle.color, 
+                              borderColor: convStyle.border,
+                              fontSize: 9, 
+                              padding: '2px 6px',
+                              fontWeight: 800 
+                            }}
+                          >
+                            {stock.conviction}
+                          </span>
+                          {(() => {
+                            const c = constraintsMap[stock.ticker];
+                            if (!c) return null;
+                            return (
+                              <span 
+                                className={`nav-badge ${c.badgeColor}`}
+                                style={{
+                                  fontSize: 8.5,
+                                  padding: '1px 5px',
+                                  fontWeight: 700,
+                                  border: c.level === 'danger' ? '1px solid #ef4444' : (c.level === 'warning' ? '1px solid #f59e0b' : '1px solid rgba(16,185,129,0.3)')
+                                }}
+                                title={c.warningText}
+                              >
+                                {c.badgeIcon} {c.isSectorBreached ? 'Sektör Aşımı' : (c.isSingleStockSoftBreached ? 'Tavan Dolu' : 'Kota Uygun')}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </td>
 
                       <td className="text-center">

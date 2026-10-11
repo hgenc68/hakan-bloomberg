@@ -7,6 +7,7 @@ import stocksData from '../data/stocksData.json';
 import potentialData from '../data/potentialStocksData.json';
 import { getHealthColorTheme } from './RiskRadarTab';
 import { searchCatalog } from './ProChartTab';
+import { evaluateStockConstraints } from '../data/sectorConfig';
 
 ChartJS.register(...registerables);
 
@@ -342,7 +343,10 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     lastNavigatedFrom, 
     setLastNavigatedFrom,
     setTop10MarketFilter,
-    setModelPortfolioSelectedMarket
+    setModelPortfolioSelectedMarket,
+    holdings,
+    portfolioSummary,
+    allocation
   } = useApp();
   const [currentTicker, setCurrentTicker] = useState(() => {
     const raw = (selectedTicker || 'NVDA').toUpperCase().trim().replace('.IS', '');
@@ -352,6 +356,18 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchBoxRef = useRef(null);
+
+  // Kurumsal Portföy Tavan ve Sektörel Uygunluk Analizi
+  const constraintInfo = useMemo(() => {
+    return evaluateStockConstraints({
+      ticker: currentTicker,
+      type: currentTicker.endsWith('.IS') ? 'BIST' : 'Hisse',
+      holdings,
+      portfolioSummary,
+      allocation,
+      usdtry
+    });
+  }, [currentTicker, holdings, portfolioSummary, allocation, usdtry]);
 
   const suggestions = searchQuery.trim().length > 0 ? searchCatalog(searchQuery, 8) : [];
 
@@ -1063,7 +1079,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>QUANT NOTU</div>
               <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
@@ -1075,6 +1091,100 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               <span className="nav-badge emerald" style={{ fontSize: 12, padding: '4px 10px', fontWeight: 800 }}>
                 GÜÇLÜ AL
               </span>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>PORTFÖY KALKANI</div>
+              <span 
+                className={`nav-badge ${constraintInfo.badgeColor}`} 
+                style={{ 
+                  fontSize: 11, 
+                  padding: '4px 10px', 
+                  fontWeight: 800, 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: 4,
+                  border: constraintInfo.level === 'danger' ? '1px solid #ef4444' : (constraintInfo.level === 'warning' ? '1px solid #f59e0b' : '1px solid var(--emerald)')
+                }}
+                title={constraintInfo.warningText}
+              >
+                <span>{constraintInfo.badgeIcon}</span>
+                <span>{constraintInfo.badgeText}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 🛡️ PORTFÖY RİSK & TAVAN KONTROLÜ (PORTFOLIO CONSTRAINTS SHIELD) */}
+        <div 
+          style={{ 
+            background: constraintInfo.level === 'danger' 
+              ? 'rgba(239, 68, 68, 0.08)' 
+              : constraintInfo.level === 'warning' 
+              ? 'rgba(245, 158, 11, 0.08)' 
+              : 'rgba(16, 185, 129, 0.08)',
+            border: `1px solid ${constraintInfo.level === 'danger' ? 'rgba(239, 68, 68, 0.35)' : (constraintInfo.level === 'warning' ? 'rgba(245, 158, 11, 0.35)' : 'rgba(16, 185, 129, 0.35)')}`,
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 16
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>{constraintInfo.badgeIcon}</span>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 800, color: constraintInfo.level === 'danger' ? '#fca5a5' : (constraintInfo.level === 'warning' ? '#fde68a' : '#86efac') }}>
+                  PORTFÖY RİSK VE TAVAN KONTROLÜ: {constraintInfo.title}
+                </span>
+                <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>
+                  UCITS 5/10/40 Portföy Risk Kalkanı & Sektörel Kota Kontrolü
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span className="nav-badge" style={{ fontSize: 9.5, padding: '2px 8px', background: `${constraintInfo.sector.color}25`, color: constraintInfo.sector.color, border: `1px solid ${constraintInfo.sector.color}50`, fontWeight: 700 }}>
+                {constraintInfo.sector.icon} {constraintInfo.sector.name} (Tavan: %{constraintInfo.sectorCapPct.toFixed(0)})
+              </span>
+              <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                {constraintInfo.macroLabel} (%{constraintInfo.macroWeightPct.toFixed(1)} / Hedef: %{constraintInfo.macroTargetPct.toFixed(0)})
+              </span>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 12, color: '#e2e8f0', lineHeight: 1.5, marginBottom: 10, padding: '8px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: 6, borderLeft: `3px solid ${constraintInfo.level === 'danger' ? '#ef4444' : (constraintInfo.level === 'warning' ? '#f59e0b' : 'var(--emerald)')}` }}>
+            {constraintInfo.warningText}
+          </div>
+
+          {/* Mini Status Breakdown Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: 6, fontSize: 11 }}>
+            <div>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>SEKTÖR MEVCUT PAYI</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                <span className="mono font-bold" style={{ fontSize: 13, color: constraintInfo.isSectorBreached ? '#ef4444' : constraintInfo.sector.color }}>
+                  %{constraintInfo.sectorWeightPct.toFixed(1)} / %{constraintInfo.sectorCapPct.toFixed(0)}
+                </span>
+                <span style={{ fontSize: 10, color: constraintInfo.isSectorBreached ? '#ef4444' : 'var(--emerald)', fontWeight: 700 }}>
+                  {constraintInfo.isSectorBreached ? '⚠️ Tavan Aşıldı' : `(Kalan: %${constraintInfo.sectorRemainingCapPct.toFixed(1)})`}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>BU HİSSEDEN MEVCUT PAY</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                <span className="mono font-bold" style={{ fontSize: 13, color: constraintInfo.singleStockWeightPct > 7.5 ? '#f59e0b' : '#fff' }}>
+                  %{constraintInfo.singleStockWeightPct.toFixed(1)} / Max %7.5
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  {constraintInfo.singleStockWeightPct > 0 ? `(Portföyde Mevcut)` : `(Portföyde Henüz Yok)`}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>PORTFÖY EYLEM REHBERLİĞİ</div>
+              <div style={{ fontWeight: 800, marginTop: 3, fontSize: 12, color: constraintInfo.level === 'danger' ? '#ef4444' : (constraintInfo.level === 'warning' ? '#f59e0b' : 'var(--emerald)') }}>
+                {constraintInfo.recommendation}
+              </div>
             </div>
           </div>
         </div>

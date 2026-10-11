@@ -270,3 +270,237 @@ export function getTickerSector(ticker, type) {
 
   return SECTOR_DEFINITIONS.other_equity;
 }
+
+/**
+ * Bir hissenin mevcut portföy risk tavanlarına (Tekil hisse, Sektör ve Varlık Sınıfı)
+ * takılıp takılmadığını kurumsal UCITS kurallarına göre analiz eder.
+ */
+export function evaluateStockConstraints({
+  ticker,
+  type = 'Hisse',
+  holdings = [],
+  portfolioSummary = null,
+  allocation = null,
+  usdtry = 49.03
+}) {
+  if (!ticker) {
+    return {
+      status: 'APPROVED',
+      level: 'success',
+      badgeText: 'KOTA UYGUN',
+      badgeColor: 'emerald',
+      badgeIcon: '🛡️',
+      title: 'Portföy Kotası Uygun',
+      warningText: 'Analiz edilen hisse için herhangi bir tavan aşımı tespit edilmedi.',
+      recommendation: 'GÜVENLE EKLENEBİLİR',
+      actionAllowed: true
+    };
+  }
+
+  const cleanTicker = String(ticker).toUpperCase().trim().replace('.IS', '').replace('-USD', '');
+  const sector = getTickerSector(ticker, type);
+  const sectorCap = sector.targetCapPct || 10.0;
+
+  // 1. Toplam Portföy Değeri (TRY)
+  let totalValTRY = portfolioSummary?.totalValTRY || 0;
+  if (!totalValTRY || totalValTRY <= 0) {
+    (holdings || []).forEach(h => {
+      totalValTRY += (h.valTRY || 0);
+    });
+    totalValTRY += (portfolioSummary?.totalGoldValTRY || 0);
+    totalValTRY += (portfolioSummary?.ppfBalanceTRY || 0);
+    totalValTRY += (portfolioSummary?.totalFreeCashTRY || 0);
+  }
+
+  // 2. Sektörel Mevcut Dağılım Hesabı
+  let currentSectorValTRY = 0;
+  const sectorHoldingsList = [];
+
+  (holdings || []).forEach(h => {
+    const hSector = getTickerSector(h.ticker, h.type);
+    if (hSector.id === sector.id) {
+      const v = h.valTRY || 0;
+      currentSectorValTRY += v;
+      sectorHoldingsList.push({
+        ticker: h.ticker,
+        name: h.name || h.ticker,
+        valTRY: v,
+        shares: h.shares
+      });
+    }
+  });
+
+  if (sector.id === 'gold_shield') {
+    currentSectorValTRY += (portfolioSummary?.totalGoldValTRY || 0);
+  } else if (sector.id === 'cash_liquid') {
+    currentSectorValTRY += ((portfolioSummary?.ppfBalanceTRY || 0) + (portfolioSummary?.totalFreeCashTRY || 0));
+  }
+
+  const sectorWeightPct = totalValTRY > 0 ? (currentSectorValTRY / totalValTRY) * 100 : 0;
+  const sectorDelta = sectorWeightPct - sectorCap;
+  const isSectorBreached = sectorDelta > 0.5;
+  const isSectorNearCap = sectorDelta > -1.5 && sectorDelta <= 0.5;
+  const sectorRemainingCapPct = Math.max(0, sectorCap - sectorWeightPct);
+
+  // 3. Tek Hisse Mevcut Payı Hesabı
+  const existingHolding = (holdings || []).find(h => {
+    const hSym = (h.ticker || '').toUpperCase().trim();
+    const hClean = hSym.replace('.IS', '').replace('-USD', '');
+    return hSym === ticker.toUpperCase().trim() || hClean === cleanTicker;
+  });
+
+  const existingHoldingValTRY = existingHolding?.valTRY || 0;
+  const singleStockWeightPct = totalValTRY > 0 ? (existingHoldingValTRY / totalValTRY) * 100 : 0;
+  const singleStockSoftCap = DEFAULT_CONCENTRATION_LIMITS.SINGLE_STOCK_SOFT_CAP_PCT; // 7.5%
+  const singleStockHardCap = DEFAULT_CONCENTRATION_LIMITS.SINGLE_STOCK_HARD_CAP_PCT; // 10.0%
+  const isSingleStockHardBreached = singleStockWeightPct >= singleStockHardCap;
+  const isSingleStockSoftBreached = singleStockWeightPct >= singleStockSoftCap;
+
+  // 4. Makro Varlık Sınıfı Hesabı
+  const knownBist = ticker.endsWith('.IS') || type === 'BIST' || ['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS', 'BYDNR', 'BIMAS', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK', 'KCHOL', 'SAHOL'].includes(cleanTicker);
+  const knownCrypto = type === 'Kripto' || ['BTC', 'ETH', 'SOL', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(cleanTicker);
+  const knownGold = type === 'Altın' || cleanTicker.includes('XAUT') || cleanTicker.includes('GOLD');
+
+  let macroKey = 'us_equities_etf';
+  let macroLabel = 'ABD Hisse & Global';
+  let macroTargetPct = 35.0;
+
+  if (knownCrypto) {
+    macroKey = 'crypto';
+    macroLabel = 'Kripto Varlıklar';
+    macroTargetPct = 5.0;
+  } else if (knownGold) {
+    macroKey = 'gold_metals';
+    macroLabel = 'Gram Altın & Emtia';
+    macroTargetPct = 20.0;
+  } else if (knownBist) {
+    macroKey = 'bist';
+    macroLabel = 'BIST Hisse Senetleri';
+    macroTargetPct = 25.0;
+  } else {
+    macroKey = 'us_equities_etf';
+    macroLabel = 'ABD Hisse & Global';
+    macroTargetPct = 35.0;
+  }
+
+  let currentMacroValTRY = 0;
+  (holdings || []).forEach(h => {
+    const hSym = (h.ticker || '').toUpperCase();
+    const hClean = hSym.replace('.IS', '').replace('-USD', '');
+    const v = h.valTRY || 0;
+    if (macroKey === 'crypto' && (h.type === 'Kripto' || ['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO'].includes(hClean))) {
+      currentMacroValTRY += v;
+    } else if (macroKey === 'gold_metals' && (h.type === 'Altın' || hClean.includes('XAUT'))) {
+      currentMacroValTRY += v;
+    } else if (macroKey === 'bist' && (hSym.endsWith('.IS') || (h.currency === 'TRY' && !h.isHoldingUSD && !hSym.includes('-USD')))) {
+      currentMacroValTRY += v;
+    } else if (macroKey === 'us_equities_etf' && (h.isHoldingUSD || h.currency === 'USD' || !hSym.endsWith('.IS'))) {
+      currentMacroValTRY += v;
+    }
+  });
+
+  const macroWeightPct = totalValTRY > 0 ? (currentMacroValTRY / totalValTRY) * 100 : 0;
+  const isMacroBreached = macroWeightPct > (macroTargetPct + 3.0);
+
+  // 5. Nihai Karar ve Uyarı Metinleri
+  let status = 'APPROVED';
+  let badgeText = '';
+  let badgeColor = 'emerald';
+  let badgeIcon = '🛡️';
+  let title = '';
+  let warningText = '';
+  let recommendation = '';
+  let actionAllowed = true;
+
+  if (isSingleStockHardBreached) {
+    status = 'HARD_CAP_BREACH';
+    badgeColor = 'red';
+    badgeIcon = '🚨';
+    badgeText = `SERT TAVAN AŞIMI (%${singleStockWeightPct.toFixed(1)})`;
+    title = `🚨 Tek Hisse Sert Tavanı Aşıldı (%${singleStockHardCap.toFixed(0)}+ Kurumsal Sınır)`;
+    warningText = `Bu hisse zaten portföyünüzün %${singleStockWeightPct.toFixed(1)}'ini kaplıyor. Kurumsal UCITS risk kuralına (%10 sert tavan) göre yeni alım yapmak risklidir; kâr alarak nakit/altın kalkanını beslemeniz önerilir.`;
+    recommendation = 'KÂR REALİZASYONU YAPILMALI (YENİ ALIM KİLİTLİ)';
+    actionAllowed = false;
+  } else if (isSingleStockSoftBreached) {
+    status = 'SOFT_CAP_BREACH';
+    badgeColor = 'amber';
+    badgeIcon = '⚖️';
+    badgeText = `İDEAL TAVAN DOLU (%${singleStockWeightPct.toFixed(1)})`;
+    title = `⚖️ Tek Hisse İdeal Tavanı Doldu (%${singleStockSoftCap.toFixed(1)}+ Sınırı)`;
+    warningText = `Bu hisse mevcut portföyünüzün %${singleStockWeightPct.toFixed(1)}'ini oluşturuyor (%7.5 ideal tavan sınırında). Yeni lot eklemek hisse risk konsantrasyonunu aşırı artırır.`;
+    recommendation = 'YENİ ALIM YAPMAYIN (MEVCUT POZİSYONU KORUYUN)';
+    actionAllowed = false;
+  } else if (isSectorBreached) {
+    status = 'SECTOR_CAP_BREACH';
+    badgeColor = 'red';
+    badgeIcon = '⚠️';
+    badgeText = `SEKTÖR TAVANI AŞILDI (%${sectorWeightPct.toFixed(1)} / %${sectorCap.toFixed(0)})`;
+    title = `⚠️ Sektörel Risk Tavanı Aşıldı (%${sectorCap.toFixed(0)} Barajı)`;
+    const otherTickers = sectorHoldingsList.filter(item => item.ticker !== ticker).map(i => i.ticker).join(', ');
+    warningText = `${sector.name} sektörü portföyünüzde zaten %${sectorWeightPct.toFixed(1)} ağırlığa ulaştı (Tavan: %${sectorCap.toFixed(0)}). Hisse analizi 'GÜÇLÜ AL' olsa dahi, sektörel tavan aşıldığı için yeni alım yapmak portföyün risk dengesini bozar.${otherTickers ? ` Bu hisseye girmek istiyorsanız önce sektördeki diğer varlıklardan (${otherTickers}) kısmi kâr satışı yapıp yer açmalısınız.` : ''}`;
+    recommendation = 'SEKTÖR KONSANTRASYON ENGELİ (ÖNCE YER AÇIN)';
+    actionAllowed = false;
+  } else if (isSectorNearCap) {
+    status = 'SECTOR_NEAR_CAP';
+    badgeColor = 'amber';
+    badgeIcon = '⚖️';
+    badgeText = `SEKTÖR TAVANA YAKIN (%${sectorWeightPct.toFixed(1)} / %${sectorCap.toFixed(0)})`;
+    title = `⚖️ Sektör Tavanına Çok Yakın (Kalan Kapasite: %${sectorRemainingCapPct.toFixed(1)})`;
+    warningText = `${sector.name} sektörü tavana çok yakın seviyede (%${sectorWeightPct.toFixed(1)} / %${sectorCap.toFixed(0)}). Yalnızca küçük sembolik eklemeler yapılabilir, yüklü alım tavanı deler.`;
+    recommendation = 'KADEMELİ / KÜÇÜK LOT SINIRI';
+    actionAllowed = true;
+  } else if (isMacroBreached) {
+    status = 'MACRO_OVERWEIGHT';
+    badgeColor = 'amber';
+    badgeIcon = '⚖️';
+    badgeText = `VARLIK SINIFI DOLU (${macroLabel} %${macroWeightPct.toFixed(1)})`;
+    title = `⚖️ Varlık Sınıfı Hedefin Üzerinde (${macroLabel})`;
+    warningText = `${macroLabel} varlık sınıfı portföyde %${macroWeightPct.toFixed(1)} ile hedef ağırlığın (%${macroTargetPct.toFixed(0)}) üzerindedir. Yeni alım yapılacaksa portföyün nakit veya altın kalkanını tüketmemeye özen gösterilmelidir.`;
+    recommendation = 'MAKRO DENGE UYARISI';
+    actionAllowed = true;
+  } else {
+    status = 'APPROVED';
+    badgeColor = 'emerald';
+    badgeIcon = '🛡️';
+    badgeText = `KOTA UYGUN (+%${sectorRemainingCapPct.toFixed(1)} Boşluk)`;
+    title = `🟢 Portföy ve Sektör Kotası Uygun`;
+    warningText = `Bu hisse 'GÜÇLÜ AL' bölgesinde olup portföy risk tavanlarına takılmamaktadır. ${sector.name} sektöründe %${sectorRemainingCapPct.toFixed(1)} boş kapasite mevcuttur. Tek hisse üst sınırı olan %${singleStockSoftCap}'e kadar güvenle pozisyon açılabilir.`;
+    recommendation = 'GÜVENLE EKLENEBİLİR (KOTA MÜSAİT)';
+    actionAllowed = true;
+  }
+
+  return {
+    ticker,
+    sector,
+    sectorValTRY: currentSectorValTRY,
+    sectorWeightPct,
+    sectorCapPct: sectorCap,
+    sectorDelta,
+    sectorRemainingCapPct,
+    sectorHoldingsList,
+    isSectorBreached,
+    isSectorNearCap,
+    existingHolding,
+    singleStockValTRY: existingHoldingValTRY,
+    singleStockWeightPct,
+    singleStockSoftCap,
+    singleStockHardCap,
+    isSingleStockHardBreached,
+    isSingleStockSoftBreached,
+    macroKey,
+    macroLabel,
+    macroWeightPct,
+    macroTargetPct,
+    isMacroBreached,
+    status,
+    level: isSingleStockHardBreached || isSectorBreached ? 'danger' : (isSingleStockSoftBreached || isSectorNearCap || isMacroBreached ? 'warning' : 'success'),
+    badgeText,
+    badgeColor,
+    badgeIcon,
+    title,
+    warningText,
+    recommendation,
+    actionAllowed
+  };
+}
+
