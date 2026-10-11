@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Code-split tabs via React.lazy for instant terminal launch and minimal initial bundle
 const MarketPulseTab = lazy(() => import('./pages/MarketPulseTab'));
@@ -110,12 +111,13 @@ function MainTerminal() {
         />
 
         <main className="terminal-main">
-          <Suspense fallback={
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
-              <div className="loading-spinner" style={{ margin: '0 auto 12px auto' }}></div>
-              <span>MODÜL YÜKLENİYOR...</span>
-            </div>
-          }>
+          <ErrorBoundary key={activeTab}>
+            <Suspense fallback={
+              <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
+                <div className="loading-spinner" style={{ margin: '0 auto 12px auto' }}></div>
+                <span>MODÜL YÜKLENİYOR...</span>
+              </div>
+            }>
             {activeTab === 'pro_chart' && (
               <ProChartTab
                 onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
@@ -225,7 +227,8 @@ function MainTerminal() {
               />
             )}
           </Suspense>
-        </main>
+        </ErrorBoundary>
+      </main>
       </div>
 
       {/* Modals */}
