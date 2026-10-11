@@ -484,8 +484,22 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const beneish = analysis.beneish || {};
   const secVal = analysis.sector_valuation || {};
 
-  const quantScore = analysis?.quant_score || 85.4;
+  const quantScore = analysis?.quant_score != null ? Number(analysis.quant_score) : 85.4;
   const stockTheme = getHealthColorTheme(quantScore);
+  const quantGrade = analysis?.grade || (quantScore >= 85 ? 'A' : quantScore >= 70 ? 'B' : quantScore >= 50 ? 'C' : 'D');
+  const activeSignal = (analysis?.signal || analysis?.verdict || (quantScore >= 80 ? 'GÜÇLÜ AL' : quantScore >= 65 ? 'AL' : quantScore >= 50 ? 'TUT' : 'UZAK DUR')).toUpperCase();
+  const signalColor = analysis?.signal_color || (
+    activeSignal.includes('GÜÇLÜ AL') || activeSignal.includes('MUTLAKA AL') ? '#10b981' :
+    activeSignal.includes('AL') ? '#34d399' :
+    activeSignal.includes('TUT') || activeSignal.includes('İZLE') ? '#f59e0b' :
+    activeSignal.includes('SAT') || activeSignal.includes('UZAK DUR') ? '#ef4444' : '#00e5ff'
+  );
+  const signalBadgeClass = (
+    activeSignal.includes('GÜÇLÜ AL') || activeSignal.includes('MUTLAKA AL') ? 'emerald' :
+    activeSignal.includes('AL') ? 'emerald' :
+    activeSignal.includes('TUT') || activeSignal.includes('İZLE') ? 'amber' :
+    activeSignal.includes('SAT') || activeSignal.includes('UZAK DUR') ? 'red' : 'cyan'
+  );
 
   const stockRadarData = {
     labels: ['Temel Sağlık', 'Değerleme', 'Momentum', 'Teknik Yapı', 'Risk Yönetimi'],
@@ -1082,14 +1096,23 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>QUANT NOTU</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--emerald)', fontFamily: 'var(--font-mono)' }}>
-                {analysis?.quant_score || 85.4} (A)
+              <div style={{ fontSize: 24, fontWeight: 900, color: stockTheme.color, fontFamily: 'var(--font-mono)' }}>
+                {quantScore.toFixed(1)} ({quantGrade})
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>SİNYAL</div>
-              <span className="nav-badge emerald" style={{ fontSize: 12, padding: '4px 10px', fontWeight: 800 }}>
-                {analysis?.verdict ? String(analysis.verdict).toUpperCase() : 'GÜÇLÜ AL'}
+              <span 
+                className={`nav-badge ${signalBadgeClass}`} 
+                style={{ 
+                  fontSize: 12, 
+                  padding: '4px 10px', 
+                  fontWeight: 800,
+                  border: `1px solid ${signalColor}40`,
+                  color: signalColor
+                }}
+              >
+                {activeSignal}
               </span>
             </div>
             <div style={{ textAlign: 'right' }}>
