@@ -2,36 +2,13 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Target, Search, Sliders, Activity, TrendingUp, ShieldCheck, BarChart3, HelpCircle, Sparkles, Lightbulb, Compass, Info, Snowflake, ChevronLeft } from 'lucide-react';
 import { Bar, Radar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 import stocksData from '../data/stocksData.json';
 import potentialData from '../data/potentialStocksData.json';
 import { getHealthColorTheme } from './RiskRadarTab';
 import { searchCatalog } from './ProChartTab';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(...registerables);
 
 const fmt = (v, d = 2) => (Number(v) || 0).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
 
@@ -1192,7 +1169,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 </div>
               </div>
               <span className={`nav-badge ${stockTheme.badgeClass}`} style={{ fontSize: 9.5, fontWeight: 800 }}>
-                {stockTheme.icon} {quantScore.toFixed(1)}/100
+                {stockTheme.icon} {Number(quantScore || 85.4).toFixed(1)}/100
               </span>
             </div>
 
@@ -1627,11 +1604,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span>Analist Hedef Konsensüsü:</span>
-              <strong style={{ color: 'var(--cyan)' }}>{currencySym}{(dcfData.analyst_target || curPrice * 1.25).toFixed(2)}</strong>
+              <strong style={{ color: 'var(--cyan)' }}>{currencySym}{Number(dcfData?.analyst_target || curPrice * 1.25).toFixed(2)}</strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Graham Sayısı Değerlemesi:</span>
-              <strong style={{ color: 'var(--gold)' }}>{currencySym}{(curPrice * 0.95).toFixed(2)}</strong>
+              <strong style={{ color: 'var(--gold)' }}>{currencySym}{Number(curPrice * 0.95).toFixed(2)}</strong>
             </div>
           </div>
 

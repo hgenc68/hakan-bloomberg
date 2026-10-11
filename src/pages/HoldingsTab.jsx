@@ -6,36 +6,13 @@ import {
   ArrowRight, ShieldCheck, PieChart, Layers, TrendingUp, BarChart3, Snowflake, Award, Target, Activity, Calendar, LineChart
 } from 'lucide-react';
 import { Bar, Radar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 import stocksData from '../data/stocksData.json';
 import potentialStocksData from '../data/potentialStocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
 import { getHealthColorTheme } from './RiskRadarTab';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(...registerables);
 
 export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal, onSelectStockForChart }) {
   const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab } = useApp();

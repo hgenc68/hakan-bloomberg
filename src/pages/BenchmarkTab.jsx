@@ -1,19 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { Line, Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  ArcElement
-} from 'chart.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 import { 
   LineChart, 
   BarChart3, 
@@ -43,18 +31,7 @@ import {
 } from 'lucide-react';
 import benchmarkData from '../data/benchmarkData.json';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  ArcElement
-);
+ChartJS.register(...registerables);
 
 export default function BenchmarkTab() {
   const { currentCurrency, usdtry, portfolioSummary } = useApp();

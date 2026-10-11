@@ -1,15 +1,10 @@
 import React from 'react';
 import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { Pie } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 import { TrendingUp, TrendingDown, DollarSign, Award, Shield, PieChart as PieIcon, ArrowUpRight } from 'lucide-react';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(...registerables);
 
 export default function OverviewTab() {
   const { portfolioSummary, currentCurrency, setActiveTab } = useApp();

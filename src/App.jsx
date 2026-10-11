@@ -5,21 +5,43 @@ import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Code-split tabs via React.lazy for instant terminal launch and minimal initial bundle
-const MarketPulseTab = lazy(() => import('./pages/MarketPulseTab'));
-const OverviewTab = lazy(() => import('./pages/OverviewTab'));
-const HoldingsTab = lazy(() => import('./pages/HoldingsTab'));
-const BenchmarkTab = lazy(() => import('./pages/BenchmarkTab'));
-const RiskRadarTab = lazy(() => import('./pages/RiskRadarTab'));
-const ShieldTab = lazy(() => import('./pages/ShieldTab'));
-const SingleStockTab = lazy(() => import('./pages/SingleStockTab'));
-const Top10QuantTab = lazy(() => import('./pages/Top10QuantTab'));
-const ModelPortfolioTab = lazy(() => import('./pages/ModelPortfolioTab'));
-const TradeLedgerTab = lazy(() => import('./pages/TradeLedgerTab'));
-const ManageTab = lazy(() => import('./pages/ManageTab'));
-const PotentialStocksTab = lazy(() => import('./pages/PotentialStocksTab'));
-const ProChartTab = lazy(() => import('./pages/ProChartTab'));
-const BroadcastStudioTab = lazy(() => import('./pages/BroadcastStudioTab'));
+import { Chart as ChartJS, registerables } from 'chart.js';
+ChartJS.register(...registerables);
+
+// Static imports for core interconnected tabs (SingleStock, Top10, ModelPortfolio, RiskRadar, ProChart)
+import SingleStockTab from './pages/SingleStockTab';
+import Top10QuantTab from './pages/Top10QuantTab';
+import ModelPortfolioTab from './pages/ModelPortfolioTab';
+import RiskRadarTab from './pages/RiskRadarTab';
+import ProChartTab from './pages/ProChartTab';
+
+// Safe lazy loader that auto-reloads on deployment chunk hash mismatches
+function safeLazy(importFn) {
+  return lazy(() =>
+    importFn().catch((err) => {
+      console.warn('Dynamic chunk load failed, retrying page reload...', err);
+      if (typeof window !== 'undefined') {
+        const lastReload = Number(sessionStorage.getItem('last_chunk_reload') || 0);
+        if (Date.now() - lastReload > 10000) {
+          sessionStorage.setItem('last_chunk_reload', String(Date.now()));
+          window.location.reload();
+        }
+      }
+      throw err;
+    })
+  );
+}
+
+// Code-split other tabs via safeLazy
+const MarketPulseTab = safeLazy(() => import('./pages/MarketPulseTab'));
+const OverviewTab = safeLazy(() => import('./pages/OverviewTab'));
+const HoldingsTab = safeLazy(() => import('./pages/HoldingsTab'));
+const BenchmarkTab = safeLazy(() => import('./pages/BenchmarkTab'));
+const ShieldTab = safeLazy(() => import('./pages/ShieldTab'));
+const TradeLedgerTab = safeLazy(() => import('./pages/TradeLedgerTab'));
+const ManageTab = safeLazy(() => import('./pages/ManageTab'));
+const PotentialStocksTab = safeLazy(() => import('./pages/PotentialStocksTab'));
+const BroadcastStudioTab = safeLazy(() => import('./pages/BroadcastStudioTab'));
 
 import {
   AddHoldingModal,

@@ -1,15 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Radar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend
-} from 'chart.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 import {
   ShieldAlert, Zap, Grid, Calendar, CheckCircle2, AlertTriangle, Snowflake,
   Scissors, PlusCircle, ArrowRight, ShieldCheck, Stethoscope, AlertOctagon,
@@ -18,14 +10,7 @@ import {
 import stocksData from '../data/stocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
 
-ChartJS.register(
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend
-);
+ChartJS.register(...registerables);
 
 export const getHealthColorTheme = (score) => {
   const num = Number(score) || 0;
