@@ -356,7 +356,17 @@ const TICKER_ALIAS_MAP = {
 };
 
 export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
-  const { currentCurrency, usdtry, marketQuotes, fetchSingleQuote, setActiveTab, lastNavigatedFrom, setLastNavigatedFrom } = useApp();
+  const { 
+    currentCurrency, 
+    usdtry, 
+    marketQuotes, 
+    fetchSingleQuote, 
+    setActiveTab, 
+    lastNavigatedFrom, 
+    setLastNavigatedFrom,
+    setTop10MarketFilter,
+    setModelPortfolioSelectedMarket
+  } = useApp();
   const [currentTicker, setCurrentTicker] = useState(() => {
     const raw = (selectedTicker || 'NVDA').toUpperCase().trim().replace('.IS', '');
     return TICKER_ALIAS_MAP[raw] || raw;
@@ -749,16 +759,54 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   const quickChips = ['NVDA', 'AMZN', 'SOFI', 'AAPL', 'MSFT', 'TSM', 'VRT', 'ALAB', 'CAMT', 'THYAO', 'BYDNR', 'ABBV'];
 
+  const originInfo = useMemo(() => {
+    if (!lastNavigatedFrom) return null;
+    if (typeof lastNavigatedFrom === 'object') {
+      return {
+        tab: lastNavigatedFrom.tab || 'top10',
+        label: lastNavigatedFrom.label || 'En Güçlü 10',
+        marketFilter: lastNavigatedFrom.marketFilter,
+        selectedMarket: lastNavigatedFrom.selectedMarket
+      };
+    }
+    if (lastNavigatedFrom === 'top10') {
+      return { tab: 'top10', label: 'En Güçlü 10 Listesi' };
+    }
+    if (lastNavigatedFrom === 'potential') {
+      return { tab: 'potential', label: 'Potansiyel Hisseler Radarı' };
+    }
+    if (lastNavigatedFrom === 'model') {
+      return { tab: 'model', label: 'Model Portföy' };
+    }
+    return { tab: String(lastNavigatedFrom), label: 'Önceki Sayfa' };
+  }, [lastNavigatedFrom]);
+
+  const handleReturn = () => {
+    if (originInfo) {
+      if (originInfo.marketFilter && setTop10MarketFilter) {
+        setTop10MarketFilter(originInfo.marketFilter);
+      }
+      if (originInfo.selectedMarket && setModelPortfolioSelectedMarket) {
+        setModelPortfolioSelectedMarket(originInfo.selectedMarket);
+      }
+      const target = originInfo.tab || 'top10';
+      if (setLastNavigatedFrom) setLastNavigatedFrom(null);
+      if (setActiveTab) setActiveTab(target);
+    } else {
+      if (setActiveTab) setActiveTab('top10');
+    }
+  };
+
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
-      {/* 🔙 Tek Tuşla En Güçlü 10'a Dönüş Banner'ı (Top 10'dan gelindiyse) */}
-      {lastNavigatedFrom === 'top10' && (
+      {/* 🔙 Tek Tuşla Geri Dönüş Banner'ı (Hangi sayfa/filtreden gelindiyse tam oraya döner) */}
+      {originInfo && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 78, 59, 0.25) 100%)',
-          border: '1px solid rgba(16, 185, 129, 0.4)',
+          background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.16) 0%, rgba(6, 78, 59, 0.28) 100%)',
+          border: '1px solid rgba(16, 185, 129, 0.45)',
           borderRadius: 8,
           padding: '10px 16px',
           marginBottom: 16,
@@ -766,22 +814,19 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           animation: 'fadeIn 0.2s ease'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>🏆</span>
+            <span style={{ fontSize: 22 }}>🧭</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>
-                En Güçlü 10 Listesinden geldiniz: <span style={{ color: 'var(--cyan)' }}>{currentTicker}</span> analiz ediliyor
+                <strong style={{ color: 'var(--emerald)' }}>{originInfo.label}</strong> sayfasından geldiniz: <span style={{ color: 'var(--cyan)' }}>{currentTicker}</span> analiz ediliyor
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                İncelemenizi tamamladıktan sonra tek tuşla listeye dönebilirsiniz.
+                İncelemenizi tamamladıktan sonra tek tuşla ayrıldığınız ekrana ve filtreye dönebilirsiniz.
               </div>
             </div>
           </div>
           <button
             type="button"
-            onClick={() => {
-              if (setLastNavigatedFrom) setLastNavigatedFrom(null);
-              if (setActiveTab) setActiveTab('top10');
-            }}
+            onClick={handleReturn}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -797,10 +842,10 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               boxShadow: '0 2px 10px rgba(16, 185, 129, 0.45)',
               transition: 'all 0.15s ease'
             }}
-            title="En Güçlü 10 Listesine Geri Dön"
+            title={`${originInfo.label} sayfasına geri dön`}
           >
             <ChevronLeft size={16} />
-            <span>En Güçlü 10 Listesine Geri Dön</span>
+            <span>{originInfo.label} Sayfasına Geri Dön</span>
           </button>
         </div>
       )}
@@ -821,15 +866,12 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         </div>
         <button
           type="button"
-          onClick={() => {
-            if (setLastNavigatedFrom) setLastNavigatedFrom(null);
-            if (setActiveTab) setActiveTab('top10');
-          }}
+          onClick={handleReturn}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,
-            padding: '6px 12px',
+            padding: '6px 14px',
             background: 'rgba(16, 185, 129, 0.12)',
             border: '1px solid rgba(16, 185, 129, 0.35)',
             borderRadius: 6,
@@ -839,10 +881,10 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
-          title="En Güçlü 10 Tablosuna Git"
+          title={originInfo ? `${originInfo.label} sayfasına dön` : 'En Güçlü 10 Tablosuna Git'}
         >
           <ChevronLeft size={14} />
-          <span>En Güçlü 10 Tablosuna Dön</span>
+          <span>{originInfo ? `${originInfo.label} Sayfasına Dön` : 'En Güçlü 10 Tablosuna Dön'}</span>
         </button>
       </div>
 

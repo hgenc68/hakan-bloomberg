@@ -3,9 +3,16 @@ import { useApp } from '../context/AppContext';
 import { Briefcase, Calendar, RefreshCw, Award, TrendingUp, CheckCircle, ArrowRight } from 'lucide-react';
 import modelData from '../data/modelPortfolios.json';
 
-export default function ModelPortfolioTab() {
-  const { setActiveTab, marketQuotes } = useApp();
-  const [selectedMarket, setSelectedMarket] = useState('master');
+export default function ModelPortfolioTab({ onSelectStock }) {
+  const { 
+    setActiveTab, 
+    marketQuotes, 
+    setLastNavigatedFrom, 
+    modelPortfolioSelectedMarket, 
+    setModelPortfolioSelectedMarket 
+  } = useApp();
+  const selectedMarket = modelPortfolioSelectedMarket || 'master';
+  const setSelectedMarket = setModelPortfolioSelectedMarket;
 
   const portfolios = modelData.portfolios || {};
   const currentModel = portfolios[selectedMarket] || portfolios['master'] || {};
@@ -143,6 +150,7 @@ export default function ModelPortfolioTab() {
                 <th className="text-right">Quant Skor</th>
                 <th style={{ textAlign: 'center' }}>Sinyal</th>
                 <th>Yükseliş Katalizörü & Temel Yapı</th>
+                <th style={{ textAlign: 'center' }}>İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -162,7 +170,29 @@ export default function ModelPortfolioTab() {
                 return (
                   <tr key={idx} className="table-row">
                     <td>
-                      <div className="ticker-cell">
+                      <div 
+                        className="ticker-cell"
+                        style={{ cursor: 'pointer' }}
+                        title={`${h.ticker} hissesini detaylı analiz et`}
+                        onClick={() => {
+                          if (setLastNavigatedFrom) {
+                            const marketTitle = selectedMarket === 'us' 
+                              ? 'Wall Street Modeli' 
+                              : selectedMarket === 'bist' 
+                                ? 'BIST Modeli' 
+                                : selectedMarket === 'bist_export'
+                                  ? 'BIST İhracatçı Modeli'
+                                  : 'Model Portföy';
+                            setLastNavigatedFrom({
+                              tab: 'model',
+                              label: `Model Portföy (${marketTitle})`,
+                              selectedMarket: selectedMarket
+                            });
+                          }
+                          if (onSelectStock) onSelectStock(h.ticker);
+                          setActiveTab('single_stock');
+                        }}
+                      >
                         <strong className="ticker-symbol mono" style={{ color: 'var(--cyan)' }}>
                           {h.ticker}
                         </strong>
@@ -215,6 +245,33 @@ export default function ModelPortfolioTab() {
                     </td>
                     <td style={{ fontSize: 11, color: '#cbd5e1', lineHeight: 1.4 }}>
                       {h.catalyst || 'Yüksek kârlılık & güçlü bilanço + MA200 üzerinde boğa trendi'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn-action-row"
+                        style={{ background: 'rgba(0, 229, 255, 0.1)', color: 'var(--cyan)', border: '1px solid var(--cyan)', padding: '4px 8px', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}
+                        onClick={() => {
+                          if (setLastNavigatedFrom) {
+                            const marketTitle = selectedMarket === 'us' 
+                              ? 'Wall Street Modeli' 
+                              : selectedMarket === 'bist' 
+                                ? 'BIST Modeli' 
+                                : selectedMarket === 'bist_export'
+                                  ? 'BIST İhracatçı Modeli'
+                                  : 'Model Portföy';
+                            setLastNavigatedFrom({
+                              tab: 'model',
+                              label: `Model Portföy (${marketTitle})`,
+                              selectedMarket: selectedMarket
+                            });
+                          }
+                          if (onSelectStock) onSelectStock(h.ticker);
+                          setActiveTab('single_stock');
+                        }}
+                      >
+                        Analiz Et ➔
+                      </button>
                     </td>
                   </tr>
                 );

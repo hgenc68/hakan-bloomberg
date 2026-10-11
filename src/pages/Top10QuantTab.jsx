@@ -132,10 +132,24 @@ export function getCompanyShortName(ticker) {
 }
 
 export default function Top10QuantTab({ onSelectStock }) {
-  const { setActiveTab, marketQuotes, setLastNavigatedFrom } = useApp();
-  const [marketFilter, setMarketFilter] = useState('all'); // 'all', 'bist', 'us'
-  const [styleFilter, setStyleFilter] = useState('all'); // 'all', 'value', 'growth'
-  const [search, setSearch] = useState('');
+  const { 
+    setActiveTab, 
+    marketQuotes, 
+    setLastNavigatedFrom, 
+    top10MarketFilter, 
+    setTop10MarketFilter, 
+    top10StyleFilter, 
+    setTop10StyleFilter, 
+    top10Search, 
+    setTop10Search 
+  } = useApp();
+
+  const marketFilter = top10MarketFilter || 'all';
+  const setMarketFilter = setTop10MarketFilter;
+  const styleFilter = top10StyleFilter || 'all';
+  const setStyleFilter = setTop10StyleFilter;
+  const search = top10Search || '';
+  const setSearch = setTop10Search;
   const [limit, setLimit] = useState(10); // 10, 25, 100
 
   const allItems = useMemo(() => {
@@ -322,14 +336,45 @@ export default function Top10QuantTab({ onSelectStock }) {
                       #{idx + 1}
                     </td>
                     <td>
-                      <div className="ticker-cell">
+                      <div 
+                        className="ticker-cell"
+                        style={{ cursor: 'pointer' }}
+                        title={`${item.ticker} hissesini detaylı analiz et`}
+                        onClick={() => {
+                          if (setLastNavigatedFrom) {
+                            const marketLabel = marketFilter === 'us' ? 'Wall Street' : marketFilter === 'bist' ? 'BIST 100' : 'Tümü';
+                            setLastNavigatedFrom({
+                              tab: 'top10',
+                              label: `En Güçlü 10 (${marketLabel})`,
+                              marketFilter: marketFilter
+                            });
+                          }
+                          if (onSelectStock) onSelectStock(item.ticker);
+                          setActiveTab('single_stock');
+                        }}
+                      >
                         <strong className="ticker-symbol mono" style={{ color: 'var(--cyan)' }}>
                           {item.ticker}
                         </strong>
                       </div>
                     </td>
                     <td>
-                      <div style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div 
+                        style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+                        title={`${getCompanyShortName(item.ticker)} hissesini detaylı analiz et`}
+                        onClick={() => {
+                          if (setLastNavigatedFrom) {
+                            const marketLabel = marketFilter === 'us' ? 'Wall Street' : marketFilter === 'bist' ? 'BIST 100' : 'Tümü';
+                            setLastNavigatedFrom({
+                              tab: 'top10',
+                              label: `En Güçlü 10 (${marketLabel})`,
+                              marketFilter: marketFilter
+                            });
+                          }
+                          if (onSelectStock) onSelectStock(item.ticker);
+                          setActiveTab('single_stock');
+                        }}
+                      >
                         {getCompanyShortName(item.ticker)}
                       </div>
                     </td>
@@ -391,7 +436,18 @@ export default function Top10QuantTab({ onSelectStock }) {
                         className="btn-action-row"
                         style={{ background: 'rgba(0, 229, 255, 0.1)', color: 'var(--cyan)', border: '1px solid var(--cyan)', padding: '4px 8px', borderRadius: 4, fontSize: 10 }}
                         onClick={() => {
-                          if (setLastNavigatedFrom) setLastNavigatedFrom('top10');
+                          if (setLastNavigatedFrom) {
+                            const marketLabel = marketFilter === 'us'
+                              ? 'Wall Street'
+                              : marketFilter === 'bist'
+                                ? 'BIST 100'
+                                : 'Tümü';
+                            setLastNavigatedFrom({
+                              tab: 'top10',
+                              label: `En Güçlü 10 (${marketLabel})`,
+                              marketFilter: marketFilter
+                            });
+                          }
                           if (onSelectStock) onSelectStock(item.ticker);
                           setActiveTab('single_stock');
                         }}

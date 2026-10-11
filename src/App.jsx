@@ -31,7 +31,7 @@ import {
 } from './components/Modals';
 
 function MainTerminal() {
-  const { activeTab, setActiveTab, loading, toast } = useApp();
+  const { activeTab, setActiveTab, setLastNavigatedFrom, loading, toast } = useApp();
 
   // Standalone OBS Pop-out Mode (Clean 16:9 Presentation for OBS Window Capture)
   const isObsPopout = typeof window !== 'undefined' && window.location.search.includes('obs_popout=1');
@@ -133,6 +133,12 @@ function MainTerminal() {
               <PotentialStocksTab
                 onOpenAddModal={(ticker) => setShowAddModal(ticker || true)}
                 onSelectStockForAnalysis={(ticker) => {
+                  if (setLastNavigatedFrom) {
+                    setLastNavigatedFrom({
+                      tab: 'potential',
+                      label: 'Potansiyel Hisseler'
+                    });
+                  }
                   setSelectedStockTicker(ticker);
                   setActiveTab('single_stock');
                 }}
@@ -148,6 +154,12 @@ function MainTerminal() {
                 onOpenEditModal={(h) => setSelectedEditHolding(h)}
                 onOpenCashModal={() => setShowCashModal(true)}
                 onSelectStockForChart={(ticker) => {
+                  if (setLastNavigatedFrom) {
+                    setLastNavigatedFrom({
+                      tab: 'holdings',
+                      label: 'Pozisyonlar & Varlıklar'
+                    });
+                  }
                   setSelectedStockTicker(ticker);
                   setActiveTab('pro_chart');
                 }}
@@ -187,7 +199,14 @@ function MainTerminal() {
               />
             )}
 
-            {activeTab === 'model' && <ModelPortfolioTab />}
+            {activeTab === 'model' && (
+              <ModelPortfolioTab 
+                onSelectStock={(t) => {
+                  setSelectedStockTicker(t);
+                  setActiveTab('single_stock');
+                }}
+              />
+            )}
 
             {activeTab === 'ledger' && (
               <TradeLedgerTab

@@ -268,6 +268,40 @@ export const AppProvider = ({ children }) => {
   // Default to 'market' (Global Piyasa Nabzı / Piyasa Özeti) as in original terminal
   const [activeTab, setActiveTab] = useState('market'); 
   const [lastNavigatedFrom, setLastNavigatedFrom] = useState(null);
+
+  // Top 10 Quant Persistent Filters
+  const [top10MarketFilter, setTop10MarketFilterState] = useState(() => {
+    try {
+      return localStorage.getItem('bloomberg_top10_market') || 'all';
+    } catch (e) {
+      return 'all';
+    }
+  });
+  const setTop10MarketFilter = useCallback((val) => {
+    setTop10MarketFilterState(val);
+    try {
+      localStorage.setItem('bloomberg_top10_market', val);
+    } catch (e) {}
+  }, []);
+
+  const [top10StyleFilter, setTop10StyleFilter] = useState('all');
+  const [top10Search, setTop10Search] = useState('');
+
+  // Model Portfolio Persistent Market Filter
+  const [modelPortfolioSelectedMarket, setModelPortfolioSelectedMarketState] = useState(() => {
+    try {
+      return localStorage.getItem('bloomberg_model_market') || 'master';
+    } catch (e) {
+      return 'master';
+    }
+  });
+  const setModelPortfolioSelectedMarket = useCallback((val) => {
+    setModelPortfolioSelectedMarketState(val);
+    try {
+      localStorage.setItem('bloomberg_model_market', val);
+    } catch (e) {}
+  }, []);
+
   const [currentCurrency, setCurrentCurrency] = useState('try'); // 'try' or 'usd'
   const [toast, setToast] = useState(null);
 
@@ -1218,6 +1252,14 @@ export const AppProvider = ({ children }) => {
     setActiveTab,
     lastNavigatedFrom,
     setLastNavigatedFrom,
+    top10MarketFilter,
+    setTop10MarketFilter,
+    top10StyleFilter,
+    setTop10StyleFilter,
+    top10Search,
+    setTop10Search,
+    modelPortfolioSelectedMarket,
+    setModelPortfolioSelectedMarket,
     currentCurrency,
     setCurrentCurrency,
     toast,
