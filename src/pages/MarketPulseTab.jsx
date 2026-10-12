@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Globe, TrendingUp, TrendingDown, Activity, AlertTriangle, Newspaper, Flame, ShieldCheck, RefreshCw, ExternalLink } from 'lucide-react';
 import macroPulseData from '../data/macroPulse.json';
@@ -75,6 +75,64 @@ const SEED_NEWS = [
     tag: 'Kripto & Emtia',
     bull: true,
     link: 'https://www.foreks.com'
+  }
+];
+
+const EXPOSURE_TIERS = [
+  {
+    tier: 1,
+    range: '0% - 20%',
+    shortLabel: '0-20%',
+    name: 'Maksimum Nakit & Savunma',
+    regime: 'DÜZELTME / RİSK-OFF (AYI BASKISI)',
+    badgeClass: 'red',
+    color: '#ef4444',
+    bg: '#ef4444',
+    desc: 'Piyasa sert düzeltme veya aşırı korku rejiminde. Yeni hisse alımları sınırlandırılmalı, portföyde nakit ve Kur Kalkanı/Altın ağırlığı artırılmalıdır.'
+  },
+  {
+    tier: 2,
+    range: '20% - 40%',
+    shortLabel: '20-40%',
+    name: 'Baskı Altında Boğa / Temkinli',
+    regime: 'BASKI ALTINDA BOĞA (TEMKİNLİ)',
+    badgeClass: 'amber',
+    color: '#f97316',
+    bg: '#f97316',
+    desc: 'Endeksler ve öncü göstergeler baskı altında. Yalnızca kâr büyümesi yüksek, defansif ve güçlü bilançolu hisselerde sıkı stop-loss ile kalınmalı.'
+  },
+  {
+    tier: 3,
+    range: '40% - 60%',
+    shortLabel: '40-60%',
+    name: 'Dengeli / Seçici Pozisyon',
+    regime: 'NÖTR / DENGELİ PİYASA REJİMİ',
+    badgeClass: 'amber',
+    color: '#eab308',
+    bg: '#eab308',
+    desc: 'Piyasada karmaşık sinyaller ve dengeli risk iştahı hakim. Kaliteli lider hisseler korunurken seçici ve kademeli pozisyon artırımı önerilir.'
+  },
+  {
+    tier: 4,
+    range: '60% - 80%',
+    shortLabel: '60-80%',
+    name: 'Onaylanmış Boğa (Risk-On)',
+    regime: 'RİSK-ON (GÜÇLÜ BOĞA TRENDİ)',
+    badgeClass: 'emerald',
+    color: '#10b981',
+    bg: '#10b981',
+    desc: 'S&P 500, Nasdaq ve BIST ana hareketli ortalamalarının üzerinde seyrediyor. Lider hisselerde büyüme ağırlıklı pozisyonlar ve ekleme stratejisi destekleniyor.'
+  },
+  {
+    tier: 5,
+    range: '80% - 100%',
+    shortLabel: '80-100%',
+    name: 'Tam Yatırım / Agresif Boğa',
+    regime: 'TAM YATIRIM (AGRESİF BOĞA İVMESİ)',
+    badgeClass: 'emerald',
+    color: '#059669',
+    bg: '#059669',
+    desc: 'Düşük volatilite ve güçlü kurumsal sermaye girişleri. Portföy yüksek oranda büyüme ve teknoloji hisselerine tahsis edilebilir, nakit minimumda tutulur.'
   }
 ];
 
@@ -235,6 +293,41 @@ export default function MarketPulseTab() {
     return true;
   });
 
+  const vixValue = Number(pulse?.vix?.value) || 16.46;
+  const spyObj = equities.find(e => e.symbol === 'SPY');
+  const qqqObj = equities.find(e => e.symbol === 'QQQ');
+  const spyM1 = Number(spyObj?.m1) || 0;
+  const qqqM1 = Number(qqqObj?.m1) || 0;
+
+  // Institutional Multi-Factor Market Exposure Calculation (O'Neil / IBD Model)
+  const activeExposure = useMemo(() => {
+    // VIX factor (inverted: lower VIX = higher exposure capacity)
+    const vixScore = Math.max(0, Math.min(100, 100 - (vixValue - 10) * 3.6));
+    // Index momentum factor (1-month trend)
+    const momScore = Math.max(0, Math.min(100, 50 + (spyM1 + qqqM1) * 4));
+    // Composite multi-factor score (0 - 100)
+    const compositeScore = Math.round((fgScore * 0.45) + (vixScore * 0.35) + (momScore * 0.20));
+
+    let tierIndex = 2; // Default 40-60%
+    if (compositeScore < 28 || vixValue >= 28) {
+      tierIndex = 0; // 0-20%
+    } else if (compositeScore < 48 || vixValue >= 22) {
+      tierIndex = 1; // 20-40%
+    } else if (compositeScore <= 68) {
+      tierIndex = 2; // 40-60%
+    } else if (compositeScore <= 84) {
+      tierIndex = 3; // 60-80%
+    } else {
+      tierIndex = 4; // 80-100%
+    }
+
+    const t = EXPOSURE_TIERS[tierIndex];
+    return {
+      ...t,
+      score: compositeScore
+    };
+  }, [fgScore, vixValue, spyM1, qqqM1]);
+
   return (
     <div className="tab-pane active" style={{ animation: 'fadeIn 0.25s ease' }}>
       {/* Workspace Header */}
@@ -249,8 +342,8 @@ export default function MarketPulseTab() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="nav-badge emerald" style={{ padding: '5px 12px', fontSize: 11 }}>
-            CANLI PİYASA REJİMİ: RİSK-ON (BOĞA)
+          <span className={`nav-badge ${activeExposure.badgeClass}`} style={{ padding: '5px 12px', fontSize: 11 }}>
+            CANLI PİYASA REJİMİ: {activeExposure.regime}
           </span>
         </div>
       </div>
@@ -349,23 +442,107 @@ export default function MarketPulseTab() {
             </div>
           </div>
 
-          {/* Stock Market Exposure Meter */}
-          <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, marginBottom: 8 }}>
-              <strong style={{ color: '#fff' }}>Piyasa Maruziyet Ölçeri:</strong>
-              <span style={{ color: 'var(--cyan)', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
-                {pulse?.exposure_pct || '60% to 80% Invested'}
-              </span>
+          {/* Stock Market Exposure Meter (IBD / O'Neil Dynamic Multi-Factor Model) */}
+          <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <strong style={{ color: '#fff', fontSize: 11.5 }}>Piyasa Maruziyet Ölçeri:</strong>
+                <span style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>(Önerilen Hisse Ağırlığı)</span>
+              </div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '3px 10px',
+                background: `${activeExposure.color}1f`,
+                border: `1px solid ${activeExposure.color}88`,
+                borderRadius: 4,
+                boxShadow: `0 0 10px ${activeExposure.color}33`
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: activeExposure.color, display: 'inline-block', boxShadow: `0 0 6px ${activeExposure.color}` }} />
+                <span style={{ color: activeExposure.color, fontWeight: 900, fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>
+                  %{activeExposure.range} Yatırımda
+                </span>
+              </div>
             </div>
-            <div style={{ display: 'flex', height: 18, borderRadius: 3, overflow: 'hidden', fontSize: 9, fontWeight: 800, textAlign: 'center', lineHeight: '18px' }}>
-              <div style={{ flex: 1, background: '#ef4444', color: '#fff' }}>0-20%</div>
-              <div style={{ flex: 1, background: '#f97316', color: '#fff' }}>20-40%</div>
-              <div style={{ flex: 1, background: '#eab308', color: '#000' }}>40-60%</div>
-              <div style={{ flex: 1, background: '#10b981', color: '#fff', border: '1.5px solid #fff' }}>60-80%</div>
-              <div style={{ flex: 1, background: '#059669', color: '#fff' }}>80-100%</div>
+
+            {/* 5-Tier Segmented Bar with Active Glow */}
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', margin: '8px 0 3px 0' }}>
+              {EXPOSURE_TIERS.map((t) => {
+                const isActive = t.tier === activeExposure.tier;
+                return (
+                  <div
+                    key={t.tier}
+                    style={{
+                      flex: 1,
+                      position: 'relative',
+                      height: isActive ? 26 : 18,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 4,
+                      background: isActive ? t.bg : 'rgba(255, 255, 255, 0.04)',
+                      border: isActive ? '2px solid #ffffff' : `1px solid ${t.color}33`,
+                      color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.35)',
+                      fontWeight: isActive ? 900 : 700,
+                      fontSize: isActive ? 11 : 9,
+                      fontFamily: 'var(--font-mono)',
+                      boxShadow: isActive ? `0 0 14px ${t.color}aa, inset 0 0 6px rgba(255,255,255,0.4)` : 'none',
+                      transform: isActive ? 'scale(1.02)' : 'scale(1)',
+                      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      zIndex: isActive ? 2 : 1
+                    }}
+                    title={`${t.range}: ${t.name}`}
+                  >
+                    {isActive && <span style={{ marginRight: 2, fontSize: 10 }}>✓</span>}
+                    <span>{t.shortLabel}</span>
+                  </div>
+                );
+              })}
             </div>
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.4, marginTop: 6 }}>
-              {pulse?.exposure_desc || 'Nasdaq composite ve S&P 500 21 günlük hareketli ortalamalarının üzerinde seyrediyor.'}
+
+            {/* Pointer Indicator */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+              {EXPOSURE_TIERS.map((t) => {
+                const isActive = t.tier === activeExposure.tier;
+                return (
+                  <div key={t.tier} style={{ flex: 1, textAlign: 'center', height: 14 }}>
+                    {isActive && (
+                      <span style={{
+                        display: 'inline-block',
+                        color: t.color,
+                        fontSize: 9,
+                        fontWeight: 900,
+                        letterSpacing: '0.4px',
+                        lineHeight: 1
+                      }}>
+                        ▲ AKTİF
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Dynamic Rationale Card */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: `1px solid ${activeExposure.color}33`,
+              borderRadius: 5,
+              padding: '8px 10px',
+              borderLeft: `3px solid ${activeExposure.color}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: activeExposure.color }}>
+                  {activeExposure.name}
+                </span>
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  Maruziyet Skoru: {activeExposure.score}/100
+                </span>
+              </div>
+              <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.45 }}>
+                {activeExposure.desc}
+              </div>
             </div>
           </div>
 
