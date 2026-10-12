@@ -102,8 +102,8 @@ export const resolveEditionState = (manualThemeId = 'auto', customShift = 0) => 
   };
 };
 
-// Natural Spoken Turkish Script Generator for All 9 Slides based on Edition & Live Market Quotes
-export const generateDailyScript = (slideId, theme, quotes, todayFullStr, slotTitle) => {
+// Natural Spoken Turkish Script Generator for All 9 Slides based on Edition, Live Quotes & Custom Agenda
+export const generateDailyScript = (slideId, theme, quotes, todayFullStr, slotTitle, customAgenda = null) => {
   const {
     fmt,
     brent,
@@ -122,47 +122,52 @@ export const generateDailyScript = (slideId, theme, quotes, todayFullStr, slotTi
     gramAltinTL
   } = quotes;
 
+  // Dynamic agenda items if provided
+  const t1 = customAgenda?.topic1?.title || 'Küresel Likidite ve Merkez Bankaları Faiz Patikası';
+  const t2 = customAgenda?.topic2?.title || 'Jeopolitik Riskler, Enerji Koridorları ve Petrol Fiyatları';
+  const t3 = customAgenda?.topic3?.title || 'Borsa İstanbul ve Wall Street Bilanço Dinamikleri';
+
   switch (slideId) {
     case 1:
       if (theme.id === 'fed_liquidity') {
-        return `Değerli dostlar, ekran başına ve bugünkü ${slotTitle} yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Masamızda küresel faiz patikası ve merkez bankalarının likidite adımları var.
+        return `Değerli dostlar, ekran başına ve bugünkü ${slotTitle} yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Masamızda küresel faiz patikası, merkez bankalarının likidite adımları ve günün öne çıkan başlığı "${t1}" var.
 
-İlk olarak sunumumuzun merkezindeki CME FedWatch ekranına bakalım: Piyasa aylardır 'FED faiz indirecek' söylemiyle meşgul edilirken, canlı veriler mevcut faizin sabit bırakılma olasılığının tam yüzde 78.4 olduğunu gösteriyor. Faiz indirimi ihtimali neredeyse sıfıra yaklaşırken, ABD 10 yıllık tahvil getirisi yüzde ${fmt(us10y.price, 2)} seviyesinde ve Dolar Endeksi DXY ${fmt(dxy.price, 2)} bandında güçleniyor. Bu ortamda likidite kontrolünü elinde tutan yatırımcılar kazanacak.
+İlk olarak sunumumuzun merkezindeki canlı göstergelerimize bakalım: ABD 10 yıllık tahvil getirisi yüzde ${fmt(us10y.price, 2)} seviyesinde ve Dolar Endeksi DXY ${fmt(dxy.price, 2)} bandında dengeleniyor. Fed'in faiz indirim patikası ve küresel likidite koşulları piyasaların yönünü tayin ediyor. Bu ortamda likidite kontrolünü ve disiplinli portföy tahsisini elinde tutan yatırımcılar kazanacak.
 
 Şimdi bu kritik küresel makro tablonun hisse senetleri, altın ve döviz üzerindeki doğrudan yansımalarını 9 slaytlık brifingimizle adım adım inceleyelim.`;
       }
       if (theme.id === 'geopolitics_energy') {
-        return `Değerli dostlar, ${slotTitle} yayınımıza hoş geldiniz. Bugün ${todayFullStr}. Küresel piyasaların ana gündem maddesi Orta Doğu'daki tansiyon ve enerji sevkiyat boğazları.
+        return `Değerli dostlar, ${slotTitle} yayınımıza hoş geldiniz. Bugün ${todayFullStr}. Küresel piyasaların ana gündem maddesi Orta Doğu'daki tansiyon, enerji sevkiyat boğazları ve günün manşeti: "${t2}".
 
 Ekranınızdaki canlı göstergelerde Brent petrolün ${fmt(brent.price, 2)} dolar seviyesinde tutunduğunu, ons altının ise ${fmt(gold.price, 0)} dolarda güçlü bir kurumsal taleple korunduğunu görüyoruz. Hürmüz Boğazı ve Kızıldeniz hattındaki navlun primleri manşet enflasyonu diri tutarak merkez bankalarının faiz indirimlerini öteliyor.
 
 Bugünkü özel yayınımızda enerjiden enflasyona, Wall Street'ten Borsa İstanbul'a kadar tüm domino etkilerini adım adım masaya yatırıyoruz.`;
       }
       if (theme.id === 'wallstreet_ai') {
-        return `Değerli dostlar, ${slotTitle} analizimize hoş geldiniz. Bugün ${todayFullStr}. Okyanusun ötesinde, Wall Street ve yapay zeka ekosisteminde tarihi bir bilanço ve değerleme dönemine şahitlik ediyoruz.
+        return `Değerli dostlar, ${slotTitle} analizimize hoş geldiniz. Bugün ${todayFullStr}. Okyanusun ötesinde, Wall Street ve teknoloji ekosisteminde tarihi bir bilanço ve değerleme dönemine şahitlik ediyoruz. Gündemimizin merkezinde "${t3}" var.
 
-Ekranda gördüğünüz S&P 500 mevsimsellik eğrisi ve teknoloji ralli grafiği son derece net bir sinyal veriyor: Ekim ayının ilk yarısındaki dalgalanmalar tarihsel olarak yıl sonu rallisinin tabanını hazırlar. S&P 500 ${fmt(sp500.price, 0)} puanda, Nasdaq ${fmt(nasdaq.price, 0)} puanda ve büyük teknoloji devlerinin 200 milyar doları aşan yapay zeka sermaye harcamaları ralliye liderlik ediyor.
+Ekranda gördüğünüz S&P 500 mevsimsellik eğrisi ve teknoloji ralli grafiği son derece net bir sinyal veriyor: S&P 500 ${fmt(sp500.price, 0)} puanda, Nasdaq ${fmt(nasdaq.price, 0)} puanda ve büyük teknoloji devlerinin 200 milyar doları aşan yapay zeka sermaye harcamaları ralliye liderlik ediyor.
 
 Gelin şimdi hem Wall Street devlerini hem de Borsa İstanbul'a yansıyan fırsatları birlikte inceleyelim.`;
       }
       if (theme.id === 'bist_rotation') {
         return `Değerli dostlar, ${slotTitle} yayınımıza hepiniz hoş geldiniz. Bugün ${todayFullStr}. Masamızın merkezinde Borsa İstanbul, sektörel güç ayrışmaları ve Türkiye'nin dezenflasyon süreci var.
 
-BIST 100 endeksinin ${fmt(bist100.price, 0)} puanda 12.200 ana taban seviyesinden kurumsal tepki alımlarıyla karşılaştığını izliyoruz. Yıllık enflasyonun yüzde 49.38'e inmesiyle Türkiye uzun bir aradan sonra pozitif reel faiz bölgesine yerleşti. Bankacılık ve sanayi arasındaki rotasyon ise piyasaya taze soluk getiriyor.
+BIST 100 endeksinin ${fmt(bist100.price, 0)} puanda ana kurumsal taban seviyesinde dengelendiğini izliyoruz. Yıllık enflasyonun kademeli gerilemesiyle Türkiye pozitif reel faiz bölgesine yerleşti. Bankacılık ve sanayi arasındaki rotasyon ise piyasaya taze soluk getiriyor.
 
 Dolar kurunun ${fmt(currentUsdTry, 2)} lirada dengelendiği bu seansta hangi sektörlerin öne çıktığını 9 slaytlık brifingimizde ayrıntılarıyla aktarıyoruz.`;
       }
       // metals_haven
-      return `Değerli dostlar, ${slotTitle} yayınımıza hoş geldiniz. Bugün ${todayFullStr}. Masamızın merkezinde kıymetli madenler, güvenli liman arayışı ve piyasaları sarsan son dakika sıcak şokları var.
+      return `Değerli dostlar, ${slotTitle} yayınımıza hoş geldiniz. Bugün ${todayFullStr}. Masamızın merkezinde kıymetli madenler, güvenli liman arayışı ve küresel makro dinamikler var. Gündemimizin ilk sırasında: "${t1}".
 
-Dün İran'ın Katar açıklarında bir petrol tankerine saldırmasıyla petrol fiyatlarının sıçraması, buna karşılık Trump'ın 'ara seçimlere kadar İran'a askeri müdahale yapmayacağız' çıkışı ve yapay zeka devi OpenAI'ın beklentilerin 20 milyar dolar gerisinde devasa bir nakit açığı bildirmesi piyasaları sarstı. Tüm bu jeopolitik ve teknoloji çalkantısının ortasında küresel sermayenin güvenli limanı olan ons altın ${fmt(gold.price, 0)} dolar bandında, gümüş ${fmt(silver.price, 2)} dolarda ve Kapalıçarşı gram altın ${fmt(gramAltinTL, 0)} lirada tarihi bir koruma kalkanı sunuyor.
+Küresel jeopolitik belirsizliklerin ve merkez bankaları çeşitlendirme adımlarının ortasında küresel sermayenin güvenli limanı olan ons altın ${fmt(gold.price, 0)} dolar bandında, gümüş ${fmt(silver.price, 2)} dolarda ve Kapalıçarşı gram altın ${fmt(gramAltinTL, 0)} lirada tarihi bir koruma kalkanı sunuyor.
 
 Bugün altın ve gümüş ağırlıklı analizimizle paranın rotasını ve yapılması gereken hamleleri 9 slaytlık brifingimizle adım adım masaya yatırıyoruz.`;
 
     case 2:
-      return `İkinci slaytımızda dünün en sıcak kırılması olan Orta Doğu ve enerji cephesine bakıyoruz. Dün İran'ın Katar açıklarında bir ham petrol tankerine yönelik İHA ve füze saldırısı düzenlemesiyle Brent petrol anında $${fmt(brent.price, 2)} seviyesine sıçradı; Hürmüz Boğazı ve Kızıldeniz hattında tanker harp sigortası primleri yüzde 28 tırmandı.
+      return `İkinci slaytımızda küresel enerji koridorları ve jeopolitik risk haritasına bakıyoruz. Orta Doğu ve Kızıldeniz hattındaki arz güvenliği endişeleriyle Brent petrol $${fmt(brent.price, 2)} seviyesinde seyrederken, küresel taşımacılık ve deniz harp sigortası primleri yakından izleniyor.
 
-Tam bu tansiyon yükselirken Trump'tan çok kritik bir denge mesajı geldi: 'Ara seçimlere kadar İran'a doğrudan askeri müdahale yapılmayacak.' Neden? Çünkü Washington yönetimi, petrolün 100 doların üzerine fırlayarak seçim öncesi benzin ve manşet enflasyonu patlatmasından çekiniyor. Trump'ın bu mesajı sıcak bir çatışmayı şimdilik öteleyip piyasaya geçici bir soluk aldırdı ancak jeopolitik risk primini kalıcı hale getirdi. Enerjideki bu yapışkan maliyet Fed'in faiz indirimlerini geciktirirken, kurumsal fonları en güçlü güvenli liman olan fiziki altın ve gümüşe yönlendiriyor.`;
+Enerji fiyatlarındaki dalgalanmalar manşet enflasyonun düşüş hızını frenlerken, Fed ve küresel merkez bankalarının faiz indirim adımlarını daha temkinli atmasına neden oluyor. Bu yapışkan jeopolitik maliyet ortamı kurumsal fonları en güçlü güvenli liman olan fiziki altın, gümüş ve nakit akışı üreten şirketlere yönlendiriyor.`;
 
     case 3:
       if (theme.variantIndex === 1) {
@@ -174,14 +179,14 @@ Tam bu tansiyon yükselirken Trump'tan çok kritik bir denge mesajı geldi: 'Ara
       return `Merkez bankaları masamıza geldiğimizde Türkiye'nin 3 katmanlı makro kalkanı dikkat çekiyor. Yıllık enflasyonun yüzde 49.38'e inmesiyle TCMB'nin yüzde 50 politika faizi ilk kez pozitif reel getiri sağladı (+%0.62). 5 yıllık CDS primimizin 216 baz puana gerilemesi ve cari dengedeki toparlanma, kur üzerindeki spekülatif baskıları tamamen kırdı.`;
 
     case 4:
-      return `Dördüncü durağımızda Wall Street ve yapay zeka ekosisteminde dengeleri sarsan büyük bir bilanço şokunu konuşuyoruz: OpenAI'ın yıllık finansal sonuçlarında beklentilerin tam 20 milyar dolar gerisinde kalarak devasa bir nakit açığı ve zarar yazması teknoloji dünyasına bomba gibi düştü!
+      return `Dördüncü durağımızda Wall Street ve yapay zeka ekosistemindeki değerleme ve sermaye döngüsünü masaya yatırıyoruz.
 
-Büyük teknoloji devleri—Microsoft, Alphabet, Amazon ve Meta—yıllık 205 milyar dolarlık devasa AI Capex yatırımı yaparken, OpenAI'ın bu açığı Wall Street'te şu soruyu manşete taşıdı: 'Yüz milyarlarca dolarlık bu harcama ne zaman kâra ve serbest nakit akışına dönecek?' Bu sorgulama Nasdaq ve çip hisselerinde kâr realizasyonlarını tetiklerken, akıllı kurumsal sermaye aşırı şişkin teknoloji değerlemelerinden çıkarak gerçek, dokunulabilir varlıklara—yani fiziki altın, gümüş ve nakit akışı üreten şirketlere—rotasyon yapıyor.`;
+Büyük teknoloji devleri—Microsoft, Alphabet, Amazon ve Meta—yıllık 200 milyar doları aşan devasa AI Capex yatırımları yaparken, piyasalarda "bu harcamaların kâra ve serbest nakit akışına dönüşüm hızı" yakından sorgulanıyor. Bu sorgulama dönem dönem teknoloji hisselerinde kâr realizasyonlarını tetiklerken, akıllı kurumsal sermaye aşırı şişkin değerlemeler yerine dokunulabilir nakit akışı üreten şirketlere ve reel varlıklara seçici rotasyonunu sürdürüyor.`;
 
     case 5:
-      return `Ve geldik bugünkü yayınımızın kalbine: Kıymetli madenler, ons altın ve gümüş masası! Hem Körfez'deki tanker saldırısı ve petrol şoku, hem de OpenAI fırtınasıyla teknolojide başlayan kâr realizasyonu küresel sermayeyi güvenli limanlara kilitledi.
+      return `Ve geldik bugünkü yayınımızın kalbine: Kıymetli madenler, ons altın ve gümüş masası! Küresel makro belirsizlikler ve jeopolitik tansiyon ortamında sermaye güvenli limanlara kilitleniyor.
 
-Ons altın $${fmt(gold.price, 0)} seviyesinde 4.180 - 4.300 dolar bandında tarihi direncini test ederken, asıl büyük patlama hikayesi gümüşte yazılıyor! Altın/gümüş rasyosu 68 kat seviyesine gerilerken, güneş panelleri ve yapay zeka donanım sanayisinin devasa fiziki talebi gümüşte 4 yıldır süren küresel arz açığını patlama noktasına getirdi. Kapalıçarşı'da gram altının ${fmt(gramAltinTL, 0)} lira seviyesinde sunduğu çifte kalkan ise yerel yatırımcı için bu çalkantılı Ekim döneminde en sağlam sigortadır. Şimdi kritik seviyeleri ve alım stratejimizi netleştirelim.`;
+Ons altın $${fmt(gold.price, 0)} seviyesinde tarihi kurumsal tabanını korurken, asıl büyük hikaye endüstriyel taleple gümüşte yazılıyor. Altın/gümüş rasyosundaki hareketler, fotovoltaik güneş panelleri ve teknoloji donanım sektörünün fiziki talebiyle birleşiyor. Kapalıçarşı'da gram altının ${fmt(gramAltinTL, 0)} lira seviyesinde sunduğu çifte kalkan ise yerel yatırımcı için en sağlam sigortadır. Şimdi kritik seviyeleri ve alım stratejimizi netleştirelim.`;
 
     case 6:
       if (theme.variantIndex === 1) {

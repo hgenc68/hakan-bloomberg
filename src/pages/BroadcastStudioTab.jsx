@@ -38,7 +38,8 @@ import {
   BarChart3,
   PieChart,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import macroPulseData from '../data/macroPulse.json';
 import latestQuotesData from '../data/latestQuotes.json';
@@ -54,10 +55,126 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   // Active slide index (0 to 8)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
-  // Active sub-tab inside Slide 1 ('fed': FED Faiz Tahmini, 'seasonality': S&P 500 Mevsimsellik, 'macro': TÜFE & PMI, 'matrix': Varlık Matrisi)
+  // Active sub-tab inside Slide 1 ('breaking_news', 'fed', 'seasonality', 'macro', 'matrix')
   const [slide1SubTab, setSlide1SubTab] = useState(() => {
-    try { return localStorage.getItem('broadcast_studio_slide1_subtab') || 'fed'; } catch { return 'fed'; }
+    try { return localStorage.getItem('broadcast_studio_slide1_subtab') || 'breaking_news'; } catch { return 'breaking_news'; }
   });
+
+  // Dynamic Agenda & Live News State
+  const [liveNewsList, setLiveNewsList] = useState([]);
+  const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
+
+  const defaultAgenda = {
+    topic1: {
+      title: 'Küresel Likidite, Fed & TCMB Faiz Patikası',
+      desc: 'Faiz beklentileri, tahvil getirileri ve döviz piyasası dengesi.',
+      tag: 'Makro & Faiz'
+    },
+    topic2: {
+      title: 'Jeopolitik Riskler, Enerji Koridorları & Petrol',
+      desc: 'Hürmüz & Kızıldeniz lojistiği, Brent petrol ve enflasyon geçişkenliği.',
+      tag: 'Enerji & Jeopolitik'
+    },
+    topic3: {
+      title: 'Borsa İstanbul & Wall Street Bilanço Dinamikleri',
+      desc: 'BIST 100 ana kurumsal taban seviyeleri ve yapay zeka sermaye harcamaları.',
+      tag: 'Hisse & Bilanço'
+    },
+    fedRate: {
+      dominant: '25 bp İndirim',
+      prob: 85,
+      pauseProb: 15,
+      meetingDate: 'Gelecek FOMC',
+      note: 'Piyasa yumuşak iniş senaryosunu ve 25 bp kademeli faiz patikasını fiyatlıyor.'
+    }
+  };
+
+  const [customAgenda, setCustomAgenda] = useState(() => {
+    try {
+      const savedStr = localStorage.getItem('broadcast_studio_agenda');
+      if (savedStr) {
+        if (savedStr.includes('Katar') || savedStr.includes('OpenAI') || savedStr.includes('Tanker')) {
+          localStorage.removeItem('broadcast_studio_agenda');
+          return defaultAgenda;
+        }
+        const saved = JSON.parse(savedStr);
+        return {
+          topic1: saved.topic1 || defaultAgenda.topic1,
+          topic2: saved.topic2 || defaultAgenda.topic2,
+          topic3: saved.topic3 || defaultAgenda.topic3,
+          fedRate: saved.fedRate || defaultAgenda.fedRate
+        };
+      }
+    } catch (e) {}
+    return defaultAgenda;
+  });
+
+  const [agendaForm, setAgendaForm] = useState(() => customAgenda);
+
+  useEffect(() => {
+    if (isAgendaModalOpen) {
+      setAgendaForm(customAgenda);
+    }
+  }, [isAgendaModalOpen, customAgenda]);
+
+  // Fetch live market news
+  useEffect(() => {
+    fetch('/api/market?type=news')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.status === 'success' && Array.isArray(data.news) && data.news.length > 0) {
+          setLiveNewsList(data.news);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const updateAgenda = (newAgenda) => {
+    setCustomAgenda(newAgenda);
+    try {
+      localStorage.setItem('broadcast_studio_agenda', JSON.stringify(newAgenda));
+    } catch (e) {}
+    if (syncChannelRef.current) {
+      try {
+        syncChannelRef.current.postMessage({ type: 'CHANGE_AGENDA', agenda: newAgenda, time: Date.now() });
+      } catch (e) {}
+    }
+  };
+
+  const handleAutoFillFromNews = () => {
+    if (!liveNewsList || liveNewsList.length === 0) return;
+    const cleanStr = (s) => (s || '').replace(/<[^>]+>/g, '').replace(/ - .*$/, '').trim();
+    const n1 = liveNewsList[0];
+    const n2 = liveNewsList[1] || liveNewsList[0];
+    const n3 = liveNewsList[2] || liveNewsList[0];
+    setAgendaForm(prev => ({
+      ...prev,
+      topic1: {
+        title: cleanStr(n1.title) || prev.topic1.title,
+        desc: cleanStr(n1.summary) || (n1.source ? `Kaynak: ${n1.source}` : prev.topic1.desc),
+        tag: n1.category || 'Sıcak Gündem'
+      },
+      topic2: {
+        title: cleanStr(n2.title) || prev.topic2.title,
+        desc: cleanStr(n2.summary) || (n2.source ? `Kaynak: ${n2.source}` : prev.topic2.desc),
+        tag: n2.category || 'Emtia & Enerji'
+      },
+      topic3: {
+        title: cleanStr(n3.title) || prev.topic3.title,
+        desc: cleanStr(n3.summary) || (n3.source ? `Kaynak: ${n3.source}` : prev.topic3.desc),
+        tag: n3.category || 'Hisse & Sektör'
+      }
+    }));
+  };
+
+  const handleResetAgenda = () => {
+    setAgendaForm(defaultAgenda);
+  };
+
+  const handleSaveAgenda = () => {
+    updateAgenda(agendaForm);
+    setIsAgendaModalOpen(false);
+  };
 
   // Cross-window synchronization for OBS Pop-out (4-Way Redundant Engine)
   const syncChannelRef = useRef(null);
@@ -93,6 +210,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         if (e.data && e.data.type === 'CHANGE_EDITION_SHIFT' && typeof e.data.shift === 'number') {
           setCustomShift(e.data.shift);
         }
+        if (e.data && e.data.type === 'CHANGE_AGENDA' && e.data.agenda) {
+          setCustomAgenda(e.data.agenda);
+        }
       };
     } catch (e) {}
 
@@ -109,6 +229,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       }
       if (e.data && e.data.type === 'CHANGE_EDITION_SHIFT' && typeof e.data.shift === 'number') {
         setCustomShift(e.data.shift);
+      }
+      if (e.data && e.data.type === 'CHANGE_AGENDA' && e.data.agenda) {
+        setCustomAgenda(e.data.agenda);
       }
     };
     window.addEventListener('message', handleWindowMsg);
@@ -134,6 +257,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       }
       if (e.key === 'broadcast_studio_edition_shift' && e.newValue) {
         setCustomShift(Number(e.newValue) || 0);
+      }
+      if (e.key === 'broadcast_studio_agenda' && e.newValue) {
+        try {
+          setCustomAgenda(JSON.parse(e.newValue));
+        } catch (e) {}
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -490,12 +618,12 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         subtitle: activeTheme.description,
         durationEst: '65 sn',
         metrics: [
-          { label: 'FED Faiz Beklentisi (CME)', val: '%78.4 Sabit', chg: 0, note: 'İndirim %0 • Pas/Sabit' },
+          { label: 'FED Faiz Beklentisi (CME)', val: customAgenda?.fedRate?.dominant ? `%${customAgenda.fedRate.prob} ${customAgenda.fedRate.dominant}` : '%85 İndirim', chg: 0, note: customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Kademeli Gevşeme' : 'Pas/Sabit Duruş' },
           { label: 'S&P 500 Mevsimsellik', val: 'Q4 Ralli +%4.1', chg: 1.4, isUp: true, note: 'Seçim Yılı Döngüsü' },
           { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: 0, note: 'Aylık %2.97 • Reel Faiz +' },
           { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
         ],
-        defaultScript: generateDailyScript(1, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(1, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 2: Geopolitics & Energy Corridor
@@ -504,7 +632,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         badge: variantIndex === 1 ? 'OPEC+ & PETROL KOTALARI' : (variantIndex === 2 ? 'JEOPOLİTİK RİSK KATSAYISI' : 'JEOPOLİTİK RADAR & ENERJİ'),
         badgeColor: 'rose',
         title: variantIndex === 1 ? 'OPEC+ Üretim Kotaları & Rafineri Marjları' : (variantIndex === 2 ? 'Jeopolitik Risk Katsayısı & Güvenli Liman' : 'Jeopolitik Riskler & Enerji Koridoru'),
-        subtitle: variantIndex === 1 ? 'Suudi 9M Kota, ABD SPR 385M Varil ve Crack Spread Açılması' : (variantIndex === 2 ? '142 GPR Risk Puanı, Tanker Sigortası (+%28) ve Petrol Yayılımı' : 'Hürmüz & Kızıldeniz Koridoru, Navlun Maliyetleri ve Petrol Arzı'),
+        subtitle: variantIndex === 1 ? 'Suudi 9M Kota, ABD SPR 385M Varil ve Crack Spread Açılması' : (variantIndex === 2 ? '142 GPR Risk Puanı, Navlun Primleri ve Enerji Koridorları' : 'Hürmüz & Kızıldeniz Koridoru, Navlun Maliyetleri ve Petrol Arzı'),
         durationEst: '55 sn',
         metrics: [
           { label: 'Brent Ham Petrol', val: `$${fmt(brent.price, 2)}`, chg: brent.change, isUp: brent.change >= 0 },
@@ -512,7 +640,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: variantIndex === 1 ? 'Crack Spread Marjı' : 'Navlun Risk Katsayısı', val: variantIndex === 1 ? '$24.80 / vrl' : '+%14.2', chg: 2.1, isUp: true, note: variantIndex === 1 ? 'Rafineri Baskısı' : 'Kızıldeniz & Ümit Burnu' },
           { label: 'Enerji Enflasyon Riski', val: 'Yüksek Risk', chg: 0, isUp: true }
         ],
-        defaultScript: generateDailyScript(2, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(2, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 3: Central Banks & Real Yield Shield
@@ -529,7 +657,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: -2.59, isUp: false, note: 'Aylık TÜFE: %2.97' },
           { label: '5Y CDS Risk Primi', val: '216 bp', chg: -3.5, isUp: false, note: 'Düşüş Trendi' }
         ],
-        defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 4: Wall Street & AI Ecosystem
@@ -546,7 +674,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: variantIndex === 1 ? 'Yıllık AI Capex Bütçesi' : 'ISM Hizmetler PMI', val: variantIndex === 1 ? '$205 Milyar' : '54.9', chg: 3.2, isUp: true, note: variantIndex === 1 ? 'Tarihi Zirve' : '1.5 Yılın Zirvesi' },
           { label: 'Tarihsel Q4 Getirisi', val: '+%4.1', chg: 0, isUp: true, note: 'Seçim Yılı Ortalaması' }
         ],
-        defaultScript: generateDailyScript(4, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(4, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 5: Commodities: Gold & Silver
@@ -563,7 +691,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'Gram Altın (Kapalıçarşı)', val: `${fmt(gramAltinTL, 0)} ₺`, chg: 0.15, isUp: true },
           { label: 'Altın / Gümüş Rasyosu', val: `${fmt(gold.price / (silver.price || 60.96), 1)}x`, chg: 0, note: 'Tarihsel Eşik' }
         ],
-        defaultScript: generateDailyScript(5, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(5, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 6: Dollar & Yield Curve
@@ -580,7 +708,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'ABD 2Y Tahvil Getirisi', val: `%${fmt(us2y.price, 3)}`, chg: us2y.change, isUp: us2y.change >= 0 },
           { label: '2Y / 10Y Verim Farkı', val: '+54 bp', chg: 1.2, isUp: true, note: 'Normalleşen Pozitif Eğim' }
         ],
-        defaultScript: generateDailyScript(6, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(6, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 7: Crypto & Spot ETF Flows
@@ -597,7 +725,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'TOTAL3 Altcoin Hacmi', val: `$${fmt(total3.price, 1)}B`, chg: total3.change, isUp: total3.change >= 0 },
           { label: 'Kurumsal Spot ETF', val: '+$210M / Gün', chg: 3.4, isUp: true, note: 'BlackRock & Fidelity' }
         ],
-        defaultScript: generateDailyScript(7, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(7, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 8: Borsa Istanbul & Sectors
@@ -614,7 +742,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: '5 Yıllık CDS Primi', val: '216 bp', chg: -2.1, isUp: false, note: 'Tarihi Dip' },
           { label: 'Teknik Tepki Bandı', val: '12.200 - 13.500', chg: 0, note: 'Kurumsal Taban' }
         ],
-        defaultScript: generateDailyScript(8, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(8, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       },
 
       // SLIDE 9: Strategy, Cash & 48h Calendar
@@ -631,13 +759,14 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'Tavsiye Nakit Oranı', val: '%20 - %25', chg: 0, note: 'Likit Kalkan' },
           { label: 'Piyasa Stratejisi', val: 'Seçici & Korumalı', chg: 0, note: 'Hisse Bazlı Ayrışma' }
         ],
-        defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle)
+        defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
       }
     ];
   }, [
     activeTheme,
     variantIndex,
     editionState,
+    customAgenda,
     dxy, vix, brent, wti, gold, silver, us10y, us2y, sp500, sp500Etf, nasdaq, nasdaqEtf, dow, dowEtf, bist100, btc, eth, total3, currentUsdTry, gramAltinTL, fgScore, fgLabel
   ]);
 
@@ -757,7 +886,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         <h3>KRİTİK MAKRO GÖSTERGELER & MERKEZ BANKASI BEKLENTİLERİ</h3>
         <table class="table-box">
           <tr><th>Veri / Gösterge</th><th>Açıklanan / Piyasa Değeri</th><th>Beklenti / Durum</th><th>Piyasa Etkisi & Strateji</th></tr>
-          <tr><td><b>FED CME Faiz İndirimi (7 Kasım)</b></td><td><b>%88.2 (25 bp İndirim)</b></td><td>%11.8 Pas / %0.0 (50 bp)</td><td>50 bp indirim masadan kalktı; yumuşak iniş ve DXY güçlenişi teyit edildi.</td></tr>
+          <tr><td><b>FED Faiz Beklentisi (CME FedWatch)</b></td><td><b>%${customAgenda?.fedRate?.prob || 85} (${customAgenda?.fedRate?.dominant || '25 bp İndirim'})</b></td><td>%${customAgenda?.fedRate?.pauseProb || 15} Pas / Sabit</td><td>${customAgenda?.fedRate?.note || 'Piyasa yumuşak iniş ve kademeli faiz patikasını fiyatlıyor.'}</td></tr>
           <tr><td><b>S&P 500 Seçim Yılı Q4 Mevsimselliği</b></td><td><b>+%4.1 Tarihsel Ortalama</b></td><td>Kasım-Aralık Kazanma: %83.3</td><td>Ekim ayı dalgalanmaları yıl sonu rallisi öncesi dip fırsatı sunuyor.</td></tr>
           <tr><td><b>Türkiye TÜFE (Eylül 2024)</b></td><td><b>Aylık %2.97 | Yıllık %49.38</b></td><td>Beklenti: %48.2 (Pozitif Reel Faiz: +%0.62)</td><td>TCMB faizi (%50) altında ilk yıllık enflasyon, indirimler Aralık/Ocak'a ötelendi.</td></tr>
           <tr><td><b>ABD ISM Hizmetler PMI</b></td><td><b>54.9 (1.5 Yılın Zirvesi)</b></td><td>Beklenti: 51.7 | Önceki: 51.5</td><td>Resesyon tezini sildi, yeni siparişler fırladı (59.4).</td></tr>
@@ -1023,8 +1152,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           {[
-                            { id: 'breaking_news', label: '🔥 Sıcak Haberler & Şoklar', badge: 'Tanker/Trump/AI' },
-                            { id: 'fed', label: '🏛️ FED Faiz Beklentisi', badge: '%78.4 Pas/Sabit' },
+                            { id: 'breaking_news', label: '🔥 Sıcak Haberler & Gündem', badge: 'Canlı Radar' },
+                            { id: 'fed', label: '🏛️ FED Faiz Beklentisi', badge: customAgenda?.fedRate?.dominant ? `%${customAgenda.fedRate.prob} ${customAgenda.fedRate.dominant}` : 'CME Watch' },
                             { id: 'seasonality', label: '📈 S&P 500 Mevsimsellik', badge: 'Q4 +%4.1' },
                             { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: 'TÜFE 49.38%' },
                             { id: 'matrix', label: '📊 Varlık Matrisi', badge: 'Canlı' }
@@ -1084,82 +1213,75 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             </div>
                             <div style={{ textAlign: 'right' }}>
                               <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>PİYASA KONSENSÜSÜ</div>
-                              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>Faizi Sabit Tutma (%78.4)</div>
+                              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                                {customAgenda?.fedRate?.dominant || '25 bp İndirim'} (%{customAgenda?.fedRate?.prob ?? 85})
+                              </div>
                             </div>
                           </div>
 
                           {/* Horizontal Bar Chart for FOMC Probabilities */}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(0,0,0,0.3)', padding: '9px 11px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                            {/* 375-400 (Current / Pause) */}
+                            {/* Dominant Expectation Bar */}
                             <div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
                                 <span style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }}></span>
-                                  375-400 bps (Mevcut Faizi Koruma / Pas Geçme)
+                                  {customAgenda?.fedRate?.dominant || '25 bp İndirim'} (Ana Konsensüs)
                                 </span>
-                                <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%78.4</span>
+                                <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>
+                                  %{customAgenda?.fedRate?.prob ?? 85}
+                                </span>
                               </div>
                               <div style={{ height: 9, background: 'rgba(255,255,255,0.06)', borderRadius: 5, overflow: 'hidden' }}>
-                                <div style={{ width: '78.4%', height: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', borderRadius: 5 }}></div>
+                                <div style={{ width: `${customAgenda?.fedRate?.prob ?? 85}%`, height: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', borderRadius: 5 }}></div>
                               </div>
-                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Ezici piyasa beklentisi — 1 ay önce %54.4 iken istihdam verisiyle zirveye çıktı</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>CME FedWatch vadeli işlem fiyatlaması ana senaryosu</div>
                             </div>
 
-                            {/* 400-425 (Upper / Tightening) */}
+                            {/* Alternative Scenario Bar */}
                             <div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
                                 <span style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }}></span>
-                                  400-425 bps (Üst Bant / Faiz Artışı Riski)
+                                  {customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Faizi Sabit Tutma / Pas' : '25 bp İndirim Alternatifi'}
                                 </span>
-                                <span style={{ color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%21.6</span>
+                                <span style={{ color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>
+                                  %{customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 85))}
+                                </span>
                               </div>
                               <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{ width: '21.6%', height: '100%', background: '#f59e0b', borderRadius: 4 }}></div>
+                                <div style={{ width: `${customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 85))}%`, height: '100%', background: '#f59e0b', borderRadius: 4 }}></div>
                               </div>
-                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>1 hafta önce %70.9 idi; güçlü büyüme ve petrol şokuyla masada kalan risk</div>
-                            </div>
-
-                            {/* 350-375 (Rate Cut) */}
-                            <div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
-                                <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 5 }}>
-                                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }}></span>
-                                  350-375 bps (25 bp Faiz İndirimi)
-                                </span>
-                                <span style={{ color: '#ef4444', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>%0.0</span>
-                              </div>
-                              <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-                                <div style={{ width: '0%', height: '100%', background: '#ef4444' }}></div>
-                              </div>
-                              <div style={{ fontSize: 8, color: '#f87171', marginTop: 1 }}>1 ay önce %29.8 iken son 254K istihdam ve 54.9 PMI sonrası tamamen SIFIRLANDI!</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Veri akışına bağlı alternatif senaryo</div>
                             </div>
                           </div>
 
-                          {/* Historical Shift Summary Row */}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>ŞİMDİ</div>
-                              <div style={{ fontSize: 9, fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>%78.4 Pas</div>
+                          {/* Meeting & Scenario Summary Row */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '5px 6px', borderRadius: 4, textAlign: 'center' }}>
+                              <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>AĞIRLIKLI BEKLENTİ</div>
+                              <div style={{ fontSize: 9.5, fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
+                                %{customAgenda?.fedRate?.prob ?? 85} {customAgenda?.fedRate?.dominant || 'İndirim'}
+                              </div>
                             </div>
-                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>1 GÜN ÖNCE</div>
-                              <div style={{ fontSize: 9, fontWeight: 800, color: '#cbd5e1', fontFamily: 'var(--font-mono)' }}>%77.9 Pas</div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '5px 6px', borderRadius: 4, textAlign: 'center' }}>
+                              <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>ALTERNATİF İHTİMAL</div>
+                              <div style={{ fontSize: 9.5, fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
+                                %{customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 85))} {customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Pas/Sabit' : 'İndirim'}
+                              </div>
                             </div>
-                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>1 HAFTA ÖNCE</div>
-                              <div style={{ fontSize: 9, fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>%29.1 Pas</div>
-                            </div>
-                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                              <div style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>1 AY ÖNCE</div>
-                              <div style={{ fontSize: 9, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>%29.8 İndirim</div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '5px 6px', borderRadius: 4, textAlign: 'center' }}>
+                              <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>ODAK TOPLANTI</div>
+                              <div style={{ fontSize: 9.5, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                                {customAgenda?.fedRate?.meetingDate || 'Gelecek FOMC'}
+                              </div>
                             </div>
                           </div>
 
                           {/* Analytical Takeaway Box */}
-                          <div style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 5, padding: '6px 9px', fontSize: 8.5, color: '#cbd5e1', lineHeight: 1.4 }}>
-                            <span style={{ color: '#38bdf8', fontWeight: 800 }}>⚡ PİYASA YORUMU: </span>
-                            CME FedWatch verisi faiz indirimlerinin dondurulduğunu (%0.0) ve FED'in "bekle-gör" moduna geçtiğini (%78.4) resmileştirdi. Piyasada indirim bekleyenlerin aksine FED, sağlam istihdam ve canlı PMI verileriyle faizleri yüksek tutmaya devam ediyor.
+                          <div style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 5, padding: '7px 10px', fontSize: 9, color: '#cbd5e1', lineHeight: 1.45 }}>
+                            <span style={{ color: '#38bdf8', fontWeight: 800 }}>⚡ PİYASA YORUMU & STRATEJİ: </span>
+                            {customAgenda?.fedRate?.note || 'Piyasa istihdam, büyüme ve enflasyon dengesini gözeterek Fed faiz indirim döngüsünü fiyatlamaktadır.'}
                           </div>
                         </div>
                       )}
@@ -1401,57 +1523,98 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', display: 'flex', alignItems: 'center', gap: 6 }}>
                               <Flame size={13} />
-                              <span>SON 24 SAATİN SICAK GELİŞMELERİ & PİYASA ETKİSİ</span>
+                              <span>GÜNÜN SICAK GÜNDEMİ & PİYASA ETKİSİ</span>
                             </div>
-                            <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', fontWeight: 800 }}>
-                              CANLI RADAR
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <button
+                                type="button"
+                                onClick={() => setIsAgendaModalOpen(true)}
+                                style={{
+                                  fontSize: 8,
+                                  padding: '1px 6px',
+                                  borderRadius: 3,
+                                  background: 'rgba(245, 158, 11, 0.2)',
+                                  color: '#fbbf24',
+                                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                                  cursor: 'pointer',
+                                  fontWeight: 800
+                                }}
+                                title="Gündem maddelerini düzenle veya canlı haberlerden çek"
+                              >
+                                ✏️ Düzenle
+                              </button>
+                              <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', fontWeight: 800 }}>
+                                CANLI RADAR
+                              </span>
+                            </div>
                           </div>
 
-                          {/* 1. İran - Katar Açıkları Tanker Saldırısı */}
+                          {/* 1. Topic 1 */}
                           <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6, padding: '8px 10px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 10, fontWeight: 900, color: '#fca5a5' }}>💥 İRAN'IN KATAR AÇIKLARINDA TANKERE SALDIRISI</span>
-                              <span style={{ fontSize: 8, color: '#ef4444', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>BRENT: $78-$80 SIÇRAMASI</span>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: '#fca5a5' }}>
+                                💥 1. {customAgenda?.topic1?.title || 'Küresel Likidite & Faiz Patikası'}
+                              </span>
+                              <span style={{ fontSize: 8, color: '#ef4444', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                                {customAgenda?.topic1?.tag || 'MAKRO & FAİZ'}
+                              </span>
                             </div>
                             <div style={{ fontSize: 9.5, color: '#e2e8f0', marginTop: 3, lineHeight: 1.4 }}>
-                              Katar açıklarında petrol tankerine yönelik İHA/füze saldırısı navlun ve savaş sigortası primlerini (+%28) tırmandırdı. Hürmüz risk primi petrolü yukarı iterken küresel enflasyon katılığı tezini güçlendiriyor.
-                            </div>
-                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>Brent Petrol: Sıçrama</span>
-                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>Altın & Gümüş: Güvenli Liman Alımı</span>
+                              {customAgenda?.topic1?.desc || 'Faiz beklentileri, tahvil getirileri ve döviz piyasası dengesi.'}
                             </div>
                           </div>
 
-                          {/* 2. Trump'ın İran Mesajı */}
+                          {/* 2. Topic 2 */}
                           <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: '8px 10px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 10, fontWeight: 900, color: '#fde047' }}>🗳️ TRUMP'TAN İRAN ÇIKIŞI: "ARA SEÇİMLERE KADAR SALDIRI YOK"</span>
-                              <span style={{ fontSize: 8, color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>PETROL ŞOKUNA FREN</span>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: '#fde047' }}>
+                                ⚡ 2. {customAgenda?.topic2?.title || 'Enerji & Jeopolitik Koridor'}
+                              </span>
+                              <span style={{ fontSize: 8, color: '#fbbf24', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                                {customAgenda?.topic2?.tag || 'ENERJİ & JEOPOLİTİK'}
+                              </span>
                             </div>
                             <div style={{ fontSize: 9.5, color: '#e2e8f0', marginTop: 3, lineHeight: 1.4 }}>
-                              Trump, benzin fiyatlarının 100$ üstüne çıkarak tüketiciyi vurmasını önlemek için ara seçimlere kadar İran'a doğrudan askeri harekât yapılmayacağını açıkladı. Bu açıklama tansiyonu kısmen frenlese de riski Kasım sonrasına erteledi.
-                            </div>
-                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>Beyaz Saray: Seçim Baskısı</span>
-                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>Piyasa: Belirsizliğin Ertelenmesi</span>
+                              {customAgenda?.topic2?.desc || 'Hürmüz & Kızıldeniz lojistiği, Brent petrol ve enflasyon geçişkenliği.'}
                             </div>
                           </div>
 
-                          {/* 3. OpenAI 20 Milyar $ Açık Şoku */}
+                          {/* 3. Topic 3 */}
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6, padding: '8px 10px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 10, fontWeight: 900, color: '#93c5fd' }}>💻 OPENAI 20 MİLYAR $ ZARAR ŞOKU & AI SORGULAMASI</span>
-                              <span style={{ fontSize: 8, color: '#60a5fa', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>TEKNOLOJİ ÇALKANTISI</span>
+                              <span style={{ fontSize: 10, fontWeight: 900, color: '#93c5fd' }}>
+                                📈 3. {customAgenda?.topic3?.title || 'Borsa & Şirket Bilançoları'}
+                              </span>
+                              <span style={{ fontSize: 8, color: '#60a5fa', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                                {customAgenda?.topic3?.tag || 'HİSSE & BİLANÇO'}
+                              </span>
                             </div>
                             <div style={{ fontSize: 9.5, color: '#e2e8f0', marginTop: 3, lineHeight: 1.4 }}>
-                              OpenAI'ın devasa model eğitimi ve sunucu maliyetleri nedeniyle 20 milyar dolar zarar yazması, Big Tech'in 205 milyar $'lık yapay zeka harcamalarında "kârlılık ne zaman gelecek?" sorgulamasını başlattı; paradan fiziki emtiaya rotasyon hızlandı.
-                            </div>
-                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>Mag-7: Kâr Baskısı</span>
-                              <span style={{ fontSize: 7.5, padding: '1px 5px', borderRadius: 3, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>Reel Varlıklar: Altın & Gümüş Kaçışı</span>
+                              {customAgenda?.topic3?.desc || 'BIST 100 ana kurumsal taban seviyeleri ve yapay zeka sermaye harcamaları.'}
                             </div>
                           </div>
+
+                          {/* Canlı Akış Haberleri Bölümü (Eğer API'den haber geldiyse) */}
+                          {liveNewsList && liveNewsList.length > 0 && (
+                            <div style={{ marginTop: 2, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6, padding: '6px 8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <span style={{ fontSize: 8.5, fontWeight: 800, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Radio size={10} style={{ color: '#10b981' }} />
+                                  CANLI HABER BESLEMESİ
+                                </span>
+                                <span style={{ fontSize: 7.5, color: '#64748b' }}>{liveNewsList.length} Haber Akışı</span>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
+                                {liveNewsList.slice(0, 3).map((n, idx) => (
+                                  <div key={idx} style={{ fontSize: 8.5, color: '#cbd5e1', display: 'flex', alignItems: 'baseline', gap: 5, lineHeight: 1.3 }}>
+                                    <span style={{ color: 'var(--cyan)', fontSize: 8, fontWeight: 700 }}>•</span>
+                                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.title}</span>
+                                    {n.source && <span style={{ color: '#64748b', fontSize: 7.5, flexShrink: 0 }}>({n.source})</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1526,7 +1689,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 6, padding: '10px 12px', borderLeft: '3px solid #ef4444' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Hürmüz Gerilim Katsayısı: Ortalamanın +%38 Üstü</div>
-                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Tanker harp sigortası (War Risk Premium) ton başına +%22 arttı; armatörler ihtiyatlı seyrediyor.</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Navlun ve deniz savaş riski sigorta primleri yakından izleniyor; armatörler alternatif rotaları değerlendiriyor.</div>
                           </div>
                           <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderRadius: 6, padding: '10px 12px', borderLeft: '3px solid #f59e0b' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Süveyş Geçişlerinde %55 Düşüş</div>
@@ -1534,7 +1697,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           </div>
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px', borderLeft: '3px solid #38bdf8' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>LNG & Kritik Tedarik Zinciri</div>
-                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Katar ve Körfez menşeli sıvılaştırılmış gaz sevkiyatı alternatif hatlarla Avrupa'ya taşınıyor.</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Körfez menşeli sıvılaştırılmış gaz (LNG) sevkiyatı alternatif hatlarla küresel pazarlara taşınıyor.</div>
                           </div>
                         </div>
                       </div>
@@ -1575,16 +1738,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>💥 Katar Açıkları Tanker Saldırısı & Hürmüz Hattı</div>
-                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Dün Katar açıklarında petrol tankerine İHA/füze saldırısı; harp sigortası +%28 arttı, petrol anında $80 bandını zorladı.</div>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>💥 Stratejik Boğazlar & Tedarik Güvenliği</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>{customAgenda?.topic2?.title || 'Hürmüz ve Kızıldeniz hattındaki arz güvenliği ve lojistik maliyetleri yakından izleniyor.'}</div>
                           </div>
                           <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>🗳️ Trump'tan Sinyal: "Ara Seçimlere Kadar İran'a Saldırı Yok"</div>
-                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Petrolün 100$ üstüne fırlayıp enflasyonu patlatmasını önlemek için sıcak çatışma ertelendi; jeopolitik risk primi kalıcılaştı.</div>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>🗳️ Küresel Enerji Politikası & Enflasyon Geçişkenliği</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Enerji ve akaryakıt maliyetlerindeki yapışkanlık, manşet enflasyonun düşüş hızını sınırlarken merkez bankalarının manevra alanını belirliyor.</div>
                           </div>
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Navlun Maliyetleri & Altına Güvenli Liman Akışı</div>
-                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Ümit Burnu'na sapan gemiler ve navlun primleri ham maddeyi diri tutarken sermayeyi güvenli limana çekiyor.</div>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 12 }}>Navlun Maliyetleri & Güvenli Liman Talebi</div>
+                            <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 2 }}>Uzayan rotalar ve tedarik primleri ham madde fiyatlarını diri tutarken akıllı kurumsal sermaye güvenli liman varlıklarına sığınıyor.</div>
                           </div>
                         </div>
                       </div>
@@ -1597,11 +1760,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {[
-                            { step: '1', title: 'Tanker Saldırısı & Körfez Şoku', desc: 'Katar açıklarında vurulan tanker sonrası Hürmüz gerilimi', color: '#ef4444' },
-                            { step: '2', title: 'Trump Dengelemesi & Petrol Sıçraması', desc: `Brent petrol $${fmt(brent.price, 2)} bandında; seçim baskısıyla 100$ tavanı kontrol ediliyor`, color: '#f97316' },
-                            { step: '3', title: 'Yapışkan Manşet Enflasyon', desc: 'Enerji ve navlun artışı manşet enflasyonun düşüşünü frenliyor', color: '#eab308' },
-                            { step: '4', title: 'Geciken Faiz İndirimleri', desc: 'Fed ve küresel merkez bankaları gevşemeyi ötelemek zorunda kalıyor', color: '#38bdf8' },
-                            { step: '5', title: 'Güvenli Limana Kaçış (Altın & Gümüş)', desc: 'Ons altın ve gümüşe tarihi kurumsal taban desteği oluşuyor', color: '#10b981' }
+                            { step: '1', title: 'Stratejik Koridorlar & Tedarik Baskısı', desc: 'Hürmüz ve Kızıldeniz lojistiğinde tedarik ve güvenlik endişeleri', color: '#ef4444' },
+                            { step: '2', title: 'Enerji Fiyatları & Rafineri Crack Spread', desc: `Brent petrol $${fmt(brent.price, 2)} bandında dengelenirken rafineri marjları yakından izleniyor`, color: '#f97316' },
+                            { step: '3', title: 'Yapışkan Manşet Enflasyon', desc: 'Enerji ve navlun maliyetleri enflasyon düşüş hızına direnç oluşturuyor', color: '#eab308' },
+                            { step: '4', title: 'Temkinli Merkez Bankaları', desc: 'Fed ve küresel merkez bankaları faiz indirim adımlarını verilere bağlı tutuyor', color: '#38bdf8' },
+                            { step: '5', title: 'Güvenli Limana Kaçış (Altın & Gümüş)', desc: 'Ons altın ve gümüşe tarihi kurumsal taban desteği güçleniyor', color: '#10b981' }
                           ].map((item, idx) => (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 4, borderLeft: `3px solid ${item.color}` }}>
                               <span style={{ fontSize: 10, fontWeight: 900, color: item.color, background: `${item.color}20`, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1813,11 +1976,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {[
-                            { sym: 'MICROSOFT', amount: '$58 Milyar', note: 'Azure AI altyapısı & OpenAI süper küme yatırımları', col: '#38bdf8' },
+                            { sym: 'MICROSOFT', amount: '$58 Milyar', note: 'Azure AI bulut altyapısı & süper küme yatırımları', col: '#38bdf8' },
                             { sym: 'ALPHABET (GOOGLE)', amount: '$52 Milyar', note: 'TPU v5/v6 veri merkezleri & Gemini model mimarisi', col: '#818cf8' },
                             { sym: 'AMAZON (AWS)', amount: '$55 Milyar', note: 'AWS veri merkezleri & Trainium/Inferentia çipleri', col: '#fbbf24' },
                             { sym: 'META', amount: '$40 Milyar', note: 'Llama açık kaynak modelleri & yapay zeka reklam motoru', col: '#ec4899' },
-                            { sym: 'OPENAI ŞOKU', amount: '-$20 Milyar', note: 'Beklenti altı gelir, 20B$ nakit açığı & kârlılık sorgusu', col: '#ef4444' }
+                            { sym: 'ORACLE / TIER-2', amount: '$35 Milyar', note: 'Bulut veri merkezleri & OCI altyapı genişlemesi', col: '#34d399' }
                           ].map((c, i) => (
                             <div key={i} style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${c.col}25`, borderRadius: 6, padding: '7px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
@@ -1949,7 +2112,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                           {[
                             { sym: 'NVIDIA', note: 'Blackwell B200 Çip Sevkiyatları', tag: 'AI Lokomotif', color: '#10b981' },
-                            { sym: 'OPENAI', note: 'Beklenti Altı Gelir, -$20B Nakit Açığı', tag: 'Kârlılık Şoku', color: '#ef4444' },
+                            { sym: 'TSMC', note: 'Gelişmiş N3/N2 Dökümhane Kapasitesi', tag: 'Dökümhane Tekeli', color: '#38bdf8' },
                             { sym: 'AMAZON', note: 'AWS Bulut Marjları & Nakit Akışı', tag: 'Bulut Gücü', color: '#38bdf8' },
                             { sym: 'ALPHABET', note: 'Gemini AI & 22 F/K Çarpanı', tag: 'Makul Değer', color: '#818cf8' },
                             { sym: 'META', note: 'AI Destekli Reklam Gelirleri', tag: 'Yüksek Marj', color: '#ec4899' },
@@ -2120,8 +2283,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           </div>
 
                           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>2. Jeopolitik & Teknoloji Güvenli Liman Primi</div>
-                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Katar açıklarındaki tanker saldırısı, petrol sıçraması ve OpenAI'ın $20B açığıyla sarsılan Wall Street sermayesi fiziki altın ve gümüşe sığınıyor.</div>
+                            <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>2. Küresel Jeopolitik & Portföy Sigortası Primi</div>
+                            <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 3 }}>Bölgesel gerilimler, ticaret koridoru belirsizlikleri ve küresel borç dinamikleri karşısında akıllı kurumsal sermaye güvenli liman olarak fiziki altın ve gümüşe sığınıyor.</div>
                           </div>
 
                           <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: 6, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2975,6 +3138,28 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
             <span>🎥 OBS Temiz Pencere</span>
           </button>
 
+          {/* Daily Agenda Editor Button */}
+          <button
+            type="button"
+            onClick={() => setIsAgendaModalOpen(true)}
+            className="chip-btn"
+            style={{ 
+              fontSize: 10, 
+              padding: '5px 11px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              borderColor: '#f59e0b', 
+              color: '#fbbf24', 
+              fontWeight: 700,
+              background: 'rgba(245, 158, 11, 0.12)'
+            }}
+            title="Günün 3 ana gündem maddesini canlı haberlerden otomatik çekin veya özel başlıklar girin."
+          >
+            <Sparkles size={12} />
+            <span>🎙️ Gündemi Düzenle</span>
+          </button>
+
           {/* Copy Full Word Document Button */}
           <button
             type="button"
@@ -3465,6 +3650,298 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         )}
 
       </div>
+
+      {/* 🌟 Daily Agenda & Live News Editor Modal */}
+      {isAgendaModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+          onClick={() => setIsAgendaModalOpen(false)}
+        >
+          <div
+            style={{
+              background: '#090d16',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              borderRadius: 10,
+              width: '100%',
+              maxWidth: 720,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: 22,
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}>
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#f8fafc' }}>
+                    🎙️ Günün Gündemini Düzenle (Canlı Yayın & Prompter)
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    Buraya girdiğiniz başlıklar tüm 9 slaytın canlı paneline ve prompter konuşma metnine anında işlenir.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAgendaModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Quick Actions Row */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 11, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Radio size={14} style={{ color: '#10b981' }} />
+                <span>Otomatik Canlı Haber Akışı: <b>{liveNewsList.length} Güncel Haber Hazır</b></span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleAutoFillFromNews}
+                  disabled={!liveNewsList || liveNewsList.length === 0}
+                  style={{
+                    fontSize: 10.5,
+                    padding: '5px 12px',
+                    borderRadius: 5,
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    border: 'none',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: liveNewsList.length > 0 ? 'pointer' : 'not-allowed',
+                    opacity: liveNewsList.length > 0 ? 1 : 0.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="Google News canlı haber akışındaki son manşetleri 3 gündem maddesine otomatik aktarır"
+                >
+                  <RefreshCw size={12} />
+                  <span>⚡ Canlı Haberlerden Doldur</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetAgenda}
+                  style={{
+                    fontSize: 10.5,
+                    padding: '5px 10px',
+                    borderRadius: 5,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#cbd5e1',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                  title="Kurumsal standart makro temalara geri döner"
+                >
+                  Varsayılana Sıfırla
+                </button>
+              </div>
+            </div>
+
+            {/* 3 Topics Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Topic 1 */}
+              <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 6, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#fca5a5' }}>
+                    💥 1. Gündem Maddesi (Makro / Likidite / Faiz)
+                  </span>
+                  <input
+                    type="text"
+                    value={agendaForm?.topic1?.tag || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic1: { ...agendaForm.topic1, tag: e.target.value } })}
+                    placeholder="Etiket (Örn: Makro & Faiz)"
+                    style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontSize: 9.5, padding: '2px 8px', borderRadius: 4, width: 140 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={agendaForm?.topic1?.title || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic1: { ...agendaForm.topic1, title: e.target.value } })}
+                    placeholder="Başlık"
+                    style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 11.5, fontWeight: 700, padding: '6px 10px', borderRadius: 5, width: '100%' }}
+                  />
+                  <textarea
+                    rows={2}
+                    value={agendaForm?.topic1?.desc || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic1: { ...agendaForm.topic1, desc: e.target.value } })}
+                    placeholder="Açıklama / Özet"
+                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1', fontSize: 10.5, padding: '6px 10px', borderRadius: 5, width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+
+              {/* Topic 2 */}
+              <div style={{ background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#fde047' }}>
+                    ⚡ 2. Gündem Maddesi (Jeopolitik / Enerji / Koridor)
+                  </span>
+                  <input
+                    type="text"
+                    value={agendaForm?.topic2?.tag || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic2: { ...agendaForm.topic2, tag: e.target.value } })}
+                    placeholder="Etiket (Örn: Enerji & Jeopolitik)"
+                    style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(245,158,11,0.3)', color: '#fde047', fontSize: 9.5, padding: '2px 8px', borderRadius: 4, width: 140 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={agendaForm?.topic2?.title || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic2: { ...agendaForm.topic2, title: e.target.value } })}
+                    placeholder="Başlık"
+                    style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 11.5, fontWeight: 700, padding: '6px 10px', borderRadius: 5, width: '100%' }}
+                  />
+                  <textarea
+                    rows={2}
+                    value={agendaForm?.topic2?.desc || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic2: { ...agendaForm.topic2, desc: e.target.value } })}
+                    placeholder="Açıklama / Özet"
+                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1', fontSize: 10.5, padding: '6px 10px', borderRadius: 5, width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+
+              {/* Topic 3 */}
+              <div style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#93c5fd' }}>
+                    📈 3. Gündem Maddesi (Hisse / Bilanço / Borsa İstanbul)
+                  </span>
+                  <input
+                    type="text"
+                    value={agendaForm?.topic3?.tag || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic3: { ...agendaForm.topic3, tag: e.target.value } })}
+                    placeholder="Etiket (Örn: Hisse & Bilanço)"
+                    style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(56,189,248,0.3)', color: '#93c5fd', fontSize: 9.5, padding: '2px 8px', borderRadius: 4, width: 140 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={agendaForm?.topic3?.title || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic3: { ...agendaForm.topic3, title: e.target.value } })}
+                    placeholder="Başlık"
+                    style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 11.5, fontWeight: 700, padding: '6px 10px', borderRadius: 5, width: '100%' }}
+                  />
+                  <textarea
+                    rows={2}
+                    value={agendaForm?.topic3?.desc || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, topic3: { ...agendaForm.topic3, desc: e.target.value } })}
+                    placeholder="Açıklama / Özet"
+                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1', fontSize: 10.5, padding: '6px 10px', borderRadius: 5, width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+
+              {/* Fed CME Expectation Settings */}
+              <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 8 }}>
+                  🏛️ Fed Faiz Beklentisi (CME FedWatch Modeli)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Ağırlıklı Senaryo</div>
+                    <input
+                      type="text"
+                      value={agendaForm?.fedRate?.dominant || '25 bp İndirim'}
+                      onChange={(e) => setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, dominant: e.target.value } })}
+                      style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 8px', borderRadius: 4, width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Konsensüs Olasılığı (%)</div>
+                    <input
+                      type="number"
+                      value={agendaForm?.fedRate?.prob ?? 85}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, prob: val, pauseProb: Math.max(0, 100 - val) } });
+                      }}
+                      style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#34d399', fontSize: 11, fontWeight: 800, padding: '5px 8px', borderRadius: 4, width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Alternatif İhtimal (%)</div>
+                    <input
+                      type="number"
+                      value={agendaForm?.fedRate?.pauseProb ?? 15}
+                      onChange={(e) => setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, pauseProb: Number(e.target.value) } })}
+                      style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#f59e0b', fontSize: 11, fontWeight: 800, padding: '5px 8px', borderRadius: 4, width: '100%' }}
+                    />
+                  </div>
+                </div>
+                <textarea
+                  rows={2}
+                  value={agendaForm?.fedRate?.note || ''}
+                  onChange={(e) => setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, note: e.target.value } })}
+                  placeholder="Fed piyasa yorumu ve strateji notu"
+                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1', fontSize: 10.5, padding: '6px 10px', borderRadius: 5, width: '100%', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 14 }}>
+              <button
+                type="button"
+                onClick={() => setIsAgendaModalOpen(false)}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 6,
+                  background: 'rgba(255,255,255,0.08)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#e2e8f0',
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAgenda}
+                style={{
+                  padding: '7px 20px',
+                  borderRadius: 6,
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(245, 158, 11, 0.4)'
+                }}
+              >
+                💾 Kaydet & Slaytlara Uygula
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
