@@ -92,6 +92,7 @@ export default function MarketPulseTab() {
   const [isRefreshingNews, setIsRefreshingNews] = useState(false);
   const [isLiveNewsActive, setIsLiveNewsActive] = useState(false);
   const [lastNewsUpdated, setLastNewsUpdated] = useState(null);
+  const [liveEquities, setLiveEquities] = useState([]);
 
   // Helper for dynamic relative time
   const formatTimeAgo = (dateInput) => {
@@ -148,6 +149,9 @@ export default function MarketPulseTab() {
             setIsLiveNewsActive(true);
             setLastNewsUpdated(new Date());
           }
+          if (Array.isArray(j.equities) && j.equities.length > 0) {
+            setLiveEquities(j.equities);
+          }
         }
       }
     } catch (err) {
@@ -198,8 +202,8 @@ export default function MarketPulseTab() {
     year_ago: 52.5
   };
 
-  // Equities return matrix
-  const equities = [
+  // Equities return matrix (Uses dynamic 1Y daily candle calculations from Yahoo Finance)
+  const defaultEquities = [
     { name: 'S&P 500', symbol: 'SPY', price: marketQuotes['SPY']?.price || 762.63, today: marketQuotes['SPY']?.changePct || -0.20, d5: -0.67, m1: -0.58, ytd: 11.63, y1: 14.09 },
     { name: 'Nasdaq 100', symbol: 'QQQ', price: marketQuotes['QQQ']?.price || 739.77, today: marketQuotes['QQQ']?.changePct || 0.25, d5: -0.19, m1: 3.21, ytd: 20.66, y1: 22.63 },
     { name: 'Dow Jones', symbol: 'DIA', price: marketQuotes['DIA']?.price || 508.55, today: marketQuotes['DIA']?.changePct || -0.84, d5: -1.12, m1: -4.33, ytd: 5.15, y1: 9.54 },
@@ -209,6 +213,17 @@ export default function MarketPulseTab() {
     { name: 'ABD 10Y Tahvil', symbol: '^TNX', price: marketQuotes['^TNX']?.price || 4.15, today: marketQuotes['^TNX']?.changePct || -0.40, d5: 0.12, m1: -0.85, ytd: -1.20, y1: -2.50 },
     { name: 'Dolar / TL', symbol: 'USDTRY=X', price: usdtry || 49.03, today: marketQuotes['USDTRY=X']?.changePct || 0.12, d5: 0.45, m1: 1.85, ytd: 18.40, y1: 32.10 }
   ];
+
+  const equities = liveEquities && liveEquities.length > 0
+    ? liveEquities.map(item => {
+        const q = marketQuotes[item.symbol];
+        return {
+          ...item,
+          price: q?.price || item.price,
+          today: q?.changePct != null ? q.changePct : item.today
+        };
+      })
+    : defaultEquities;
 
   const filteredNews = newsItems.filter(item => {
     if (newsFilter === 'ALL') return true;
@@ -389,6 +404,11 @@ export default function MarketPulseTab() {
               <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>🏛️</span>
                 <span>U.S. & BIST EQUITIES DÖNEMSEL PERFORMANS MATRİSİ</span>
+                {liveEquities && liveEquities.length > 0 && (
+                  <span className="nav-badge emerald" style={{ fontSize: 9, padding: '2px 6px' }}>
+                    CANLI (1Y MUM HESAPLI)
+                  </span>
+                )}
               </div>
               <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
                 Resmi Kapanış Fiyatları (% Getiriler)

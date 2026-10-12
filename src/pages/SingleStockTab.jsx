@@ -353,6 +353,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     return TICKER_ALIAS_MAP[raw] || raw;
   });
   const [localQuotes, setLocalQuotes] = useState({});
+  const [liveFundamentals, setLiveFundamentals] = useState({});
+  const [isLoadingFundamentals, setIsLoadingFundamentals] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchBoxRef = useRef(null);
@@ -410,14 +412,47 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     return () => { isMounted = false; };
   }, [currentTicker, fetchSingleQuote]);
 
+  // Institutional Live Balance Sheet & Fundamentals Fetcher (for ANY stock)
+  useEffect(() => {
+    let isMounted = true;
+    const clean = currentTicker.toUpperCase().trim();
+    if (!clean) return;
+
+    if (liveFundamentals[clean]) return;
+
+    setIsLoadingFundamentals(true);
+    fetch(`/api/market?type=fundamentals&symbol=${encodeURIComponent(clean)}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (isMounted && json?.status === 'success' && json?.data) {
+          setLiveFundamentals(prev => ({
+            ...prev,
+            [clean]: json.data,
+            [json.data.full_ticker]: json.data
+          }));
+        }
+      })
+      .catch(err => {
+        console.warn(`Live fundamentals error for ${clean}:`, err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingFundamentals(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [currentTicker]);
+
   // DCF Sliders State
   const [growthRate, setGrowthRate] = useState(22.0); // %
   const [discountRate, setDiscountRate] = useState(9.5); // %
   const [terminalMultiple, setTerminalMultiple] = useState(22.0); // x
   const [activeScenario, setActiveScenario] = useState('base'); // 'conservative', 'base', 'bull'
 
+  const cleanTickerUpper = currentTicker.toUpperCase().trim();
+  const liveStock = liveFundamentals[cleanTickerUpper] || liveFundamentals[`${cleanTickerUpper}.IS`];
   const potStock = potentialData?.stocks?.find(s => s.ticker === currentTicker);
-  let activeStock = stocksData[currentTicker];
+
+  let activeStock = liveStock || stocksData[currentTicker];
   if (!activeStock && potStock) {
     activeStock = synthesizePotentialStock(potStock);
   }
@@ -425,8 +460,22 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     activeStock = synthesizeGenericStock(currentTicker, marketQuotes);
   }
 
+  // Auto-sync DCF sliders when stock fundamentals load
+  useEffect(() => {
+    if (activeStock?.dcf?.inputs) {
+      if (activeStock.dcf.inputs.growth_5y != null) {
+        setGrowthRate(Number(activeStock.dcf.inputs.growth_5y));
+      }
+      if (activeStock.dcf.inputs.wacc != null) {
+        setDiscountRate(Number(activeStock.dcf.inputs.wacc));
+      }
+      if (activeStock.dcf.inputs.terminal_multiple != null) {
+        setTerminalMultiple(Number(activeStock.dcf.inputs.terminal_multiple));
+      }
+    }
+  }, [currentTicker, activeStock?.is_live_data]);
+
   // Determine effective live market price strictly for the active stock
-  const cleanTickerUpper = currentTicker.toUpperCase().trim();
   const isBist = isBistTicker(cleanTickerUpper);
   const bistSym = isBist ? (cleanTickerUpper.endsWith('.IS') ? cleanTickerUpper : `${cleanTickerUpper}.IS`) : null;
 
@@ -438,6 +487,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   const effectiveLivePrice = Number(
     candidateQuote?.price ||
+    activeStock?.current_price ||
     activeStock?.dcf?.current_price ||
     activeStock?.candlestick?.current_price ||
     (cleanTickerUpper === 'NVDA' ? 238.90 : 
@@ -1056,7 +1106,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>
                 {currentTicker}
               </h3>
@@ -1066,6 +1116,16 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               <span className="nav-badge cyan" style={{ fontSize: 10 }}>
                 {dcfData?.currency || 'USD'}
               </span>
+              {activeStock?.is_live_data && (
+                <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 8px', letterSpacing: '0.3px' }}>
+                  🟢 CANLI BİLANÇO & FİNANSALLAR
+                </span>
+              )}
+              {isLoadingFundamentals && !activeStock?.is_live_data && (
+                <span className="nav-badge amber" style={{ fontSize: 9.5, padding: '2px 8px', letterSpacing: '0.3px' }}>
+                  ⏳ Bilanço Verisi Çekiliyor...
+                </span>
+              )}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span>

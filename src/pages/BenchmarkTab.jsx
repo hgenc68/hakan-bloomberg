@@ -34,7 +34,7 @@ import benchmarkData from '../data/benchmarkData.json';
 ChartJS.register(...registerables);
 
 export default function BenchmarkTab() {
-  const { currentCurrency, usdtry, portfolioSummary } = useApp();
+  const { currentCurrency, usdtry, portfolioSummary, marketQuotes = {} } = useApp();
   const isTRY = currentCurrency === 'try';
   const curKey = isTRY ? 'try' : 'usd';
   const sym = isTRY ? '₺' : '$';
@@ -111,7 +111,45 @@ export default function BenchmarkTab() {
     BITCOIN: false
   });
 
-  const rawDates = benchmarkData.dates || [];
+  // Dynamically extend historical series to the current trading date using live market quotes
+  const { rawDates, series } = useMemo(() => {
+    const baseDates = benchmarkData.dates ? [...benchmarkData.dates] : [];
+    const baseSeries = benchmarkData.normalized_series ? { ...benchmarkData.normalized_series } : {};
+    
+    const today = new Date().toISOString().split('T')[0];
+    const lastDate = baseDates[baseDates.length - 1];
+
+    if (lastDate && lastDate < today) {
+      baseDates.push(today);
+
+      Object.keys(baseSeries).forEach(key => {
+        const arr = [...baseSeries[key]];
+        const lastVal = arr[arr.length - 1] || 100;
+        let dayReturn = 0;
+
+        if (key.includes('SP500')) {
+          dayReturn = Number(marketQuotes['SPY']?.changePct ?? marketQuotes['^GSPC']?.changePct ?? 0);
+        } else if (key.includes('NASDAQ')) {
+          dayReturn = Number(marketQuotes['QQQ']?.changePct ?? marketQuotes['^IXIC']?.changePct ?? 0);
+        } else if (key.includes('BIST100')) {
+          dayReturn = Number(marketQuotes['XU100.IS']?.changePct ?? 0);
+        } else if (key.includes('GOLD')) {
+          dayReturn = Number(marketQuotes['GC=F']?.changePct ?? 0);
+        } else if (key.includes('BITCOIN')) {
+          dayReturn = Number(marketQuotes['BTC-USD']?.changePct ?? marketQuotes['BTC']?.changePct ?? 0);
+        } else if (key.includes('portfolio') || key.includes('equity')) {
+          dayReturn = Number(portfolioSummary?.dayPLPct ?? 0);
+        }
+
+        const nextVal = Number((lastVal * (1 + dayReturn / 100)).toFixed(2));
+        arr.push(nextVal);
+        baseSeries[key] = arr;
+      });
+    }
+
+    return { rawDates: baseDates, series: baseSeries };
+  }, [marketQuotes, portfolioSummary?.dayPLPct]);
+
   let sliceCount = rawDates.length;
   if (timeframe === '1W') sliceCount = Math.min(rawDates.length, 6);
   else if (timeframe === '1M') sliceCount = Math.min(rawDates.length, 22);
@@ -125,7 +163,6 @@ export default function BenchmarkTab() {
   const sampleStep = slicedDates.length > 90 ? Math.max(1, Math.floor(slicedDates.length / 75)) : 1;
   const sampledDates = slicedDates.filter((_, i) => i % sampleStep === 0);
 
-  const series = benchmarkData.normalized_series || {};
   const underwater = benchmarkData.underwater_series || {};
   const metrics = benchmarkData.metrics_by_currency?.[curKey] || {};
 
