@@ -584,11 +584,20 @@ export function EditHoldingModal({ holding, onClose }) {
   const [avgCost, setAvgCost] = useState(String(holding?.avg_cost || ''));
   const [currency, setCurrency] = useState(holding?.currency || 'TRY');
   const [type, setType] = useState(holding?.type || 'Hisse');
+  const [manualPrice, setManualPrice] = useState(
+    holding?.manual_price !== undefined && holding?.manual_price !== null ? String(holding.manual_price) : ''
+  );
+  const [manualChangePct, setManualChangePct] = useState(
+    holding?.manual_change_pct !== undefined && holding?.manual_change_pct !== null ? String(holding.manual_change_pct) : ''
+  );
 
   if (!holding) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const parsedManualPrice = manualPrice.trim() !== '' ? parseFloat(manualPrice.replace(',', '.')) : null;
+    const parsedManualChange = manualChangePct.trim() !== '' ? parseFloat(manualChangePct.replace(',', '.')) : null;
+
     await updateHolding(holding.id || holding.ticker, {
       ticker: ticker.toUpperCase(),
       name,
@@ -596,7 +605,9 @@ export function EditHoldingModal({ holding, onClose }) {
       avg_cost: parseFloat(avgCost.replace(',', '.')),
       currency,
       type,
-      cost_rate: currency === 'USD' ? (holding.cost_rate && Number(holding.cost_rate) > 1.5 ? Number(holding.cost_rate) : (usdtry || 49.03)) : 1.0
+      cost_rate: currency === 'USD' ? (holding.cost_rate && Number(holding.cost_rate) > 1.5 ? Number(holding.cost_rate) : (usdtry || 49.03)) : 1.0,
+      manual_price: (parsedManualPrice && parsedManualPrice > 0) ? parsedManualPrice : null,
+      manual_change_pct: (parsedManualPrice && parsedManualPrice > 0 && parsedManualChange !== null && !isNaN(parsedManualChange)) ? parsedManualChange : null
     });
     onClose();
   };
@@ -652,6 +663,58 @@ export function EditHoldingModal({ holding, onClose }) {
               <option value="Kripto" style={{ background: '#0b0f19', color: '#f1f5f9' }}>Kripto Para</option>
               <option value="Altın" style={{ background: '#0b0f19', color: '#f1f5f9' }}>Emtia / Altın</option>
             </select>
+          </div>
+        </div>
+
+        {/* Özel Canlı Fiyat / Broker Kilidi */}
+        <div style={{ background: '#090d16', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: '12px', marginTop: 10, marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span>🔒</span> ÖZEL FİYAT KİLİTLE (BANKA / ARACI KURUM SENKRONU)
+            </span>
+            {manualPrice && (
+              <button
+                type="button"
+                onClick={() => {
+                  setManualPrice('');
+                  setManualChangePct('');
+                }}
+                className="chip-btn"
+                style={{ fontSize: 9.5, padding: '2px 8px', color: '#94a3b8', borderColor: 'rgba(255,255,255,0.15)' }}
+                title="Kilitli fiyatı kaldır ve canlı piyasa verisine dön"
+              >
+                Kilidi Aç (Canlı API'ye Dön)
+              </button>
+            )}
+          </div>
+          <div className="form-grid-2">
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontSize: 10, color: '#94a3b8' }}>
+                ÖZEL CANLI FİYAT ({currency === 'USD' ? '$' : '₺'})
+              </label>
+              <input
+                type="text"
+                placeholder={`Otomatik API (${holding.livePrice ? holding.livePrice.toFixed(2) : '---'})`}
+                value={manualPrice}
+                onChange={e => setManualPrice(e.target.value)}
+                className="quant-input mono"
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={{ fontSize: 10, color: '#94a3b8' }}>
+                GÜNLÜK DEĞİŞİM % (İSTEĞE BAĞLI)
+              </label>
+              <input
+                type="text"
+                placeholder={holding.changePct !== undefined ? `%${holding.changePct.toFixed(2)}` : 'Örn: -2.18'}
+                value={manualChangePct}
+                onChange={e => setManualChangePct(e.target.value)}
+                className="quant-input mono"
+              />
+            </div>
+          </div>
+          <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 6, lineHeight: 1.4 }}>
+            💡 BIST Kapanış Seansı (18:08) eşleşme fiyatı veya banka ekstrenizdeki kesin fiyatı buraya girerek portföyünüzü %100 doğrulukla kilitleyebilirsiniz. Boş bırakırsanız otomatik canlı API beslemesi geçerli olur.
           </div>
         </div>
 

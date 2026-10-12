@@ -114,9 +114,9 @@ const DEFAULT_INITIAL_QUOTES = {
   '^TNX': { symbol: '^TNX', price: 5.24, currency: 'USD', changePct: -0.08 },
   '2YY=F': { symbol: '2YY=F', price: 4.42, currency: 'USD', changePct: -2.77 },
   '^VIX': { symbol: '^VIX', price: 15.21, currency: 'USD', changePct: 2.49 },
-  'BYDNR.IS': { symbol: 'BYDNR.IS', price: 22.86, currency: 'TRY', changePct: -3.95 },
-  'BYDNR': { symbol: 'BYDNR', price: 22.86, currency: 'TRY', changePct: -3.95 },
-  'SPCX': { symbol: 'SPCX', price: 164.18, currency: 'USD', changePct: 0.99 },
+  'BYDNR.IS': { symbol: 'BYDNR.IS', price: 23.28, currency: 'TRY', changePct: -2.18, previousClose: 23.80 },
+  'BYDNR': { symbol: 'BYDNR', price: 23.28, currency: 'TRY', changePct: -2.18, previousClose: 23.80 },
+  'SPCX': { symbol: 'SPCX', price: 163.84, currency: 'USD', changePct: 2.04, previousClose: 160.56 },
   'DRAM': { symbol: 'DRAM', price: 54.70, currency: 'USD', changePct: -4.35 },
   'ETH-USD': { symbol: 'ETH-USD', price: 2509.07, currency: 'USD', changePct: -1.04 },
   'ETHUSDT': { symbol: 'ETHUSDT', price: 2509.07, currency: 'USD', changePct: -1.04 },
@@ -252,7 +252,7 @@ export const AppProvider = ({ children }) => {
   const [marketQuotes, setMarketQuotes] = useState(() => {
     try {
       const cacheVer = localStorage.getItem('bloomberg_quotes_cache_version');
-      if (cacheVer === '2026-10-12-live-v4') {
+      if (cacheVer === '2026-10-12-live-v6') {
         const cached = localStorage.getItem('bloomberg_market_quotes');
         if (cached) {
           const parsed = JSON.parse(cached);
@@ -260,7 +260,7 @@ export const AppProvider = ({ children }) => {
         }
       } else {
         localStorage.removeItem('bloomberg_market_quotes');
-        localStorage.setItem('bloomberg_quotes_cache_version', '2026-10-12-live-v4');
+        localStorage.setItem('bloomberg_quotes_cache_version', '2026-10-12-live-v6');
       }
     } catch (e) {}
     return DEFAULT_INITIAL_QUOTES;
@@ -580,7 +580,7 @@ export const AppProvider = ({ children }) => {
           const merged = { ...prev, ...fetchedQuotes };
           try {
             localStorage.setItem('bloomberg_market_quotes', JSON.stringify(merged));
-            localStorage.setItem('bloomberg_quotes_cache_version', '2026-10-12-live-v4');
+            localStorage.setItem('bloomberg_quotes_cache_version', '2026-10-12-live-v6');
             localStorage.setItem('bloomberg_usdtry', String(usdRate));
             localStorage.setItem('bloomberg_gram_gold', String(finalGramGold));
           } catch (err) {}
@@ -704,13 +704,33 @@ export const AppProvider = ({ children }) => {
       const hasQuote = quote.price !== undefined && quote.price !== null && Number(quote.price) > 0;
       // If live quote is not found, use last recorded/persisted price from database before falling back to avg_cost
       const lastRecordedPrice = Number(h.current_price) || Number(h.currentPrice) || Number(h.last_price) || 0;
-      const livePrice = hasQuote ? Number(quote.price) : (lastRecordedPrice > 0 ? lastRecordedPrice : (h.avg_cost || 0));
-      const changePct = quote.changePct !== undefined 
-        ? Number(quote.changePct) 
-        : (h.day_change_pct !== undefined ? Number(h.day_change_pct) : (h.changePct !== undefined ? Number(h.changePct) : 0));
-      const prevClose = quote.previousClose !== undefined 
+      
+      // Support manual / user-locked price override
+      const isManualPrice = h.manual_price !== undefined && h.manual_price !== null && Number(h.manual_price) > 0;
+      const livePrice = isManualPrice
+        ? Number(h.manual_price)
+        : (hasQuote ? Number(quote.price) : (lastRecordedPrice > 0 ? lastRecordedPrice : (h.avg_cost || 0)));
+
+      let prevClose = quote.previousClose !== undefined 
         ? Number(quote.previousClose) 
-        : (changePct !== 0 && livePrice > 0 ? (livePrice / (1 + changePct / 100)) : livePrice);
+        : (hasQuote && quote.changePct !== undefined && Number(quote.price) > 0
+            ? (Number(quote.price) / (1 + (quote.changePct || 0) / 100))
+            : (lastRecordedPrice > 0 ? lastRecordedPrice : livePrice));
+
+      let changePct;
+      if (isManualPrice) {
+        if (h.manual_change_pct !== undefined && h.manual_change_pct !== null && h.manual_change_pct !== '') {
+          changePct = Number(h.manual_change_pct);
+        } else if (prevClose > 0 && Math.abs(livePrice - prevClose) > 0.0001) {
+          changePct = Number((((livePrice - prevClose) / prevClose) * 100).toFixed(2));
+        } else {
+          changePct = 0;
+        }
+      } else {
+        changePct = quote.changePct !== undefined 
+          ? Number(quote.changePct) 
+          : (h.day_change_pct !== undefined ? Number(h.day_change_pct) : (h.changePct !== undefined ? Number(h.changePct) : 0));
+      }
 
       // Clean check if sym is BIST
       const isBIST = sym.endsWith('.IS') || (h.type === 'Hisse' && h.currency === 'TRY' && !isHoldingUSD && !sym.includes('-USD'));
@@ -787,6 +807,9 @@ export const AppProvider = ({ children }) => {
       return {
         ...h,
         cleanTicker: sym,
+        isManualPrice,
+        manual_price: h.manual_price,
+        manual_change_pct: h.manual_change_pct,
         livePrice,
         livePriceTRY,
         livePriceUSD,

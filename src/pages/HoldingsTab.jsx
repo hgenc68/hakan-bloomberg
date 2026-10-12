@@ -1895,8 +1895,16 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                           )}
                         </td>
                         <td className="text-right mono">
-                          <div className="font-bold text-bright" style={{ fontSize: 12 }}>
-                            {sym}{fmt(displayedPrice, 2)}
+                          <div className="font-bold text-bright" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {h.isManualPrice && (
+                              <span 
+                                title={`Manuel Kilitli Fiyat (${h.manual_price} ${h.currency || 'TRY'}). Düzenle modalından canlı API'ye dönebilirsiniz.`} 
+                                style={{ fontSize: 8.5, padding: '1px 4px', borderRadius: 3, background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)' }}
+                              >
+                                🔒 Kilitli
+                              </span>
+                            )}
+                            <span>{sym}{fmt(displayedPrice, 2)}</span>
                           </div>
                           {(h.quoteCurrency === 'USD' || h.isHoldingUSD) && isTRY && (
                             <div style={{ fontSize: 9.5, color: 'var(--cyan)', fontWeight: 600 }}>
@@ -2220,8 +2228,16 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       )}
                     </td>
                     <td className="text-right mono text-bright">
-                      <div style={{ fontWeight: 700 }}>
-                        {sym}{fmt(displayedPrice, 4)}
+                      <div style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {h.isManualPrice && (
+                          <span 
+                            title={`Manuel Kilitli Fiyat (${h.manual_price} ${h.currency || 'TRY'}). Düzenle modalından canlı API'ye dönebilirsiniz.`} 
+                            style={{ fontSize: 8.5, padding: '1px 4px', borderRadius: 3, background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)' }}
+                          >
+                            🔒 Kilitli
+                          </span>
+                        )}
+                        <span>{sym}{fmt(displayedPrice, 4)}</span>
                       </div>
                       {(h.quoteCurrency === 'USD' || h.isHoldingUSD) && isTRY && (
                         <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 2 }}>
