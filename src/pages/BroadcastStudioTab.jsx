@@ -167,6 +167,52 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     }));
   };
 
+  const [newsAppliedToast, setNewsAppliedToast] = useState(false);
+
+  const applyLiveNewsDirectly = async () => {
+    let news = liveNewsList;
+    if (!news || news.length === 0) {
+      try {
+        const res = await fetch('/api/market?type=news');
+        const data = await res.json();
+        if (data?.status === 'success' && Array.isArray(data.news) && data.news.length > 0) {
+          news = data.news;
+          setLiveNewsList(news);
+        }
+      } catch (e) {}
+    }
+
+    if (news && news.length > 0) {
+      const cleanStr = (s) => (s || '').replace(/<[^>]+>/g, '').replace(/ - .*$/, '').trim();
+      const n1 = news[0];
+      const n2 = news[1] || news[0];
+      const n3 = news[2] || news[0];
+
+      const newAgenda = {
+        ...customAgenda,
+        topic1: {
+          title: cleanStr(n1.title) || customAgenda.topic1.title,
+          desc: cleanStr(n1.summary) || (n1.source ? `Kaynak: ${n1.source}` : customAgenda.topic1.desc),
+          tag: n1.category || 'Sıcak Gündem'
+        },
+        topic2: {
+          title: cleanStr(n2.title) || customAgenda.topic2.title,
+          desc: cleanStr(n2.summary) || (n2.source ? `Kaynak: ${n2.source}` : customAgenda.topic2.desc),
+          tag: n2.category || 'Emtia & Enerji'
+        },
+        topic3: {
+          title: cleanStr(n3.title) || customAgenda.topic3.title,
+          desc: cleanStr(n3.summary) || (n3.source ? `Kaynak: ${n3.source}` : customAgenda.topic3.desc),
+          tag: n3.category || 'Hisse & Sektör'
+        }
+      };
+
+      updateAgenda(newAgenda);
+      setNewsAppliedToast(true);
+      setTimeout(() => setNewsAppliedToast(false), 3000);
+    }
+  };
+
   const handleResetAgenda = () => {
     setAgendaForm(defaultAgenda);
   };
@@ -1528,22 +1574,49 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <button
                                 type="button"
+                                onClick={applyLiveNewsDirectly}
+                                style={{
+                                  fontSize: 8.5,
+                                  padding: '2px 7px',
+                                  borderRadius: 4,
+                                  background: newsAppliedToast ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.15)',
+                                  color: '#34d399',
+                                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                                  cursor: 'pointer',
+                                  fontWeight: 800,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 3
+                                }}
+                                title="Google Finans canlı haber akışını tüm slaytlara tek tıkla uygular"
+                              >
+                                <Zap size={10} />
+                                <span>{newsAppliedToast ? 'Güncellendi!' : '⚡ Canlı Haber Çek'}</span>
+                              </button>
+
+                              <button
+                                type="button"
                                 onClick={() => setIsAgendaModalOpen(true)}
                                 style={{
-                                  fontSize: 8,
-                                  padding: '1px 6px',
-                                  borderRadius: 3,
-                                  background: 'rgba(245, 158, 11, 0.2)',
+                                  fontSize: 8.5,
+                                  padding: '2px 7px',
+                                  borderRadius: 4,
+                                  background: 'rgba(245, 158, 11, 0.15)',
                                   color: '#fbbf24',
                                   border: '1px solid rgba(245, 158, 11, 0.4)',
                                   cursor: 'pointer',
-                                  fontWeight: 800
+                                  fontWeight: 800,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 3
                                 }}
-                                title="Gündem maddelerini düzenle veya canlı haberlerden çek"
+                                title="Gündem maddelerini düzenle veya özel başlıklar gir"
                               >
-                                ✏️ Düzenle
+                                <Sparkles size={10} />
+                                <span>🎙️ Gündemi Düzenle</span>
                               </button>
-                              <span style={{ fontSize: 8, padding: '1px 6px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', fontWeight: 800 }}>
+
+                              <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)', fontWeight: 800 }}>
                                 CANLI RADAR
                               </span>
                             </div>
@@ -3138,25 +3211,49 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
             <span>🎥 OBS Temiz Pencere</span>
           </button>
 
+          {/* Direct 1-Click Live News Fetch Button */}
+          <button
+            type="button"
+            onClick={applyLiveNewsDirectly}
+            className="chip-btn"
+            style={{ 
+              fontSize: 10.5, 
+              padding: '6px 12px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              background: newsAppliedToast ? 'rgba(16, 185, 129, 0.25)' : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.25))',
+              borderColor: newsAppliedToast ? '#10b981' : '#34d399', 
+              color: '#34d399', 
+              fontWeight: 800,
+              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+            }}
+            title="Google Finans / BIST canlı haber akışındaki son manşetleri tüm slaytlara ve prompter'a tek tıkla aktarır"
+          >
+            {newsAppliedToast ? <Check size={13} /> : <Zap size={13} />}
+            <span>{newsAppliedToast ? '✓ Canlı Haberler Çekildi!' : '⚡ Canlı Haberleri Çek'}</span>
+          </button>
+
           {/* Daily Agenda Editor Button */}
           <button
             type="button"
             onClick={() => setIsAgendaModalOpen(true)}
             className="chip-btn"
             style={{ 
-              fontSize: 10, 
-              padding: '5px 11px', 
+              fontSize: 10.5, 
+              padding: '6px 12px', 
               display: 'flex', 
               alignItems: 'center', 
               gap: 5, 
               borderColor: '#f59e0b', 
               color: '#fbbf24', 
-              fontWeight: 700,
-              background: 'rgba(245, 158, 11, 0.12)'
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(217, 119, 6, 0.25))',
+              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.2)'
             }}
             title="Günün 3 ana gündem maddesini canlı haberlerden otomatik çekin veya özel başlıklar girin."
           >
-            <Sparkles size={12} />
+            <Sparkles size={13} />
             <span>🎙️ Gündemi Düzenle</span>
           </button>
 
@@ -3484,6 +3581,27 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                 <span className="nav-badge rose" style={{ fontSize: 8.5, padding: '1px 5px' }}>
                   DOĞAL AKIŞ
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAgendaModalOpen(true)}
+                  style={{
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    color: '#fbbf24',
+                    fontSize: 9,
+                    padding: '2px 7px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3
+                  }}
+                  title="Günün gündemini ve konuşma metnini düzenleyin"
+                >
+                  <Sparkles size={10} />
+                  <span>Gündemi Düzenle</span>
+                </button>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
