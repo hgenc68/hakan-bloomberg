@@ -490,16 +490,19 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     activeStock?.current_price ||
     activeStock?.dcf?.current_price ||
     activeStock?.candlestick?.current_price ||
-    (cleanTickerUpper === 'NVDA' ? 238.90 : 
-     cleanTickerUpper === 'AMZN' ? 251.40 : 
+    (cleanTickerUpper === 'NVDA' ? 226.46 : 
+     cleanTickerUpper === 'AMZN' ? 259.88 : 
      cleanTickerUpper === 'SOFI' ? 15.92 : 
-     cleanTickerUpper === 'AAPL' ? 332.89 : 
-     cleanTickerUpper === 'MSFT' ? 525.18 : 
-     cleanTickerUpper === 'TSLA' ? 378.73 : 
-     cleanTickerUpper === 'TSM' ? 485.80 : 
-     cleanTickerUpper === 'THYAO' ? 292.25 : 
-     cleanTickerUpper === 'TUPRS' ? 391.25 : 
-     cleanTickerUpper === 'FROTO' ? 74.55 : 
+     cleanTickerUpper === 'AAPL' ? 339.66 : 
+     cleanTickerUpper === 'MSFT' ? 539.12 : 
+     cleanTickerUpper === 'TSLA' ? 379.24 : 
+     cleanTickerUpper === 'TSM' ? 446.64 : 
+     cleanTickerUpper === 'THYAO' ? 285.75 : 
+     cleanTickerUpper === 'TUPRS' ? 384.75 : 
+     cleanTickerUpper === 'FROTO' ? 73.85 : 
+     cleanTickerUpper === 'BYDNR' ? 22.86 :
+     cleanTickerUpper === 'SPCX' ? 163.80 :
+     cleanTickerUpper === 'DRAM' ? 54.67 :
      150.0)
   );
 

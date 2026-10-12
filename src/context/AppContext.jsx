@@ -105,83 +105,98 @@ export const KNOWN_CRYPTO_SET = new Set([
 
 // Initial quotes fallback so portfolio calculation is instant without cold-start delay
 const DEFAULT_INITIAL_QUOTES = {
-  'USDTRY=X': { symbol: 'USDTRY=X', price: 49.03, currency: 'TRY', changePct: 0.12 },
-  'GC=F': { symbol: 'GC=F', price: 4200.0, currency: 'USD', changePct: 0.38 },
-  'BYDNR.IS': { symbol: 'BYDNR.IS', price: 21.30, currency: 'TRY', changePct: 0.5 },
-  'BYDNR': { symbol: 'BYDNR', price: 21.30, currency: 'TRY', changePct: 0.5 },
-  'SPCX': { symbol: 'SPCX', price: 30.50, currency: 'USD', changePct: 0.2 },
-  'DRAM': { symbol: 'DRAM', price: 27.80, currency: 'USD', changePct: -0.3 },
-  'ETH-USD': { symbol: 'ETH-USD', price: 2684.38, currency: 'USD', changePct: -2.12 },
-  'ETHUSDT': { symbol: 'ETHUSDT', price: 2684.38, currency: 'USD', changePct: -2.12 },
-  'BTC-USD': { symbol: 'BTC-USD', price: 84629.38, currency: 'USD', changePct: -1.91 },
-  'BTCUSDT': { symbol: 'BTCUSDT', price: 84629.38, currency: 'USD', changePct: -1.91 },
-  'SOL-USD': { symbol: 'SOL-USD', price: 158.40, currency: 'USD', changePct: 1.65 },
-  'SOLUSDT': { symbol: 'SOLUSDT', price: 158.40, currency: 'USD', changePct: 1.65 },
-  'XAUT-USD': { symbol: 'XAUT-USD', price: 4190.0, currency: 'USD', changePct: 0.4 },
-  'LDO-USD': { symbol: 'LDO-USD', price: 0.445, currency: 'USD', changePct: -2.1 },
-  'LDOUSDT': { symbol: 'LDOUSDT', price: 0.445, currency: 'USD', changePct: -2.1 },
-  'BIO34812-USD': { symbol: 'BIO34812-USD', price: 0.0306, currency: 'USD', changePct: -1.2 },
-  'BIO-USD': { symbol: 'BIO-USD', price: 0.0306, currency: 'USD', changePct: -1.2 },
-  'BIOUSDT': { symbol: 'BIOUSDT', price: 0.0306, currency: 'USD', changePct: -1.2 },
-  'SUI20947-USD': { symbol: 'SUI20947-USD', price: 1.95, currency: 'USD', changePct: 0.8 },
-  'SUI-USD': { symbol: 'SUI-USD', price: 1.95, currency: 'USD', changePct: 0.8 },
-  'SUIUSDT': { symbol: 'SUIUSDT', price: 1.95, currency: 'USD', changePct: 0.8 },
-  'OP-USD': { symbol: 'OP-USD', price: 1.25, currency: 'USD', changePct: -0.5 },
-  'OPUSDT': { symbol: 'OPUSDT', price: 1.25, currency: 'USD', changePct: -0.5 },
-  'ARKM-USD': { symbol: 'ARKM-USD', price: 1.10, currency: 'USD', changePct: 0.3 },
-  'ARKMUSDT': { symbol: 'ARKMUSDT', price: 1.10, currency: 'USD', changePct: 0.3 },
-  'DOGE-USD': { symbol: 'DOGE-USD', price: 0.182, currency: 'USD', changePct: 1.1 },
-  'DOGEUSDT': { symbol: 'DOGEUSDT', price: 0.182, currency: 'USD', changePct: 1.1 },
+  'USDTRY=X': { symbol: 'USDTRY=X', price: 49.33, currency: 'TRY', changePct: 0.13 },
+  'GC=F': { symbol: 'GC=F', price: 4194.50, currency: 'USD', changePct: -0.52 },
+  'SI=F': { symbol: 'SI=F', price: 60.55, currency: 'USD', changePct: -0.81 },
+  'BZ=F': { symbol: 'BZ=F', price: 106.87, currency: 'USD', changePct: 2.05 },
+  'CL=F': { symbol: 'CL=F', price: 94.03, currency: 'USD', changePct: 2.37 },
+  'DX-Y.NYB': { symbol: 'DX-Y.NYB', price: 102.57, currency: 'USD', changePct: 0.35 },
+  '^TNX': { symbol: '^TNX', price: 5.24, currency: 'USD', changePct: -0.08 },
+  '2YY=F': { symbol: '2YY=F', price: 4.42, currency: 'USD', changePct: -2.77 },
+  '^VIX': { symbol: '^VIX', price: 15.21, currency: 'USD', changePct: 2.49 },
+  'BYDNR.IS': { symbol: 'BYDNR.IS', price: 22.86, currency: 'TRY', changePct: -3.95 },
+  'BYDNR': { symbol: 'BYDNR', price: 22.86, currency: 'TRY', changePct: -3.95 },
+  'SPCX': { symbol: 'SPCX', price: 163.80, currency: 'USD', changePct: 0.75 },
+  'DRAM': { symbol: 'DRAM', price: 54.67, currency: 'USD', changePct: -4.42 },
+  'ETH-USD': { symbol: 'ETH-USD', price: 2509.07, currency: 'USD', changePct: -1.04 },
+  'ETHUSDT': { symbol: 'ETHUSDT', price: 2509.07, currency: 'USD', changePct: -1.04 },
+  'BTC-USD': { symbol: 'BTC-USD', price: 82388.43, currency: 'USD', changePct: -1.61 },
+  'BTCUSDT': { symbol: 'BTCUSDT', price: 82388.43, currency: 'USD', changePct: -1.61 },
+  'SOL-USD': { symbol: 'SOL-USD', price: 107.74, currency: 'USD', changePct: -3.31 },
+  'SOLUSDT': { symbol: 'SOLUSDT', price: 107.74, currency: 'USD', changePct: -3.31 },
+  'XAUT-USD': { symbol: 'XAUT-USD', price: 4161.43, currency: 'USD', changePct: -0.70 },
+  'LDO-USD': { symbol: 'LDO-USD', price: 0.417, currency: 'USD', changePct: -6.39 },
+  'LDOUSDT': { symbol: 'LDOUSDT', price: 0.417, currency: 'USD', changePct: -6.39 },
+  'BIO34812-USD': { symbol: 'BIO34812-USD', price: 0.0284, currency: 'USD', changePct: -5.88 },
+  'BIO-USD': { symbol: 'BIO-USD', price: 0.0284, currency: 'USD', changePct: -5.88 },
+  'BIOUSDT': { symbol: 'BIOUSDT', price: 0.0284, currency: 'USD', changePct: -5.88 },
+  'SUI20947-USD': { symbol: 'SUI20947-USD', price: 1.07, currency: 'USD', changePct: -4.51 },
+  'SUI-USD': { symbol: 'SUI-USD', price: 1.07, currency: 'USD', changePct: -4.51 },
+  'SUIUSDT': { symbol: 'SUIUSDT', price: 1.07, currency: 'USD', changePct: -4.51 },
+  'OP-USD': { symbol: 'OP-USD', price: 0.134, currency: 'USD', changePct: -6.41 },
+  'OPUSDT': { symbol: 'OPUSDT', price: 0.134, currency: 'USD', changePct: -6.41 },
+  'ARKM-USD': { symbol: 'ARKM-USD', price: 0.132, currency: 'USD', changePct: -4.09 },
+  'ARKMUSDT': { symbol: 'ARKMUSDT', price: 0.132, currency: 'USD', changePct: -4.09 },
+  'DOGE-USD': { symbol: 'DOGE-USD', price: 0.0848, currency: 'USD', changePct: -2.46 },
+  'DOGEUSDT': { symbol: 'DOGEUSDT', price: 0.0848, currency: 'USD', changePct: -2.46 },
   'TOTAL': { symbol: 'TOTAL', price: 2840000000000, currency: 'USD', changePct: 1.45 },
   'TOTAL2': { symbol: 'TOTAL2', price: 1260000000000, currency: 'USD', changePct: 1.82 },
   'TOTAL3': { symbol: 'TOTAL3', price: 748500000000, currency: 'USD', changePct: 2.65 },
   'OTHERS': { symbol: 'OTHERS', price: 298200000000, currency: 'USD', changePct: 3.15 },
   'TOTALDEFI': { symbol: 'TOTALDEFI', price: 94100000000, currency: 'USD', changePct: 1.90 },
-  'NVDA': { symbol: 'NVDA', price: 238.90, currency: 'USD', changePct: 2.12 },
-  'AMZN': { symbol: 'AMZN', price: 251.40, currency: 'USD', changePct: -0.05 },
+  'NVDA': { symbol: 'NVDA', price: 226.46, currency: 'USD', changePct: -1.23 },
+  'AMZN': { symbol: 'AMZN', price: 259.88, currency: 'USD', changePct: -0.97 },
   'SOFI': { symbol: 'SOFI', price: 15.92, currency: 'USD', changePct: 0.95 },
-  'AAPL': { symbol: 'AAPL', price: 332.89, currency: 'USD', changePct: -0.24 },
-  'MSFT': { symbol: 'MSFT', price: 525.18, currency: 'USD', changePct: 1.48 },
-  'TSLA': { symbol: 'TSLA', price: 378.73, currency: 'USD', changePct: 2.20 },
-  'GOOGL': { symbol: 'GOOGL', price: 346.47, currency: 'USD', changePct: 0.86 },
-  'META': { symbol: 'META', price: 741.90, currency: 'USD', changePct: 1.90 },
-  'PLTR': { symbol: 'PLTR', price: 189.40, currency: 'USD', changePct: 0.34 },
-  'AMD': { symbol: 'AMD', price: 631.75, currency: 'USD', changePct: -0.34 },
-  'TSM': { symbol: 'TSM', price: 485.80, currency: 'USD', changePct: 2.75 },
-  'AVGO': { symbol: 'AVGO', price: 362.51, currency: 'USD', changePct: 2.08 },
-  'ABBV': { symbol: 'ABBV', price: 198.0, currency: 'USD', changePct: 0.2 },
-  'TUPRS.IS': { symbol: 'TUPRS.IS', price: 391.25, currency: 'TRY', changePct: 3.78 },
-  'FROTO.IS': { symbol: 'FROTO.IS', price: 74.55, currency: 'TRY', changePct: 0.54 },
-  'THYAO.IS': { symbol: 'THYAO.IS', price: 292.25, currency: 'TRY', changePct: 0.09 },
-  'EREGL.IS': { symbol: 'EREGL.IS', price: 37.64, currency: 'TRY', changePct: 1.68 },
-  'ASELS.IS': { symbol: 'ASELS.IS', price: 371.50, currency: 'TRY', changePct: 2.41 },
-  'BIMAS.IS': { symbol: 'BIMAS.IS', price: 413.50, currency: 'TRY', changePct: -0.12 },
-  'KCHOL.IS': { symbol: 'KCHOL.IS', price: 214.90, currency: 'TRY', changePct: 3.92 },
-  'SISE.IS': { symbol: 'SISE.IS', price: 38.10, currency: 'TRY', changePct: 2.36 },
-  'GARAN.IS': { symbol: 'GARAN.IS', price: 130.40, currency: 'TRY', changePct: 3.57 },
-  'AKBNK.IS': { symbol: 'AKBNK.IS', price: 68.95, currency: 'TRY', changePct: 2.76 },
+  'AAPL': { symbol: 'AAPL', price: 339.66, currency: 'USD', changePct: 0.90 },
+  'MSFT': { symbol: 'MSFT', price: 539.12, currency: 'USD', changePct: 0.76 },
+  'TSLA': { symbol: 'TSLA', price: 379.24, currency: 'USD', changePct: -0.90 },
+  'GOOGL': { symbol: 'GOOGL', price: 351.86, currency: 'USD', changePct: 0.06 },
+  'META': { symbol: 'META', price: 748.66, currency: 'USD', changePct: 4.17 },
+  'PLTR': { symbol: 'PLTR', price: 206.86, currency: 'USD', changePct: -1.05 },
+  'AMD': { symbol: 'AMD', price: 590.47, currency: 'USD', changePct: -2.90 },
+  'TSM': { symbol: 'TSM', price: 446.64, currency: 'USD', changePct: -1.47 },
+  'AVGO': { symbol: 'AVGO', price: 354.83, currency: 'USD', changePct: -1.86 },
+  'ABBV': { symbol: 'ABBV', price: 279.87, currency: 'USD', changePct: 1.23 },
+  'THYAO.IS': { symbol: 'THYAO.IS', price: 285.75, currency: 'TRY', changePct: -0.61 },
+  'THYAO': { symbol: 'THYAO', price: 285.75, currency: 'TRY', changePct: -0.61 },
+  'TUPRS.IS': { symbol: 'TUPRS.IS', price: 384.75, currency: 'TRY', changePct: -0.39 },
+  'TUPRS': { symbol: 'TUPRS', price: 384.75, currency: 'TRY', changePct: -0.39 },
+  'FROTO.IS': { symbol: 'FROTO.IS', price: 73.85, currency: 'TRY', changePct: -1.07 },
+  'FROTO': { symbol: 'FROTO', price: 73.85, currency: 'TRY', changePct: -1.07 },
+  'EREGL.IS': { symbol: 'EREGL.IS', price: 37.60, currency: 'TRY', changePct: 0.75 },
+  'EREGL': { symbol: 'EREGL', price: 37.60, currency: 'TRY', changePct: 0.75 },
+  'ASELS.IS': { symbol: 'ASELS.IS', price: 341.75, currency: 'TRY', changePct: -2.71 },
+  'ASELS': { symbol: 'ASELS', price: 341.75, currency: 'TRY', changePct: -2.71 },
+  'BIMAS.IS': { symbol: 'BIMAS.IS', price: 396.50, currency: 'TRY', changePct: -1.55 },
+  'BIMAS': { symbol: 'BIMAS', price: 396.50, currency: 'TRY', changePct: -1.55 },
+  'KCHOL.IS': { symbol: 'KCHOL.IS', price: 206.90, currency: 'TRY', changePct: -0.53 },
+  'KCHOL': { symbol: 'KCHOL', price: 206.90, currency: 'TRY', changePct: -0.53 },
+  'SISE.IS': { symbol: 'SISE.IS', price: 37.60, currency: 'TRY', changePct: -1.16 },
+  'SISE': { symbol: 'SISE', price: 37.60, currency: 'TRY', changePct: -1.16 },
+  'GARAN.IS': { symbol: 'GARAN.IS', price: 129.80, currency: 'TRY', changePct: 0.39 },
+  'GARAN': { symbol: 'GARAN', price: 129.80, currency: 'TRY', changePct: 0.39 },
+  'AKBNK.IS': { symbol: 'AKBNK.IS', price: 68.35, currency: 'TRY', changePct: 0.74 },
+  'AKBNK': { symbol: 'AKBNK', price: 68.35, currency: 'TRY', changePct: 0.74 },
   'QQQ': { symbol: 'QQQ', price: 495.0, currency: 'USD', changePct: 0.5 },
   'SPY': { symbol: 'SPY', price: 580.0, currency: 'USD', changePct: 0.3 },
-  'SPCX': { symbol: 'SPCX', price: 171.09, currency: 'USD', changePct: 7.63 },
-  'DRAM': { symbol: 'DRAM', price: 61.67, currency: 'USD', changePct: -0.18 },
-  'VRT': { symbol: 'VRT', price: 253.62, currency: 'USD', changePct: 0.57 },
-  'ALAB': { symbol: 'ALAB', price: 362.34, currency: 'USD', changePct: 3.43 },
-  'CAMT': { symbol: 'CAMT', price: 162.05, currency: 'USD', changePct: -1.90 },
-  'MRVL': { symbol: 'MRVL', price: 271.25, currency: 'USD', changePct: -0.38 },
-  'POET': { symbol: 'POET', price: 7.81, currency: 'USD', changePct: 0.26 },
+  'VRT': { symbol: 'VRT', price: 239.88, currency: 'USD', changePct: -1.19 },
+  'ALAB': { symbol: 'ALAB', price: 322.56, currency: 'USD', changePct: -5.74 },
+  'CAMT': { symbol: 'CAMT', price: 148.02, currency: 'USD', changePct: -3.13 },
+  'MRVL': { symbol: 'MRVL', price: 266.84, currency: 'USD', changePct: -3.07 },
+  'POET': { symbol: 'POET', price: 6.43, currency: 'USD', changePct: -7.75 },
   // Major Indices Initial Quotes
-  '^GSPC': { symbol: '^GSPC', price: 7765.36, currency: 'USD', changePct: 0.45 },
-  'SPX': { symbol: 'SPX', price: 7765.36, currency: 'USD', changePct: 0.45 },
-  '^IXIC': { symbol: '^IXIC', price: 27193.34, currency: 'USD', changePct: 0.65 },
-  'NDX': { symbol: 'NDX', price: 30725.81, currency: 'USD', changePct: 0.65 },
-  '^DJI': { symbol: '^DJI', price: 51231.64, currency: 'USD', changePct: 0.28 },
-  'DJI': { symbol: 'DJI', price: 51231.64, currency: 'USD', changePct: 0.28 },
-  '^RUT': { symbol: '^RUT', price: 2794.13, currency: 'USD', changePct: 0.85 },
-  'RUT': { symbol: 'RUT', price: 2794.13, currency: 'USD', changePct: 0.85 },
-  'XU100.IS': { symbol: 'XU100.IS', price: 12253.96, currency: 'TRY', changePct: 1.15 },
-  'XU100': { symbol: 'XU100', price: 12253.96, currency: 'TRY', changePct: 1.15 },
-  'XU030.IS': { symbol: 'XU030.IS', price: 15156.21, currency: 'TRY', changePct: 1.25 },
-  'XU030': { symbol: 'XU030', price: 15156.21, currency: 'TRY', changePct: 1.25 }
+  '^GSPC': { symbol: '^GSPC', price: 7799.44, currency: 'USD', changePct: -0.15 },
+  'SPX': { symbol: 'SPX', price: 7799.44, currency: 'USD', changePct: -0.15 },
+  '^IXIC': { symbol: '^IXIC', price: 27234.69, currency: 'USD', changePct: -0.48 },
+  'NDX': { symbol: 'NDX', price: 27234.69, currency: 'USD', changePct: -0.48 },
+  '^DJI': { symbol: '^DJI', price: 51812.26, currency: 'USD', changePct: 0.30 },
+  'DJI': { symbol: 'DJI', price: 51812.26, currency: 'USD', changePct: 0.30 },
+  '^RUT': { symbol: '^RUT', price: 2799.27, currency: 'USD', changePct: -0.27 },
+  'RUT': { symbol: 'RUT', price: 2799.27, currency: 'USD', changePct: -0.27 },
+  'XU100.IS': { symbol: 'XU100.IS', price: 12150.67, currency: 'TRY', changePct: -0.94 },
+  'XU100': { symbol: 'XU100', price: 12150.67, currency: 'TRY', changePct: -0.94 },
+  'XU030.IS': { symbol: 'XU030.IS', price: 15001.28, currency: 'TRY', changePct: -0.95 },
+  'XU030': { symbol: 'XU030', price: 15001.28, currency: 'TRY', changePct: -0.95 }
 };
 
 export const AppProvider = ({ children }) => {
@@ -408,8 +423,11 @@ export const AppProvider = ({ children }) => {
       currentHoldings.forEach(h => {
         const rawUpper = (h.ticker || '').toUpperCase();
         let sym = h.clean_ticker || TICKER_MAP[rawUpper];
+        const isBistLike = (h.currency === 'TRY' || !h.cost_rate || Number(h.cost_rate) <= 1.5) &&
+          (h.type === 'Hisse' || h.type === 'hisse' || h.type === 'Hisse Senedi' || !rawUpper.includes('-'));
+
         if (!sym) {
-          if (h.type === 'Hisse' && h.currency === 'TRY' && !rawUpper.endsWith('.IS')) {
+          if (isBistLike && !rawUpper.endsWith('.IS') && !KNOWN_CRYPTO_SET.has(rawUpper)) {
             sym = `${rawUpper}.IS`;
           } else if (rawUpper.endsWith('USD') && !rawUpper.includes('-')) {
             const base = rawUpper.slice(0, -3);
@@ -418,7 +436,11 @@ export const AppProvider = ({ children }) => {
             sym = h.ticker;
           }
         }
-        if (sym) symbolsToFetch.add(sym);
+        if (sym) {
+          symbolsToFetch.add(sym);
+          if (sym.endsWith('.IS')) symbolsToFetch.add(sym.replace('.IS', ''));
+          else if (isBistLike) symbolsToFetch.add(`${sym}.IS`);
+        }
       });
 
       const symList = Array.from(symbolsToFetch).join(',');
@@ -641,9 +663,13 @@ export const AppProvider = ({ children }) => {
     // A) Holdings Calculation with currency normalization
     const enrichedHoldings = holdings.map(h => {
       const rawUpper = (h.ticker || '').toUpperCase();
-      let sym = h.clean_ticker || TICKER_MAP[rawUpper];
+      const cleanUpper = (h.clean_ticker || '').toUpperCase();
+      let sym = cleanUpper || TICKER_MAP[rawUpper];
+      const isTurkishEquity = (h.currency === 'TRY' || !h.cost_rate || Number(h.cost_rate) <= 1.5) &&
+        (h.type === 'Hisse' || h.type === 'hisse' || h.type === 'Hisse Senedi' || !rawUpper.includes('-'));
+
       if (!sym) {
-        if (h.type === 'Hisse' && h.currency === 'TRY' && !rawUpper.endsWith('.IS')) {
+        if (isTurkishEquity && !rawUpper.endsWith('.IS') && !KNOWN_CRYPTO_SET.has(rawUpper)) {
           sym = `${rawUpper}.IS`;
         } else if (rawUpper.endsWith('USD') && !rawUpper.includes('-')) {
           const base = rawUpper.slice(0, -3);
@@ -652,12 +678,17 @@ export const AppProvider = ({ children }) => {
           sym = h.ticker;
         }
       }
+
+      // Universal multi-alias quote lookup
       const quote = marketQuotes[sym] 
+        || (sym.endsWith('.IS') ? marketQuotes[sym.replace('.IS', '')] : marketQuotes[`${sym}.IS`])
         || marketQuotes[rawUpper] 
+        || (rawUpper.endsWith('.IS') ? marketQuotes[rawUpper.replace('.IS', '')] : marketQuotes[`${rawUpper}.IS`])
         || marketQuotes[rawUpper.replace('-USD', 'USD')]
         || marketQuotes[rawUpper.replace('-USD', '')]
         || marketQuotes[h.ticker] 
         || {};
+
       // User holding tracking currency
       // If cost_rate > 1.5 or currency === 'USD', it was bought in USD (e.g. SPCX, DRAM, NVDA, TSM, ABBV)
       const isHoldingUSD = h.currency === 'USD' || (Number(h.cost_rate) > 1.5);
@@ -666,9 +697,13 @@ export const AppProvider = ({ children }) => {
       const hasQuote = quote.price !== undefined && quote.price !== null && Number(quote.price) > 0;
       // If live quote is not found, use last recorded/persisted price from database before falling back to avg_cost
       const lastRecordedPrice = Number(h.current_price) || Number(h.currentPrice) || Number(h.last_price) || 0;
-      const livePrice = hasQuote ? quote.price : (lastRecordedPrice > 0 ? lastRecordedPrice : (h.avg_cost || 0));
-      const prevClose = quote.previousClose !== undefined ? quote.previousClose : livePrice;
-      const changePct = quote.changePct !== undefined ? quote.changePct : 0;
+      const livePrice = hasQuote ? Number(quote.price) : (lastRecordedPrice > 0 ? lastRecordedPrice : (h.avg_cost || 0));
+      const changePct = quote.changePct !== undefined 
+        ? Number(quote.changePct) 
+        : (h.day_change_pct !== undefined ? Number(h.day_change_pct) : (h.changePct !== undefined ? Number(h.changePct) : 0));
+      const prevClose = quote.previousClose !== undefined 
+        ? Number(quote.previousClose) 
+        : (changePct !== 0 && livePrice > 0 ? (livePrice / (1 + changePct / 100)) : livePrice);
 
       // Clean check if sym is BIST
       const isBIST = sym.endsWith('.IS') || (h.type === 'Hisse' && h.currency === 'TRY' && !isHoldingUSD && !sym.includes('-USD'));
@@ -716,10 +751,10 @@ export const AppProvider = ({ children }) => {
       let dayPLUSD = 0;
       if (livePrice > 0 && (h.shares || 0) > 0) {
         let changePerShare = 0;
-        if (prevClose > 0 && Math.abs(livePrice - prevClose) > 0.000001) {
-          changePerShare = livePrice - prevClose;
-        } else if (changePct !== 0) {
+        if (changePct !== 0) {
           changePerShare = livePrice * (changePct / 100) / (1 + changePct / 100);
+        } else if (prevClose > 0 && Math.abs(livePrice - prevClose) > 0.000001) {
+          changePerShare = livePrice - prevClose;
         }
 
         // Safety Invariant: The sign of changePerShare and changePct must never diverge!

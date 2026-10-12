@@ -3,7 +3,7 @@ import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { 
   Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, 
   Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, 
-  ArrowRight, ShieldCheck, PieChart, Layers, TrendingUp, BarChart3, Snowflake, Award, Target, Activity, Calendar, LineChart
+  ArrowRight, ShieldCheck, PieChart, Layers, TrendingUp, BarChart3, Snowflake, Award, Target, Activity, Calendar, LineChart, RefreshCw
 } from 'lucide-react';
 import { Bar, Radar } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
@@ -16,7 +16,7 @@ import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS } fro
 ChartJS.register(...registerables);
 
 export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal, onSelectStockForChart }) {
-  const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab } = useApp();
+  const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab, fetchMarketData, isUpdatingMarket, lastMarketUpdate } = useApp();
   
   // 🌟 Main Sub-View: 'equity' (HİSSE - ETF) or 'all' (TÜM PORTFÖY)
   const [activeMainTab, setActiveMainTab] = useState('equity'); 
@@ -1619,6 +1619,28 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
         </div>
 
         <div className="action-btns" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="chip-btn"
+            onClick={() => fetchMarketData && fetchMarketData()}
+            disabled={isUpdatingMarket}
+            title="Tüm hisse canlı fiyatlarını ve kurları Yahoo Finance üzerinden derhal tazele"
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              fontSize: 11, 
+              padding: '6px 12px',
+              borderRadius: 6,
+              background: isUpdatingMarket ? 'rgba(0, 229, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(0, 229, 255, 0.3)',
+              color: 'var(--cyan)',
+              cursor: isUpdatingMarket ? 'wait' : 'pointer'
+            }}
+          >
+            <RefreshCw size={12} className={isUpdatingMarket ? 'spin-icon' : ''} style={{ animation: isUpdatingMarket ? 'spin 1s linear infinite' : 'none' }} />
+            <span>{isUpdatingMarket ? 'Fiyatlar Alınıyor...' : 'Canlı Fiyatları Yenile'}</span>
+          </button>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             <strong>{displayedHoldings.length}</strong> pozisyon listeleniyor {activeMainTab === 'equity' ? '(Hisse & ETF)' : (selectedSegment !== 'all' && `(${segmentStats[selectedSegment]?.shortLabel})`)}
           </span>
@@ -1658,9 +1680,9 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       {renderSortIndicator('shares')}
                     </div>
                   </th>
-                  <th onClick={() => handleSort('price')} className="text-right" style={{ cursor: 'pointer', minWidth: '110px' }}>
+                  <th onClick={() => handleSort('price')} className="text-right" style={{ cursor: 'pointer', minWidth: '115px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                      <span>Canlı Fiyat (24s)</span>
+                      <span>Canlı Fiyat • 24s</span>
                       {renderSortIndicator('price')}
                     </div>
                   </th>
@@ -1670,9 +1692,9 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       {renderSortIndicator('val')}
                     </div>
                   </th>
-                  <th onClick={() => handleSort('return')} className="text-right" style={{ cursor: 'pointer', minWidth: '110px' }}>
+                  <th onClick={() => handleSort('return')} className="text-right" style={{ cursor: 'pointer', minWidth: '115px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                      <span>Net K/Z & Getiri</span>
+                      <span>Net K/Z • Toplam %</span>
                       {renderSortIndicator('return')}
                     </div>
                   </th>
@@ -1861,13 +1883,33 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
                             {sym}{fmt(displayedCost, 2)}
                           </div>
+                          {(h.quoteCurrency === 'USD' || h.isHoldingUSD) && isTRY && (
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)', opacity: 0.85 }}>
+                              (${fmt(altCost, 2)})
+                            </div>
+                          )}
+                          {!isTRY && (h.quoteCurrency === 'TRY' || !h.isHoldingUSD) && (
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)', opacity: 0.85 }}>
+                              (₺{fmt(altCost, 2)})
+                            </div>
+                          )}
                         </td>
                         <td className="text-right mono">
                           <div className="font-bold text-bright" style={{ fontSize: 12 }}>
                             {sym}{fmt(displayedPrice, 2)}
                           </div>
-                          <div style={{ fontSize: 10, color: changeUp ? 'var(--up)' : 'var(--down)', fontWeight: 600 }}>
-                            {changeUp ? '▲ +' : '▼ '}{Math.abs(h.changePct || 0).toFixed(2)}%
+                          {(h.quoteCurrency === 'USD' || h.isHoldingUSD) && isTRY && (
+                            <div style={{ fontSize: 9.5, color: 'var(--cyan)', fontWeight: 600 }}>
+                              (${fmt(altPrice, 2)})
+                            </div>
+                          )}
+                          {!isTRY && (h.quoteCurrency === 'TRY' || !h.isHoldingUSD) && (
+                            <div style={{ fontSize: 9.5, color: 'var(--cyan)', fontWeight: 600 }}>
+                              (₺{fmt(altPrice, 2)})
+                            </div>
+                          )}
+                          <div style={{ fontSize: 10, color: changeUp ? 'var(--up)' : 'var(--down)', fontWeight: 700, marginTop: 1 }}>
+                            {changeUp ? '24s ▲ +' : '24s ▼ '}{Math.abs(h.changePct || 0).toFixed(2)}%
                           </div>
                         </td>
                         <td className="text-right mono font-bold text-cyan" style={{ fontSize: 13 }}>
@@ -1877,8 +1919,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                           <div style={{ fontSize: 11.5, fontWeight: 700, color: isProfit ? 'var(--up)' : 'var(--down)' }}>
                             {isProfit ? '+' : ''}{sym}{fmt(profitVal, 2)}
                           </div>
-                          <span className={`return-badge ${isProfit ? 'up' : 'down'}`} style={{ fontSize: 9.5, padding: '1px 5px' }}>
-                            {isProfit ? '+' : ''}{fmt(h.returnPct, 1)}%
+                          <span className={`return-badge ${isProfit ? 'up' : 'down'}`} style={{ fontSize: 9.5, padding: '1px 5px' }} title="Alış maliyetine göre toplam portföy kâr/zararı">
+                            Toplam {isProfit ? '+' : ''}%{fmt(h.returnPct, 1)}
                           </span>
                         </td>
                         <td className="text-center">
