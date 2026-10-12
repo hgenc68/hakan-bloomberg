@@ -239,8 +239,6 @@ async function fetchMarketNews() {
       if (globalItems[i]) combined.push(globalItems[i]);
     }
     return combined;
-    }
-    return combined;
   } catch (err) {
     return [];
   }

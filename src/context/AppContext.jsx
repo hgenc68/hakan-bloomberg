@@ -116,8 +116,8 @@ const DEFAULT_INITIAL_QUOTES = {
   '^VIX': { symbol: '^VIX', price: 15.21, currency: 'USD', changePct: 2.49 },
   'BYDNR.IS': { symbol: 'BYDNR.IS', price: 22.86, currency: 'TRY', changePct: -3.95 },
   'BYDNR': { symbol: 'BYDNR', price: 22.86, currency: 'TRY', changePct: -3.95 },
-  'SPCX': { symbol: 'SPCX', price: 163.80, currency: 'USD', changePct: 0.75 },
-  'DRAM': { symbol: 'DRAM', price: 54.67, currency: 'USD', changePct: -4.42 },
+  'SPCX': { symbol: 'SPCX', price: 164.18, currency: 'USD', changePct: 0.99 },
+  'DRAM': { symbol: 'DRAM', price: 54.70, currency: 'USD', changePct: -4.35 },
   'ETH-USD': { symbol: 'ETH-USD', price: 2509.07, currency: 'USD', changePct: -1.04 },
   'ETHUSDT': { symbol: 'ETHUSDT', price: 2509.07, currency: 'USD', changePct: -1.04 },
   'BTC-USD': { symbol: 'BTC-USD', price: 82388.43, currency: 'USD', changePct: -1.61 },
@@ -251,10 +251,16 @@ export const AppProvider = ({ children }) => {
   // Market quotes state with SWR (Stale-While-Revalidate) localStorage caching to eliminate startup jump
   const [marketQuotes, setMarketQuotes] = useState(() => {
     try {
-      const cached = localStorage.getItem('bloomberg_market_quotes');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && Object.keys(parsed).length > 0) return parsed;
+      const cacheVer = localStorage.getItem('bloomberg_quotes_cache_version');
+      if (cacheVer === '2026-10-12-live-v4') {
+        const cached = localStorage.getItem('bloomberg_market_quotes');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && Object.keys(parsed).length > 0) return parsed;
+        }
+      } else {
+        localStorage.removeItem('bloomberg_market_quotes');
+        localStorage.setItem('bloomberg_quotes_cache_version', '2026-10-12-live-v4');
       }
     } catch (e) {}
     return DEFAULT_INITIAL_QUOTES;
@@ -574,6 +580,7 @@ export const AppProvider = ({ children }) => {
           const merged = { ...prev, ...fetchedQuotes };
           try {
             localStorage.setItem('bloomberg_market_quotes', JSON.stringify(merged));
+            localStorage.setItem('bloomberg_quotes_cache_version', '2026-10-12-live-v4');
             localStorage.setItem('bloomberg_usdtry', String(usdRate));
             localStorage.setItem('bloomberg_gram_gold', String(finalGramGold));
           } catch (err) {}
