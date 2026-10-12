@@ -410,12 +410,14 @@ export const AppProvider = ({ children }) => {
         'USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'XU030.IS', '^IXIC', '^DJI', '^RUT', 'BTC-USD', 'ETH-USD',
         'SPY', 'QQQ', 'DIA', 'IWM', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F',
         'DX-Y.NYB', 'SI=F', 'CL=F', '2YY=F',
-        // US Tech & Wall Street Core Leaders
+        // US Tech & Wall Street Core Leaders (Top 10 & Leaders)
         'NVDA', 'AMZN', 'SOFI', 'AAPL', 'MSFT', 'TSLA', 'GOOGL', 'META', 'PLTR', 'AMD', 'TSM', 'AVGO',
-        // BIST Core Leaders
+        'CVX', 'XOM', 'ABBV', 'TXN', 'MRK', 'JPM', 'LLY', 'JNJ', 'QCOM', 'CSCO', 'CAT', 'GLD', 'ITA', 'SCHD',
+        // BIST Core Leaders (Top 10 & Leaders)
         'THYAO.IS', 'TUPRS.IS', 'FROTO.IS', 'EREGL.IS', 'ASELS.IS', 'BIMAS.IS', 'KCHOL.IS', 'SISE.IS', 'GARAN.IS', 'AKBNK.IS', 'BYDNR.IS', 'BYDNR',
-        // Potential & Radar Stocks
-        'SPCX', 'DRAM', 'VRT', 'ALAB', 'CAMT', 'MRVL', 'POET'
+        'AGHOL.IS', 'KRDMD.IS', 'SOKM.IS', 'CCOLA.IS', 'BRSAN.IS', 'VAKBN.IS', 'TRGYO.IS', 'AEFES.IS', 'HALKB.IS', 'TOASO.IS',
+        // Potential & Radar Stocks (Multi-Baggers)
+        'SPCX', 'DRAM', 'VRT', 'ALAB', 'CAMT', 'MRVL', 'POET', 'VKTX', 'RXRX', 'IONQ'
       ]);
       
       const currentHoldings = holdings.length > 0 ? holdings : (() => {

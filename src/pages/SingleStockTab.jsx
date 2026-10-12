@@ -500,8 +500,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
      cleanTickerUpper === 'THYAO' ? 285.75 : 
      cleanTickerUpper === 'TUPRS' ? 384.75 : 
      cleanTickerUpper === 'FROTO' ? 73.85 : 
-     cleanTickerUpper === 'BYDNR' ? 22.86 :
-     cleanTickerUpper === 'SPCX' ? 163.80 :
+     cleanTickerUpper === 'BYDNR' ? 23.28 :
+     cleanTickerUpper === 'SPCX' ? 163.84 :
      cleanTickerUpper === 'DRAM' ? 54.67 :
      150.0)
   );
