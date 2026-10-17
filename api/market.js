@@ -300,6 +300,37 @@ function calculateRSI(closes, period = 14) {
   return Number((100 - (100 / (1 + rs))).toFixed(1));
 }
 
+async function fetchTruflationData() {
+  try {
+    const res = await fetch('https://truflation.com/api/index-badge-data/us-inflation-rate?period=recent', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const dates = json.index || [];
+    const values = json.truflation_us_cpi_frozen_yoy || [];
+    if (values.length > 0) {
+      const current = Number(values[values.length - 1].toFixed(2));
+      const previous = values.length > 1 ? Number(values[values.length - 2].toFixed(2)) : current;
+      const change = Number((current - previous).toFixed(2));
+      const lastDate = dates.length > 0 ? dates[dates.length - 1] : new Date().toISOString().split('T')[0];
+      return {
+        rate: current,
+        previousRate: previous,
+        change,
+        date: lastDate,
+        source: 'Truflation Live Feed'
+      };
+    }
+  } catch (e) {
+    console.warn('Truflation fetch error:', e.message);
+  }
+  return null;
+}
+
 async function fetchEquitiesMatrix() {
   const syms = [
     { name: 'S&P 500', symbol: 'SPY' },
@@ -850,6 +881,12 @@ export default async function handler(req, res) {
         }
       } catch (e) {}
 
+      // Fetch live Truflation US CPI data
+      let truflation = null;
+      try {
+        truflation = await fetchTruflationData();
+      } catch (e) {}
+
       // Fetch fresh news in parallel or background
       let news = [];
       try {
@@ -861,10 +898,16 @@ export default async function handler(req, res) {
         equities = await fetchEquitiesMatrix();
       } catch (e) {}
 
+      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
       return res.status(200).json({
         status: 'success',
         fearGreed,
         vix,
+        truflation,
+        inflation: {
+          usa: truflation?.rate || 3.09,
+          turkey: 31.51
+        },
         news,
         equities,
         timestamp: Date.now()

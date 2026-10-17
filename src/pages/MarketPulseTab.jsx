@@ -187,14 +187,20 @@ export default function MarketPulseTab() {
       if (res.ok) {
         const j = await res.json();
         if (j.status === 'success') {
-          if (j.fearGreed) {
+          if (j.fearGreed || j.truflation || j.inflation) {
             setPulse(prev => ({
               ...prev,
-              fear_greed_score: Math.round(j.fearGreed.score || prev.fear_greed_score),
-              fear_greed_label: (j.fearGreed.rating || prev.fear_greed_label).toUpperCase(),
+              fear_greed_score: Math.round(j.fearGreed?.score ?? prev.fear_greed_score),
+              fear_greed_label: (j.fearGreed?.rating ?? prev.fear_greed_label).toUpperCase(),
               vix: {
-                value: j.vix?.price || prev.vix?.value || 16.5,
-                change_pct: j.vix?.changePct || prev.vix?.change_pct || 0
+                value: j.vix?.price ?? prev.vix?.value ?? 16.5,
+                change_pct: j.vix?.changePct ?? prev.vix?.change_pct ?? 0
+              },
+              truflation: j.truflation || prev.truflation,
+              inflation: {
+                ...(prev.inflation || {}),
+                ...(j.inflation || {}),
+                usa: j.truflation?.rate ?? j.inflation?.usa ?? prev.inflation?.usa ?? 3.09
               }
             }));
           }
@@ -564,9 +570,15 @@ export default function MarketPulseTab() {
                 <span className="nav-badge cyan" style={{ fontSize: 8, padding: '1px 5px' }}>CANLI</span>
               </div>
               <div style={{ fontSize: 18, fontWeight: 900, color: '#38bdf8', margin: '4px 0 2px 0', fontFamily: 'var(--font-mono)' }}>
-                %{pulse?.inflation?.usa ? Number(pulse.inflation.usa).toFixed(2) : '2.77'}
+                %{pulse?.truflation?.rate ? Number(pulse.truflation.rate).toFixed(2) : (pulse?.inflation?.usa ? Number(pulse.inflation.usa).toFixed(2) : '3.09')}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Gerçek Zamanlı Öncü TÜFE</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                {pulse?.truflation?.change != null ? (
+                  <span style={{ color: pulse.truflation.change >= 0 ? '#f87171' : '#34d399', fontWeight: 600 }}>
+                    {pulse.truflation.change >= 0 ? '+' : ''}{pulse.truflation.change.toFixed(2)}% ({pulse.truflation.date})
+                  </span>
+                ) : 'Gerçek Zamanlı Öncü TÜFE'}
+              </div>
             </div>
           </div>
 

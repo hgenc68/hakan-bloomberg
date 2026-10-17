@@ -17,8 +17,15 @@
     "change_pct": 0.73
   },
   "inflation": {
-    "usa": 2.77,
+    "usa": 3.09,
     "turkey": 31.51
+  },
+  "truflation": {
+    "rate": 3.09,
+    "previousRate": 2.93,
+    "change": 0.16,
+    "date": "2026-10-16",
+    "source": "Truflation Live Feed"
   },
   "rates": {
     "tcmb": 37.00,

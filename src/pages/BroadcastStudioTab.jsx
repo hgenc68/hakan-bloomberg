@@ -506,14 +506,20 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         const res = await fetch('/api/market?type=pulse');
         if (res.ok) {
           const j = await res.json();
-          if (j.status === 'success' && j.fearGreed) {
+          if (j.status === 'success' && (j.fearGreed || j.truflation || j.inflation)) {
             setPulse(prev => ({
               ...prev,
-              fear_greed_score: Math.round(j.fearGreed.score || prev.fear_greed_score),
-              fear_greed_label: (j.fearGreed.rating || prev.fear_greed_label).toUpperCase(),
+              fear_greed_score: Math.round(j.fearGreed?.score || prev?.fear_greed_score || 35),
+              fear_greed_label: (j.fearGreed?.rating || prev?.fear_greed_label || 'neutral').toUpperCase(),
               vix: {
-                value: j.vix?.price || prev.vix?.value || 16.04,
-                change_pct: j.vix?.changePct || prev.vix?.change_pct || 0
+                value: j.vix?.price || prev?.vix?.value || 16.04,
+                change_pct: j.vix?.changePct || prev?.vix?.change_pct || 0
+              },
+              truflation: j.truflation || prev?.truflation,
+              inflation: {
+                ...(prev?.inflation || {}),
+                ...(j.inflation || {}),
+                usa: j.truflation?.rate || j.inflation?.usa || prev?.inflation?.usa || 3.09
               }
             }));
           }
@@ -1186,8 +1192,13 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           <div style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>{fmt(vix.price, 2)}</div>
                         </div>
                         <div style={{ background: '#0b0f19', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 6px', textAlign: 'center' }}>
-                          <div style={{ fontSize: 8, color: 'var(--text-muted)', fontWeight: 700 }}>TRUFLATION</div>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>%{fmt(macroPulseData?.inflation?.usa || 2.77, 2)}</div>
+                          <div style={{ fontSize: 8, color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                            <span>TRUFLATION</span>
+                            <span className="nav-badge cyan" style={{ fontSize: 7, padding: '0 3px' }}>CANLI</span>
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                            %{fmt(pulse?.truflation?.rate || pulse?.inflation?.usa || macroPulseData?.inflation?.usa || 3.09, 2)}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1993,8 +2004,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇺🇸 Fed (ABD)</td>
                               <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#fff' }}>%3.75 - 4.00</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%2.77</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#38bdf8' }}>+1.10 Puan</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%{fmt(pulse?.truflation?.rate || pulse?.inflation?.usa || 3.09, 2)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#38bdf8' }}>+{fmt(Math.max(0, 3.875 - (pulse?.truflation?.rate || pulse?.inflation?.usa || 3.09)), 2)} Puan</td>
                             </tr>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇪🇺 ECB (Euro Bölgesi)</td>
