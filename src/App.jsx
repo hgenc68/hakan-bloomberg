@@ -177,6 +177,7 @@ function MainTerminal() {
                 onOpenSellModal={(h) => setSelectedSellHolding(h)}
                 onOpenEditModal={(h) => setSelectedEditHolding(h)}
                 onOpenCashModal={() => setShowCashModal(true)}
+                onOpenPpfModal={() => setShowPpfModal(true)}
                 onSelectStockForChart={(ticker) => {
                   if (setLastNavigatedFrom) {
                     setLastNavigatedFrom({

@@ -15,7 +15,7 @@ import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS } fro
 
 ChartJS.register(...registerables);
 
-export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal, onSelectStockForChart }) {
+export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal, onOpenPpfModal, onSelectStockForChart }) {
   const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab, fetchMarketData, isUpdatingMarket, lastMarketUpdate } = useApp();
   
   // 🌟 Main Sub-View: 'equity' (HİSSE - ETF) or 'all' (TÜM PORTFÖY)
@@ -895,6 +895,28 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
         {/* Currency & Modal Action Buttons */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {onOpenCashModal && (
+            <button
+              type="button"
+              className="chip-btn"
+              onClick={onOpenCashModal}
+              style={{ padding: '6px 11px', fontSize: 11, borderColor: 'rgba(6, 182, 212, 0.4)', color: 'var(--cyan)' }}
+              title="Serbest Nakit (TRY/USD) Alım Gücünü Düzenle"
+            >
+              💵 Serbest Nakit
+            </button>
+          )}
+          {onOpenPpfModal && (
+            <button
+              type="button"
+              className="chip-btn"
+              onClick={onOpenPpfModal}
+              style={{ padding: '6px 11px', fontSize: 11, borderColor: 'rgba(16, 185, 129, 0.4)', color: '#10b981' }}
+              title="Likit Para Piyasası Fonu / Kuru Barut Bakiyesini Güncelle veya Sıfırla"
+            >
+              🛡️ PPF Kuru Barut
+            </button>
+          )}
           <button
             type="button"
             className="btn-primary"
@@ -1180,10 +1202,21 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       onClick={onOpenCashModal}
                       className="chip-btn"
                       style={{ fontSize: 9.5, padding: '1px 6px', marginLeft: 4, height: 18, color: 'var(--emerald)', borderColor: 'rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)' }}
-                      title="Nakit Giriş / Çıkış"
+                      title="Nakit Giriş / Çıkış (TRY & USD Serbest Bakiye)"
                     >
                       + Nakit
                     </button>
+                    {onOpenPpfModal && (
+                      <button
+                        type="button"
+                        onClick={onOpenPpfModal}
+                        className="chip-btn"
+                        style={{ fontSize: 9.5, padding: '1px 6px', marginLeft: 4, height: 18, color: '#10b981', borderColor: 'rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)' }}
+                        title="PPF Kuru Barut Güncelle veya Sıfırla"
+                      >
+                        🛡️ PPF Barut
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2405,9 +2438,23 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     </span>
                   </td>
                   <td className="text-right">
-                    <span className="nav-badge emerald" style={{ fontSize: 10, padding: '2px 8px' }}>
-                      Kuru Barut
-                    </span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                      <span className="nav-badge emerald" style={{ fontSize: 10, padding: '2px 8px' }}>
+                        Kuru Barut
+                      </span>
+                      {onOpenPpfModal && (
+                        <button
+                          type="button"
+                          className="btn-action-row edit"
+                          onClick={onOpenPpfModal}
+                          title="PPF Kuru Barut Bakiyesini Güncelle veya Sıfırla"
+                          style={{ padding: '3px 8px', fontSize: 10.5, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.35)', borderRadius: 4 }}
+                        >
+                          <Edit3 size={11} />
+                          <span>Düzenle / Sıfırla</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -2451,9 +2498,23 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     </span>
                   </td>
                   <td className="text-right">
-                    <span className="nav-badge cyan" style={{ fontSize: 10, padding: '2px 8px' }}>
-                      Alıma Hazır
-                    </span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                      <span className="nav-badge cyan" style={{ fontSize: 10, padding: '2px 8px' }}>
+                        Alıma Hazır
+                      </span>
+                      {onOpenCashModal && (
+                        <button
+                          type="button"
+                          className="btn-action-row edit"
+                          onClick={onOpenCashModal}
+                          title="Serbest Nakit (TRY/USD) Bakiyesini Güncelle"
+                          style={{ padding: '3px 8px', fontSize: 10.5, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(6, 182, 212, 0.15)', color: 'var(--cyan)', border: '1px solid rgba(6, 182, 212, 0.35)', borderRadius: 4 }}
+                        >
+                          <Edit3 size={11} />
+                          <span>Düzenle</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
