@@ -50,7 +50,37 @@ import {
 } from '../data/broadcastEditionService';
 
 export default function BroadcastStudioTab({ isObsPopout = false }) {
-  const { marketQuotes, usdtry, fetchMarketData } = useApp();
+  const { marketQuotes, usdtry, fetchMarketData, portfolioSummary, currency } = useApp();
+
+  // 3-Way Broadcast Tone State ('analytical', 'youtube', 'defensive')
+  const [broadcastTone, setBroadcastTone] = useState(() => {
+    try {
+      return localStorage.getItem('broadcast_studio_tone') || 'analytical';
+    } catch {
+      return 'analytical';
+    }
+  });
+
+  const handleSelectTone = (tone) => {
+    setBroadcastTone(tone);
+    try {
+      localStorage.setItem('broadcast_studio_tone', tone);
+      if (syncChannelRef.current) {
+        syncChannelRef.current.postMessage({ type: 'CHANGE_TONE', tone });
+      }
+    } catch {}
+  };
+
+  const isTRY = currency === 'TRY';
+  const portfolioContext = useMemo(() => {
+    if (!portfolioSummary) return null;
+    return {
+      totalVal: isTRY ? portfolioSummary.totalValTRY : portfolioSummary.totalValUSD,
+      dayPLPct: portfolioSummary.dayPLPct || 0,
+      shieldRatio: 35,
+      sym: isTRY ? '₺' : '$'
+    };
+  }, [portfolioSummary, isTRY]);
 
   // Active slide index (0 to 8)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -333,6 +363,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           if (themeRaw) setSelectedThemeId(prev => (prev !== themeRaw ? themeRaw : prev));
           const shiftRaw = localStorage.getItem('broadcast_studio_edition_shift');
           if (shiftRaw !== null) setCustomShift(prev => (prev !== Number(shiftRaw) ? Number(shiftRaw) : prev));
+          const toneRaw = localStorage.getItem('broadcast_studio_tone');
+          if (toneRaw) setBroadcastTone(prev => (prev !== toneRaw ? toneRaw : prev));
         } catch (e) {}
       }, 200);
     }
@@ -494,6 +526,32 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       localStorage.setItem('broadcast_studio_custom_scripts_v3', JSON.stringify(customScripts));
     } catch (e) {}
   }, [customScripts]);
+
+  const [freshRegenerateToast, setFreshRegenerateToast] = useState(false);
+
+  // ⚡ 1-Click Fresh Daily Broadcast Generator (Wipes stale localStorage overrides & generates today's script fresh from live quotes)
+  const handleGenerateFreshDailyBroadcast = async () => {
+    setIsRefreshing(true);
+    try {
+      try {
+        localStorage.removeItem('broadcast_studio_custom_scripts_v3');
+        localStorage.removeItem('broadcast_studio_agenda');
+      } catch (e) {}
+      setCustomScripts({});
+      setCustomAgenda(defaultAgenda);
+      setAgendaForm(defaultAgenda);
+
+      await applyLiveNewsDirectly();
+      await handleRefreshAll();
+
+      setFreshRegenerateToast(true);
+      setTimeout(() => setFreshRegenerateToast(false), 4000);
+    } catch (e) {
+      console.warn('Fresh broadcast generation error:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Live data refresh handler (polls Yahoo Finance + Terminal Engine + Pulse API)
   const handleRefreshAll = async () => {
@@ -672,10 +730,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         metrics: [
           { label: 'FED Faiz Beklentisi (CME)', val: customAgenda?.fedRate?.dominant ? `%${customAgenda.fedRate.prob} ${customAgenda.fedRate.dominant}` : '%85 İndirim', chg: 0, note: customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Kademeli Gevşeme' : 'Pas/Sabit Duruş' },
           { label: 'S&P 500 Mevsimsellik', val: 'Q4 Ralli +%4.1', chg: 1.4, isUp: true, note: 'Seçim Yılı Döngüsü' },
-          { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: 0, note: 'Aylık %2.97 • Reel Faiz +' },
+          { label: 'Türkiye TÜFE (Yıllık)', val: `%${pulse?.inflation?.turkey || 31.51}`, chg: 0, note: 'Reel Faiz Dengesi' },
           { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
         ],
-        defaultScript: generateDailyScript(1, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(1, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 2: Geopolitics & Energy Corridor
@@ -692,7 +750,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: variantIndex === 1 ? 'Crack Spread Marjı' : 'Navlun Risk Katsayısı', val: variantIndex === 1 ? '$24.80 / vrl' : '+%14.2', chg: 2.1, isUp: true, note: variantIndex === 1 ? 'Rafineri Baskısı' : 'Kızıldeniz & Ümit Burnu' },
           { label: 'Enerji Enflasyon Riski', val: 'Yüksek Risk', chg: 0, isUp: true }
         ],
-        defaultScript: generateDailyScript(2, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(2, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 3: Central Banks & Real Yield Shield
@@ -701,15 +759,15 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         badge: variantIndex === 1 ? 'MERKEZ BANKALARI QT BİLANÇOSU' : (variantIndex === 2 ? 'ENFLASYON KIRILIMI & FAİZ' : 'MERKEZ BANKALARI & REEL GETİRİ'),
         badgeColor: 'amber',
         title: variantIndex === 1 ? 'Bilanço Küçültmesi (QT) & Likidite Daralması' : (variantIndex === 2 ? 'Enflasyonun Anatomisi: Hizmet vs Mal Katılığı' : 'Merkez Bankaları & TL Reel Getiri Kalkanı'),
-        subtitle: variantIndex === 1 ? 'Fed -$60B/Ay Daralma, ECB €6.4T Bilanço ve TCMB Swap Hariç +$28B Rezerv' : (variantIndex === 2 ? 'Hizmet %72.8, Temel Mal %28.3 ve Faiz İndirimi Yol Haritası' : 'Fed 25 Bp Patikası, TÜİK %49.38 TÜFE ve TCMB %50 Politika Faizi'),
+        subtitle: variantIndex === 1 ? 'Fed -$60B/Ay Daralma, ECB €6.4T Bilanço ve TCMB Swap Hariç Rezervler' : (variantIndex === 2 ? 'Hizmet vs Temel Mal Katılığı ve Faiz İndirimi Yol Haritası' : 'Fed Faiz Patikası, Dezenflasyon Süreci ve TCMB Politika Faizi'),
         durationEst: '55 sn',
         metrics: [
           { label: 'TCMB Politika Faizi', val: '%50.00', chg: 0, isUp: true, note: '+%0.62 Net Reel Faiz' },
           { label: 'Fed Fonlama Faizi', val: '%4.75 - %5.00', chg: 0, isUp: true, note: 'Kasım: 25 Bp İndirim' },
-          { label: 'Türkiye TÜFE (Yıllık)', val: '%49.38', chg: -2.59, isUp: false, note: 'Aylık TÜFE: %2.97' },
+          { label: 'Türkiye TÜFE (Yıllık)', val: `%${pulse?.inflation?.turkey || 31.51}`, chg: -0.45, isUp: false, note: 'Dezenflasyon Patikası' },
           { label: '5Y CDS Risk Primi', val: '216 bp', chg: -3.5, isUp: false, note: 'Düşüş Trendi' }
         ],
-        defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 4: Wall Street & AI Ecosystem
@@ -726,7 +784,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: variantIndex === 1 ? 'Yıllık AI Capex Bütçesi' : 'ISM Hizmetler PMI', val: variantIndex === 1 ? '$205 Milyar' : '54.9', chg: 3.2, isUp: true, note: variantIndex === 1 ? 'Tarihi Zirve' : '1.5 Yılın Zirvesi' },
           { label: 'Tarihsel Q4 Getirisi', val: '+%4.1', chg: 0, isUp: true, note: 'Seçim Yılı Ortalaması' }
         ],
-        defaultScript: generateDailyScript(4, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(4, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 5: Commodities: Gold & Silver
@@ -743,7 +801,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'Gram Altın (Kapalıçarşı)', val: `${fmt(gramAltinTL, 0)} ₺`, chg: 0.15, isUp: true },
           { label: 'Altın / Gümüş Rasyosu', val: `${fmt(gold.price / (silver.price || 60.96), 1)}x`, chg: 0, note: 'Tarihsel Eşik' }
         ],
-        defaultScript: generateDailyScript(5, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(5, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 6: Dollar & Yield Curve
@@ -760,7 +818,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'ABD 2Y Tahvil Getirisi', val: `%${fmt(us2y.price, 3)}`, chg: us2y.change, isUp: us2y.change >= 0 },
           { label: '2Y / 10Y Verim Farkı', val: '+54 bp', chg: 1.2, isUp: true, note: 'Normalleşen Pozitif Eğim' }
         ],
-        defaultScript: generateDailyScript(6, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(6, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 7: Crypto & Spot ETF Flows
@@ -777,7 +835,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'TOTAL3 Altcoin Hacmi', val: `$${fmt(total3.price, 1)}B`, chg: total3.change, isUp: total3.change >= 0 },
           { label: 'Kurumsal Spot ETF', val: '+$210M / Gün', chg: 3.4, isUp: true, note: 'BlackRock & Fidelity' }
         ],
-        defaultScript: generateDailyScript(7, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(7, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 8: Borsa Istanbul & Sectors
@@ -786,15 +844,15 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         badge: variantIndex === 1 ? 'YABANCI TAKAS & CDS' : (variantIndex === 2 ? 'BIST ÇARPANLARI & KREDİ NOTU' : 'BORSA İSTANBUL & BIST 100'),
         badgeColor: 'emerald',
         title: variantIndex === 1 ? 'Yabancı Takas Oranı & Cari Denge Kalkanı' : (variantIndex === 2 ? 'BIST 100 Küresel Değerleme & Kredi Not Artışı' : 'Borsa İstanbul: BIST 100 & Makro Taban'),
-        subtitle: variantIndex === 1 ? '%38.6 Takas Payı, 216 bp CDS ve Temmuz Cari Fazlası (+$779M)' : (variantIndex === 2 ? '7.4x F/K ile %44 Küresel İskonto, Moody\'s/Fitch Not Patikası' : '12.200 Tabanı, Sektörel Güç Ayrışmaları, Cari Fazla ve Kurumsal Talep'),
+        subtitle: variantIndex === 1 ? '%38.6 Takas Payı, 216 bp CDS ve Güçlü Cari Denge Kalkanı' : (variantIndex === 2 ? '7.4x F/K ile %44 Küresel İskonto, Moody\'s/Fitch Not Patikası' : '12.200 Tabanı, Sektörel Güç Ayrışmaları, Cari Denge ve Kurumsal Talep'),
         durationEst: '50 sn',
         metrics: [
           { label: 'BIST 100 Endeksi', val: fmt(bist100.price, 2), chg: bist100.change, isUp: bist100.change >= 0 },
-          { label: 'Temmuz Cari Fazlası', val: '+$779M', chg: 0, isUp: true, note: 'Döviz Desteği' },
+          { label: 'Cari Denge Desteği', val: '+$779M', chg: 0, isUp: true, note: 'Döviz Rezervi Güvencesi' },
           { label: '5 Yıllık CDS Primi', val: '216 bp', chg: -2.1, isUp: false, note: 'Tarihi Dip' },
           { label: 'Teknik Tepki Bandı', val: '12.200 - 13.500', chg: 0, note: 'Kurumsal Taban' }
         ],
-        defaultScript: generateDailyScript(8, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(8, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
 
       // SLIDE 9: Strategy, Cash & 48h Calendar
@@ -807,11 +865,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         durationEst: '45 sn',
         metrics: [
           { label: 'Takip Edilecek Veri', val: 'TÜİK TÜFE & ABD NFP', chg: 0, isUp: true },
-          { label: 'Merkez Bankası Kararı', val: '22 Ekim PPK', chg: 0, note: '%50 Politika Faizi' },
+          { label: 'Merkez Bankası Kararı', val: 'Gelecek PPK Toplantısı', chg: 0, note: 'Sıkı Para Duruşu' },
           { label: 'Tavsiye Nakit Oranı', val: '%20 - %25', chg: 0, note: 'Likit Kalkan' },
           { label: 'Piyasa Stratejisi', val: 'Seçici & Korumalı', chg: 0, note: 'Hisse Bazlı Ayrışma' }
         ],
-        defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda)
+        defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       }
     ];
   }, [
@@ -819,22 +877,28 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     variantIndex,
     editionState,
     customAgenda,
+    broadcastTone,
+    portfolioContext,
+    pulse,
     dxy, vix, brent, wti, gold, silver, us10y, us2y, sp500, sp500Etf, nasdaq, nasdaqEtf, dow, dowEtf, bist100, btc, eth, total3, currentUsdTry, gramAltinTL, fgScore, fgLabel
   ]);
 
   const activeSlide = slides[currentSlideIndex];
 
   // Current active script (user override or default)
-  const activeScript = customScripts[`${editionState.editionKey}_${activeSlide.id}`] !== undefined 
-    ? customScripts[`${editionState.editionKey}_${activeSlide.id}`] 
-    : (customScripts[activeSlide.id] !== undefined
-      ? customScripts[activeSlide.id]
-      : activeSlide.defaultScript);
+  const activeScript = customScripts[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`] !== undefined 
+    ? customScripts[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`] 
+    : (customScripts[`${editionState.editionKey}_${activeSlide.id}`] !== undefined
+      ? customScripts[`${editionState.editionKey}_${activeSlide.id}`]
+      : (customScripts[activeSlide.id] !== undefined
+        ? customScripts[activeSlide.id]
+        : activeSlide.defaultScript));
 
   // Handle script edit
   const handleScriptChange = (val) => {
     setCustomScripts(prev => ({
       ...prev,
+      [`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`]: val,
       [`${editionState.editionKey}_${activeSlide.id}`]: val,
       [activeSlide.id]: val
     }));
@@ -843,6 +907,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   const handleResetCurrentScript = () => {
     setCustomScripts(prev => {
       const copy = { ...prev };
+      delete copy[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`];
       delete copy[`${editionState.editionKey}_${activeSlide.id}`];
       delete copy[activeSlide.id];
       return copy;
@@ -866,7 +931,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     out += `================================================================================\n\n`;
 
     slides.forEach((s) => {
-      const script = customScripts[s.id] !== undefined ? customScripts[s.id] : s.defaultScript;
+      const script = customScripts[`${editionState.editionKey}_${broadcastTone}_${s.id}`] !== undefined
+        ? customScripts[`${editionState.editionKey}_${broadcastTone}_${s.id}`]
+        : (customScripts[`${editionState.editionKey}_${s.id}`] !== undefined
+          ? customScripts[`${editionState.editionKey}_${s.id}`]
+          : (customScripts[s.id] !== undefined ? customScripts[s.id] : s.defaultScript));
       out += `[SLAYT 0${s.id} / 09] ${s.title.toUpperCase()}\n`;
       out += `Alt Başlık: ${s.subtitle} • Tahmini Süre: ${s.durationEst}\n`;
       out += `Öne Çıkan Rakamlar: ${s.metrics.map(m => `${m.label}: ${m.val}`).join(' | ')}\n\n`;
@@ -940,14 +1009,18 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           <tr><th>Veri / Gösterge</th><th>Açıklanan / Piyasa Değeri</th><th>Beklenti / Durum</th><th>Piyasa Etkisi & Strateji</th></tr>
           <tr><td><b>FED Faiz Beklentisi (CME FedWatch)</b></td><td><b>%${customAgenda?.fedRate?.prob || 85} (${customAgenda?.fedRate?.dominant || '25 bp İndirim'})</b></td><td>%${customAgenda?.fedRate?.pauseProb || 15} Pas / Sabit</td><td>${customAgenda?.fedRate?.note || 'Piyasa yumuşak iniş ve kademeli faiz patikasını fiyatlıyor.'}</td></tr>
           <tr><td><b>S&P 500 Seçim Yılı Q4 Mevsimselliği</b></td><td><b>+%4.1 Tarihsel Ortalama</b></td><td>Kasım-Aralık Kazanma: %83.3</td><td>Ekim ayı dalgalanmaları yıl sonu rallisi öncesi dip fırsatı sunuyor.</td></tr>
-          <tr><td><b>Türkiye TÜFE (Eylül 2024)</b></td><td><b>Aylık %2.97 | Yıllık %49.38</b></td><td>Beklenti: %48.2 (Pozitif Reel Faiz: +%0.62)</td><td>TCMB faizi (%50) altında ilk yıllık enflasyon, indirimler Aralık/Ocak'a ötelendi.</td></tr>
+          <tr><td><b>Türkiye TÜFE Enflasyonu</b></td><td><b>Yıllık %${pulse?.inflation?.turkey || 31.51}</b></td><td>Pozitif Reel Getiri Korunuyor</td><td>TCMB faiz patikasında sıkı ve ihtiyatlı duruşunu sürdürerek dezenflasyon sürecini destekliyor.</td></tr>
           <tr><td><b>ABD ISM Hizmetler PMI</b></td><td><b>54.9 (1.5 Yılın Zirvesi)</b></td><td>Beklenti: 51.7 | Önceki: 51.5</td><td>Resesyon tezini sildi, yeni siparişler fırladı (59.4).</td></tr>
           <tr><td><b>ABD Tarım Dışı İstihdam (NFP)</b></td><td><b>+254.000 Kişi (İşsizlik %4.1)</b></td><td>Beklenti: 140.000 Kişi</td><td>İstihdam patlaması tahvil faizlerini %4.02'ye tırmandırdı.</td></tr>
         </table>
     `;
 
     slides.forEach((s) => {
-      const script = customScripts[s.id] !== undefined ? customScripts[s.id] : s.defaultScript;
+      const script = customScripts[`${editionState.editionKey}_${broadcastTone}_${s.id}`] !== undefined
+        ? customScripts[`${editionState.editionKey}_${broadcastTone}_${s.id}`]
+        : (customScripts[`${editionState.editionKey}_${s.id}`] !== undefined
+          ? customScripts[`${editionState.editionKey}_${s.id}`]
+          : (customScripts[s.id] !== undefined ? customScripts[s.id] : s.defaultScript));
       htmlContent += `
         <h2>[SLAYT 0${s.id} / 09] ${s.title}</h2>
         <div class="meta">${s.subtitle} • Tahmini Süre: ${s.durationEst}</div>
@@ -1212,7 +1285,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             { id: 'breaking_news', label: '🔥 Sıcak Haberler & Gündem', badge: 'Canlı Radar' },
                             { id: 'fed', label: '🏛️ FED Faiz Beklentisi', badge: customAgenda?.fedRate?.dominant ? `%${customAgenda.fedRate.prob} ${customAgenda.fedRate.dominant}` : 'CME Watch' },
                             { id: 'seasonality', label: '📈 S&P 500 Mevsimsellik', badge: 'Q4 +%4.1' },
-                            { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: 'TÜFE 49.38%' },
+                            { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: `TÜFE %${pulse?.inflation?.turkey || 31.51}` },
                             { id: 'matrix', label: '📊 Varlık Matrisi', badge: 'Canlı' }
                           ].map((tab) => {
                             const isActive = slide1SubTab === tab.id;
@@ -1455,15 +1528,15 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             {/* 1. TÜFE */}
                             <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 5, padding: '6px 8px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: 8.5, fontWeight: 800, color: 'var(--cyan)' }}>TÜRKİYE TÜFE (EYLÜL)</span>
-                                <span style={{ fontSize: 7.5, color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>Pozitif Reel Faiz</span>
+                                <span style={{ fontSize: 8.5, fontWeight: 800, color: 'var(--cyan)' }}>TÜRKİYE TÜFE ENFLASYONU</span>
+                                <span style={{ fontSize: 7.5, color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>Pozitif Reel Getiri</span>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>%49.38</span>
-                                <span style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>Aylık: %2.97</span>
+                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>%{pulse?.inflation?.turkey || 31.51}</span>
+                                <span style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>Dezenflasyon Patikası</span>
                               </div>
                               <div style={{ fontSize: 7.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
-                                Yıllık enflasyon TCMB politika faizinin (%50.0) altına indi (+%0.62 reel getiri). Ancak hizmet katılığından dolayı faiz indirimi Aralık/Ocak'a ötelendi.
+                                Yıllık enflasyonda dezenflasyon patikası takip ediliyor. TCMB pozitif reel faiz kalkanı ve sıkı likidite adımlarıyla TL varlıkları destekliyor.
                               </div>
                             </div>
 
@@ -2961,7 +3034,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             { time: 'Pazartesi 10:00', event: 'TÜİK Yıllık ve Aylık TÜFE Enflasyonu', note: 'Önceki %31.51 / Beklenti Kritik' },
                             { time: 'Çarşamba 21:00', event: 'Fed FOMC Tutanakları & Yetkili Mesajları', note: 'Warsh Şahin Faiz Yönlendirmesi' },
                             { time: 'Cuma 15:30', event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik', note: 'Küresel Risk İştahı Barometresi' },
-                            { time: '22 Ekim PPK', event: 'TCMB Para Politikası Kurulu Faiz Kararı', note: '%37 Politika Faizi Kararı' }
+                            { time: 'Gelecek PPK Toplantısı', event: 'TCMB Para Politikası Kurulu Faiz Kararı', note: 'Sıkı Para Politikası & Likidite Kararı' }
                           ].map((cal, idx) => (
                             <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>
@@ -3316,6 +3389,91 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         </div>
       </div>
 
+      {/* 🎙️ YAYIN DİLİ & TONU VE GÜNÜN YAYININI SIFIRDAN ÜRET ÇUBUĞU */}
+      <div 
+        style={{
+          background: 'linear-gradient(90deg, rgba(30, 27, 75, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%)',
+          border: '1px solid rgba(139, 92, 246, 0.3)',
+          borderRadius: 8,
+          padding: '8px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+          boxShadow: '0 4px 18px rgba(0,0,0,0.35)'
+        }}
+      >
+        {/* Left: 3-Way Tone Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#c4b5fd', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Mic size={14} style={{ color: '#a78bfa' }} />
+            <span>Yayın Dili / Tonu:</span>
+          </span>
+          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', borderRadius: 6, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
+            {[
+              { id: 'analytical', label: '🎙️ Analitik / TV Dili', desc: 'Bloomberg & kurumsal finans dili, dengeli neden-sonuç akışı' },
+              { id: 'youtube', label: '🚀 YouTube / Samimi & Enerjik', desc: 'Toplulukla konuşur gibi, dinamik ve akıcı YouTube temposu' },
+              { id: 'defensive', label: '🛡️ Kriz & Defans Dili', desc: 'Risk kalkanı, nakit yönetimi ve savunma disiplini vurgusu' }
+            ].map(t => {
+              const isActive = broadcastTone === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handleSelectTone(t.id)}
+                  className={`chip-btn ${isActive ? 'active' : ''}`}
+                  style={{
+                    fontSize: 10,
+                    padding: '4px 10px',
+                    fontWeight: isActive ? 800 : 500,
+                    background: isActive ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(99, 102, 241, 0.35))' : 'transparent',
+                    borderColor: isActive ? '#a78bfa' : 'transparent',
+                    color: isActive ? '#f5f3ff' : '#94a3b8'
+                  }}
+                  title={t.desc}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right: Fresh Daily Broadcast Regeneration Button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            type="button"
+            onClick={handleGenerateFreshDailyBroadcast}
+            disabled={isRefreshing}
+            className="btn-primary"
+            style={{
+              fontSize: 11,
+              padding: '7px 15px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              background: freshRegenerateToast 
+                ? 'linear-gradient(135deg, #10b981, #059669)' 
+                : 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+              borderColor: freshRegenerateToast ? '#10b981' : '#a855f7',
+              color: '#ffffff',
+              fontWeight: 800,
+              boxShadow: freshRegenerateToast 
+                ? '0 0 16px rgba(16, 185, 129, 0.5)' 
+                : '0 4px 14px rgba(139, 92, 246, 0.4)',
+              cursor: 'pointer',
+              borderRadius: 6,
+              transition: 'all 0.2s ease'
+            }}
+            title="Tüm eski önbellekleri temizler, bugünün canlı borsa fiyatlarını ve güncel haberlerini çekerek tüm 9 slaytın konuşma metnini canlı verilerle sıfırdan üretir."
+          >
+            {freshRegenerateToast ? <Check size={14} /> : <Zap size={14} className="animate-pulse" />}
+            <span>{freshRegenerateToast ? '✓ Günün Yayını Sıfırdan Üretildi!' : '⚡ Günün Yayınını Canlı Verilerle Sıfırdan Üret'}</span>
+          </button>
+        </div>
+      </div>
+
       {/* 📅 GÜNLÜK YAYIN EDİSYONU & TEMA ÇUBUĞU */}
       <div 
         style={{
@@ -3592,6 +3750,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                 <span className="nav-badge rose" style={{ fontSize: 8.5, padding: '1px 5px' }}>
                   DOĞAL AKIŞ
                 </span>
+                <span className="nav-badge purple" style={{ fontSize: 8.5, padding: '1px 6px', background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.4)', color: '#c4b5fd' }}>
+                  {broadcastTone === 'analytical' ? '🎙️ ANALİTİK TV' : (broadcastTone === 'youtube' ? '🚀 YOUTUBE' : '🛡️ DEFANS & RİSK')}
+                </span>
                 <button
                   type="button"
                   onClick={() => setIsAgendaModalOpen(true)}
@@ -3661,16 +3822,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                   <span>{isEditingScript ? 'Kaydet' : 'Düzenle'}</span>
                 </button>
 
-                {customScripts[activeSlide.id] !== undefined && (
+                {(customScripts[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`] !== undefined || customScripts[`${editionState.editionKey}_${activeSlide.id}`] !== undefined || customScripts[activeSlide.id] !== undefined) && (
                   <button
                     type="button"
                     onClick={handleResetCurrentScript}
                     className="chip-btn"
                     style={{ fontSize: 9.5, padding: '3px 8px', color: 'var(--amber)' }}
-                    title="Varsayılan metne geri dön"
+                    title="Bu slaytın metnini bugünün orijinal AI metnine sıfırla"
                   >
                     <RotateCcw size={10} style={{ marginRight: 3 }} />
-                    <span>Sıfırla</span>
+                    <span>Orijinale Dön</span>
                   </button>
                 )}
 
