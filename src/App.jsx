@@ -151,7 +151,20 @@ function MainTerminal() {
 
             {activeTab === 'broadcast_studio' && <BroadcastStudioTab />}
 
-            {activeTab === 'market' && <MarketPulseTab />}
+            {activeTab === 'market' && (
+              <MarketPulseTab 
+                onSelectStock={(ticker) => {
+                  if (setLastNavigatedFrom) {
+                    setLastNavigatedFrom({
+                      tab: 'market',
+                      label: 'Piyasa Nabzı'
+                    });
+                  }
+                  setSelectedStockTicker(ticker);
+                  setActiveTab('single_stock');
+                }}
+              />
+            )}
 
             {activeTab === 'potential' && (
               <PotentialStocksTab

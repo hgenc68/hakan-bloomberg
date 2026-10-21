@@ -1,7 +1,177 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Globe, TrendingUp, TrendingDown, Activity, AlertTriangle, Newspaper, Flame, ShieldCheck, RefreshCw, ExternalLink } from 'lucide-react';
+import { Globe, TrendingUp, TrendingDown, Activity, AlertTriangle, Newspaper, Flame, ShieldCheck, RefreshCw, ExternalLink, LayoutGrid, PieChart, Layers, ArrowUpRight, Search } from 'lucide-react';
 import macroPulseData from '../data/macroPulse.json';
+
+// Finviz Market Heatmap Dataset (S&P 500 & BIST 100 Blue-Chips & Sectors)
+const FINVIZ_SP500_SECTORS = [
+  {
+    id: 'tech',
+    name: 'Teknoloji & Yarı İletken',
+    icon: '💻',
+    weight: '32%',
+    stocks: [
+      { ticker: 'NVDA', name: 'Nvidia Corp', cap: '$3.2T', defaultPrice: 226.46, defaultChange: 2.45 },
+      { ticker: 'MSFT', name: 'Microsoft', cap: '$3.1T', defaultPrice: 422.10, defaultChange: 1.12 },
+      { ticker: 'AAPL', name: 'Apple Inc', cap: '$3.4T', defaultPrice: 339.66, defaultChange: 0.90 },
+      { ticker: 'AVGO', name: 'Broadcom Inc', cap: '$820B', defaultPrice: 178.40, defaultChange: 3.15 },
+      { ticker: 'ORCL', name: 'Oracle Corp', cap: '$470B', defaultPrice: 172.80, defaultChange: 1.65 },
+      { ticker: 'AMD', name: 'Adv Micro Devices', cap: '$255B', defaultPrice: 156.20, defaultChange: -0.85 },
+      { ticker: 'CRM', name: 'Salesforce Inc', cap: '$285B', defaultPrice: 294.50, defaultChange: 0.45 },
+      { ticker: 'QCOM', name: 'Qualcomm', cap: '$190B', defaultPrice: 169.30, defaultChange: -1.20 }
+    ]
+  },
+  {
+    id: 'comm',
+    name: 'İletişim & Dijital Medya',
+    icon: '📡',
+    weight: '12%',
+    stocks: [
+      { ticker: 'GOOGL', name: 'Alphabet Inc', cap: '$2.1T', defaultPrice: 168.20, defaultChange: 1.35 },
+      { ticker: 'META', name: 'Meta Platforms', cap: '$1.5T', defaultPrice: 588.40, defaultChange: 2.10 },
+      { ticker: 'NFLX', name: 'Netflix Inc', cap: '$310B', defaultPrice: 712.50, defaultChange: 1.85 },
+      { ticker: 'DIS', name: 'Walt Disney', cap: '$175B', defaultPrice: 96.40, defaultChange: -0.65 }
+    ]
+  },
+  {
+    id: 'consumer',
+    name: 'Tüketici & E-Ticaret',
+    icon: '🛒',
+    weight: '14%',
+    stocks: [
+      { ticker: 'AMZN', name: 'Amazon.com', cap: '$2.0T', defaultPrice: 259.88, defaultChange: -0.97 },
+      { ticker: 'TSLA', name: 'Tesla Inc', cap: '$720B', defaultPrice: 224.50, defaultChange: -2.30 },
+      { ticker: 'WMT', name: 'Walmart Inc', cap: '$640B', defaultPrice: 79.80, defaultChange: 0.65 },
+      { ticker: 'COST', name: 'Costco Wholesale', cap: '$410B', defaultPrice: 915.20, defaultChange: 1.15 },
+      { ticker: 'HD', name: 'Home Depot', cap: '$395B', defaultPrice: 398.10, defaultChange: -0.40 },
+      { ticker: 'NKE', name: 'Nike Inc', cap: '$125B', defaultPrice: 83.20, defaultChange: -1.75 }
+    ]
+  },
+  {
+    id: 'finance',
+    name: 'Finans & Bankacılık',
+    icon: '🏛️',
+    weight: '13%',
+    stocks: [
+      { ticker: 'JPM', name: 'JPMorgan Chase', cap: '$610B', defaultPrice: 218.40, defaultChange: 0.85 },
+      { ticker: 'V', name: 'Visa Inc', cap: '$560B', defaultPrice: 282.50, defaultChange: 0.40 },
+      { ticker: 'MA', name: 'Mastercard Inc', cap: '$460B', defaultPrice: 495.10, defaultChange: 0.60 },
+      { ticker: 'BAC', name: 'Bank of America', cap: '$330B', defaultPrice: 42.10, defaultChange: -0.55 },
+      { ticker: 'GS', name: 'Goldman Sachs', cap: '$175B', defaultPrice: 512.30, defaultChange: 1.45 },
+      { ticker: 'MS', name: 'Morgan Stanley', cap: '$180B', defaultPrice: 110.60, defaultChange: 0.90 }
+    ]
+  },
+  {
+    id: 'health',
+    name: 'Sağlık & Biyoteknoloji',
+    icon: '💊',
+    weight: '12%',
+    stocks: [
+      { ticker: 'LLY', name: 'Eli Lilly & Co', cap: '$860B', defaultPrice: 905.40, defaultChange: 1.95 },
+      { ticker: 'UNH', name: 'UnitedHealth', cap: '$540B', defaultPrice: 585.20, defaultChange: -1.10 },
+      { ticker: 'JNJ', name: 'Johnson & Johnson', cap: '$385B', defaultPrice: 161.40, defaultChange: 0.25 },
+      { ticker: 'ABBV', name: 'AbbVie Inc', cap: '$345B', defaultPrice: 195.80, defaultChange: 0.75 },
+      { ticker: 'MRK', name: 'Merck & Co', cap: '$280B', defaultPrice: 112.30, defaultChange: -0.45 },
+      { ticker: 'PFE', name: 'Pfizer Inc', cap: '$165B', defaultPrice: 29.10, defaultChange: -0.80 }
+    ]
+  },
+  {
+    id: 'energy',
+    name: 'Sanayi & Enerji',
+    icon: '⚡',
+    weight: '11%',
+    stocks: [
+      { ticker: 'XOM', name: 'Exxon Mobil', cap: '$485B', defaultPrice: 122.40, defaultChange: 2.15 },
+      { ticker: 'CVX', name: 'Chevron Corp', cap: '$285B', defaultPrice: 153.20, defaultChange: 1.70 },
+      { ticker: 'CAT', name: 'Caterpillar Inc', cap: '$195B', defaultPrice: 398.60, defaultChange: -0.30 },
+      { ticker: 'GE', name: 'GE Aerospace', cap: '$205B', defaultPrice: 188.50, defaultChange: 1.40 },
+      { ticker: 'RTX', name: 'RTX Corp', cap: '$165B', defaultPrice: 124.20, defaultChange: 0.85 },
+      { ticker: 'BA', name: 'Boeing Co', cap: '$110B', defaultPrice: 152.10, defaultChange: -2.80 }
+    ]
+  }
+];
+
+const FINVIZ_BIST_SECTORS = [
+  {
+    id: 'bist_industry',
+    name: 'Sanayi & İmalat',
+    icon: '🏭',
+    weight: '28%',
+    stocks: [
+      { ticker: 'TUPRS', name: 'Tüpraş', cap: '₺320B', defaultPrice: 168.40, defaultChange: 1.85 },
+      { ticker: 'EREGL', name: 'Erdemir', cap: '₺175B', defaultPrice: 49.50, defaultChange: -0.80 },
+      { ticker: 'FROTO', name: 'Ford Otosan', cap: '₺370B', defaultPrice: 1045.0, defaultChange: 2.10 },
+      { ticker: 'SISE', name: 'Şişecam', cap: '₺140B', defaultPrice: 45.60, defaultChange: -0.45 },
+      { ticker: 'TOASO', name: 'Tofaş Oto', cap: '₺115B', defaultPrice: 228.0, defaultChange: 0.90 },
+      { ticker: 'TTRAK', name: 'Türk Traktör', cap: '₺75B', defaultPrice: 745.0, defaultChange: -1.25 },
+      { ticker: 'ARCLK', name: 'Arçelik', cap: '₺95B', defaultPrice: 142.50, defaultChange: 0.35 }
+    ]
+  },
+  {
+    id: 'bist_bank',
+    name: 'Bankacılık & Finans',
+    icon: '🏦',
+    weight: '26%',
+    stocks: [
+      { ticker: 'GARAN', name: 'Garanti BBVA', cap: '₺490B', defaultPrice: 116.50, defaultChange: 2.80 },
+      { ticker: 'AKBNK', name: 'Akbank', cap: '₺310B', defaultPrice: 59.40, defaultChange: 2.15 },
+      { ticker: 'ISCTR', name: 'İş Bankası C', cap: '₺385B', defaultPrice: 12.85, defaultChange: 1.40 },
+      { ticker: 'YKBNK', name: 'Yapı Kredi', cap: '₺270B', defaultPrice: 32.10, defaultChange: 1.90 },
+      { ticker: 'KCHOL', name: 'Koç Holding', cap: '₺510B', defaultPrice: 202.40, defaultChange: 1.65 },
+      { ticker: 'SAHOL', name: 'Sabancı Holding', cap: '₺215B', defaultPrice: 94.80, defaultChange: 0.75 }
+    ]
+  },
+  {
+    id: 'bist_aviation',
+    name: 'Havacılık & Ulaştırma',
+    icon: '✈️',
+    weight: '16%',
+    stocks: [
+      { ticker: 'THYAO', name: 'Türk Hava Yolları', cap: '₺410B', defaultPrice: 298.50, defaultChange: 1.95 },
+      { ticker: 'PGSUS', name: 'Pegasus', cap: '₺110B', defaultPrice: 232.0, defaultChange: 2.45 },
+      { ticker: 'TAVHL', name: 'TAV Havalimanları', cap: '₺85B', defaultPrice: 242.0, defaultChange: 0.60 }
+    ]
+  },
+  {
+    id: 'bist_retail',
+    name: 'Perakende & Gıda',
+    icon: '🛒',
+    weight: '14%',
+    stocks: [
+      { ticker: 'BIMAS', name: 'BİM Mağazalar', cap: '₺315B', defaultPrice: 518.0, defaultChange: 1.20 },
+      { ticker: 'MGROS', name: 'Migros', cap: '₺95B', defaultPrice: 524.0, defaultChange: 0.80 },
+      { ticker: 'CCOLA', name: 'Coca-Cola İçecek', cap: '₺145B', defaultPrice: 58.50, defaultChange: -0.90 },
+      { ticker: 'SOKM', name: 'Şok Marketler', cap: '₺28B', defaultPrice: 47.80, defaultChange: -1.40 },
+      { ticker: 'BYDNR', name: 'Baydöner', cap: '₺2.1B', defaultPrice: 23.28, defaultChange: -2.18 }
+    ]
+  },
+  {
+    id: 'bist_defense',
+    name: 'Savunma & Teknoloji',
+    icon: '🛡️',
+    weight: '10%',
+    stocks: [
+      { ticker: 'ASELS', name: 'Aselsan', cap: '₺285B', defaultPrice: 62.40, defaultChange: 3.40 },
+      { ticker: 'MIATK', name: 'Mia Teknoloji', cap: '₺25B', defaultPrice: 65.20, defaultChange: -2.10 },
+      { ticker: 'ARDYZ', name: 'Ardyz Bilişim', cap: '₺15B', defaultPrice: 41.50, defaultChange: 1.70 },
+      { ticker: 'REEDR', name: 'Reeder Teknoloji', cap: '₺18B', defaultPrice: 19.80, defaultChange: -3.20 }
+    ]
+  },
+  {
+    id: 'bist_energy',
+    name: 'Enerji & Altyapı',
+    icon: '☀️',
+    weight: '10%',
+    stocks: [
+      { ticker: 'ENKAI', name: 'Enka İnşaat', cap: '₺265B', defaultPrice: 44.10, defaultChange: 0.85 },
+      { ticker: 'ASTOR', name: 'Astor Enerji', cap: '₺98B', defaultPrice: 98.40, defaultChange: -1.60 },
+      { ticker: 'ENJSA', name: 'Enerjisa', cap: '₺75B', defaultPrice: 63.50, defaultChange: 1.10 },
+      { ticker: 'CWENE', name: 'CW Enerji', cap: '₺32B', defaultPrice: 195.0, defaultChange: -0.75 },
+      { ticker: 'YEOTK', name: 'Yeo Teknoloji', cap: '₺28B', defaultPrice: 215.0, defaultChange: 2.20 },
+      { ticker: 'KONTR', name: 'Kontrolmatik', cap: '₺35B', defaultPrice: 46.80, defaultChange: -1.90 }
+    ]
+  }
+];
 
 const SEED_NEWS = [
   {
@@ -136,9 +306,11 @@ const EXPOSURE_TIERS = [
   }
 ];
 
-export default function MarketPulseTab() {
-  const { marketQuotes, usdtry, currentCurrency } = useApp();
+export default function MarketPulseTab({ onSelectStock }) {
+  const { marketQuotes, usdtry, currentCurrency, portfolioSummary } = useApp();
   const [pulse, setPulse] = useState(macroPulseData);
+  const [heatmapMarket, setHeatmapMarket] = useState('sp500'); // 'sp500', 'bist100', 'portfolio'
+  const [heatmapSearch, setHeatmapSearch] = useState('');
   const [newsItems, setNewsItems] = useState(() => {
     const now = Date.now();
     return SEED_NEWS.map(n => ({
@@ -704,6 +876,239 @@ export default function MarketPulseTab() {
         </div>
 
       </div>
+
+      {/* ========================================================================= */}
+      {/* 🔥 FINVIZ SEKTÖREL PİYASA ISI HARİTASI (FINVIZ HEATMAP & TREEMAP)         */}
+      {/* ========================================================================= */}
+      {(() => {
+        const getHeatmapColor = (pct) => {
+          if (pct >= 3.0) return { bg: '#15803d', border: '#22c55e', text: '#ffffff' }; // Deep Emerald
+          if (pct >= 1.5) return { bg: '#16a34a', border: '#4ade80', text: '#ffffff' }; // Emerald
+          if (pct > 0.0) return { bg: '#1e3a2b', border: '#22c55e', text: '#86efac' }; // Soft Green
+          if (pct === 0.0) return { bg: '#1e293b', border: '#475569', text: '#94a3b8' }; // Neutral Slate
+          if (pct > -1.5) return { bg: '#3b1d24', border: '#f87171', text: '#fca5a5' }; // Soft Red
+          if (pct > -3.0) return { bg: '#dc2626', border: '#ef4444', text: '#ffffff' }; // Red
+          return { bg: '#991b1b', border: '#f87171', text: '#ffffff' }; // Deep Crimson
+        };
+
+        const isBist = heatmapMarket === 'bist100';
+
+        // Prepare sectors based on selected market
+        let sectorsToRender = [];
+        if (heatmapMarket === 'sp500') {
+          sectorsToRender = FINVIZ_SP500_SECTORS;
+        } else if (heatmapMarket === 'bist100') {
+          sectorsToRender = FINVIZ_BIST_SECTORS;
+        } else {
+          // Dynamic Portfolio Mode
+          const holdings = portfolioSummary?.enrichedHoldings || [];
+          const groups = {};
+          holdings.forEach(h => {
+            const grp = h.sector?.name || h.category || 'Hisse & Kripto';
+            if (!groups[grp]) groups[grp] = [];
+            groups[grp].push({
+              ticker: h.ticker,
+              name: h.name || h.ticker,
+              cap: `%${(h.weightPct || 0).toFixed(1)} Portföy`,
+              defaultPrice: h.price || 0,
+              defaultChange: h.changePct || 0
+            });
+          });
+          sectorsToRender = Object.keys(groups).map((grpName, idx) => ({
+            id: `grp_${idx}`,
+            name: grpName,
+            icon: '💼',
+            weight: `${groups[grpName].length} Varlık`,
+            stocks: groups[grpName]
+          }));
+        }
+
+        // Apply quick filter if searched
+        const filterQuery = heatmapSearch.trim().toLowerCase();
+        const filteredSectors = sectorsToRender.map(sec => {
+          const filteredStocks = sec.stocks.filter(st => {
+            if (!filterQuery) return true;
+            return st.ticker.toLowerCase().includes(filterQuery) || st.name.toLowerCase().includes(filterQuery);
+          });
+          return { ...sec, stocks: filteredStocks };
+        }).filter(sec => sec.stocks.length > 0);
+
+        return (
+          <div className="card" style={{ padding: 18, background: '#070a13', border: '1px solid var(--border)', marginBottom: 20 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <LayoutGrid size={17} className="text-cyan" />
+                  <span style={{ fontWeight: 800, fontSize: 13.5, color: '#f8fafc', letterSpacing: '0.4px' }}>
+                    SEKTÖREL PİYASA ISI HARİTASI (FINVIZ HEATMAP)
+                  </span>
+                  <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                    Sektör Ağırlıkları & Canlı Performans
+                  </span>
+                </div>
+                <p style={{ margin: '3px 0 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                  Sektörel sermaye rotasyonunu tek bakışta izleyin. İncelemek istediğiniz hisseye tıklayarak Tekil Hisse DCF analizine geçebilirsiniz.
+                </p>
+              </div>
+
+              {/* Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: 3 }}>
+                  <button
+                    type="button"
+                    className={`chip-btn ${heatmapMarket === 'sp500' ? 'active' : ''}`}
+                    onClick={() => setHeatmapMarket('sp500')}
+                    style={{ fontSize: 10.5, padding: '4px 10px', fontWeight: heatmapMarket === 'sp500' ? 800 : 600 }}
+                  >
+                    🇺🇸 S&P 500
+                  </button>
+                  <button
+                    type="button"
+                    className={`chip-btn ${heatmapMarket === 'bist100' ? 'active' : ''}`}
+                    onClick={() => setHeatmapMarket('bist100')}
+                    style={{ fontSize: 10.5, padding: '4px 10px', fontWeight: heatmapMarket === 'bist100' ? 800 : 600 }}
+                  >
+                    🇹🇷 BIST 100
+                  </button>
+                  <button
+                    type="button"
+                    className={`chip-btn ${heatmapMarket === 'portfolio' ? 'active' : ''}`}
+                    onClick={() => setHeatmapMarket('portfolio')}
+                    style={{ fontSize: 10.5, padding: '4px 10px', fontWeight: heatmapMarket === 'portfolio' ? 800 : 600 }}
+                  >
+                    💼 Portföyüm
+                  </button>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Hisse ara..."
+                    value={heatmapSearch}
+                    onChange={(e) => setHeatmapSearch(e.target.value)}
+                    style={{
+                      background: '#0b0f19',
+                      border: '1px solid var(--border)',
+                      borderRadius: 4,
+                      padding: '4px 8px 4px 26px',
+                      fontSize: 11,
+                      color: '#fff',
+                      width: 110,
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Scale Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '6px 12px', borderRadius: 4, marginBottom: 14, flexWrap: 'wrap', gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>
+                Canlı Getiri Renk Skalası:
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontFamily: 'var(--font-mono)' }}>
+                <span style={{ background: '#991b1b', color: '#fff', padding: '2px 6px', borderRadius: 3 }}>&le; -3%</span>
+                <span style={{ background: '#dc2626', color: '#fff', padding: '2px 6px', borderRadius: 3 }}>-1.5%</span>
+                <span style={{ background: '#3b1d24', color: '#fca5a5', padding: '2px 6px', borderRadius: 3 }}>-0.5%</span>
+                <span style={{ background: '#1e293b', color: '#94a3b8', padding: '2px 6px', borderRadius: 3 }}>0%</span>
+                <span style={{ background: '#1e3a2b', color: '#86efac', padding: '2px 6px', borderRadius: 3 }}>+0.5%</span>
+                <span style={{ background: '#16a34a', color: '#fff', padding: '2px 6px', borderRadius: 3 }}>+1.5%</span>
+                <span style={{ background: '#15803d', color: '#fff', padding: '2px 6px', borderRadius: 3 }}>&ge; +3%</span>
+              </div>
+            </div>
+
+            {/* Sectors Treemap Container */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+              {filteredSectors.map(sec => (
+                <div 
+                  key={sec.id}
+                  style={{
+                    background: '#090d18',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 6,
+                    padding: 10,
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  {/* Sector Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13 }}>{sec.icon}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0' }}>{sec.name}</span>
+                    </div>
+                    <span style={{ fontSize: 9.5, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                      {sec.weight}
+                    </span>
+                  </div>
+
+                  {/* Stock Tiles Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))', gap: 6, flex: 1 }}>
+                    {sec.stocks.map(st => {
+                      const sym = st.ticker.toUpperCase();
+                      const liveQ = marketQuotes[sym] || (isBist ? marketQuotes[sym + '.IS'] : marketQuotes[sym + '-USD']) || {};
+                      const price = liveQ.price != null && liveQ.price > 0 ? liveQ.price : st.defaultPrice;
+                      const changePct = liveQ.changePct != null ? liveQ.changePct : st.defaultChange;
+                      const col = getHeatmapColor(changePct);
+                      const isTRY = isBist || sym.endsWith('.IS');
+
+                      return (
+                        <div
+                          key={st.ticker}
+                          onClick={() => onSelectStock && onSelectStock(st.ticker)}
+                          title={`${st.name} (${st.ticker}) - ${st.cap} | Tıkla ve DCF Analizine Git`}
+                          style={{
+                            background: col.bg,
+                            border: `1px solid ${col.border}50`,
+                            borderRadius: 5,
+                            padding: '6px 4px',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.18s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            minHeight: 52
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = `0 4px 12px ${col.border}50`;
+                            e.currentTarget.style.borderColor = col.border;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.borderColor = `${col.border}50`;
+                          }}
+                        >
+                          <div style={{ fontSize: 11, fontWeight: 900, color: '#ffffff', letterSpacing: '0.3px', fontFamily: 'var(--font-mono)' }}>
+                            {st.ticker}
+                          </div>
+                          <div style={{ fontSize: 9, color: '#f1f5f9', opacity: 0.9, marginTop: 1, fontFamily: 'var(--font-mono)' }}>
+                            {isTRY ? '₺' : '$'}{Number(price).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}
+                          </div>
+                          <div style={{ fontSize: 9.5, fontWeight: 800, color: col.text, marginTop: 1, fontFamily: 'var(--font-mono)' }}>
+                            {changePct >= 0 ? '+' : ''}{Number(changePct).toFixed(1)}%
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {filteredSectors.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)', fontSize: 11 }}>
+                Arama kriterine uygun hisse bulunamadı.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Live Financial & KAP News Feed Card */}
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
