@@ -531,12 +531,16 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   const pillars = analysis.pillars || {};
   const fund = pillars.fundamental || {};
+  const finPillar = fund;
   const valPillar = pillars.valuation || {};
   const mom = pillars.momentum || {};
   const tech = pillars.technical || {};
   const risk = pillars.risk || {};
   const beneish = analysis.beneish || {};
   const secVal = analysis.sector_valuation || {};
+  const piotroski = analysis.piotroski || pillars.fundamental?.piotroski || {
+    f_score: (fund.score != null ? (fund.score >= 80 ? 8 : fund.score >= 65 ? 7 : fund.score >= 50 ? 6 : 5) : 8)
+  };
 
   const quantScore = analysis?.quant_score != null ? Number(analysis.quant_score) : 85.4;
   const stockTheme = getHealthColorTheme(quantScore);
@@ -820,29 +824,29 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   // Factor Grades (Seeking Alpha Style A+ to F)
   const factorGrades = useMemo(() => {
-    const peVal = secVal.stock_pe != null ? Number(secVal.stock_pe) : (valPillar.pe != null ? Number(valPillar.pe) : 24.5);
-    const peSec = secVal.sector_pe != null ? Number(secVal.sector_pe) : 26.0;
+    const peVal = secVal?.stock_pe != null ? Number(secVal.stock_pe) : (valPillar?.pe != null ? Number(valPillar.pe) : 24.5);
+    const peSec = secVal?.sector_pe != null ? Number(secVal.sector_pe) : 26.0;
     const isPECheap = peVal <= peSec * 0.90;
     const isPEFair = peVal <= peSec * 1.15;
     let valGrade = isPECheap ? (marginOfSafety > 15 ? 'A+' : 'A') : (isPEFair ? 'B+' : (peVal > peSec * 1.35 ? 'D+' : 'C+'));
     let valScore = isPECheap ? 4.7 : (isPEFair ? 3.8 : 2.4);
 
-    const revGr = parseFloat(cData?.financials?.revenue_growth_yoy || cData?.revenue_growth || 26.5);
+    const revGr = parseFloat(cData?.financials?.revenue_growth_yoy || cData?.revenue_growth || finPillar?.revenue_growth_pct || 26.5);
     let grGrade = revGr >= 30 ? 'A+' : (revGr >= 20 ? 'A' : (revGr >= 12 ? 'B+' : (revGr >= 5 ? 'B' : 'C')));
     let grScore = revGr >= 30 ? 4.9 : (revGr >= 20 ? 4.5 : (revGr >= 12 ? 3.9 : 3.0));
 
-    const grossM = parseFloat(cData?.financials?.gross_margin || 45.0);
-    const roeVal = finPillar.roe != null ? Number(finPillar.roe) : 28.5;
+    const grossM = parseFloat(cData?.financials?.gross_margin || finPillar?.gross_margin_pct || 45.0);
+    const roeVal = finPillar?.roe != null ? Number(finPillar.roe) : (finPillar?.roe_pct != null ? Number(finPillar.roe_pct) : 28.5);
     let profGrade = (grossM > 55 || roeVal > 25) ? 'A+' : ((grossM > 40 || roeVal > 18) ? 'A' : (grossM > 25 ? 'B+' : 'C+'));
     let profScore = (grossM > 55 || roeVal > 25) ? 4.9 : ((grossM > 40 || roeVal > 18) ? 4.6 : 3.6);
 
-    const rsi = mom.rsi_14 != null ? Number(mom.rsi_14) : 56.4;
-    const smaDist = mom.dist_sma200_pct != null ? Number(mom.dist_sma200_pct) : 12.5;
+    const rsi = mom?.rsi_14 != null ? Number(mom.rsi_14) : 56.4;
+    const smaDist = mom?.dist_sma200_pct != null ? Number(mom.dist_sma200_pct) : 12.5;
     let momGrade = (smaDist > 15 && rsi >= 48 && rsi <= 70) ? 'A+' : ((smaDist > 0 && rsi >= 42) ? 'A-' : (smaDist < -10 ? 'D' : 'B-'));
     let momScore = (smaDist > 15 && rsi >= 48 && rsi <= 70) ? 4.8 : ((smaDist > 0 && rsi >= 42) ? 4.1 : 2.8);
 
-    const pScore = piotroski.f_score != null ? Number(piotroski.f_score) : 8;
-    const isBeneishOk = (beneish.m_score ?? -2.3) < -1.78;
+    const pScore = piotroski?.f_score != null ? Number(piotroski.f_score) : 8;
+    const isBeneishOk = (beneish?.m_score ?? -2.3) < -1.78;
     let safeGrade = (pScore >= 8 && isBeneishOk) ? 'A+' : ((pScore >= 6 && isBeneishOk) ? 'A' : (pScore >= 5 ? 'B' : 'C'));
     let safeScore = (pScore >= 8 && isBeneishOk) ? 4.9 : ((pScore >= 6 && isBeneishOk) ? 4.4 : 3.2);
 
@@ -879,17 +883,18 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   // Qualtrim Capital Efficiency & Rule of 40 Metrics
   const qualtrimMetrics = useMemo(() => {
-    const roic = Number((finPillar.roe != null ? finPillar.roe * 0.82 : 28.4).toFixed(1));
+    const rawRoe = finPillar?.roe != null ? Number(finPillar.roe) : (finPillar?.roe_pct != null ? Number(finPillar.roe_pct) : 34.6);
+    const roic = Number((rawRoe * 0.82).toFixed(1));
     const wacc = Number(discountRate.toFixed(1));
     const evaSpread = Number((roic - wacc).toFixed(1));
 
-    const revGrowth = parseFloat(cData?.financials?.revenue_growth_yoy || cData?.revenue_growth || 26.5);
-    const lastRev = (revenue[revenue.length - 1] || 100);
-    const lastFcf = (fcf[fcf.length - 1] || 25);
+    const revGrowth = parseFloat(cData?.financials?.revenue_growth_yoy || cData?.revenue_growth || finPillar?.revenue_growth_pct || 26.5);
+    const lastRev = (revenue && revenue.length > 0 && revenue[revenue.length - 1] != null && revenue[revenue.length - 1] !== 0) ? revenue[revenue.length - 1] : 100;
+    const lastFcf = (fcf && fcf.length > 0 && fcf[fcf.length - 1] != null) ? fcf[fcf.length - 1] : 25;
     const fcfMargin = Number(((lastFcf / lastRev) * 100).toFixed(1));
     const ruleOf40 = Number((revGrowth + fcfMargin).toFixed(1));
 
-    const lastNetInc = netIncome[netIncome.length - 1] || 20;
+    const lastNetInc = (netIncome && netIncome.length > 0 && netIncome[netIncome.length - 1] != null) ? netIncome[netIncome.length - 1] : 20;
     const fcfConversion = lastNetInc > 0 ? Math.round((lastFcf / lastNetInc) * 100) : 100;
 
     const isBist = currentTicker.endsWith('.IS') || isBistTicker(currentTicker);
@@ -910,11 +915,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   // Koyfin Relative Performance % Comparison Data (Normalized from 0.0%)
   const koyfinLabels = quarters;
   const koyfinChartData = useMemo(() => {
-    const pPrices = priceData.filter(p => p !== null);
+    const pPrices = (priceData || []).filter(p => p !== null);
     const baseStockPrice = pPrices.length > 0 ? pPrices[0] : (curPrice * 0.7);
-    const stockPctSeries = quarters.map((_, i) => {
-      const p = priceData[i] || curPrice;
-      return Number((((p - baseStockPrice) / baseStockPrice) * 100).toFixed(2));
+    const stockPctSeries = (quarters || []).map((_, i) => {
+      const p = (priceData && priceData[i] != null) ? priceData[i] : curPrice;
+      return baseStockPrice > 0 ? Number((((p - baseStockPrice) / baseStockPrice) * 100).toFixed(2)) : 0;
     });
 
     // Normalized benchmark curves for realistic institutional comparison
@@ -979,7 +984,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         }
       ]
     };
-  }, [quarters, priceData, curPrice, currentTicker]);
+  }, [quarters, priceData, curPrice, currentTicker, koyfinLabels]);
 
   const koyfinChartOptions = {
     responsive: true,
@@ -1887,15 +1892,16 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               </thead>
               <tbody>
                 {[
-                  factorGrades.valuation,
-                  factorGrades.growth,
-                  factorGrades.profitability,
-                  factorGrades.momentum,
-                  factorGrades.safety
-                ].map((f, idx) => {
-                  const isA = f.grade.startsWith('A');
-                  const isB = f.grade.startsWith('B');
-                  const isC = f.grade.startsWith('C');
+                  factorGrades?.valuation,
+                  factorGrades?.growth,
+                  factorGrades?.profitability,
+                  factorGrades?.momentum,
+                  factorGrades?.safety
+                ].filter(Boolean).map((f, idx) => {
+                  const gr = f?.grade || 'B';
+                  const isA = gr.startsWith('A');
+                  const isB = gr.startsWith('B');
+                  const isC = gr.startsWith('C');
                   const gradeColor = isA ? '#10b981' : (isB ? '#38bdf8' : (isC ? '#f59e0b' : '#ef4444'));
                   const gradeBg = isA ? 'rgba(16,185,129,0.15)' : (isB ? 'rgba(56,189,248,0.15)' : (isC ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)'));
 
@@ -1915,7 +1921,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                           border: `1px solid ${gradeColor}40`,
                           fontFamily: 'var(--font-mono)' 
                         }}>
-                          {f.grade}
+                          {gr}
                         </span>
                       </td>
                       <td style={{ textAlign: 'right', padding: '8px 4px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>
