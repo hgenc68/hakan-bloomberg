@@ -109,27 +109,33 @@ export const resolveEditionState = (manualThemeId = 'auto', customShift = 0) => 
 export const generateDailyScript = (
   slideId,
   theme,
-  quotes,
-  todayFullStr,
-  slotTitle,
+  quotes = {},
+  todayFullStr = '',
+  slotTitle = '',
   customAgenda = null,
   tone = 'analytical',
   portfolioContext = null
 ) => {
+  const safeQuotes = quotes && typeof quotes === 'object' ? quotes : {};
   const {
-    fmt,
+    fmt = (v, d = 2) => (Number(v) || 0).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d }),
     brent = { price: 80, change: 0 },
+    wti = { price: 75, change: 0 },
     gold = { price: 4200, change: 0 },
     silver = { price: 60, change: 0 },
     dxy = { price: 102.5, change: 0 },
     us10y = { price: 4.15, change: 0 },
+    us2y = { price: 4.42, change: 0 },
     sp500 = { price: 7650, change: 0 },
     nasdaq = { price: 30500, change: 0 },
+    dow = { price: 44000, change: 0 },
     bist100 = { price: 12200, change: 0 },
     btc = { price: 86500, change: 0 },
+    eth = { price: 2650, change: 0 },
+    total3 = { price: 750, change: 0 },
     currentUsdTry = 49.03,
     gramAltinTL = 6600
-  } = quotes;
+  } = safeQuotes;
 
   const isSPGreen = (sp500.change ?? 0) >= 0;
   const isNasdaqGreen = (nasdaq.change ?? 0) >= 0;

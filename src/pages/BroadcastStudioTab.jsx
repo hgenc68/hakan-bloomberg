@@ -50,7 +50,10 @@ import {
 } from '../data/broadcastEditionService';
 
 export default function BroadcastStudioTab({ isObsPopout = false }) {
-  const { marketQuotes, usdtry, fetchMarketData, portfolioSummary, currency } = useApp();
+  const { marketQuotes, usdtry, fetchMarketData, portfolioSummary, currentCurrency } = useApp();
+
+  // Cross-window synchronization for OBS Pop-out (4-Way Redundant Engine)
+  const syncChannelRef = useRef(null);
 
   // 3-Way Broadcast Tone State ('analytical', 'youtube', 'defensive')
   const [broadcastTone, setBroadcastTone] = useState(() => {
@@ -71,7 +74,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     } catch {}
   };
 
-  const isTRY = currency === 'TRY';
+  const isTRY = (currentCurrency || 'TRY') === 'TRY';
   const portfolioContext = useMemo(() => {
     if (!portfolioSummary) return null;
     return {
@@ -251,9 +254,6 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     updateAgenda(agendaForm);
     setIsAgendaModalOpen(false);
   };
-
-  // Cross-window synchronization for OBS Pop-out (4-Way Redundant Engine)
-  const syncChannelRef = useRef(null);
 
   const changeSlide1SubTab = (tab) => {
     setSlide1SubTab(tab);
@@ -515,7 +515,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   const [customScripts, setCustomScripts] = useState(() => {
     try {
       const saved = localStorage.getItem('broadcast_studio_custom_scripts_v3');
-      return saved ? JSON.parse(saved) : {};
+      const parsed = saved ? JSON.parse(saved) : {};
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
     } catch {
       return {};
     }
@@ -883,16 +884,18 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     dxy, vix, brent, wti, gold, silver, us10y, us2y, sp500, sp500Etf, nasdaq, nasdaqEtf, dow, dowEtf, bist100, btc, eth, total3, currentUsdTry, gramAltinTL, fgScore, fgLabel
   ]);
 
-  const activeSlide = slides[currentSlideIndex];
+  const activeSlide = slides[currentSlideIndex] || slides[0] || {};
 
   // Current active script (user override or default)
-  const activeScript = customScripts[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`] !== undefined 
-    ? customScripts[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`] 
-    : (customScripts[`${editionState.editionKey}_${activeSlide.id}`] !== undefined
-      ? customScripts[`${editionState.editionKey}_${activeSlide.id}`]
-      : (customScripts[activeSlide.id] !== undefined
-        ? customScripts[activeSlide.id]
-        : activeSlide.defaultScript));
+  const activeScript = (customScripts && activeSlide && activeSlide.id !== undefined)
+    ? (customScripts[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`] !== undefined 
+      ? customScripts[`${editionState.editionKey}_${broadcastTone}_${activeSlide.id}`] 
+      : (customScripts[`${editionState.editionKey}_${activeSlide.id}`] !== undefined
+        ? customScripts[`${editionState.editionKey}_${activeSlide.id}`]
+        : (customScripts[activeSlide.id] !== undefined
+          ? customScripts[activeSlide.id]
+          : (activeSlide.defaultScript || ''))))
+    : (activeSlide?.defaultScript || '');
 
   // Handle script edit
   const handleScriptChange = (val) => {
