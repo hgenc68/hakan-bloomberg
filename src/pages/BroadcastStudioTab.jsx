@@ -119,6 +119,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       pauseProb: 15,
       meetingDate: 'Gelecek FOMC',
       note: 'Piyasa yumuşak iniş senaryosunu ve 25 bp kademeli faiz patikasını fiyatlıyor.'
+    },
+    macroRates: {
+      tcmb: 37.00,
+      cpi: 31.51,
+      fed: '3.75 - 4.00'
     }
   };
 
@@ -135,7 +140,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           topic1: saved.topic1 || defaultAgenda.topic1,
           topic2: saved.topic2 || defaultAgenda.topic2,
           topic3: saved.topic3 || defaultAgenda.topic3,
-          fedRate: saved.fedRate || defaultAgenda.fedRate
+          fedRate: saved.fedRate || defaultAgenda.fedRate,
+          macroRates: saved.macroRates || defaultAgenda.macroRates
         };
       }
     } catch (e) {}
@@ -578,7 +584,14 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
               inflation: {
                 ...(prev?.inflation || {}),
                 ...(j.inflation || {}),
-                usa: j.truflation?.rate || j.inflation?.usa || prev?.inflation?.usa || 3.09
+                usa: j.truflation?.rate || j.inflation?.usa || prev?.inflation?.usa || 3.09,
+                turkey: j.inflation?.turkey || prev?.inflation?.turkey || 31.51
+              },
+              rates: {
+                ...(prev?.rates || {}),
+                ...(j.rates || {}),
+                tcmb: j.rates?.tcmb || prev?.rates?.tcmb || 37.00,
+                fed: j.rates?.fed || prev?.rates?.fed || '3.75 - 4.00'
               }
             }));
           }
@@ -716,7 +729,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       currentUsdTry,
       gramAltinTL,
       fgScore,
-      fgLabel
+      fgLabel,
+      tcmbRate: Number(customAgenda?.macroRates?.tcmb ?? pulse?.rates?.tcmb ?? 37.00),
+      turkeyCPI: Number(customAgenda?.macroRates?.cpi ?? pulse?.inflation?.turkey ?? 31.51),
+      fedRate: customAgenda?.macroRates?.fed || pulse?.rates?.fed || '3.75 - 4.00'
     };
 
     return [
@@ -763,10 +779,34 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         subtitle: variantIndex === 1 ? 'Fed -$60B/Ay Daralma, ECB €6.4T Bilanço ve TCMB Swap Hariç Rezervler' : (variantIndex === 2 ? 'Hizmet vs Temel Mal Katılığı ve Faiz İndirimi Yol Haritası' : 'Fed Faiz Patikası, Dezenflasyon Süreci ve TCMB Politika Faizi'),
         durationEst: '55 sn',
         metrics: [
-          { label: 'TCMB Politika Faizi', val: '%50.00', chg: 0, isUp: true, note: '+%0.62 Net Reel Faiz' },
-          { label: 'Fed Fonlama Faizi', val: '%4.75 - %5.00', chg: 0, isUp: true, note: 'Kasım: 25 Bp İndirim' },
-          { label: 'Türkiye TÜFE (Yıllık)', val: `%${pulse?.inflation?.turkey || 31.51}`, chg: -0.45, isUp: false, note: 'Dezenflasyon Patikası' },
-          { label: '5Y CDS Risk Primi', val: '216 bp', chg: -3.5, isUp: false, note: 'Düşüş Trendi' }
+          { 
+            label: 'TCMB Politika Faizi', 
+            val: `%${fmt(quotes.tcmbRate, 2)}`, 
+            chg: 0, 
+            isUp: true, 
+            note: `+${fmt(quotes.tcmbRate - quotes.turkeyCPI, 2)} Puan Reel Faiz` 
+          },
+          { 
+            label: 'Fed Fonlama Faizi', 
+            val: `%${quotes.fedRate}`, 
+            chg: 0, 
+            isUp: true, 
+            note: 'Faiz İndirim Döngüsü' 
+          },
+          { 
+            label: 'Türkiye TÜFE (Yıllık)', 
+            val: `%${fmt(quotes.turkeyCPI, 2)}`, 
+            chg: -0.45, 
+            isUp: false, 
+            note: 'Dezenflasyon Patikası' 
+          },
+          { 
+            label: '5Y CDS Risk Primi', 
+            val: '216 bp', 
+            chg: -3.5, 
+            isUp: false, 
+            note: 'Düşüş Trendi' 
+          }
         ],
         defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
       },
@@ -2073,9 +2113,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           <tbody>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(16, 185, 129, 0.08)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 800, color: '#34d399' }}>🇹🇷 TCMB (Türkiye)</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%37.00</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%31.51</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+5.49 Puan</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%{fmt(quotes.tcmbRate, 2)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%{fmt(quotes.turkeyCPI, 2)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+{fmt(quotes.tcmbRate - quotes.turkeyCPI, 2)} Puan</td>
                             </tr>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇺🇸 Fed (ABD)</td>
@@ -2505,7 +2545,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Net TL Carry Trade Üstünlüğü</div>
-                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%37 politika faizi ve kontrollü kur oynaklığı TL'yi gelişmekte olan piyasalar arasında 1 numara yapıyor.</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%{quotes.tcmbRate || 37} politika faizi ve kontrollü kur oynaklığı TL'yi gelişmekte olan piyasalar arasında 1 numara yapıyor.</div>
                           </div>
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -4193,6 +4233,42 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                   placeholder="Fed piyasa yorumu ve strateji notu"
                   style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1', fontSize: 10.5, padding: '6px 10px', borderRadius: 5, width: '100%', resize: 'vertical' }}
                 />
+              </div>
+
+              {/* TCMB & Türkiye Makro & Reel Faiz Ayarları */}
+              <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 6, padding: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#60a5fa', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>🇹🇷 Türkiye Makro & Faiz Parametreleri</span>
+                  <span style={{ fontSize: 8.5, color: '#93c5fd' }}>Tüm slayt ve prompter metinlerini anında günceller</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>TCMB Politika Faizi (%)</div>
+                    <input
+                      type="number"
+                      step="0.25"
+                      value={agendaForm?.macroRates?.tcmb ?? 37.00}
+                      onChange={(e) => setAgendaForm({ ...agendaForm, macroRates: { ...(agendaForm.macroRates || {}), tcmb: Number(e.target.value) } })}
+                      style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(59,130,246,0.3)', color: '#34d399', fontSize: 11, fontWeight: 800, padding: '5px 8px', borderRadius: 4, width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>TÜİK Yıllık TÜFE (%)</div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={agendaForm?.macroRates?.cpi ?? 31.51}
+                      onChange={(e) => setAgendaForm({ ...agendaForm, macroRates: { ...(agendaForm.macroRates || {}), cpi: Number(e.target.value) } })}
+                      style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa', fontSize: 11, fontWeight: 800, padding: '5px 8px', borderRadius: 4, width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Net Reel Getiri</div>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 4, padding: '5px 8px', color: '#34d399', fontSize: 11, fontWeight: 800, textAlign: 'center' }}>
+                      +{(Number(agendaForm?.macroRates?.tcmb ?? 37.00) - Number(agendaForm?.macroRates?.cpi ?? 31.51)).toFixed(2)} Puan
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

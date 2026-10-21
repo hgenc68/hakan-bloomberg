@@ -453,7 +453,7 @@ const UPCOMING_MACRO_CATALYSTS = [
     daysLeft: 17,
     status: 'Yüksek Etki (Tier 1)',
     expectation: '25 bps Faiz İndirimi (%88 Olasılık)',
-    prev: '%4.75 - %5.00',
+    prev: '%3.75 - %4.00',
     impact: 'Küresel Likidite, Altın & Nasdaq Boğası'
   },
   {
@@ -482,8 +482,8 @@ const UPCOMING_MACRO_CATALYSTS = [
     time: '14:00 TSİ',
     daysLeft: 31,
     status: 'BIST & TL Zırhı',
-    expectation: 'Politika Faizi %50 Sabit / Aralık İndirim Sinyali',
-    prev: '%50.0',
+    expectation: 'Politika Faizi %37.00 Sabit / Ölçülü Gevşeme Patikası',
+    prev: '%37.00',
     impact: 'BIST 100 & Para Piyasası Fonu Getiri Patikası'
   }
 ];
@@ -555,7 +555,14 @@ export default function MarketPulseTab({ onSelectStock }) {
               inflation: {
                 ...(prev.inflation || {}),
                 ...(j.inflation || {}),
-                usa: j.truflation?.rate ?? j.inflation?.usa ?? prev.inflation?.usa ?? 3.09
+                usa: j.truflation?.rate ?? j.inflation?.usa ?? prev.inflation?.usa ?? 3.09,
+                turkey: j.inflation?.turkey ?? prev.inflation?.turkey ?? 31.51
+              },
+              rates: {
+                ...(prev.rates || {}),
+                ...(j.rates || {}),
+                tcmb: j.rates?.tcmb ?? prev?.rates?.tcmb ?? 37.00,
+                fed: j.rates?.fed ?? prev?.rates?.fed ?? '3.75 - 4.00'
               }
             }));
           }

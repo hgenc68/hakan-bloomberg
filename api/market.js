@@ -908,6 +908,12 @@ export default async function handler(req, res) {
           usa: truflation?.rate || 3.09,
           turkey: 31.51
         },
+        rates: {
+          tcmb: 37.00,
+          fed: '3.75 - 4.00',
+          fed_text: 'FOMC: %3.75 - %4.00 • Kademeli İndirim',
+          kur_kalkani: 82.4
+        },
         news,
         equities,
         timestamp: Date.now()
