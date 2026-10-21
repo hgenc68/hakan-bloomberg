@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Globe, TrendingUp, TrendingDown, Activity, AlertTriangle, Newspaper, Flame, ShieldCheck, RefreshCw, ExternalLink, LayoutGrid, PieChart, Layers, ArrowUpRight, Search } from 'lucide-react';
+import { Globe, TrendingUp, TrendingDown, Activity, AlertTriangle, Newspaper, Flame, ShieldCheck, RefreshCw, ExternalLink, LayoutGrid, PieChart, Layers, ArrowUpRight, Search, Calendar, Clock, DollarSign, Zap } from 'lucide-react';
 import macroPulseData from '../data/macroPulse.json';
 
 // Finviz Market Heatmap Dataset (S&P 500 & BIST 100 Blue-Chips & Sectors)
@@ -306,9 +306,192 @@ const EXPOSURE_TIERS = [
   }
 ];
 
+// Institutional Earnings & Macro Catalyst Calendar Data (Quartr & Koyfin style)
+const UPCOMING_EARNINGS_CALENDAR = [
+  {
+    ticker: 'VRT',
+    name: 'Vertiv Holdings Co',
+    market: 'US',
+    date: '23 Ekim 2026',
+    time: 'Piyasa Açılışı Öncesi (BMO)',
+    daysLeft: 2,
+    badge: 'red',
+    expectedEPS: '$0.69',
+    prevEPS: '$0.52',
+    expectedRev: '$2.05B',
+    beatRate: '%88',
+    consensus: 'Güçlü Al',
+    catalyst: 'AI Veri Merkezi Sıvı Soğutma Siparişleri'
+  },
+  {
+    ticker: 'AMZN',
+    name: 'Amazon.com Inc',
+    market: 'US',
+    date: '24 Ekim 2026',
+    time: 'Piyasa Kapanışı Sonrası (AMC)',
+    daysLeft: 3,
+    badge: 'amber',
+    expectedEPS: '$1.14',
+    prevEPS: '$0.94',
+    expectedRev: '$157.2B',
+    beatRate: '%80',
+    consensus: 'Güçlü Al',
+    catalyst: 'AWS Bulut & Yapay Zeka Hızlanması'
+  },
+  {
+    ticker: 'SOFI',
+    name: 'SoFi Technologies',
+    market: 'US',
+    date: '29 Ekim 2026',
+    time: 'Piyasa Açılışı Öncesi (BMO)',
+    daysLeft: 8,
+    badge: 'cyan',
+    expectedEPS: '$0.04',
+    prevEPS: '$0.01',
+    expectedRev: '$630M',
+    beatRate: '%100',
+    consensus: 'Al',
+    catalyst: 'GAAP Net Kârlılık & Kredi Hacmi Büyümesi'
+  },
+  {
+    ticker: 'MSFT',
+    name: 'Microsoft Corp',
+    market: 'US',
+    date: '30 Ekim 2026',
+    time: 'Piyasa Kapanışı Sonrası (AMC)',
+    daysLeft: 9,
+    badge: 'cyan',
+    expectedEPS: '$3.10',
+    prevEPS: '$2.99',
+    expectedRev: '$64.5B',
+    beatRate: '%90',
+    consensus: 'Güçlü Al',
+    catalyst: 'Azure Cloud & Copilot AI Monetizasyonu'
+  },
+  {
+    ticker: 'AAPL',
+    name: 'Apple Inc',
+    market: 'US',
+    date: '31 Ekim 2026',
+    time: 'Piyasa Kapanışı Sonrası (AMC)',
+    daysLeft: 10,
+    badge: 'cyan',
+    expectedEPS: '$1.55',
+    prevEPS: '$1.46',
+    expectedRev: '$94.2B',
+    beatRate: '%85',
+    consensus: 'Al',
+    catalyst: 'iPhone 16 / Apple Intelligence Talebi'
+  },
+  {
+    ticker: 'THYAO',
+    name: 'Türk Hava Yolları',
+    market: 'BIST',
+    date: '04 Kasım 2026',
+    time: 'KAP Bildirimi (Piyasa Kapanışı)',
+    daysLeft: 14,
+    badge: 'emerald',
+    expectedEPS: '₺35.20',
+    prevEPS: '₺28.40',
+    expectedRev: '₺215.0B',
+    beatRate: '%75',
+    consensus: 'Güçlü Al',
+    catalyst: 'Kargo & Yolcu Gelirleri Rekor Kâr'
+  },
+  {
+    ticker: 'TUPRS',
+    name: 'Tüpraş',
+    market: 'BIST',
+    date: '06 Kasım 2026',
+    time: 'KAP Bildirimi',
+    daysLeft: 16,
+    badge: 'emerald',
+    expectedEPS: '₺7.40',
+    prevEPS: '₺6.80',
+    expectedRev: '₺165.0B',
+    beatRate: '%80',
+    consensus: 'Al',
+    catalyst: 'Rafineri Marjları & Yüksek Temettü Potansiyeli'
+  },
+  {
+    ticker: 'BYDNR',
+    name: 'Baydöner Restoranları',
+    market: 'BIST',
+    date: '08 Kasım 2026',
+    time: 'KAP Bildirimi',
+    daysLeft: 18,
+    badge: 'emerald',
+    expectedEPS: '₺1.85',
+    prevEPS: '₺1.20',
+    expectedRev: '₺1.45B',
+    beatRate: '%70',
+    consensus: 'Al',
+    catalyst: 'Şube Genişlemesi & Enflasyon Muhasebesi Etkisi'
+  },
+  {
+    ticker: 'NVDA',
+    name: 'NVIDIA Corporation',
+    market: 'US',
+    date: '20 Kasım 2026',
+    time: 'Piyasa Kapanışı Sonrası (AMC)',
+    daysLeft: 30,
+    badge: 'gold',
+    expectedEPS: '$0.78',
+    prevEPS: '$0.68',
+    expectedRev: '$33.2B',
+    beatRate: '%95',
+    consensus: 'Güçlü Al',
+    catalyst: 'Blackwell Çip Sevkiyatı & Bulut Harcamaları'
+  }
+];
+
+const UPCOMING_MACRO_CATALYSTS = [
+  {
+    event: 'Fed FOMC Faiz Kararı & Basın Toplantısı',
+    date: '07 Kasım 2026',
+    time: '21:00 TSİ',
+    daysLeft: 17,
+    status: 'Yüksek Etki (Tier 1)',
+    expectation: '25 bps Faiz İndirimi (%88 Olasılık)',
+    prev: '%4.75 - %5.00',
+    impact: 'Küresel Likidite, Altın & Nasdaq Boğası'
+  },
+  {
+    event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik',
+    date: '01 Kasım 2026',
+    time: '15:30 TSİ',
+    daysLeft: 11,
+    status: 'Kritik İstihdam',
+    expectation: '140K Yeni İstihdam (İşsizlik %4.1)',
+    prev: '254K',
+    impact: 'Resesyon Risk Fiyatlaması'
+  },
+  {
+    event: 'ABD TÜFE (CPI) Enflasyon Raporu',
+    date: '13 Kasım 2026',
+    time: '16:30 TSİ',
+    daysLeft: 23,
+    status: 'Makro Enflasyon',
+    expectation: 'Yıllık %2.3 (Çekirdek: %3.2)',
+    prev: '%2.4',
+    impact: 'Tahvil Getirileri & Dolar Endeksi (DXY)'
+  },
+  {
+    event: 'TCMB PPK Faiz Kararı',
+    date: '21 Kasım 2026',
+    time: '14:00 TSİ',
+    daysLeft: 31,
+    status: 'BIST & TL Zırhı',
+    expectation: 'Politika Faizi %50 Sabit / Aralık İndirim Sinyali',
+    prev: '%50.0',
+    impact: 'BIST 100 & Para Piyasası Fonu Getiri Patikası'
+  }
+];
+
 export default function MarketPulseTab({ onSelectStock }) {
   const { marketQuotes, usdtry, currentCurrency, portfolioSummary } = useApp();
   const [pulse, setPulse] = useState(macroPulseData);
+  const [calendarTab, setCalendarTab] = useState('earnings'); // 'earnings' or 'macro'
   const [heatmapMarket, setHeatmapMarket] = useState('sp500'); // 'sp500', 'bist100', 'portfolio'
   const [heatmapSearch, setHeatmapSearch] = useState('');
   const [newsItems, setNewsItems] = useState(() => {
@@ -1109,6 +1292,148 @@ export default function MarketPulseTab({ onSelectStock }) {
           </div>
         );
       })()}
+
+      {/* ========================================================================= */}
+      {/* 📅 BİLANÇO & KATALİZÖR TAKVİMİ (Quartr & Koyfin Usulü)                     */}
+      {/* ========================================================================= */}
+      <div className="card" style={{ padding: 18, background: '#070a13', border: '1px solid var(--border)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(56,189,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Calendar size={20} className="text-cyan" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>BİLANÇO & MAKRO KATALİZÖR TAKVİMİ</span>
+                <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Quartr & Koyfin Hub</span>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Şirket Bilanço Açıklama Günleri, Konsensüs Beklentileri & Fed / TCMB Toplantıları
+              </span>
+            </div>
+          </div>
+
+          {/* Sub-Tabs: Şirket Bilançoları vs Makro Katalizörler */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              className={`chip-btn ${calendarTab === 'earnings' ? 'active' : ''}`}
+              onClick={() => setCalendarTab('earnings')}
+              style={{ fontSize: 10.5, padding: '4px 10px' }}
+            >
+              🏢 Şirket Bilançoları ({UPCOMING_EARNINGS_CALENDAR.length})
+            </button>
+            <button
+              type="button"
+              className={`chip-btn ${calendarTab === 'macro' ? 'active' : ''}`}
+              onClick={() => setCalendarTab('macro')}
+              style={{ fontSize: 10.5, padding: '4px 10px' }}
+            >
+              🏛️ Fed & TCMB Makro ({UPCOMING_MACRO_CATALYSTS.length})
+            </button>
+          </div>
+        </div>
+
+        {calendarTab === 'earnings' ? (
+          /* Earnings Calendar Table */
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: 10 }}>
+                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>HİSSE & ŞİRKET</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>BİLANÇO TARİHİ & SAATİ</th>
+                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>GERİ SAYIM</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>BEKLENEN EPS</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>BEKLENEN CİRO</th>
+                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>KONSENSÜS</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>ANA KATALİZÖR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {UPCOMING_EARNINGS_CALENDAR.map((item, idx) => {
+                  const daysText = item.daysLeft === 0 ? 'Bugün!' : (item.daysLeft === 1 ? 'Yarın!' : `${item.daysLeft} Gün Kaldı`);
+                  const daysBadge = item.daysLeft <= 3 ? 'red' : (item.daysLeft <= 10 ? 'amber' : 'cyan');
+
+                  return (
+                    <tr
+                      key={idx}
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s ease' }}
+                      onClick={() => onSelectStock && onSelectStock(item.ticker)}
+                      title="Tıkla ve Tekil Hisse Analizine Git"
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '8px 8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                            {item.ticker}
+                          </span>
+                          <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: item.market === 'BIST' ? 'rgba(59,130,246,0.15)' : 'rgba(6,182,212,0.15)', color: item.market === 'BIST' ? '#3b82f6' : '#06b6d4', fontWeight: 700 }}>
+                            {item.market}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.name}</div>
+                      </td>
+                      <td style={{ padding: '8px 8px', color: '#e2e8f0' }}>
+                        <div style={{ fontWeight: 700 }}>{item.date}</div>
+                        <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>{item.time}</div>
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '8px 8px' }}>
+                        <span className={`nav-badge ${daysBadge}`} style={{ fontSize: 9.5, padding: '2px 8px', fontWeight: 800 }}>
+                          {daysText}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>
+                        {item.expectedEPS}
+                        <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Önceki: {item.prevEPS}</div>
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', color: 'var(--cyan)', fontWeight: 700 }}>
+                        {item.expectedRev}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '8px 8px' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--emerald)' }}>
+                          {item.consensus}
+                        </span>
+                        <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Tarihsel Beat: {item.beatRate}</div>
+                      </td>
+                      <td style={{ padding: '8px 8px', fontSize: 10.5, color: '#94a3b8' }}>
+                        {item.catalyst}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* Macro Catalysts Grid */
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+            {UPCOMING_MACRO_CATALYSTS.map((m, idx) => (
+              <div key={idx} style={{ background: '#090d18', padding: 14, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <span className="nav-badge cyan" style={{ fontSize: 9 }}>{m.status}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--amber)', fontFamily: 'var(--font-mono)' }}>
+                    ⏱️ {m.daysLeft} Gün Kaldı
+                  </span>
+                </div>
+                <div style={{ fontWeight: 800, fontSize: 12.5, color: '#fff', marginBottom: 4 }}>
+                  {m.event}
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 8 }}>
+                  📅 Tarih: <strong style={{ color: '#e2e8f0' }}>{m.date} ({m.time})</strong>
+                </div>
+                <div style={{ background: '#0b101c', padding: '8px 10px', borderRadius: 4, fontSize: 10.5, marginBottom: 8 }}>
+                  <div>Beklenti: <strong style={{ color: 'var(--emerald)' }}>{m.expectation}</strong></div>
+                  <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>Önceki Seviye: {m.prev}</div>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--cyan)' }}>
+                  🎯 Etki: <strong>{m.impact}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Live Financial & KAP News Feed Card */}
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>

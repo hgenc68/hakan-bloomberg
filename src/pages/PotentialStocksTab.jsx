@@ -62,6 +62,32 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
     return map;
   }, [stocks, holdings, portfolioSummary, allocation, usdtry]);
 
+  // Smart Dip Hunter Algorithm Map (Laddered Entry & Value Detection)
+  const dipHunterMap = useMemo(() => {
+    const map = {};
+    stocks.forEach(s => {
+      const p = Number(marketQuotes[s.ticker]?.price || s.price) || 50;
+      const target = Number(s.target_price) || (p * 1.5);
+      const upsidePct = Math.round(((target - p) / p) * 100);
+      const dist52w = Number(s.dist_52w_high) || -20;
+      const isDip = dist52w <= -15 || upsidePct >= 40;
+
+      const t1 = p;
+      const t2 = Math.round(p * 0.92 * 100) / 100;
+      const t3 = Math.round(p * 0.85 * 100) / 100;
+
+      map[s.ticker] = {
+        isDip,
+        upsidePct,
+        dist52w,
+        t1,
+        t2,
+        t3
+      };
+    });
+    return map;
+  }, [stocks, marketQuotes]);
+
   // Filter logic
   const filteredStocks = useMemo(() => {
     return stocks.filter(s => {
@@ -74,17 +100,20 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
         s.thesis.toLowerCase().includes(q);
 
       // Category
-      const matchCat = selectedCategory === 'all' || s.category === selectedCategory;
+      const matchCat = selectedCategory === 'all' 
+        ? true 
+        : (selectedCategory === 'dip_hunter' ? dipHunterMap[s.ticker]?.isDip : s.category === selectedCategory);
 
       // Conviction
       const matchConv = selectedConviction === 'all' || s.conviction === selectedConviction;
 
       return matchSearch && matchCat && matchConv;
     });
-  }, [stocks, search, selectedCategory, selectedConviction]);
+  }, [stocks, search, selectedCategory, selectedConviction, dipHunterMap]);
 
   const categories = [
     { id: 'all', label: 'Tüm Potansiyeller', count: stocks.length, icon: '🌐' },
+    { id: 'dip_hunter', label: '🎯 Dip Avcısı (Kelepir)', count: Object.values(dipHunterMap).filter(v => v.isDip).length, icon: '🎯' },
     { id: 'ai_hardware', label: 'AI Altyapı & Soğutma', count: stocks.filter(s => s.category === 'ai_hardware').length, icon: '⚡' },
     { id: 'semiconductor', label: 'Çip & HBM Ekipmanı', count: stocks.filter(s => s.category === 'semiconductor').length, icon: '🔬' },
     { id: 'biotech', label: 'Biyoteknoloji & AI İlaç', count: stocks.filter(s => s.category === 'biotech').length, icon: '🧬' },
@@ -320,6 +349,32 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
         ))}
       </div>
 
+      {/* 🎯 DİP AVCISI: KADEMELİ ALIM STRATEJİ REHBERİ */}
+      {selectedCategory === 'dip_hunter' && (
+        <div className="card" style={{ padding: 16, background: '#070a13', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <Target size={20} className="text-emerald" />
+            <div style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc' }}>
+              🎯 DİP AVCISI: KADEMELİ ALIM & ASİMETRİK FIRSAT ALGORİTMASI
+            </div>
+          </div>
+          <p style={{ fontSize: 11, color: '#cbd5e1', lineHeight: 1.5, marginBottom: 10 }}>
+            Bu listedeki şirketler, 52 haftalık zirvelerinden %15-%40 arası düzeltme yemiş ancak güçlü bilanço ve tekel konumu bozulmamış hisselerdir. Tek kurşunla girmek yerine <strong>3 Kademeli Alım Metodu</strong> ile maliyet tabanı oluşturulması önerilir.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, fontSize: 11 }}>
+            <div style={{ background: '#0a0e1a', padding: 8, borderRadius: 4, borderLeft: '3px solid var(--emerald)' }}>
+              1. Kademe (%35 Bütçe): <strong>Mevcut Piyasa Fiyatı</strong> (İlk Keşif Girişi)
+            </div>
+            <div style={{ background: '#0a0e1a', padding: 8, borderRadius: 4, borderLeft: '3px solid var(--cyan)' }}>
+              2. Kademe (%40 Bütçe): <strong>-%8 Düzeltme Seviyesi</strong> (Güçlü Ekleme)
+            </div>
+            <div style={{ background: '#0a0e1a', padding: 8, borderRadius: 4, borderLeft: '3px solid var(--gold)' }}>
+              3. Kademe (%25 Bütçe): <strong>-%15 Panik Tabanı</strong> (Kelepir Kurşunu)
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MAIN CONTENT AREA */}
       {viewMode === 'cards' ? (
         /* ================= CARDS VIEW ================= */
@@ -459,6 +514,27 @@ export default function PotentialStocksTab({ onOpenAddModal, onSelectStockForAna
                     </span>
                   </div>
                 </div>
+
+                {/* Dip Hunter 3-Tranche Ladder Pill */}
+                {dipHunterMap[stock.ticker]?.isDip && (
+                  <div style={{ background: '#0a0e1a', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '7px 10px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: 10.5 }}>
+                    <span style={{ fontWeight: 800, color: 'var(--emerald)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Target size={13} />
+                      <span>Kademeli Alım Hedefleri:</span>
+                    </span>
+                    <span style={{ color: '#fff' }}>
+                      1. Kademe (%35): <strong style={{ color: '#38bdf8' }}>${Number(dipHunterMap[stock.ticker].t1).toFixed(2)}</strong>
+                    </span>
+                    <span style={{ color: 'var(--text-muted)' }}>•</span>
+                    <span style={{ color: '#fff' }}>
+                      2. Kademe (%40): <strong style={{ color: '#34d399' }}>${Number(dipHunterMap[stock.ticker].t2).toFixed(2)}</strong>
+                    </span>
+                    <span style={{ color: 'var(--text-muted)' }}>•</span>
+                    <span style={{ color: '#fff' }}>
+                      3. Kademe (%25): <strong style={{ color: '#fbbf24' }}>${Number(dipHunterMap[stock.ticker].t3).toFixed(2)}</strong>
+                    </span>
+                  </div>
+                )}
 
                 {/* NVDA / MU Analogy Highlight Callout */}
                 <div style={{ 

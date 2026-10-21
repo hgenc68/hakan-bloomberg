@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Shield, Plus, DollarSign, Award, Trash2, AlertTriangle, ShieldCheck, TrendingUp, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Plus, DollarSign, Award, Trash2, AlertTriangle, ShieldCheck, TrendingUp, Zap, ChevronDown, ChevronUp, Sliders, Activity } from 'lucide-react';
 import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS, getMacroAssetClass } from '../data/sectorConfig';
 
 export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCashModal }) {
@@ -55,6 +55,107 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCa
   const totalGoldReturnPct = totalGoldCostTRY > 0 ? (totalGoldProfitTRY / totalGoldCostTRY) * 100 : 0;
   const totalShieldValTRY = totalGoldValTRY + ppfBalTRY;
   const totalLiquidBufferTRY = totalShieldValTRY + totalFreeCashTRY;
+
+  // Bloomberg "PORT" Interactive Stress-Testing & Crisis Simulator
+  const [activeScenario, setActiveScenario] = useState('fx_shock');
+  const [customFxChange, setCustomFxChange] = useState(15);
+  const [customUsChange, setCustomUsChange] = useState(-5);
+  const [customBistChange, setCustomBistChange] = useState(8);
+  const [customGoldChange, setCustomGoldChange] = useState(10);
+
+  const scenarioResult = useMemo(() => {
+    let fxPct = 0;
+    let usPct = 0;
+    let bistExpPct = 0;
+    let bistDomPct = 0;
+    let goldPct = 0;
+    let cryptoPct = 0;
+    let scenarioName = '';
+    let scenarioDesc = '';
+    let scenarioBadge = 'red';
+
+    if (activeScenario === 'fx_shock') {
+      scenarioName = '🔴 Dolar/TL Şoku & Ani Devalüasyon (+%15 Kur Sıçraması)';
+      scenarioDesc = 'Dolar/TL kuru aniden %15 sıçradığında; portföyünüzdeki ABD hisseleri, kripto ve fiziki/fon altın doğrudan %15 TL kârı üretir. BIST ihracatçıları %10 ralli yaparken iç pazar baskılanır.';
+      scenarioBadge = 'red';
+      fxPct = 15;
+      usPct = 15;
+      cryptoPct = 15;
+      goldPct = 15;
+      bistExpPct = 10;
+      bistDomPct = -4;
+    } else if (activeScenario === 'us_crash') {
+      scenarioName = '🔵 Wall Street Teknoloji Düzeltmesi (S&P 500 -%10, Nasdaq -%15)';
+      scenarioDesc = 'Global riskten kaçış başladığında ABD büyüme hisseleri geri çekilir. Gram Altın güvenli liman talebiyle +%5 primlenirken PPF ve serbest nakit tamponu anaparanızı kalkan gibi korur.';
+      scenarioBadge = 'cyan';
+      fxPct = 2;
+      usPct = -12;
+      cryptoPct = -16;
+      goldPct = 5;
+      bistExpPct = -4;
+      bistDomPct = -2;
+    } else if (activeScenario === 'rate_cut') {
+      scenarioName = '🟢 TCMB Faiz İndirim Döngüsü (-500 bps Faiz İndirimi & BIST Boğası)';
+      scenarioDesc = 'Merkez Bankası faiz indirim döngüsüne girdiğinde BIST hisseleri %18-%22 ralli yapar. Para piyasası fonu getirisi hafif dengelenirken borsa pozisyonları patlama yapar.';
+      scenarioBadge = 'emerald';
+      fxPct = 3;
+      usPct = 3;
+      cryptoPct = 5;
+      goldPct = 4;
+      bistExpPct = 16;
+      bistDomPct = 22;
+    } else if (activeScenario === 'stagflation') {
+      scenarioName = '🟡 Jeopolitik Kriz & Emtia / Altın Patlaması (+%20 Ons Altın)';
+      scenarioDesc = 'Hürmüz / jeopolitik şoklarla petrol ve altın fırlar; hisse piyasaları baskılansa dahi portföyünüzdeki Gram Altın ve kur kalkanı tüm portföyü yeşilde tutar.';
+      scenarioBadge = 'amber';
+      fxPct = 8;
+      usPct = -4;
+      cryptoPct = 2;
+      goldPct = 20;
+      bistExpPct = 3;
+      bistDomPct = -6;
+    } else {
+      scenarioName = '⚙️ Özel Tanımlı Piyasa Simülasyonu (Custom Sliders)';
+      scenarioDesc = 'Kendi belirlediğiniz kur, ABD hisse, BIST ve altın değişimlerine göre portföyün anlık simülasyonu.';
+      scenarioBadge = 'gold';
+      fxPct = customFxChange;
+      usPct = customUsChange + customFxChange;
+      cryptoPct = customUsChange + customFxChange;
+      goldPct = customGoldChange + customFxChange;
+      bistExpPct = customBistChange + (customFxChange * 0.4);
+      bistDomPct = customBistChange;
+    }
+
+    const simUS = catTotalsTRY.us_equities_etf * (1 + usPct / 100);
+    const simBistExp = catTotalsTRY.bist_export * (1 + bistExpPct / 100);
+    const simBistDom = catTotalsTRY.bist_domestic * (1 + bistDomPct / 100);
+    const simGold = catTotalsTRY.gold_metals * (1 + goldPct / 100);
+    const simCrypto = catTotalsTRY.crypto * (1 + cryptoPct / 100);
+    const simCash = catTotalsTRY.cash_ppf;
+
+    const simTotalTRY = simUS + simBistExp + simBistDom + simGold + simCrypto + simCash;
+    const netTRYChange = simTotalTRY - totalValTRY;
+    const netPctChange = totalValTRY > 0 ? (netTRYChange / totalValTRY) * 100 : 0;
+    const simTotalUSD = (usdtry > 0 && (1 + fxPct / 100) > 0) ? (simTotalTRY / (usdtry * (1 + fxPct / 100))) : totalValUSD;
+    const netUSDChange = simTotalUSD - totalValUSD;
+    const netUSDPct = totalValUSD > 0 ? (netUSDChange / totalValUSD) * 100 : 0;
+
+    return {
+      scenarioName,
+      scenarioDesc,
+      scenarioBadge,
+      simTotalTRY,
+      netTRYChange,
+      netPctChange,
+      simTotalUSD,
+      netUSDChange,
+      netUSDPct,
+      fxPct,
+      goldPct,
+      usPct,
+      bistExpPct
+    };
+  }, [activeScenario, customFxChange, customUsChange, customBistChange, customGoldChange, catTotalsTRY, totalValTRY, totalValUSD, usdtry]);
 
   const catConfig = [
     { key: 'us_equities_etf', label: 'ABD Hisse & Global ETF', color: '#00e5ff', target: 35.0, coef: 1.0 },
@@ -620,7 +721,190 @@ export default function ShieldTab({ onOpenAddGoldModal, onOpenPpfModal, onOpenCa
         </div>
       </div>
 
-      {/* Gold Purchases Table */}
+      {/* ========================================================================= */}
+      {/* ⚡ BLOOMBERG "PORT" STRES TESTİ & SENARYO ANALİZ SİMÜLATÖRÜ              */}
+      {/* ========================================================================= */}
+      <div className="card" style={{ padding: 20, background: '#070a13', border: '1px solid rgba(0, 229, 255, 0.25)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 8, background: 'rgba(0,229,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Zap size={22} className="text-cyan" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 14, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>BLOOMBERG "PORT" STRES TESTİ & KRİZ SİMÜLATÖRÜ</span>
+                <span className={`nav-badge ${scenarioResult.scenarioBadge}`} style={{ fontSize: 9.5 }}>Hedge Fund Engine</span>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Ekonomik Şok, Kur Devalüasyonu ve Küresel Çekilme Senaryolarında Portföy Tepkisi
+              </span>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Mevcut Portföy: <strong style={{ color: '#fff' }}>₺{totalValTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong>
+            <span style={{ margin: '0 6px' }}>•</span>
+            <strong style={{ color: 'var(--cyan)' }}>${totalValUSD.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong>
+          </div>
+        </div>
+
+        {/* 4 Quick Preset Scenario Buttons */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <button
+            type="button"
+            className={`chip-btn ${activeScenario === 'fx_shock' ? 'active' : ''}`}
+            onClick={() => setActiveScenario('fx_shock')}
+            style={{ fontSize: 11, padding: '6px 12px', flex: 1, minWidth: 160 }}
+          >
+            🔴 Dolar/TL Şoku (+%15)
+          </button>
+          <button
+            type="button"
+            className={`chip-btn ${activeScenario === 'us_crash' ? 'active' : ''}`}
+            onClick={() => setActiveScenario('us_crash')}
+            style={{ fontSize: 11, padding: '6px 12px', flex: 1, minWidth: 160 }}
+          >
+            🔵 Wall St Düzeltmesi (-%10)
+          </button>
+          <button
+            type="button"
+            className={`chip-btn ${activeScenario === 'rate_cut' ? 'active' : ''}`}
+            onClick={() => setActiveScenario('rate_cut')}
+            style={{ fontSize: 11, padding: '6px 12px', flex: 1, minWidth: 160 }}
+          >
+            🟢 Faiz İndirimi (BIST Rallisi)
+          </button>
+          <button
+            type="button"
+            className={`chip-btn ${activeScenario === 'stagflation' ? 'active' : ''}`}
+            onClick={() => setActiveScenario('stagflation')}
+            style={{ fontSize: 11, padding: '6px 12px', flex: 1, minWidth: 160 }}
+          >
+            🟡 Emtia / Altın Patlaması (+%20)
+          </button>
+          <button
+            type="button"
+            className={`chip-btn ${activeScenario === 'custom' ? 'active' : ''}`}
+            onClick={() => setActiveScenario('custom')}
+            style={{ fontSize: 11, padding: '6px 12px' }}
+          >
+            ⚙️ Özel Slider
+          </button>
+        </div>
+
+        {/* Custom Sliders if activeScenario === 'custom' */}
+        {activeScenario === 'custom' && (
+          <div style={{ background: '#0a0e1a', padding: 14, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Dolar/TL Değişimi:</span>
+                  <strong style={{ color: customFxChange >= 0 ? 'var(--emerald)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
+                    {customFxChange >= 0 ? '+' : ''}%{customFxChange}
+                  </strong>
+                </div>
+                <input
+                  type="range"
+                  min="-20"
+                  max="50"
+                  step="1"
+                  value={customFxChange}
+                  onChange={(e) => setCustomFxChange(parseInt(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Küresel Hisse Değişimi:</span>
+                  <strong style={{ color: customUsChange >= 0 ? 'var(--emerald)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
+                    {customUsChange >= 0 ? '+' : ''}%{customUsChange}
+                  </strong>
+                </div>
+                <input
+                  type="range"
+                  min="-30"
+                  max="30"
+                  step="1"
+                  value={customUsChange}
+                  onChange={(e) => setCustomUsChange(parseInt(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--cyan)' }}
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>BIST 100 Değişimi:</span>
+                  <strong style={{ color: customBistChange >= 0 ? 'var(--emerald)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
+                    {customBistChange >= 0 ? '+' : ''}%{customBistChange}
+                  </strong>
+                </div>
+                <input
+                  type="range"
+                  min="-30"
+                  max="40"
+                  step="1"
+                  value={customBistChange}
+                  onChange={(e) => setCustomBistChange(parseInt(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--emerald)' }}
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Ons Altın Değişimi:</span>
+                  <strong style={{ color: customGoldChange >= 0 ? 'var(--gold)' : 'var(--red)', fontFamily: 'var(--font-mono)' }}>
+                    {customGoldChange >= 0 ? '+' : ''}%{customGoldChange}
+                  </strong>
+                </div>
+                <input
+                  type="range"
+                  min="-20"
+                  max="40"
+                  step="1"
+                  value={customGoldChange}
+                  onChange={(e) => setCustomGoldChange(parseInt(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--gold)' }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Live Simulation Result Display Box */}
+        <div style={{ background: '#090d18', padding: 16, borderRadius: 8, border: `1.5px solid ${scenarioResult.netTRYChange >= 0 ? 'var(--emerald)' : 'var(--red)'}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              SİMÜLE EDİLEN PORTFÖY DEĞERİ (TL)
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#fff', margin: '4px 0' }}>
+              ₺{Math.round(scenarioResult.simTotalTRY).toLocaleString('tr-TR')}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: scenarioResult.netTRYChange >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+              {scenarioResult.netTRYChange >= 0 ? '▲ +' : '▼ '}₺{Math.abs(Math.round(scenarioResult.netTRYChange)).toLocaleString('tr-TR')} ({scenarioResult.netPctChange >= 0 ? '+' : ''}{scenarioResult.netPctChange.toFixed(2)}%)
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              SİMÜLE EDİLEN PORTFÖY DEĞERİ (USD)
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--cyan)', margin: '4px 0' }}>
+              ${Math.round(scenarioResult.simTotalUSD).toLocaleString('tr-TR')}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: scenarioResult.netUSDChange >= 0 ? 'var(--emerald)' : 'var(--amber)' }}>
+              {scenarioResult.netUSDChange >= 0 ? '▲ +' : '▼ '}${Math.abs(Math.round(scenarioResult.netUSDChange)).toLocaleString('tr-TR')} ({scenarioResult.netUSDPct >= 0 ? '+' : ''}{scenarioResult.netUSDPct.toFixed(2)}%)
+            </div>
+          </div>
+
+          <div style={{ background: '#0b101c', padding: 12, borderRadius: 6, fontSize: 11, color: '#cbd5e1', lineHeight: 1.5 }}>
+            <strong style={{ color: 'var(--cyan)', display: 'block', marginBottom: 2 }}>
+              {scenarioResult.scenarioName}
+            </strong>
+            {scenarioResult.scenarioDesc}
+          </div>
+        </div>
+      </div>
       <div className="card table-card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
           <div>
