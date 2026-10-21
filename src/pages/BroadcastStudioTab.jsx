@@ -99,8 +99,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   const defaultAgenda = {
     topic1: {
-      title: 'Küresel Likidite, Fed & TCMB Faiz Patikası',
-      desc: 'Faiz beklentileri, tahvil getirileri ve döviz piyasası dengesi.',
+      title: 'Küresel Likidite, Fed Faiz Duruşu & Doların Gücü',
+      desc: 'DXY 102 direnci, 28 Ekim FOMC sabit faiz beklentisi ve tahvil faizlerindeki hareketlilik.',
       tag: 'Makro & Faiz'
     },
     topic2: {
@@ -114,11 +114,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       tag: 'Hisse & Bilanço'
     },
     fedRate: {
-      dominant: '25 bp İndirim',
-      prob: 85,
-      pauseProb: 15,
-      meetingDate: 'Gelecek FOMC',
-      note: 'Piyasa yumuşak iniş senaryosunu ve 25 bp kademeli faiz patikasını fiyatlıyor.'
+      dominant: 'Faizi Sabit Tutma (Pas)',
+      prob: 76,
+      pauseProb: 24,
+      meetingDate: '28 Ekim FOMC',
+      note: '28 Ekim FOMC toplantısında faizin %3.75 - %4.00 bandında sabit tutulması (%76), Aralık toplantısında ise enflasyon yapışkanlığına bağlı 25 bp artış veya şahin duruş riski (%24) fiyatlanmaktadır.'
     },
     macroRates: {
       tcmb: 37.00,
@@ -129,10 +129,22 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   const [customAgenda, setCustomAgenda] = useState(() => {
     try {
-      const savedStr = localStorage.getItem('broadcast_studio_agenda');
+      // Clear legacy/stale agenda caches
+      ['broadcast_studio_agenda', 'broadcast_studio_agenda_v4'].forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+      const savedStr = localStorage.getItem('broadcast_studio_agenda_v5');
       if (savedStr) {
-        if (savedStr.includes('Katar') || savedStr.includes('OpenAI') || savedStr.includes('Tanker')) {
-          localStorage.removeItem('broadcast_studio_agenda');
+        if (
+          savedStr.includes('Katar') ||
+          savedStr.includes('OpenAI') ||
+          savedStr.includes('Tanker') ||
+          savedStr.includes('25 bp İndirim') ||
+          savedStr.includes('50.00') ||
+          savedStr.includes('%50') ||
+          !savedStr.includes('macroRates')
+        ) {
+          localStorage.removeItem('broadcast_studio_agenda_v5');
           return defaultAgenda;
         }
         const saved = JSON.parse(savedStr);
@@ -171,7 +183,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   const updateAgenda = (newAgenda) => {
     setCustomAgenda(newAgenda);
     try {
-      localStorage.setItem('broadcast_studio_agenda', JSON.stringify(newAgenda));
+      localStorage.setItem('broadcast_studio_agenda_v5', JSON.stringify(newAgenda));
     } catch (e) {}
     if (syncChannelRef.current) {
       try {
@@ -517,12 +529,32 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     }
   }, [activeTheme?.id]);
 
-  // Custom user overrides for scripts (persisted in localStorage)
+  // Custom user overrides for scripts (persisted in localStorage with auto-sanitization against stale rates)
   const [customScripts, setCustomScripts] = useState(() => {
     try {
-      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v3');
-      const parsed = saved ? JSON.parse(saved) : {};
-      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+      // Clear legacy/stale script caches
+      ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4'].forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
+      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v5');
+      if (saved) {
+        if (saved.includes('50') && (saved.includes('politika') || saved.includes('TCMB') || saved.includes('faiz'))) {
+          localStorage.removeItem('broadcast_studio_custom_scripts_v5');
+          return {};
+        }
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const cleaned = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === 'string' && (v.includes('yüzde 50') || v.includes('%50') || v.includes('50 politika'))) {
+              continue;
+            }
+            cleaned[k] = v;
+          }
+          return cleaned;
+        }
+      }
+      return {};
     } catch {
       return {};
     }
@@ -530,7 +562,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('broadcast_studio_custom_scripts_v3', JSON.stringify(customScripts));
+      localStorage.setItem('broadcast_studio_custom_scripts_v5', JSON.stringify(customScripts));
     } catch (e) {}
   }, [customScripts]);
 
@@ -541,8 +573,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     setIsRefreshing(true);
     try {
       try {
-        localStorage.removeItem('broadcast_studio_custom_scripts_v3');
-        localStorage.removeItem('broadcast_studio_agenda');
+        ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4', 'broadcast_studio_custom_scripts_v5', 'broadcast_studio_agenda', 'broadcast_studio_agenda_v4', 'broadcast_studio_agenda_v5'].forEach(k => {
+          try { localStorage.removeItem(k); } catch (e) {}
+        });
       } catch (e) {}
       setCustomScripts({});
       setCustomAgenda(defaultAgenda);
@@ -745,7 +778,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         subtitle: activeTheme.description,
         durationEst: '65 sn',
         metrics: [
-          { label: 'FED Faiz Beklentisi (CME)', val: customAgenda?.fedRate?.dominant ? `%${customAgenda.fedRate.prob} ${customAgenda.fedRate.dominant}` : '%85 İndirim', chg: 0, note: customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Kademeli Gevşeme' : 'Pas/Sabit Duruş' },
+          { label: 'FED Faiz Beklentisi (CME)', val: customAgenda?.fedRate?.dominant ? `%${customAgenda.fedRate.prob} ${customAgenda.fedRate.dominant}` : '%76 Pas / Sabit', chg: 0, note: customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Kademeli Gevşeme' : '28 Ekim Pas / Aralık Artış Riski' },
           { label: 'S&P 500 Mevsimsellik', val: 'Q4 Ralli +%4.1', chg: 1.4, isUp: true, note: 'Seçim Yılı Döngüsü' },
           { label: 'Türkiye TÜFE (Yıllık)', val: `%${pulse?.inflation?.turkey || 31.51}`, chg: 0, note: 'Reel Faiz Dengesi' },
           { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
@@ -791,7 +824,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
             val: `%${quotes.fedRate}`, 
             chg: 0, 
             isUp: true, 
-            note: 'Faiz İndirim Döngüsü' 
+            note: '28 Ekim Pas / Aralık Artış Riski' 
           },
           { 
             label: 'Türkiye TÜFE (Yıllık)', 
@@ -1050,7 +1083,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         <h3>KRİTİK MAKRO GÖSTERGELER & MERKEZ BANKASI BEKLENTİLERİ</h3>
         <table class="table-box">
           <tr><th>Veri / Gösterge</th><th>Açıklanan / Piyasa Değeri</th><th>Beklenti / Durum</th><th>Piyasa Etkisi & Strateji</th></tr>
-          <tr><td><b>FED Faiz Beklentisi (CME FedWatch)</b></td><td><b>%${customAgenda?.fedRate?.prob || 85} (${customAgenda?.fedRate?.dominant || '25 bp İndirim'})</b></td><td>%${customAgenda?.fedRate?.pauseProb || 15} Pas / Sabit</td><td>${customAgenda?.fedRate?.note || 'Piyasa yumuşak iniş ve kademeli faiz patikasını fiyatlıyor.'}</td></tr>
+          <tr><td><b>FED Faiz Beklentisi (CME FedWatch)</b></td><td><b>%${customAgenda?.fedRate?.prob || 76} (${customAgenda?.fedRate?.dominant || 'Faizi Sabit Tutma / Pas'})</b></td><td>%${customAgenda?.fedRate?.pauseProb || 24} Aralık 25 bp Artış</td><td>${customAgenda?.fedRate?.note || '28 Ekim toplantısında faizin sabit tutulması, Aralık toplantısı için ise 25 bp artış ihtimali fiyatlanıyor.'}</td></tr>
           <tr><td><b>S&P 500 Seçim Yılı Q4 Mevsimselliği</b></td><td><b>+%4.1 Tarihsel Ortalama</b></td><td>Kasım-Aralık Kazanma: %83.3</td><td>Ekim ayı dalgalanmaları yıl sonu rallisi öncesi dip fırsatı sunuyor.</td></tr>
           <tr><td><b>Türkiye TÜFE Enflasyonu</b></td><td><b>Yıllık %${pulse?.inflation?.turkey || 31.51}</b></td><td>Pozitif Reel Getiri Korunuyor</td><td>TCMB faiz patikasında sıkı ve ihtiyatlı duruşunu sürdürerek dezenflasyon sürecini destekliyor.</td></tr>
           <tr><td><b>ABD ISM Hizmetler PMI</b></td><td><b>54.9 (1.5 Yılın Zirvesi)</b></td><td>Beklenti: 51.7 | Önceki: 51.5</td><td>Resesyon tezini sildi, yeni siparişler fırladı (59.4).</td></tr>
@@ -1387,7 +1420,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             <div style={{ textAlign: 'right' }}>
                               <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>PİYASA KONSENSÜSÜ</div>
                               <div style={{ fontSize: 10.5, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                                {customAgenda?.fedRate?.dominant || '25 bp İndirim'} (%{customAgenda?.fedRate?.prob ?? 85})
+                                {customAgenda?.fedRate?.dominant || 'Faizi Sabit Tutma (Pas)'} (%{customAgenda?.fedRate?.prob ?? 76})
                               </div>
                             </div>
                           </div>
@@ -1399,16 +1432,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
                                 <span style={{ color: '#ffffff', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }}></span>
-                                  {customAgenda?.fedRate?.dominant || '25 bp İndirim'} (Ana Konsensüs)
+                                  {customAgenda?.fedRate?.dominant || 'Faizi Sabit Tutma (Pas)'} (28 Ekim FOMC)
                                 </span>
                                 <span style={{ color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>
-                                  %{customAgenda?.fedRate?.prob ?? 85}
+                                  %{customAgenda?.fedRate?.prob ?? 76}
                                 </span>
                               </div>
                               <div style={{ height: 9, background: 'rgba(255,255,255,0.06)', borderRadius: 5, overflow: 'hidden' }}>
-                                <div style={{ width: `${customAgenda?.fedRate?.prob ?? 85}%`, height: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', borderRadius: 5 }}></div>
+                                <div style={{ width: `${customAgenda?.fedRate?.prob ?? 76}%`, height: '100%', background: 'linear-gradient(90deg, #059669, #10b981)', borderRadius: 5 }}></div>
                               </div>
-                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>CME FedWatch vadeli işlem fiyatlaması ana senaryosu</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>28 Ekim toplantısında faizin %3.75 - %4.00 bandında sabit tutulması ana senaryosu</div>
                             </div>
 
                             {/* Alternative Scenario Bar */}
@@ -1416,37 +1449,37 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, marginBottom: 2 }}>
                                 <span style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 5 }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }}></span>
-                                  {customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Faizi Sabit Tutma / Pas' : '25 bp İndirim Alternatifi'}
+                                  {customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Faizi Sabit Tutma / Pas' : 'Aralık FOMC: 25 bp Faiz Artışı / Şahin Duruş'}
                                 </span>
                                 <span style={{ color: '#f59e0b', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11 }}>
-                                  %{customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 85))}
+                                  %{customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 76))}
                                 </span>
                               </div>
                               <div style={{ height: 7, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{ width: `${customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 85))}%`, height: '100%', background: '#f59e0b', borderRadius: 4 }}></div>
+                                <div style={{ width: `${customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 76))}%`, height: '100%', background: '#f59e0b', borderRadius: 4 }}></div>
                               </div>
-                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Veri akışına bağlı alternatif senaryo</div>
+                              <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Enflasyon yapışkanlığına bağlı Aralık ayı faiz artışı veya şahin duruş senaryosu</div>
                             </div>
                           </div>
 
                           {/* Meeting & Scenario Summary Row */}
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
                             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '5px 6px', borderRadius: 4, textAlign: 'center' }}>
-                              <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>AĞIRLIKLI BEKLENTİ</div>
+                              <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>28 EKİM BEKLENTİSİ</div>
                               <div style={{ fontSize: 9.5, fontWeight: 800, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
-                                %{customAgenda?.fedRate?.prob ?? 85} {customAgenda?.fedRate?.dominant || 'İndirim'}
+                                %{customAgenda?.fedRate?.prob ?? 76} {customAgenda?.fedRate?.dominant || 'Sabit/Pas'}
                               </div>
                             </div>
                             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '5px 6px', borderRadius: 4, textAlign: 'center' }}>
-                              <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>ALTERNATİF İHTİMAL</div>
+                              <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>ARALIK BEKLENTİSİ</div>
                               <div style={{ fontSize: 9.5, fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
-                                %{customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 85))} {customAgenda?.fedRate?.dominant?.includes('İndirim') ? 'Pas/Sabit' : 'İndirim'}
+                                %{customAgenda?.fedRate?.pauseProb ?? (100 - (customAgenda?.fedRate?.prob ?? 76))} 25 bp Artış
                               </div>
                             </div>
                             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '5px 6px', borderRadius: 4, textAlign: 'center' }}>
                               <div style={{ fontSize: 7.5, color: 'var(--text-muted)', fontWeight: 700 }}>ODAK TOPLANTI</div>
                               <div style={{ fontSize: 9.5, fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                                {customAgenda?.fedRate?.meetingDate || 'Gelecek FOMC'}
+                                {customAgenda?.fedRate?.meetingDate || '28 Ekim FOMC'}
                               </div>
                             </div>
                           </div>
@@ -1454,7 +1487,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           {/* Analytical Takeaway Box */}
                           <div style={{ background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 5, padding: '7px 10px', fontSize: 9, color: '#cbd5e1', lineHeight: 1.45 }}>
                             <span style={{ color: '#38bdf8', fontWeight: 800 }}>⚡ PİYASA YORUMU & STRATEJİ: </span>
-                            {customAgenda?.fedRate?.note || 'Piyasa istihdam, büyüme ve enflasyon dengesini gözeterek Fed faiz indirim döngüsünü fiyatlamaktadır.'}
+                            {customAgenda?.fedRate?.note || '28 Ekim FOMC toplantısında faizin %3.75 - %4.00 bandında sabit tutulması (%76), Aralık toplantısında ise enflasyon yapışkanlığına bağlı 25 bp faiz artışı veya şahin duruş riski (%24) fiyatlanmaktadır.'}
                           </div>
                         </div>
                       )}
@@ -2081,7 +2114,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                           <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #38bdf8' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11 }}>🇺🇸 Federal Reserve (Fed)</div>
-                            <div style={{ fontSize: 10, color: '#94a3b8' }}>25 baz puanlık kademeli adımlar; terminal faizin %3.25 - %3.50 bandında dengelenmesi.</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>28 Ekim FOMC'de faizin %3.75 - %4.00 bandında sabit kalması; Aralık toplantısında ise enflasyon yapışkanlığına bağlı 25 bp faiz artışı veya şahin duruş riski.</div>
                           </div>
                           <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 11px', borderLeft: '3px solid #fbbf24' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11 }}>🇪🇺 Avrupa Merkez Bankası (ECB)</div>
@@ -4191,15 +4224,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
               {/* Fed CME Expectation Settings */}
               <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 6, padding: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 8 }}>
-                  🏛️ Fed Faiz Beklentisi (CME FedWatch Modeli)
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>🏛️ Fed Faiz Beklentisi (CME FedWatch Modeli)</span>
+                  <span style={{ fontSize: 8.5, color: '#a7f3d0' }}>28 Ekim & Aralık Toplantı Senaryosu</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
                   <div>
                     <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Ağırlıklı Senaryo</div>
                     <input
                       type="text"
-                      value={agendaForm?.fedRate?.dominant || '25 bp İndirim'}
+                      value={agendaForm?.fedRate?.dominant || 'Faizi Sabit Tutma (Pas)'}
                       onChange={(e) => setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, dominant: e.target.value } })}
                       style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 8px', borderRadius: 4, width: '100%' }}
                     />
@@ -4208,7 +4242,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                     <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Konsensüs Olasılığı (%)</div>
                     <input
                       type="number"
-                      value={agendaForm?.fedRate?.prob ?? 85}
+                      value={agendaForm?.fedRate?.prob ?? 76}
                       onChange={(e) => {
                         const val = Number(e.target.value);
                         setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, prob: val, pauseProb: Math.max(0, 100 - val) } });
@@ -4220,9 +4254,18 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                     <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Alternatif İhtimal (%)</div>
                     <input
                       type="number"
-                      value={agendaForm?.fedRate?.pauseProb ?? 15}
+                      value={agendaForm?.fedRate?.pauseProb ?? 24}
                       onChange={(e) => setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, pauseProb: Number(e.target.value) } })}
                       style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#f59e0b', fontSize: 11, fontWeight: 800, padding: '5px 8px', borderRadius: 4, width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Toplantı / Tarih</div>
+                    <input
+                      type="text"
+                      value={agendaForm?.fedRate?.meetingDate || '28 Ekim FOMC'}
+                      onChange={(e) => setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, meetingDate: e.target.value } })}
+                      style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#38bdf8', fontSize: 11, fontWeight: 700, padding: '5px 8px', borderRadius: 4, width: '100%' }}
                     />
                   </div>
                 </div>
@@ -4230,7 +4273,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                   rows={2}
                   value={agendaForm?.fedRate?.note || ''}
                   onChange={(e) => setAgendaForm({ ...agendaForm, fedRate: { ...agendaForm.fedRate, note: e.target.value } })}
-                  placeholder="Fed piyasa yorumu ve strateji notu"
+                  placeholder="28 Ekim FOMC toplantısında faizin sabit tutulması, Aralık toplantısı için ise 25 bp artış ihtimali..."
                   style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1', fontSize: 10.5, padding: '6px 10px', borderRadius: 5, width: '100%', resize: 'vertical' }}
                 />
               </div>

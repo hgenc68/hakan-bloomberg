@@ -211,7 +211,7 @@ Bu ortamda rafineri marjları ve enerji hisseleri yakından izlenirken, akıllı
       const netRealYield = ((Number(tcmbRate) || 37) - (Number(turkeyCPI) || 31.51)).toFixed(2);
       return `Üçüncü masamızda küresel merkez bankaları ve Türkiye'nin faiz kalkanını kıyaslıyoruz.
 
-Fed tarafında politika faizi yüzde ${fedRate} bandında seyrederken, vadeli piyasalarda kademeli indirim beklentisi ağırlığını koruyor. Türkiye'de ise TCMB'nin yüzde ${tcmbRate} politika faizi, gerileyen yüzde ${turkeyCPI} enflasyon trendiyle birlikte artı ${netRealYield} puanlık güçlü bir pozitif reel getiri alanı sunmaya devam ediyor.
+Fed tarafında politika faizi yüzde ${fedRate} bandında korunurken, vadeli piyasalarda 28 Ekim FOMC toplantısında faizin sabit tutulması (pas geçilmesi), Aralık toplantısı için ise enflasyon seyrine bağlı 25 baz puanlık faiz artışı veya şahin duruş ihtimali masada tutuluyor. Türkiye'de ise TCMB'nin yüzde ${tcmbRate} politika faizi, yüzde ${turkeyCPI} enflasyon oranıyla birlikte artı ${netRealYield} puanlık güçlü bir pozitif reel getiri kalkanı sunmaya devam ediyor.
 
 Bu pozitif reel faiz tamponu, Dolar/TL'nin ${fmt(currentUsdTry, 2)} lira civarında spekülatif ataklardan uzak kalmasını sağlıyor. Para piyasası fonları (PPF) ve nakit tamponları, piyasa dalgalanmalarında portföyler için emniyet kemeri işlevi görüyor.`;
     }

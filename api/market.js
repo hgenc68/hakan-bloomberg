@@ -911,7 +911,7 @@ export default async function handler(req, res) {
         rates: {
           tcmb: 37.00,
           fed: '3.75 - 4.00',
-          fed_text: 'FOMC: %3.75 - %4.00 • Kademeli İndirim',
+          fed_text: '28 Ekim FOMC: Pas / Sabit Beklentisi (%76) • Aralık: 25 bp Artış Riski',
           kur_kalkani: 82.4
         },
         news,

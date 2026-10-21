@@ -448,13 +448,13 @@ const UPCOMING_EARNINGS_CALENDAR = [
 const UPCOMING_MACRO_CATALYSTS = [
   {
     event: 'Fed FOMC Faiz Kararı & Basın Toplantısı',
-    date: '07 Kasım 2026',
+    date: '28 Ekim 2026',
     time: '21:00 TSİ',
-    daysLeft: 17,
+    daysLeft: 7,
     status: 'Yüksek Etki (Tier 1)',
-    expectation: '25 bps Faiz İndirimi (%88 Olasılık)',
+    expectation: 'Politika Faizi Sabit Tutma / Pas (%76) • Aralık: 25 bp Artış Riski',
     prev: '%3.75 - %4.00',
-    impact: 'Küresel Likidite, Altın & Nasdaq Boğası'
+    impact: 'Dolar Endeksi (DXY), 10Y Tahviller & Küresel Risk İştahı'
   },
   {
     event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik',
