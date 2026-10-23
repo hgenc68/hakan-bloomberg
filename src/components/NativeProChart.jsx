@@ -872,11 +872,49 @@ export default function NativeProChart({
     if (!chartInstanceRef.current || !candlestickSeriesRef.current) return;
     const timeScale = chartInstanceRef.current.timeScale();
     const series = candlestickSeriesRef.current;
+    const activeCandles = candlesRef.current || [];
+
+    const getCoordinateForTime = (rawTime) => {
+      let x = timeScale.timeToCoordinate(rawTime);
+      if (x !== null) return x;
+
+      // Fallback: If exact time not in current scale (e.g. daily time on weekly/monthly chart), find closest candle
+      if (activeCandles.length > 0 && rawTime) {
+        try {
+          const targetStr = typeof rawTime === 'object' && rawTime.year 
+            ? `${rawTime.year}-${String(rawTime.month).padStart(2, '0')}-${String(rawTime.day).padStart(2, '0')}`
+            : String(rawTime);
+          const targetTs = new Date(targetStr).getTime();
+          if (!isNaN(targetTs)) {
+            let closestCandle = activeCandles[0];
+            const getTs = (c) => {
+              const str = typeof c.time === 'object' && c.time.year
+                ? `${c.time.year}-${String(c.time.month).padStart(2, '0')}-${String(c.time.day).padStart(2, '0')}`
+                : String(c.time);
+              return new Date(str).getTime();
+            };
+            let minDiff = Math.abs(getTs(closestCandle) - targetTs);
+            for (let i = 1; i < activeCandles.length; i++) {
+              const c = activeCandles[i];
+              const diff = Math.abs(getTs(c) - targetTs);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closestCandle = c;
+              }
+            }
+            return timeScale.timeToCoordinate(closestCandle.time);
+          }
+        } catch (e) {}
+      }
+      return null;
+    };
 
     const lines = (drawings.trendlines || []).map(t => {
-      const x1 = timeScale.timeToCoordinate(t.p1.time);
+      if (!t.p1 || !t.p2) return { ...t, valid: false };
+
+      const x1 = getCoordinateForTime(t.p1.time);
       const y1 = series.priceToCoordinate(t.p1.price);
-      const x2 = timeScale.timeToCoordinate(t.p2.time);
+      const x2 = getCoordinateForTime(t.p2.time);
       const y2 = series.priceToCoordinate(t.p2.price);
       return {
         ...t,
@@ -887,16 +925,52 @@ export default function NativeProChart({
     setSvgTrendlines(lines);
   }, [drawings.trendlines]);
 
-  // Trigger SVG lines recalculation on drawings or candle change
+  // Synchronize Horizontal Drawings on Price Scale
+  const syncHorizontalPriceLines = useCallback(() => {
+    const series = candlestickSeriesRef.current;
+    if (!series) return;
+
+    // Clear previously drawn custom horizontal lines
+    horizontalPriceLinesMapRef.current.forEach((lineInstance) => {
+      try {
+        series.removePriceLine(lineInstance);
+      } catch (e) {}
+    });
+    horizontalPriceLinesMapRef.current.clear();
+
+    // Re-create from persistent drawings
+    (drawings.horizontals || []).forEach(h => {
+      try {
+        const line = series.createPriceLine({
+          price: Number(h.price),
+          color: h.color || '#38bdf8',
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: h.label || `Seviye: ${h.price}`
+        });
+        horizontalPriceLinesMapRef.current.set(h.id, line);
+      } catch (e) {}
+    });
+  }, [drawings.horizontals]);
+
+  // Trigger SVG lines & Horizontal price lines recalculation on drawings, interval, or candle change
   useEffect(() => {
     recalcSvgLines();
-    const rId = requestAnimationFrame(() => recalcSvgLines());
-    const tId = setTimeout(() => recalcSvgLines(), 150);
+    syncHorizontalPriceLines();
+    const rId = requestAnimationFrame(() => {
+      recalcSvgLines();
+      syncHorizontalPriceLines();
+    });
+    const tId = setTimeout(() => {
+      recalcSvgLines();
+      syncHorizontalPriceLines();
+    }, 150);
     return () => {
       cancelAnimationFrame(rId);
       clearTimeout(tId);
     };
-  }, [recalcSvgLines, candles]);
+  }, [recalcSvgLines, syncHorizontalPriceLines, candles, chartInterval, candleType]);
 
   // Fetch candle data for current symbol & interval
   const fetchSymbolCandles = useCallback(async () => {
@@ -1221,6 +1295,7 @@ export default function NativeProChart({
     });
     candlestickSeriesRef.current = candleSeries;
     candleMarkersPluginRef.current = createSeriesMarkers(candleSeries, []);
+    syncHorizontalPriceLines();
 
     // Add Volume Series (at bottom 20%)
     if (indicators.volume) {
@@ -1648,38 +1723,16 @@ export default function NativeProChart({
         rsiChartInstanceRef.current.timeScale().setVisibleLogicalRange({ from: targetFrom, to: targetTo });
       }
     }
-    requestAnimationFrame(() => recalcSvgLines());
-    setTimeout(() => recalcSvgLines(), 150);
-  }, [candles, candleType, indicators, indicatorSettings, activeHolding, isBist, recalcSvgLines]);
-
-  // Synchronize Horizontal Drawings on Price Scale
-  useEffect(() => {
-    const series = candlestickSeriesRef.current;
-    if (!series) return;
-
-    // Clear previously drawn custom horizontal lines
-    horizontalPriceLinesMapRef.current.forEach((lineInstance) => {
-      try {
-        series.removePriceLine(lineInstance);
-      } catch (e) {}
+    syncHorizontalPriceLines();
+    requestAnimationFrame(() => {
+      recalcSvgLines();
+      syncHorizontalPriceLines();
     });
-    horizontalPriceLinesMapRef.current.clear();
-
-    // Re-create from persistent drawings
-    (drawings.horizontals || []).forEach(h => {
-      try {
-        const line = series.createPriceLine({
-          price: h.price,
-          color: h.color || '#38bdf8',
-          lineWidth: 2,
-          lineStyle: LineStyle.Solid,
-          axisLabelVisible: true,
-          title: h.label || `Seviye: ${h.price}`
-        });
-        horizontalPriceLinesMapRef.current.set(h.id, line);
-      } catch (e) {}
-    });
-  }, [drawings.horizontals]);
+    setTimeout(() => {
+      recalcSvgLines();
+      syncHorizontalPriceLines();
+    }, 150);
+  }, [candles, candleType, indicators, indicatorSettings, activeHolding, isBist, recalcSvgLines, syncHorizontalPriceLines]);
 
   // Click & Drawing handler on Chart Container
   const handleChartClick = (e) => {
