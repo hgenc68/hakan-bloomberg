@@ -738,36 +738,41 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     { name: 'Dolar / TL', symbol: 'USDTRY=X', price: currentUsdTry, today: 0.13, d5: 0.45, m1: 1.85, ytd: 18.40, y1: 32.10 }
   ];
 
+  // Live quotes & macro parameters memoized for slides, speech scripts & visual cards
+  const quotes = useMemo(() => ({
+    fmt,
+    brent,
+    wti,
+    gold,
+    silver,
+    dxy,
+    us10y,
+    us2y,
+    sp500,
+    sp500Etf,
+    nasdaq,
+    nasdaqEtf,
+    dow,
+    dowEtf,
+    bist100,
+    btc,
+    eth,
+    total3,
+    currentUsdTry,
+    gramAltinTL,
+    fgScore,
+    fgLabel,
+    tcmbRate: Number(customAgenda?.macroRates?.tcmb ?? pulse?.rates?.tcmb ?? 37.00),
+    turkeyCPI: Number(customAgenda?.macroRates?.cpi ?? pulse?.inflation?.turkey ?? 31.51),
+    fedRate: customAgenda?.macroRates?.fed || pulse?.rates?.fed || '3.75 - 4.00'
+  }), [
+    brent, wti, gold, silver, dxy, us10y, us2y, sp500, sp500Etf,
+    nasdaq, nasdaqEtf, dow, dowEtf, bist100, btc, eth, total3,
+    currentUsdTry, gramAltinTL, fgScore, fgLabel, customAgenda, pulse
+  ]);
+
   // 9 Television Slides dynamically populated with Edition Theme, Visual Variants & Live Quotes
   const slides = useMemo(() => {
-    const quotes = {
-      fmt,
-      brent,
-      wti,
-      gold,
-      silver,
-      dxy,
-      us10y,
-      us2y,
-      sp500,
-      sp500Etf,
-      nasdaq,
-      nasdaqEtf,
-      dow,
-      dowEtf,
-      bist100,
-      btc,
-      eth,
-      total3,
-      currentUsdTry,
-      gramAltinTL,
-      fgScore,
-      fgLabel,
-      tcmbRate: Number(customAgenda?.macroRates?.tcmb ?? pulse?.rates?.tcmb ?? 37.00),
-      turkeyCPI: Number(customAgenda?.macroRates?.cpi ?? pulse?.inflation?.turkey ?? 31.51),
-      fedRate: customAgenda?.macroRates?.fed || pulse?.rates?.fed || '3.75 - 4.00'
-    };
-
     return [
       // SLIDE 1: Global Market Pulse (Matching MarketPulseTab + Fed Rates + S&P 500 Seasonality + Fresh Macro Data)
       {
@@ -954,6 +959,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     broadcastTone,
     portfolioContext,
     pulse,
+    quotes,
     dxy, vix, brent, wti, gold, silver, us10y, us2y, sp500, sp500Etf, nasdaq, nasdaqEtf, dow, dowEtf, bist100, btc, eth, total3, currentUsdTry, gramAltinTL, fgScore, fgLabel
   ]);
 
@@ -2146,9 +2152,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           <tbody>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(16, 185, 129, 0.08)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 800, color: '#34d399' }}>🇹🇷 TCMB (Türkiye)</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%{fmt(quotes.tcmbRate, 2)}</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%{fmt(quotes.turkeyCPI, 2)}</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+{fmt(quotes.tcmbRate - quotes.turkeyCPI, 2)} Puan</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%{fmt(quotes?.tcmbRate ?? 37, 2)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%{fmt(quotes?.turkeyCPI ?? 31.51, 2)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+{fmt((quotes?.tcmbRate ?? 37) - (quotes?.turkeyCPI ?? 31.51), 2)} Puan</td>
                             </tr>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇺🇸 Fed (ABD)</td>
@@ -2578,7 +2584,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Net TL Carry Trade Üstünlüğü</div>
-                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%{quotes.tcmbRate || 37} politika faizi ve kontrollü kur oynaklığı TL'yi gelişmekte olan piyasalar arasında 1 numara yapıyor.</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%{quotes?.tcmbRate ?? 37} politika faizi ve kontrollü kur oynaklığı TL'yi gelişmekte olan piyasalar arasında 1 numara yapıyor.</div>
                           </div>
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
