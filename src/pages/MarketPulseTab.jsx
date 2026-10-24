@@ -178,7 +178,7 @@ const SEED_NEWS = [
     id: 'seed-1',
     timeAgoMin: 14,
     source: 'TCMB / PPK',
-    title: 'TCMB Para Politikası Kurulu: Politika faizi %37.00 seviyesinde sabit tutuldu. Bir sonraki faiz kararı 22 Ekim 2026 PPK toplantısında açıklanacak.',
+    title: 'TCMB Para Politikası Kurulu: Politika faizi 100 baz puan indirimle %36.00 seviyesine çekildi. Bir sonraki faiz kararı 10 Aralık 2026 PPK toplantısında açıklanacak.',
     tag: 'TCMB & Makro',
     bull: true,
     link: 'https://www.tcmb.gov.tr'
@@ -205,7 +205,7 @@ const SEED_NEWS = [
     id: 'seed-4',
     timeAgoMin: 58,
     source: 'TÜİK',
-    title: 'Yıllık enflasyon Ağustos ayında %31.51 olarak gerçekleşti. Eylül ayı resmi TÜFE verisi 5 Ekim Pazartesi günü açıklanacak.',
+    title: 'TÜİK Eylül Resmi TÜFE: Yıllık enflasyon %29.73 seviyesine gerileyerek dezenflasyon patikasını teyit etti. Ekim ayı resmi verisi 3 Kasım Salı günü açıklanacak.',
     tag: 'TCMB & Makro',
     bull: true,
     link: 'https://www.tuik.gov.tr'
@@ -450,7 +450,7 @@ const UPCOMING_MACRO_CATALYSTS = [
     event: 'Fed FOMC Faiz Kararı & Basın Toplantısı',
     date: '28 Ekim 2026',
     time: '21:00 TSİ',
-    daysLeft: 7,
+    targetDate: '2026-10-28T21:00:00+03:00',
     status: 'Yüksek Etki (Tier 1)',
     expectation: 'Politika Faizi Sabit Tutma / Pas (%76) • Aralık: 25 bp Artış Riski',
     prev: '%3.75 - %4.00',
@@ -458,32 +458,32 @@ const UPCOMING_MACRO_CATALYSTS = [
   },
   {
     event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik',
-    date: '01 Kasım 2026',
-    time: '15:30 TSİ',
-    daysLeft: 11,
+    date: '06 Kasım 2026',
+    time: '16:30 TSİ',
+    targetDate: '2026-11-06T16:30:00+03:00',
     status: 'Kritik İstihdam',
     expectation: '140K Yeni İstihdam (İşsizlik %4.1)',
     prev: '254K',
     impact: 'Resesyon Risk Fiyatlaması'
   },
   {
-    event: 'ABD TÜFE (CPI) Enflasyon Raporu',
-    date: '13 Kasım 2026',
-    time: '16:30 TSİ',
-    daysLeft: 23,
-    status: 'Makro Enflasyon',
-    expectation: 'Yıllık %2.3 (Çekirdek: %3.2)',
-    prev: '%2.4',
-    impact: 'Tahvil Getirileri & Dolar Endeksi (DXY)'
+    event: 'TCMB 2026-IV Enflasyon Raporu Sunumu',
+    date: '12 Kasım 2026',
+    time: '10:30 TSİ',
+    targetDate: '2026-11-12T10:30:00+03:00',
+    status: 'TCMB Yıl Sonu Hedefleri',
+    expectation: '2026 Yıl Sonu TÜFE Tahmin Patikası & Sıkı Likidite Adımları',
+    prev: '%29.73 TÜFE',
+    impact: 'TL Varlıklar, Tahvil Getirileri & BIST 100'
   },
   {
     event: 'TCMB PPK Faiz Kararı',
-    date: '21 Kasım 2026',
+    date: '10 Aralık 2026',
     time: '14:00 TSİ',
-    daysLeft: 31,
+    targetDate: '2026-12-10T14:00:00+03:00',
     status: 'BIST & TL Zırhı',
-    expectation: 'Politika Faizi %37.00 Sabit / Ölçülü Gevşeme Patikası',
-    prev: '%37.00',
+    expectation: 'Politika Faizi %36.00 / Ölçülü Gevşeme & Likidite Sterilizasyonu',
+    prev: '%36.00 (22 Ekim Kararı)',
     impact: 'BIST 100 & Para Piyasası Fonu Getiri Patikası'
   }
 ];
@@ -556,12 +556,13 @@ export default function MarketPulseTab({ onSelectStock }) {
                 ...(prev.inflation || {}),
                 ...(j.inflation || {}),
                 usa: j.truflation?.rate ?? j.inflation?.usa ?? prev.inflation?.usa ?? 3.09,
-                turkey: j.inflation?.turkey ?? prev.inflation?.turkey ?? 31.51
+                turkey: j.inflation?.turkey ?? prev.inflation?.turkey ?? 29.73
               },
               rates: {
                 ...(prev.rates || {}),
                 ...(j.rates || {}),
-                tcmb: j.rates?.tcmb ?? prev?.rates?.tcmb ?? 37.00,
+                tcmb: j.rates?.tcmb ?? prev?.rates?.tcmb ?? 36.00,
+                tcmb_text: j.rates?.tcmb_text ?? prev?.rates?.tcmb_text ?? '22 Ekim PPK: 100 bp İndirim (%36.00) • Sonraki: 10 Aralık',
                 fed: j.rates?.fed ?? prev?.rates?.fed ?? '3.75 - 4.00'
               }
             }));
@@ -1021,10 +1022,10 @@ export default function MarketPulseTab({ onSelectStock }) {
                 <span className="nav-badge emerald" style={{ fontSize: 8.5, padding: '1px 6px' }}>GÜNCEL</span>
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--amber)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                %{pulse?.rates?.tcmb ? Number(pulse.rates.tcmb).toFixed(2) : '37.00'}
+                %{pulse?.rates?.tcmb ? Number(pulse.rates.tcmb).toFixed(2) : '36.00'}
               </div>
               <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                {pulse?.rates?.tcmb_text || '10 Eylül PPK: Sabit • Sonraki: 22 Ekim'}
+                {pulse?.rates?.tcmb_text || '22 Ekim PPK: 100 bp İndirim (%36.00) • Sonraki: 10 Aralık'}
               </div>
             </div>
 
@@ -1037,20 +1038,20 @@ export default function MarketPulseTab({ onSelectStock }) {
                 %{pulse?.rates?.fed || '3.75 - 4.00'}
               </div>
               <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                {pulse?.rates?.fed_text || '16 Eylül FOMC: %3.75 - %4.00 • Sonraki: 28 Ekim'}
+                {pulse?.rates?.fed_text || '28 Ekim FOMC: Pas / Sabit Beklentisi (%76) • Aralık: 25 bp Artış'}
               </div>
             </div>
 
             <div style={{ background: '#090d16', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>TÜİK YILLIK TÜFE</span>
-                <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>AĞUSTOS</span>
+                <span className="nav-badge emerald" style={{ fontSize: 8.5, padding: '1px 6px' }}>EYLÜL</span>
               </div>
               <div style={{ fontSize: 20, fontWeight: 900, color: '#f59e0b', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                %{pulse?.inflation?.turkey ? Number(pulse.inflation.turkey).toFixed(2) : '31.51'}
+                %{pulse?.inflation?.turkey ? Number(pulse.inflation.turkey).toFixed(2) : '29.73'}
               </div>
               <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                Eylül Verisi: 5 Ekim Pazartesi
+                Ekim Verisi: 3 Kasım Salı (10:00) • Reel Faiz: +{(Number(pulse?.rates?.tcmb || 36.00) - Number(pulse?.inflation?.turkey || 29.73)).toFixed(2)} Puan
               </div>
             </div>
 
@@ -1415,29 +1416,37 @@ export default function MarketPulseTab({ onSelectStock }) {
         ) : (
           /* Macro Catalysts Grid */
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-            {UPCOMING_MACRO_CATALYSTS.map((m, idx) => (
-              <div key={idx} style={{ background: '#090d18', padding: 14, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <span className="nav-badge cyan" style={{ fontSize: 9 }}>{m.status}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--amber)', fontFamily: 'var(--font-mono)' }}>
-                    ⏱️ {m.daysLeft} Gün Kaldı
-                  </span>
+            {UPCOMING_MACRO_CATALYSTS.map((m, idx) => {
+              const diffDays = m.targetDate
+                ? Math.ceil((new Date(m.targetDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                : (m.daysLeft ?? 0);
+              const remainingDays = Math.max(0, diffDays);
+              const countdownLabel = remainingDays === 0 ? 'Bugün!' : `${remainingDays} Gün Kaldı`;
+
+              return (
+                <div key={idx} style={{ background: '#090d18', padding: 14, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <span className="nav-badge cyan" style={{ fontSize: 9 }}>{m.status}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: remainingDays <= 4 ? 'var(--emerald)' : 'var(--amber)', fontFamily: 'var(--font-mono)' }}>
+                      ⏱️ {countdownLabel}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 12.5, color: '#fff', marginBottom: 4 }}>
+                    {m.event}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 8 }}>
+                    📅 Tarih: <strong style={{ color: '#e2e8f0' }}>{m.date} ({m.time})</strong>
+                  </div>
+                  <div style={{ background: '#0b101c', padding: '8px 10px', borderRadius: 4, fontSize: 10.5, marginBottom: 8 }}>
+                    <div>Beklenti: <strong style={{ color: 'var(--emerald)' }}>{m.expectation}</strong></div>
+                    <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>Önceki Seviye: {m.prev}</div>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--cyan)' }}>
+                    🎯 Etki: <strong>{m.impact}</strong>
+                  </div>
                 </div>
-                <div style={{ fontWeight: 800, fontSize: 12.5, color: '#fff', marginBottom: 4 }}>
-                  {m.event}
-                </div>
-                <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  📅 Tarih: <strong style={{ color: '#e2e8f0' }}>{m.date} ({m.time})</strong>
-                </div>
-                <div style={{ background: '#0b101c', padding: '8px 10px', borderRadius: 4, fontSize: 10.5, marginBottom: 8 }}>
-                  <div>Beklenti: <strong style={{ color: 'var(--emerald)' }}>{m.expectation}</strong></div>
-                  <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>Önceki Seviye: {m.prev}</div>
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--cyan)' }}>
-                  🎯 Etki: <strong>{m.impact}</strong>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

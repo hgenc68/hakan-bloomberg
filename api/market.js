@@ -927,6 +927,29 @@ export default async function handler(req, res) {
         equities = await fetchEquitiesMatrix();
       } catch (e) {}
 
+      // Dynamically detect TCMB rate and decision from live financial news or keep latest official 36.00 baseline
+      let liveTcmbRate = 36.00;
+      let liveTcmbText = '22 Ekim PPK: 100 bp İndirim (%36.00) • Sonraki: 10 Aralık';
+      let liveTurkeyCPI = 29.73;
+
+      if (Array.isArray(news) && news.length > 0) {
+        for (const item of news) {
+          const t = (item.title || '').toLowerCase();
+          if (t.includes('tcmb') || t.includes('merkez bank') || t.includes('ppk')) {
+            const m = t.match(/politika faizi(?:ni)?\s*(?:yüzde|%)\s*(\d+(?:[.,]\d+)?)/i) ||
+                      t.match(/faiz(?:i)?\s*(?:yüzde|%)\s*(\d+(?:[.,]\d+)?)(?:'ye|'ya|'e|'a)?\s*(?:indirdi|düşürdü|çıkardı|çekti|sabit)/i);
+            if (m && m[1]) {
+              const parsed = parseFloat(m[1].replace(',', '.'));
+              if (parsed >= 10 && parsed <= 60) {
+                liveTcmbRate = parsed;
+                liveTcmbText = `Son PPK: %${parsed.toFixed(2)} • Sonraki: 10 Aralık`;
+                break;
+              }
+            }
+          }
+        }
+      }
+
       res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
       return res.status(200).json({
         status: 'success',
@@ -935,10 +958,14 @@ export default async function handler(req, res) {
         truflation,
         inflation: {
           usa: truflation?.rate || 3.09,
-          turkey: 31.51
+          turkey: liveTurkeyCPI
         },
         rates: {
-          tcmb: 37.00,
+          tcmb: liveTcmbRate,
+          tcmb_text: liveTcmbText,
+          tcmb_decision_date: '22 Ekim 2026',
+          tcmb_next_date: '10 Aralık 2026',
+          tcmb_status: '100 bp İndirildi (%36.00)',
           fed: '3.75 - 4.00',
           fed_text: '28 Ekim FOMC: Pas / Sabit Beklentisi (%76) • Aralık: 25 bp Artış Riski',
           kur_kalkani: 82.4

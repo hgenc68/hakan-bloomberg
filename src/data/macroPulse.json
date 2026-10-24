@@ -18,7 +18,7 @@
   },
   "inflation": {
     "usa": 3.09,
-    "turkey": 31.51
+    "turkey": 29.73
   },
   "truflation": {
     "rate": 3.09,
@@ -28,10 +28,11 @@
     "source": "Truflation Live Feed"
   },
   "rates": {
-    "tcmb": 37.00,
+    "tcmb": 36,
     "fed": "3.75 - 4.00",
     "fed_text": "28 Ekim FOMC: Pas / Sabit Beklentisi (%76) • Aralık: 25 bp Artış Riski",
-    "kur_kalkani": 82.4
+    "kur_kalkani": 82.4,
+    "tcmb_text": "22 Ekim PPK: 100 bp İndirim (%36.00) • Sonraki: 10 Aralık"
   },
   "equities_perf": [
     {

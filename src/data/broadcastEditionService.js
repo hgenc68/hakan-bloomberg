@@ -135,8 +135,8 @@ export const generateDailyScript = (
     total3 = { price: 750, change: 0 },
     currentUsdTry = 49.03,
     gramAltinTL = 6600,
-    tcmbRate = 37.00,
-    turkeyCPI = 31.51,
+    tcmbRate = 36.00,
+    turkeyCPI = 29.73,
     fedRate = '3.75 - 4.00'
   } = safeQuotes;
 
@@ -208,7 +208,7 @@ Bu ortamda rafineri marjları ve enerji hisseleri yakından izlenirken, akıllı
     // SLIDE 3: MERKEZ BANKALARI, ENFLASYON & REEL FAİZ KALKANI
     // -------------------------------------------------------------------------
     case 3: {
-      const netRealYield = ((Number(tcmbRate) || 37) - (Number(turkeyCPI) || 31.51)).toFixed(2);
+      const netRealYield = ((Number(tcmbRate) || 36) - (Number(turkeyCPI) || 29.73)).toFixed(2);
       return `Üçüncü masamızda küresel merkez bankaları ve Türkiye'nin faiz kalkanını kıyaslıyoruz.
 
 Fed tarafında politika faizi yüzde ${fedRate} bandında korunurken, vadeli piyasalarda 28 Ekim FOMC toplantısında faizin sabit tutulması (pas geçilmesi), Aralık toplantısı için ise enflasyon seyrine bağlı 25 baz puanlık faiz artışı veya şahin duruş ihtimali masada tutuluyor. Türkiye'de ise TCMB'nin yüzde ${tcmbRate} politika faizi, yüzde ${turkeyCPI} enflasyon oranıyla birlikte artı ${netRealYield} puanlık güçlü bir pozitif reel getiri kalkanı sunmaya devam ediyor.

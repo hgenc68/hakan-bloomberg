@@ -121,8 +121,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       note: '28 Ekim FOMC toplantısında faizin %3.75 - %4.00 bandında sabit tutulması (%76), Aralık toplantısında ise enflasyon yapışkanlığına bağlı 25 bp artış veya şahin duruş riski (%24) fiyatlanmaktadır.'
     },
     macroRates: {
-      tcmb: 37.00,
-      cpi: 31.51,
+      tcmb: 36.00,
+      cpi: 29.73,
       fed: '3.75 - 4.00'
     }
   };
@@ -130,10 +130,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   const [customAgenda, setCustomAgenda] = useState(() => {
     try {
       // Clear legacy/stale agenda caches
-      ['broadcast_studio_agenda', 'broadcast_studio_agenda_v4'].forEach(k => {
+      ['broadcast_studio_agenda', 'broadcast_studio_agenda_v4', 'broadcast_studio_agenda_v5'].forEach(k => {
         try { localStorage.removeItem(k); } catch (e) {}
       });
-      const savedStr = localStorage.getItem('broadcast_studio_agenda_v5');
+      const savedStr = localStorage.getItem('broadcast_studio_agenda_v6');
       if (savedStr) {
         if (
           savedStr.includes('Katar') ||
@@ -142,9 +142,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           savedStr.includes('25 bp İndirim') ||
           savedStr.includes('50.00') ||
           savedStr.includes('%50') ||
+          savedStr.includes('37.00') ||
+          savedStr.includes('31.51') ||
           !savedStr.includes('macroRates')
         ) {
-          localStorage.removeItem('broadcast_studio_agenda_v5');
+          localStorage.removeItem('broadcast_studio_agenda_v6');
           return defaultAgenda;
         }
         const saved = JSON.parse(savedStr);
@@ -533,20 +535,20 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   const [customScripts, setCustomScripts] = useState(() => {
     try {
       // Clear legacy/stale script caches
-      ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4'].forEach(k => {
+      ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4', 'broadcast_studio_custom_scripts_v5'].forEach(k => {
         try { localStorage.removeItem(k); } catch (e) {}
       });
-      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v5');
+      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v6');
       if (saved) {
-        if (saved.includes('50') && (saved.includes('politika') || saved.includes('TCMB') || saved.includes('faiz'))) {
-          localStorage.removeItem('broadcast_studio_custom_scripts_v5');
+        if ((saved.includes('50') || saved.includes('37')) && (saved.includes('politika') || saved.includes('TCMB') || saved.includes('faiz'))) {
+          localStorage.removeItem('broadcast_studio_custom_scripts_v6');
           return {};
         }
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           const cleaned = {};
           for (const [k, v] of Object.entries(parsed)) {
-            if (typeof v === 'string' && (v.includes('yüzde 50') || v.includes('%50') || v.includes('50 politika'))) {
+            if (typeof v === 'string' && (v.includes('yüzde 50') || v.includes('%50') || v.includes('50 politika') || v.includes('%37') || v.includes('37 politika'))) {
               continue;
             }
             cleaned[k] = v;
@@ -562,7 +564,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('broadcast_studio_custom_scripts_v5', JSON.stringify(customScripts));
+      localStorage.setItem('broadcast_studio_custom_scripts_v6', JSON.stringify(customScripts));
     } catch (e) {}
   }, [customScripts]);
 
@@ -618,12 +620,12 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                 ...(prev?.inflation || {}),
                 ...(j.inflation || {}),
                 usa: j.truflation?.rate || j.inflation?.usa || prev?.inflation?.usa || 3.09,
-                turkey: j.inflation?.turkey || prev?.inflation?.turkey || 31.51
+                turkey: j.inflation?.turkey || prev?.inflation?.turkey || 29.73
               },
               rates: {
                 ...(prev?.rates || {}),
                 ...(j.rates || {}),
-                tcmb: j.rates?.tcmb || prev?.rates?.tcmb || 37.00,
+                tcmb: j.rates?.tcmb || prev?.rates?.tcmb || 36.00,
                 fed: j.rates?.fed || prev?.rates?.fed || '3.75 - 4.00'
               }
             }));
@@ -762,8 +764,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     gramAltinTL,
     fgScore,
     fgLabel,
-    tcmbRate: Number(customAgenda?.macroRates?.tcmb ?? pulse?.rates?.tcmb ?? 37.00),
-    turkeyCPI: Number(customAgenda?.macroRates?.cpi ?? pulse?.inflation?.turkey ?? 31.51),
+    tcmbRate: Number(customAgenda?.macroRates?.tcmb ?? pulse?.rates?.tcmb ?? 36.00),
+    turkeyCPI: Number(customAgenda?.macroRates?.cpi ?? pulse?.inflation?.turkey ?? 29.73),
     fedRate: customAgenda?.macroRates?.fed || pulse?.rates?.fed || '3.75 - 4.00'
   }), [
     brent, wti, gold, silver, dxy, us10y, us2y, sp500, sp500Etf,
@@ -1091,7 +1093,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           <tr><th>Veri / Gösterge</th><th>Açıklanan / Piyasa Değeri</th><th>Beklenti / Durum</th><th>Piyasa Etkisi & Strateji</th></tr>
           <tr><td><b>FED Faiz Beklentisi (CME FedWatch)</b></td><td><b>%${customAgenda?.fedRate?.prob || 76} (${customAgenda?.fedRate?.dominant || 'Faizi Sabit Tutma / Pas'})</b></td><td>%${customAgenda?.fedRate?.pauseProb || 24} Aralık 25 bp Artış</td><td>${customAgenda?.fedRate?.note || '28 Ekim toplantısında faizin sabit tutulması, Aralık toplantısı için ise 25 bp artış ihtimali fiyatlanıyor.'}</td></tr>
           <tr><td><b>S&P 500 Seçim Yılı Q4 Mevsimselliği</b></td><td><b>+%4.1 Tarihsel Ortalama</b></td><td>Kasım-Aralık Kazanma: %83.3</td><td>Ekim ayı dalgalanmaları yıl sonu rallisi öncesi dip fırsatı sunuyor.</td></tr>
-          <tr><td><b>Türkiye TÜFE Enflasyonu</b></td><td><b>Yıllık %${pulse?.inflation?.turkey || 31.51}</b></td><td>Pozitif Reel Getiri Korunuyor</td><td>TCMB faiz patikasında sıkı ve ihtiyatlı duruşunu sürdürerek dezenflasyon sürecini destekliyor.</td></tr>
+          <tr><td><b>Türkiye TÜFE Enflasyonu</b></td><td><b>Yıllık %${pulse?.inflation?.turkey || 29.73}</b></td><td>Pozitif Reel Getiri Korunuyor</td><td>TCMB faiz patikasında sıkı ve ihtiyatlı duruşunu sürdürerek dezenflasyon sürecini destekliyor.</td></tr>
           <tr><td><b>ABD ISM Hizmetler PMI</b></td><td><b>54.9 (1.5 Yılın Zirvesi)</b></td><td>Beklenti: 51.7 | Önceki: 51.5</td><td>Resesyon tezini sildi, yeni siparişler fırladı (59.4).</td></tr>
           <tr><td><b>ABD Tarım Dışı İstihdam (NFP)</b></td><td><b>+254.000 Kişi (İşsizlik %4.1)</b></td><td>Beklenti: 140.000 Kişi</td><td>İstihdam patlaması tahvil faizlerini %4.02'ye tırmandırdı.</td></tr>
         </table>
@@ -1367,7 +1369,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             { id: 'breaking_news', label: '🔥 Sıcak Haberler & Gündem', badge: 'Canlı Radar' },
                             { id: 'fed', label: '🏛️ FED Faiz Beklentisi', badge: customAgenda?.fedRate?.dominant ? `%${customAgenda.fedRate.prob} ${customAgenda.fedRate.dominant}` : 'CME Watch' },
                             { id: 'seasonality', label: '📈 S&P 500 Mevsimsellik', badge: 'Q4 +%4.1' },
-                            { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: `TÜFE %${pulse?.inflation?.turkey || 31.51}` },
+                            { id: 'macro', label: '⚡ Sıcak Veriler (TÜFE/PMI)', badge: `TÜFE %${pulse?.inflation?.turkey || 29.73}` },
                             { id: 'matrix', label: '📊 Varlık Matrisi', badge: 'Canlı' }
                           ].map((tab) => {
                             const isActive = slide1SubTab === tab.id;
@@ -1614,7 +1616,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                                 <span style={{ fontSize: 7.5, color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>Pozitif Reel Getiri</span>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>%{pulse?.inflation?.turkey || 31.51}</span>
+                                <span style={{ fontSize: 13, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>%{pulse?.inflation?.turkey || 29.73}</span>
                                 <span style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>Dezenflasyon Patikası</span>
                               </div>
                               <div style={{ fontSize: 7.5, color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
@@ -2152,9 +2154,9 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           <tbody>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(16, 185, 129, 0.08)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 800, color: '#34d399' }}>🇹🇷 TCMB (Türkiye)</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%{fmt(quotes?.tcmbRate ?? 37, 2)}</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%{fmt(quotes?.turkeyCPI ?? 31.51, 2)}</td>
-                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+{fmt((quotes?.tcmbRate ?? 37) - (quotes?.turkeyCPI ?? 31.51), 2)} Puan</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, color: '#fff' }}>%{fmt(quotes?.tcmbRate ?? 36, 2)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', color: '#cbd5e1' }}>%{fmt(quotes?.turkeyCPI ?? 29.73, 2)}</td>
+                              <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 900, color: '#34d399', fontSize: 12 }}>+{fmt((quotes?.tcmbRate ?? 36) - (quotes?.turkeyCPI ?? 29.73), 2)} Puan</td>
                             </tr>
                             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                               <td style={{ padding: '8px 8px', fontWeight: 700, color: '#fff' }}>🇺🇸 Fed (ABD)</td>
@@ -2584,7 +2586,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>Net TL Carry Trade Üstünlüğü</div>
-                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%{quotes?.tcmbRate ?? 37} politika faizi ve kontrollü kur oynaklığı TL'yi gelişmekte olan piyasalar arasında 1 numara yapıyor.</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>%{quotes?.tcmbRate ?? 36} politika faizi ve kontrollü kur oynaklığı TL'yi gelişmekte olan piyasalar arasında 1 numara yapıyor.</div>
                           </div>
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -3113,7 +3115,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {[
-                            { time: 'Pazartesi 10:00', event: 'TÜİK Yıllık ve Aylık TÜFE Enflasyonu', note: 'Önceki %31.51 / Beklenti Kritik' },
+                            { time: 'Pazartesi 10:00', event: 'TÜİK Yıllık ve Aylık TÜFE Enflasyonu', note: 'Önceki %29.73 / Beklenti Kritik' },
                             { time: 'Çarşamba 21:00', event: 'Fed FOMC Tutanakları & Yetkili Mesajları', note: 'Warsh Şahin Faiz Yönlendirmesi' },
                             { time: 'Cuma 15:30', event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik', note: 'Küresel Risk İştahı Barometresi' },
                             { time: 'Gelecek PPK Toplantısı', event: 'TCMB Para Politikası Kurulu Faiz Kararı', note: 'Sıkı Para Politikası & Likidite Kararı' }
@@ -4296,7 +4298,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                     <input
                       type="number"
                       step="0.25"
-                      value={agendaForm?.macroRates?.tcmb ?? 37.00}
+                      value={agendaForm?.macroRates?.tcmb ?? 36.00}
                       onChange={(e) => setAgendaForm({ ...agendaForm, macroRates: { ...(agendaForm.macroRates || {}), tcmb: Number(e.target.value) } })}
                       style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(59,130,246,0.3)', color: '#34d399', fontSize: 11, fontWeight: 800, padding: '5px 8px', borderRadius: 4, width: '100%' }}
                     />
@@ -4306,7 +4308,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                     <input
                       type="number"
                       step="0.01"
-                      value={agendaForm?.macroRates?.cpi ?? 31.51}
+                      value={agendaForm?.macroRates?.cpi ?? 29.73}
                       onChange={(e) => setAgendaForm({ ...agendaForm, macroRates: { ...(agendaForm.macroRates || {}), cpi: Number(e.target.value) } })}
                       style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(59,130,246,0.3)', color: '#60a5fa', fontSize: 11, fontWeight: 800, padding: '5px 8px', borderRadius: 4, width: '100%' }}
                     />
@@ -4314,7 +4316,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                   <div>
                     <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginBottom: 3 }}>Net Reel Getiri</div>
                     <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 4, padding: '5px 8px', color: '#34d399', fontSize: 11, fontWeight: 800, textAlign: 'center' }}>
-                      +{(Number(agendaForm?.macroRates?.tcmb ?? 37.00) - Number(agendaForm?.macroRates?.cpi ?? 31.51)).toFixed(2)} Puan
+                      +{(Number(agendaForm?.macroRates?.tcmb ?? 36.00) - Number(agendaForm?.macroRates?.cpi ?? 29.73)).toFixed(2)} Puan
                     </div>
                   </div>
                 </div>
