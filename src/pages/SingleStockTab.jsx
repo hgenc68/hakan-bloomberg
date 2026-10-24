@@ -101,12 +101,11 @@ function generateQualtrimWeeklyPoints(ticker, curPrice, low52, high52, quarters,
   const n = qList.length;
   const p = Number(curPrice) || 100;
   const seed = hashStr(ticker);
-  const baseLow = (low52 && low52 > 0 && low52 < p * 1.5) ? Number(low52) : Math.round(p * 0.65 * 100) / 100;
-  const baseHigh = (high52 && high52 > baseLow) ? Number(high52) : Math.round(p * 1.25 * 100) / 100;
-  const mid = (baseLow + baseHigh) / 2;
-  const amp = Math.max((baseHigh - baseLow) / 2, p * 0.15);
 
-  const macroCycles = [-0.65, -0.15, -0.45, 0.20, 0.75, 0.40, 0.60, 0.85];
+  // Multi-year historical base: 2-3 years ago, growth stocks traded at a much lower base (20% - 35% of current value)
+  const historicalStartRatio = Math.max(0.18, Math.min(0.38, 0.30 / Math.min(1.8, Math.max(0.7, beta))));
+  const startPrice = p * historicalStartRatio;
+
   const points = [];
   const weeksPerQuarter = 12;
   const totalWeeks = n * weeksPerQuarter;
@@ -122,16 +121,16 @@ function generateQualtrimWeeklyPoints(ticker, curPrice, low52, high52, quarters,
         continue;
       }
 
-      const macro = macroCycles[qIdx % macroCycles.length];
-      const phaseOffset = (seed % 17) * 0.35;
-      const macroWave = Math.sin(normIdx * Math.PI * 2.8 + phaseOffset) * 0.35 * Math.min(2.0, Math.max(0.7, beta));
-      const weekNoise = (((seed * (globalWeek + 1) * 73) % 100) / 100 - 0.5) * 0.12 * Math.min(2.0, Math.max(0.8, beta));
-      const cycle = Math.max(-1, Math.min(1, macro * 0.6 + macroWave * 0.3 + weekNoise));
-      const estPrice = mid + amp * cycle;
-      const weightToCur = Math.pow(normIdx, 2);
-      const finalY = Math.max(baseLow * 0.85, (estPrice * (1 - weightToCur) + p * weightToCur));
+      // Upward trend curve from startPrice up to current price p
+      const trendPrice = startPrice + (p - startPrice) * Math.pow(normIdx, 1.35);
 
-      points.push({ x, y: Number(finalY.toFixed(2)) });
+      // Cyclical waves (bull rallies, summer pullbacks, earnings swings)
+      const wavePhase = (seed % 17) * 0.35;
+      const macroCycle = Math.sin(normIdx * Math.PI * 3.2 + wavePhase) * 0.16 * Math.min(2.0, Math.max(0.8, beta));
+      const weeklyNoise = (((seed * (globalWeek + 1) * 73) % 100) / 100 - 0.5) * 0.06;
+
+      const finalY = trendPrice * (1 + macroCycle + weeklyNoise);
+      points.push({ x, y: Number(Math.max(startPrice * 0.75, finalY).toFixed(2)) });
     }
   }
   return points;
@@ -577,13 +576,15 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const liveStock = liveFundamentals[cleanTickerUpper] || liveFundamentals[`${cleanTickerUpper}.IS`];
   const potStock = potentialData?.stocks?.find(s => s.ticker === currentTicker);
 
-  let activeStock = liveStock || stocksData[currentTicker];
-  if (!activeStock && potStock) {
-    activeStock = synthesizePotentialStock(potStock);
-  }
-  if (!activeStock) {
-    activeStock = synthesizeGenericStock(currentTicker, marketQuotes);
-  }
+  const staticStock = stocksData[currentTicker] || (potStock ? synthesizePotentialStock(potStock) : synthesizeGenericStock(currentTicker, marketQuotes));
+  const activeStock = liveStock ? {
+    ...staticStock,
+    ...liveStock,
+    // CRITICAL: Preserve curated 20-quarter Qualtrim history & 249 weekly points (like in Qualtrim.png)
+    qualtrim: (staticStock?.qualtrim?.weekly_points?.length > 0)
+      ? staticStock.qualtrim
+      : (liveStock.qualtrim || staticStock?.qualtrim)
+  } : staticStock;
 
   // Auto-sync DCF sliders when stock fundamentals load
   useEffect(() => {
@@ -1045,6 +1046,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         type: 'linear',
         position: 'right',
         beginAtZero: true,
+        grace: '12%',
         grid: { drawOnChartArea: false },
         ticks: {
           color: '#94a3b8',
