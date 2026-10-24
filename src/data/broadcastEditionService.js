@@ -285,30 +285,28 @@ Bilanço sezonunun başlamasıyla birlikte şirket bazlı kâr ayrışmaları h�
     // SLIDE 9: YATIRIMCI PUSULASI & PORTFÖY STRATEJİSİ
     // -------------------------------------------------------------------------
     case 9: {
-      const portText = `Piyasa dalgalanmalarında disiplini korumak için portföylerde likit nakit ve emtia tamponunun (Para Piyasası Fonu, kısa vadeli faiz ve altın rezervi) dengeli tutulması, geri çekilmelerde kurumsal fırsatları değerlendirmek adına en kritik savunma mekanizmasıdır.`;
+      const portText = `Piyasa dalgalanmalarında disiplini korumak adına varlık dağılımında likit nakit ve emtia tamponunun (Para Piyasası Fonu, kısa vadeli getiri araçları ve altın rezervi) dengeli tutulması, olası geri çekilmelerde kurumsal fırsatları değerlendirebilmek açısından izlenen temel savunma yaklaşımlarındandır.`;
 
       if (tone === 'youtube') {
-        return `Ve yayınımızın kapanışında altın kurallarımızı hatırlayalım: ${portText}
+        return `Ve yayınımızın kapanışında genel risk prensiplerimizi özetleyelim: ${portText}
 
-Asla tek kademede tüm nakdi tüketmeyin. Destek seviyelerinde kademeli giriş, teyit alındığında ekleme ve her zaman kenarda "kuru barut" bulundurma kuralımıza sadık kalıyoruz.
+Piyasa genelinde tüm likiditeyi tek seferde tüketmek yerine; kademeli adımlarla ilerlemek ve kenarda daima likit bir pay bulundurmak riskleri sınırlandırmak adına sıkça tercih edilen bir yaklaşımdır. Her zaman altını çizdiğimiz gibi buradaki hiçbir değerlendirme yatırım tavsiyesi değildir (YTD); kendi risk profilinize ve hedeflerinize göre kararlarınızı oluşturmanız esastır.
 
-Değerli dostlar, yayını faydalı bulduysanız videoyu beğenmeyi, kanalımıza abone olmayı ve zili açmayı lütfen unutmayın. Siz de portföy dağılımınızı ve sorularınızı yorumlara yazın, hepsini yanıtlıyorum. Yarınki yayında görüşmek üzere, bol kazançlar!`;
+Değerli dostlar, yayını faydalı bulduysanız videoyu beğenmeyi, kanalımıza abone olmayı ve zili açmayı lütfen unutmayın. Siz de piyasa hakkındaki genel görüşlerinizi ve sorularınızı yorumlara yazın, hepsini tek tek yanıtlıyorum. Yarınki yayında görüşmek üzere, bol kazançlar!`;
       }
 
       if (tone === 'defensive') {
-        return `Kapanışta risk yönetimi prensiplerimizi yineliyoruz: ${portText}
+        return `Kapanışta risk yönetimi ilkelerini yineliyoruz: ${portText}
 
-Piyasa belirsizliklerinde en kritik varlık anaparanızdır. FOMO'ya kapılmadan, 3 kademeli alım disipliniyle ve likit nakit tamponunuzu tüketmeden pozisyonlarınızı koruyun.
-
-Disiplinli kalan ve riskini yöneten yatırımcı uzun vadede her zaman kazanacaktır. Sağlıklı ve başarılı seanslar dileriz.`;
+Piyasa dalgalanmalarında ve belirsizlik dönemlerinde anaparayı koruma refleksi her zaman öne çıkar. Aceleci işlemler yerine piyasa dengelenmelerini izlemek ve likit nakit tamponunu korumak risk yönetiminin temel unsurlarındandır. Yayınımızda yer alan tüm analiz ve grafikler eğitim amaçlı olup kesinlikle kişisel yatırım tavsiyesi niteliği taşımamaktadır (YTD). Sağlıklı ve başarılı seanslar dileriz.`;
       }
 
       // Default: Analytical
-      return `Günün 9 slaytlık piyasa brifingini tamamlarken stratejik tablomuzu özetliyoruz: ${portText}
+      return `Günün 9 slaytlık piyasa brifingini tamamlarken stratejik çerçeveyi özetliyoruz: ${portText}
 
-Önümüzdeki günlerde açıklanacak bilançolar ve küresel merkez bankaları kararları yakından izlenecektir. Portföy disiplinini ve kurumsal nakit yönetimini elden bırakmadan yatırımlarınızı yönlendirmenizi tavsiye ederiz.
+Önümüzdeki günlerde açıklanacak bilançolar ve küresel merkez bankaları kararları yakından izlenecektir. Piyasa aktörleri açısından portföy disiplinini, çeşitlendirmeyi ve kurumsal nakit yönetimini gözetmek bu süreçte öne çıkan başlıklar arasında yer almaktadır. Yayındaki değerlendirmeler genel bilgilendirme niteliğinde olup yatırım danışmanlığı kapsamında değildir.
 
-Bir sonraki ${slotTitle} bültenimizde görüşmek üzere, iyi günler ve başarılı yatırımlar dileriz.`;
+Bir sonraki ${slotTitle} bültenimizde görüşmek üzere, iyi günler ve başarılı piyasalar dileriz.`;
     }
 
     default:

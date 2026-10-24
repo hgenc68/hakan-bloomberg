@@ -533,7 +533,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           localStorage.removeItem('broadcast_studio_custom_scripts_v7');
           return {};
         }
-        if (saved.includes('Kendi portföy') || saved.includes('Kur Kalkanı') || saved.includes('portföyümüzde toplam')) {
+        if (saved.includes('Kendi portföy') || saved.includes('Kur Kalkanı') || saved.includes('portföyümüzde toplam') || saved.includes('tavsiye ederiz')) {
           localStorage.removeItem('broadcast_studio_custom_scripts_v7');
           return {};
         }
@@ -542,7 +542,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           const cleaned = {};
           for (const [k, v] of Object.entries(parsed)) {
             if (typeof v === 'string') {
-              if (v.includes('yüzde 50') || v.includes('%50') || v.includes('50 politika') || v.includes('%37') || v.includes('37 politika') || v.includes('Kendi portföy') || v.includes('Kur Kalkanı') || v.includes('portföyümüzde toplam')) {
+              if (v.includes('yüzde 50') || v.includes('%50') || v.includes('50 politika') || v.includes('%37') || v.includes('37 politika') || v.includes('Kendi portföy') || v.includes('Kur Kalkanı') || v.includes('portföyümüzde toplam') || v.includes('tavsiye ederiz')) {
                 continue;
               }
             }
@@ -942,7 +942,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         metrics: [
           { label: 'Takip Edilecek Veri', val: 'TÜİK TÜFE & ABD NFP', chg: 0, isUp: true },
           { label: 'Merkez Bankası Kararı', val: 'Gelecek PPK Toplantısı', chg: 0, note: 'Sıkı Para Duruşu' },
-          { label: 'Tavsiye Nakit Oranı', val: '%20 - %25', chg: 0, note: 'Likit Tampon' },
+          { label: 'Model Likit Oranı', val: '%20 - %25', chg: 0, note: 'Örnek Tampon' },
           { label: 'Piyasa Stratejisi', val: 'Seçici & Korumalı', chg: 0, note: 'Hisse Bazlı Ayrışma' }
         ],
         defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
@@ -3081,7 +3081,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                       <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                           <Compass size={14} />
-                          <span>HAKAN GENÇ FİNANS - YATIRIMCI FELSEFESİ</span>
+                          <span>YATIRIMCI FELSEFESİ</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '9px 12px' }}>
