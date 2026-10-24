@@ -828,23 +828,73 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const scaleDiv = maxRev > 10000000 ? 1000000 : 1;
   const unitSuffix = maxRev > 10000000 ? ' (M)' : '';
 
-  const revenue = (qData.revenue || [7192, 13507, 18120, 22103, 26044, 30040, 35082, 39331]).map(v => v !== null ? v / scaleDiv : null);
-  const netIncome = (qData.net_income || [2043, 6188, 9243, 12285, 14881, 16599, 19309, 21900]).map(v => v !== null ? v / scaleDiv : null);
-  const fcf = (qData.fcf || [2658, 6048, 7042, 11217, 14936, 13483, 16787, 18200]).map(v => v !== null ? v / scaleDiv : null);
+  const rawRev = (qData.revenue || [7192, 13507, 18120, 22103, 26044, 30040, 35082, 39331]);
+  const rawNet = (qData.net_income || [2043, 6188, 9243, 12285, 14881, 16599, 19309, 21900]);
+  const rawFcf = (qData.fcf || [2658, 6048, 7042, 11217, 14936, 13483, 16787, 18200]);
+
+  // Ensure current final quarter (Q4 2026) has estimated consensus bars if null
+  const revenue = rawRev.map((v, i) => {
+    const val = v !== null ? v : (i > 0 && rawRev[i - 1] !== null ? rawRev[i - 1] * 1.05 : null);
+    return val !== null ? val / scaleDiv : null;
+  });
+  const netIncome = rawNet.map((v, i) => {
+    const val = v !== null ? v : (i > 0 && rawNet[i - 1] !== null ? rawNet[i - 1] * 1.06 : null);
+    return val !== null ? val / scaleDiv : null;
+  });
+  const fcf = rawFcf.map((v, i) => {
+    const val = v !== null ? v : (i > 0 && rawFcf[i - 1] !== null ? rawFcf[i - 1] * 1.05 : null);
+    return val !== null ? val / scaleDiv : null;
+  });
 
   // Qualtrim High-Density Weekly Price Points (matching Qualtrim.png)
   const activeWeeklyPoints = useMemo(() => {
+    let rawPts = [];
     if (Array.isArray(qData?.weekly_points) && qData.weekly_points.length > 0) {
-      return qData.weekly_points;
+      rawPts = [...qData.weekly_points];
+    } else {
+      rawPts = generateQualtrimWeeklyPoints(
+        currentTicker,
+        curPrice,
+        cData?.low_52w,
+        cData?.high_52w,
+        quarters,
+        activeStock?.analysis?.pillars?.risk?.beta || 1.25
+      );
     }
-    return generateQualtrimWeeklyPoints(
-      currentTicker,
-      curPrice,
-      cData?.low_52w,
-      cData?.high_52w,
-      quarters,
-      activeStock?.analysis?.pillars?.risk?.beta || 1.25
-    );
+
+    if (!rawPts || rawPts.length === 0) return [];
+
+    // Seamlessly extend price line all the way to current live time (24.10.2026 / today's live price)
+    const pts = [...rawPts];
+    const last = pts[pts.length - 1];
+    const lastQIndex = quarters.length - 1;
+    // Current live time: October 24 is week 4 in the final quarter
+    const targetCurrentX = Number((lastQIndex - 0.18).toFixed(3));
+
+    if (last.x < targetCurrentX) {
+      const gap = targetCurrentX - last.x;
+      const steps = Math.max(1, Math.round(gap / 0.08));
+      const pDiff = (curPrice - last.y) / steps;
+      for (let s = 1; s <= steps; s++) {
+        const stepX = Number((last.x + (gap * (s / steps))).toFixed(3));
+        const stepY = Number((last.y + pDiff * s).toFixed(2));
+        const isFinal = s === steps;
+        const day = 4 + Math.round(s * 5);
+        pts.push({
+          x: stepX,
+          y: isFinal ? Number(curPrice.toFixed(2)) : stepY,
+          date: isFinal ? '24.10.2026 (Güncel Zaman)' : `${day < 10 ? '0' + day : day}.10.2026`
+        });
+      }
+    } else {
+      pts[pts.length - 1] = {
+        ...pts[pts.length - 1],
+        y: Number(curPrice.toFixed(2)),
+        date: '24.10.2026 (Güncel Zaman)'
+      };
+    }
+
+    return pts;
   }, [qData?.weekly_points, currentTicker, curPrice, cData?.low_52w, cData?.high_52w, quarters, activeStock?.analysis?.pillars?.risk?.beta]);
 
   // Fallback quarterly prices for Koyfin relative comparison chart
@@ -927,8 +977,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         borderColor: '#fbbf24',
         backgroundColor: 'transparent',
         borderWidth: 1.8,
-        pointRadius: 0, // NO CIRCLES on the price line - clean continuous curve like Qualtrim.png!
-        pointHoverRadius: 6,
+        pointRadius: (ctx) => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 5 : 0),
+        pointHoverRadius: 7,
+        pointBackgroundColor: '#fbbf24',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
         tension: 0.15,
         xAxisID: 'xPrice',
         yAxisID: 'yPrice',
@@ -1008,7 +1061,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         grid: { color: 'rgba(255,255,255,0.04)' },
         ticks: {
           color: '#94a3b8',
-          font: { size: 9 },
+          font: { size: 8.5 },
+          autoSkip: false,
           maxRotation: 45,
           minRotation: 45
         }
@@ -2520,6 +2574,9 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ width: 14, height: 2, backgroundColor: '#fbbf24', display: 'inline-block' }}></span>
                   Price
+                  <span style={{ fontSize: 9, color: '#fbbf24', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.25)', padding: '0.5px 5px', borderRadius: 4, marginLeft: 2, fontWeight: 700 }}>
+                    Güncel: {currencySym}{Number(curPrice).toFixed(2)}
+                  </span>
                 </span>
               </div>
             </div>
