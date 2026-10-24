@@ -96,6 +96,47 @@ function generateRealisticQuarterlyPrices(ticker, curPrice, low52, high52, quart
   });
 }
 
+function generateQualtrimWeeklyPoints(ticker, curPrice, low52, high52, quarters, beta = 1.25) {
+  const qList = quarters && quarters.length > 0 ? quarters : ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  const n = qList.length;
+  const p = Number(curPrice) || 100;
+  const seed = hashStr(ticker);
+  const baseLow = (low52 && low52 > 0 && low52 < p * 1.5) ? Number(low52) : Math.round(p * 0.65 * 100) / 100;
+  const baseHigh = (high52 && high52 > baseLow) ? Number(high52) : Math.round(p * 1.25 * 100) / 100;
+  const mid = (baseLow + baseHigh) / 2;
+  const amp = Math.max((baseHigh - baseLow) / 2, p * 0.15);
+
+  const macroCycles = [-0.65, -0.15, -0.45, 0.20, 0.75, 0.40, 0.60, 0.85];
+  const points = [];
+  const weeksPerQuarter = 12;
+  const totalWeeks = n * weeksPerQuarter;
+
+  for (let qIdx = 0; qIdx < n; qIdx++) {
+    for (let w = 0; w < weeksPerQuarter; w++) {
+      const globalWeek = qIdx * weeksPerQuarter + w;
+      const x = Number(((qIdx - 0.5) + (w + 0.5) / weeksPerQuarter).toFixed(3));
+      const normIdx = globalWeek / (totalWeeks - 1);
+
+      if (globalWeek === totalWeeks - 1) {
+        points.push({ x, y: Number(p.toFixed(2)) });
+        continue;
+      }
+
+      const macro = macroCycles[qIdx % macroCycles.length];
+      const phaseOffset = (seed % 17) * 0.35;
+      const macroWave = Math.sin(normIdx * Math.PI * 2.8 + phaseOffset) * 0.35 * Math.min(2.0, Math.max(0.7, beta));
+      const weekNoise = (((seed * (globalWeek + 1) * 73) % 100) / 100 - 0.5) * 0.12 * Math.min(2.0, Math.max(0.8, beta));
+      const cycle = Math.max(-1, Math.min(1, macro * 0.6 + macroWave * 0.3 + weekNoise));
+      const estPrice = mid + amp * cycle;
+      const weightToCur = Math.pow(normIdx, 2);
+      const finalY = Math.max(baseLow * 0.85, (estPrice * (1 - weightToCur) + p * weightToCur));
+
+      points.push({ x, y: Number(finalY.toFixed(2)) });
+    }
+  }
+  return points;
+}
+
 function synthesizePotentialStock(pot) {
   if (!pot) return null;
   const p = Number(pot.price) || 50;
@@ -790,10 +831,22 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const netIncome = (qData.net_income || [2043, 6188, 9243, 12285, 14881, 16599, 19309, 21900]).map(v => v !== null ? v / scaleDiv : null);
   const fcf = (qData.fcf || [2658, 6048, 7042, 11217, 14936, 13483, 16787, 18200]).map(v => v !== null ? v / scaleDiv : null);
 
-  // Historical Stock Price Line Overlay:
-  // Priority 1: If qData.price is provided and contains authentic, non-linear market movements, use it
-  // Priority 2: If candlestick candles are available, map their exact quarterly closing prices
-  // Priority 3: Synthesize authentic quarterly volatility (respecting 52w range, beta and macro cycles)
+  // Qualtrim High-Density Weekly Price Points (matching Qualtrim.png)
+  const activeWeeklyPoints = useMemo(() => {
+    if (Array.isArray(qData?.weekly_points) && qData.weekly_points.length > 0) {
+      return qData.weekly_points;
+    }
+    return generateQualtrimWeeklyPoints(
+      currentTicker,
+      curPrice,
+      cData?.low_52w,
+      cData?.high_52w,
+      quarters,
+      activeStock?.analysis?.pillars?.risk?.beta || 1.25
+    );
+  }, [qData?.weekly_points, currentTicker, curPrice, cData?.low_52w, cData?.high_52w, quarters, activeStock?.analysis?.pillars?.risk?.beta]);
+
+  // Fallback quarterly prices for Koyfin relative comparison chart
   const candleQuarterMap = extractQuarterlyClosesFromCandles(cData?.candles);
   const fallbackModelPrices = generateRealisticQuarterlyPrices(
     currentTicker,
@@ -819,57 +872,94 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   const priceData = rawPrices.map(v => (v !== null && v !== undefined && !isNaN(v)) ? Number(v) : null);
 
-  // Dynamic bounds for right price scale to reveal authentic peaks & valleys (avoiding flat-line compression)
-  const validPrices = priceData.filter(v => v !== null && !isNaN(v) && v > 0);
-  const minP = validPrices.length > 0 ? Math.min(...validPrices) : curPrice * 0.8;
-  const maxP = validPrices.length > 0 ? Math.max(...validPrices) : curPrice * 1.2;
-  const pSpan = Math.max(maxP - minP, maxP * 0.12);
-  const pPad = Math.max(pSpan * 0.15, maxP * 0.05);
-  const yPriceMin = Math.max(0, Math.floor((minP - pPad) * 10) / 10);
-  const yPriceMax = Math.ceil((maxP + pPad) * 10) / 10;
+  // Qualtrim Institutional Growth Stats (REV CAGR, REV TOTAL, PRICE TOTAL, FCF CAGR/TOTAL, NET INC CAGR/TOTAL)
+  const qualtrimStats = useMemo(() => {
+    const validRev = revenue.filter(v => v !== null && v > 0);
+    const validNet = netIncome.filter(v => v !== null && v > 0);
+    const validFcf = fcf.filter(v => v !== null && v > 0);
+
+    let firstPrice = curPrice * 0.7;
+    let lastPrice = curPrice;
+    if (activeWeeklyPoints && activeWeeklyPoints.length > 0) {
+      const validPoints = activeWeeklyPoints.filter(p => p && p.y != null && p.y > 0);
+      if (validPoints.length > 0) {
+        firstPrice = validPoints[0].y;
+        lastPrice = validPoints[validPoints.length - 1].y;
+      }
+    }
+
+    const qCount = quarters.length || 8;
+    const years = Math.max(0.5, (qCount - 1) / 4);
+
+    const calcGrowth = (arr) => {
+      if (!arr || arr.length < 2) return { total: 0, cagr: 0 };
+      const first = arr[0];
+      const last = arr[arr.length - 1];
+      const total = first > 0 ? ((last - first) / first) * 100 : 0;
+      const cagr = (first > 0 && last > 0 && years > 0) ? (Math.pow(last / first, 1 / years) - 1) * 100 : 0;
+      return { total, cagr };
+    };
+
+    const revStats = calcGrowth(validRev);
+    const netStats = calcGrowth(validNet);
+    const fcfStats = calcGrowth(validFcf);
+    const priceTotal = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
+
+    return {
+      revCagr: revStats.cagr,
+      revTotal: revStats.total,
+      priceTotal,
+      fcfCagr: fcfStats.cagr,
+      fcfTotal: fcfStats.total,
+      netIncCagr: netStats.cagr,
+      netIncTotal: netStats.total
+    };
+  }, [revenue, netIncome, fcf, activeWeeklyPoints, curPrice, quarters.length]);
 
   const qualtrimChartData = {
     labels: quarters,
     datasets: [
       {
         type: 'line',
-        label: `Hisse Fiyatı (${currencySym})`,
-        data: priceData,
+        label: 'Price',
+        data: activeWeeklyPoints,
         borderColor: '#fbbf24',
-        backgroundColor: 'rgba(251, 191, 36, 0.12)',
-        borderWidth: 2.5,
-        pointBackgroundColor: '#fbbf24',
-        pointBorderColor: '#fff',
-        pointRadius: 4,
-        pointHoverRadius: 7,
-        tension: 0.35,
+        backgroundColor: 'transparent',
+        borderWidth: 1.8,
+        pointRadius: 0, // NO CIRCLES on the price line - clean continuous curve like Qualtrim.png!
+        pointHoverRadius: 6,
+        tension: 0.15,
+        xAxisID: 'xPrice',
         yAxisID: 'yPrice',
         order: 1
       },
       {
         type: 'bar',
-        label: `Gelir (Revenue)${unitSuffix}`,
-        data: revenue,
-        backgroundColor: '#3b82f6',
-        borderRadius: 4,
+        label: 'FCF',
+        data: fcf,
+        backgroundColor: '#facc15', // Signature Qualtrim Yellow
+        borderRadius: 2,
+        xAxisID: 'x',
         yAxisID: 'yFinancials',
         order: 2
       },
       {
         type: 'bar',
-        label: `Net Kâr (Net Income)${unitSuffix}`,
+        label: 'Net Inc',
         data: netIncome,
-        backgroundColor: '#10b981',
-        borderRadius: 4,
+        backgroundColor: '#c2410c', // Signature Qualtrim Chestnut / Burnt Orange
+        borderRadius: 2,
+        xAxisID: 'x',
         yAxisID: 'yFinancials',
         order: 3
       },
       {
         type: 'bar',
-        label: `Serbest Nakit Akışı (FCF)${unitSuffix}`,
-        data: fcf,
-        backgroundColor: '#00e5ff',
-        borderRadius: 4,
+        label: 'Rev',
+        data: revenue,
+        backgroundColor: '#ea580c', // Signature Qualtrim Vibrant Orange
+        borderRadius: 2,
+        xAxisID: 'x',
         yAxisID: 'yFinancials',
         order: 4
       }
@@ -881,61 +971,91 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top',
-        labels: { color: '#94a3b8', font: { size: 10 } }
+        display: false // Using custom centered Qualtrim legend header above chart
       },
       tooltip: {
-        backgroundColor: '#0f172a',
+        backgroundColor: '#0b1120',
         titleColor: '#e2e8f0',
-        borderColor: 'rgba(255,255,255,0.1)',
+        borderColor: 'rgba(255,255,255,0.12)',
         borderWidth: 1,
+        padding: 9,
         callbacks: {
-          label: (ctx) => {
-            if (ctx.dataset.yAxisID === 'yPrice') {
-              return ` ${ctx.dataset.label}: ${currencySym}${Number(ctx.raw || 0).toFixed(2)}`;
+          title: (items) => {
+            if (!items || items.length === 0) return '';
+            const it = items[0];
+            if (it.dataset.label === 'Price' && it.raw?.date) {
+              return `Kapanış: ${it.raw.date}`;
             }
-            return ` ${ctx.dataset.label}: ${currencySym}${Number(ctx.raw || 0).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`;
+            return it.label || '';
+          },
+          label: (ctx) => {
+            if (ctx.dataset.label === 'Price' || ctx.dataset.yAxisID === 'yPrice') {
+              const pVal = ctx.raw?.y != null ? ctx.raw.y : (typeof ctx.raw === 'number' ? ctx.raw : 0);
+              const dStr = ctx.raw?.date ? ` (${ctx.raw.date})` : '';
+              return ` Hisse Fiyatı: ${currencySym}${Number(pVal).toFixed(2)}${dStr}`;
+            }
+            const val = typeof ctx.raw === 'number' ? ctx.raw : (ctx.raw?.y || 0);
+            return ` ${ctx.dataset.label}: ${currencySym}${Number(val).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}${unitSuffix}`;
           }
         }
       }
     },
     scales: {
       x: {
+        type: 'category',
+        labels: quarters,
         grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { color: '#64748b', font: { size: 10 } }
+        ticks: {
+          color: '#94a3b8',
+          font: { size: 9 },
+          maxRotation: 45,
+          minRotation: 45
+        }
+      },
+      xPrice: {
+        type: 'linear',
+        display: false,
+        min: -0.5,
+        max: quarters.length - 0.5
       },
       yFinancials: {
         type: 'linear',
         position: 'left',
-        grid: { color: 'rgba(255,255,255,0.04)' },
+        beginAtZero: true,
+        grid: { color: 'rgba(255,255,255,0.05)' },
         ticks: {
-          color: '#64748b',
-          font: { size: 10 },
-          callback: (v) => `${v.toLocaleString('tr-TR')}`
+          color: '#94a3b8',
+          font: { size: 9.5 },
+          callback: (v) => {
+            if (v === 0) return `${currencySym}0`;
+            if (unitSuffix === ' (M)') {
+              return v >= 1000 ? `${currencySym}${(v / 1000).toFixed(1)}b` : `${currencySym}${v.toFixed(0)}m`;
+            }
+            return `${currencySym}${v.toLocaleString('tr-TR')}`;
+          }
         },
         title: {
           display: true,
-          text: `Bilanço ${unitSuffix} (${currencySym})`,
-          color: '#64748b',
-          font: { size: 9 }
+          text: `Value (${currencySym})`,
+          color: '#94a3b8',
+          font: { size: 9.5 }
         }
       },
       yPrice: {
         type: 'linear',
         position: 'right',
+        beginAtZero: true,
         grid: { drawOnChartArea: false },
-        min: yPriceMin,
-        max: yPriceMax,
         ticks: {
-          color: '#fbbf24',
-          font: { size: 10, weight: 'bold' },
+          color: '#94a3b8',
+          font: { size: 9.5 },
           callback: (v) => `${currencySym}${typeof v === 'number' ? Number(v).toLocaleString('tr-TR', { maximumFractionDigits: v < 10 ? 2 : 1 }) : v}`
         },
         title: {
           display: true,
-          text: `Hisse Fiyatı (${currencySym})`,
-          color: '#fbbf24',
-          font: { size: 9 }
+          text: 'Stock Price',
+          color: '#94a3b8',
+          font: { size: 9.5 }
         }
       }
     }
@@ -2376,13 +2496,119 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             </div>
           </div>
 
-          <div style={{ height: 280, width: '100%', marginBottom: 14 }}>
+          {/* Qualtrim Top Centered Header (matching Qualtrim.png) */}
+          {rightChartMode === 'qualtrim' && (
+            <div style={{ textAlign: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#f1f5f9', letterSpacing: '0.4px' }}>
+                {currentTicker} - 4 Metrics
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, marginTop: 4, fontSize: 11, color: '#94a3b8' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 10, height: 10, backgroundColor: '#facc15', borderRadius: 1 }}></span>
+                  FCF
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 10, height: 10, backgroundColor: '#c2410c', borderRadius: 1 }}></span>
+                  Net Inc
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 10, height: 10, backgroundColor: '#ea580c', borderRadius: 1 }}></span>
+                  Rev
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 14, height: 2, backgroundColor: '#fbbf24', display: 'inline-block' }}></span>
+                  Price
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div style={{ height: 320, width: '100%', marginBottom: 6 }}>
             {rightChartMode === 'qualtrim' ? (
               <Bar data={qualtrimChartData} options={qualtrimChartOptions} />
             ) : (
               <Line data={koyfinChartData} options={koyfinChartOptions} />
             )}
           </div>
+
+          {/* Qualtrim Watermark & Bottom Stats Bar (matching Qualtrim.png) */}
+          {rightChartMode === 'qualtrim' && (
+            <>
+              <div style={{ textAlign: 'right', fontSize: 10, color: '#64748b', fontWeight: 600, marginTop: 2, marginBottom: 8, letterSpacing: '0.5px' }}>
+                Powered by <strong style={{ color: '#94a3b8', letterSpacing: '1px' }}>QUALTRIM</strong>
+              </div>
+
+              <div style={{
+                background: '#070b14',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 6,
+                padding: '9px 12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
+                marginBottom: 14
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(251, 191, 36, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>
+                    📈
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 8.5, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>COMPANY</div>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: '#f1f5f9' }}>
+                      {activeStock?.candlestick?.name || currentTicker} <span style={{ color: '#94a3b8', fontWeight: 600 }}>{currentTicker}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>REV CAGR</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.revCagr >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {qualtrimStats.revCagr >= 0 ? '+' : ''}{qualtrimStats.revCagr.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>REV TOTAL</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.revTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {qualtrimStats.revTotal >= 0 ? '+' : ''}{qualtrimStats.revTotal.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>PRICE TOTAL</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.priceTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {qualtrimStats.priceTotal >= 0 ? '+' : ''}{qualtrimStats.priceTotal.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>FCF CAGR</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.fcfCagr >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {qualtrimStats.fcfCagr >= 0 ? '+' : ''}{qualtrimStats.fcfCagr.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>FCF TOTAL</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.fcfTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {qualtrimStats.fcfTotal >= 0 ? '+' : ''}{qualtrimStats.fcfTotal.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>NET INC CAGR</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.netIncCagr >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {qualtrimStats.netIncCagr >= 0 ? '+' : ''}{qualtrimStats.netIncCagr.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>NET INC TOTAL</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.netIncTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
+                      {qualtrimStats.netIncTotal >= 0 ? '+' : ''}{qualtrimStats.netIncTotal.toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Valuation Corridor Bar & Horizontal Scale */}
           {(() => {
