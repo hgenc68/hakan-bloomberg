@@ -113,8 +113,7 @@ export const generateDailyScript = (
   todayFullStr = '',
   slotTitle = '',
   customAgenda = null,
-  tone = 'analytical',
-  portfolioContext = null
+  tone = 'analytical'
 ) => {
   const safeQuotes = quotes && typeof quotes === 'object' ? quotes : {};
   const {
@@ -178,7 +177,7 @@ Ons altın $${fmt(gold.price, 0)} ile zirveleri test ederken, Kapalıçarşı'da
 
 Canlı göstergelerimize baktığımızda; ABD 10 yıllık tahvil getirisi yüzde ${fmt(us10y.price, 2)} seviyesinde ve Dolar Endeksi DXY ${fmt(dxy.price, 2)} bandında. ${marketMood} ${bistMood}
 
-Bugünkü yayınımızda "${t1}" başlığı altında sermaye koruma kalkanımızı, altın ve likit nakit tamponumuzu nasıl konumlandırmamız gerektiğini 9 slaytlık brifingimizle ayrıntılı olarak inceleyeceğiz.`;
+Bugünkü yayınımızda "${t1}" başlığı altında yatırımcıların sermaye koruma stratejilerini, altın ve likit nakit tamponunu nasıl konumlandırması gerektiğini 9 slaytlık brifingimizle ayrıntılı olarak inceleyeceğiz.`;
       }
 
       // Default: Analytical (Bloomberg style)
@@ -243,7 +242,7 @@ Piyasada genel endeks yükselişinden ziyade serbest nakit akışı (FCF) ürete
 
 Altın/gümüş rasyosu ${(gold.price / (silver.price || 60)).toFixed(1)}x civarında dengelenirken, merkez bankalarının kesintisiz fiziki külçe alımları altındaki geri çekilmeleri anında kurumsal alımla karşılıyor.
 
-Yurt içi yatırımcı için Kapalıçarşı gram altının ${fmt(gramAltinTL, 0)} TL seviyesinde sunduğu çifte kalkan (hem ons hem dolar primi) devalüasyon riskine karşı en sağlam sigortadır. Portföyümüzde gram altın ağırlığını korumaya devam ediyoruz.`;
+Yurt içi yatırımcı için Kapalıçarşı gram altının ${fmt(gramAltinTL, 0)} TL seviyesinde sunduğu çifte kalkan (hem ons hem dolar primi) devalüasyon riskine karşı en sağlam sigortadır. Portföylerde gram altın ve kıymetli maden dengesini korumak kritik bir strateji olmaya devam ediyor.`;
     }
 
     // -------------------------------------------------------------------------
@@ -286,22 +285,20 @@ Bilanço sezonunun başlamasıyla birlikte şirket bazlı kâr ayrışmaları h�
     // SLIDE 9: YATIRIMCI PUSULASI & PORTFÖY STRATEJİSİ
     // -------------------------------------------------------------------------
     case 9: {
-      const portText = portfolioContext && portfolioContext.totalVal
-        ? `Kendi portföyümüzde toplam değerimiz ${portfolioContext.sym}${fmt(portfolioContext.totalVal)} seviyesindedir. Yüzde %${portfolioContext.shieldRatio} oranındaki Kur Kalkanımız (Gram Altın + PPF + Nakit) piyasadaki dalgalanmalara karşı tam koruma sağlamaktadır.`
-        : `Portföyümüzde yüzde 35 oranındaki Kur Kalkanımız (Gram Altın, PPF ve Serbest Nakit) piyasa dalgalanmalarına karşı tam koruma sağlamaktadır.`;
+      const portText = `Piyasa dalgalanmalarında disiplini korumak için portföylerde likit nakit ve emtia tamponunun (Para Piyasası Fonu, kısa vadeli faiz ve altın rezervi) dengeli tutulması, geri çekilmelerde kurumsal fırsatları değerlendirmek adına en kritik savunma mekanizmasıdır.`;
 
       if (tone === 'youtube') {
         return `Ve yayınımızın kapanışında altın kurallarımızı hatırlayalım: ${portText}
 
 Asla tek kademede tüm nakdi tüketmeyin. Destek seviyelerinde kademeli giriş, teyit alındığında ekleme ve her zaman kenarda "kuru barut" bulundurma kuralımıza sadık kalıyoruz.
 
-Değerli dostlar, yayını faydalı bulduysanız videoyu beğenmeyi, kanalımıza abone olmayı ve zili açmayı lütfen unutmayın. Kendi portföy dağılımınızı ve sorularınızı yorumlara yazın, hepsini yanıtlıyorum. Yarınki yayında görüşmek üzere, bol kazançlar!`;
+Değerli dostlar, yayını faydalı bulduysanız videoyu beğenmeyi, kanalımıza abone olmayı ve zili açmayı lütfen unutmayın. Siz de portföy dağılımınızı ve sorularınızı yorumlara yazın, hepsini yanıtlıyorum. Yarınki yayında görüşmek üzere, bol kazançlar!`;
       }
 
       if (tone === 'defensive') {
         return `Kapanışta risk yönetimi prensiplerimizi yineliyoruz: ${portText}
 
-Piyasa belirsizliklerinde en kritik varlık anaparanızdır. FOMO'ya kapılmadan, 3 kademeli alım disipliniyle ve kur kalkanınızı eksiltmeden pozisyonlarınızı koruyun.
+Piyasa belirsizliklerinde en kritik varlık anaparanızdır. FOMO'ya kapılmadan, 3 kademeli alım disipliniyle ve likit nakit tamponunuzu tüketmeden pozisyonlarınızı koruyun.
 
 Disiplinli kalan ve riskini yöneten yatırımcı uzun vadede her zaman kazanacaktır. Sağlıklı ve başarılı seanslar dileriz.`;
       }

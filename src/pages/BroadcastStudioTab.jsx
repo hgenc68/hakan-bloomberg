@@ -50,7 +50,7 @@ import {
 } from '../data/broadcastEditionService';
 
 export default function BroadcastStudioTab({ isObsPopout = false }) {
-  const { marketQuotes, usdtry, fetchMarketData, portfolioSummary, currentCurrency } = useApp();
+  const { marketQuotes, usdtry, fetchMarketData } = useApp();
 
   // Cross-window synchronization for OBS Pop-out (4-Way Redundant Engine)
   const syncChannelRef = useRef(null);
@@ -73,17 +73,6 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       }
     } catch {}
   };
-
-  const isTRY = (currentCurrency || 'TRY') === 'TRY';
-  const portfolioContext = useMemo(() => {
-    if (!portfolioSummary) return null;
-    return {
-      totalVal: isTRY ? portfolioSummary.totalValTRY : portfolioSummary.totalValUSD,
-      dayPLPct: portfolioSummary.dayPLPct || 0,
-      shieldRatio: 35,
-      sym: isTRY ? '₺' : '$'
-    };
-  }, [portfolioSummary, isTRY]);
 
   // Active slide index (0 to 8)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -531,25 +520,31 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     }
   }, [activeTheme?.id]);
 
-  // Custom user overrides for scripts (persisted in localStorage with auto-sanitization against stale rates)
+  // Custom user overrides for scripts (persisted in localStorage with auto-sanitization against stale rates and private portfolio leaks)
   const [customScripts, setCustomScripts] = useState(() => {
     try {
       // Clear legacy/stale script caches
-      ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4', 'broadcast_studio_custom_scripts_v5'].forEach(k => {
+      ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4', 'broadcast_studio_custom_scripts_v5', 'broadcast_studio_custom_scripts_v6'].forEach(k => {
         try { localStorage.removeItem(k); } catch (e) {}
       });
-      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v6');
+      const saved = localStorage.getItem('broadcast_studio_custom_scripts_v7');
       if (saved) {
         if ((saved.includes('50') || saved.includes('37')) && (saved.includes('politika') || saved.includes('TCMB') || saved.includes('faiz'))) {
-          localStorage.removeItem('broadcast_studio_custom_scripts_v6');
+          localStorage.removeItem('broadcast_studio_custom_scripts_v7');
+          return {};
+        }
+        if (saved.includes('Kendi portföy') || saved.includes('Kur Kalkanı') || saved.includes('portföyümüzde toplam')) {
+          localStorage.removeItem('broadcast_studio_custom_scripts_v7');
           return {};
         }
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           const cleaned = {};
           for (const [k, v] of Object.entries(parsed)) {
-            if (typeof v === 'string' && (v.includes('yüzde 50') || v.includes('%50') || v.includes('50 politika') || v.includes('%37') || v.includes('37 politika'))) {
-              continue;
+            if (typeof v === 'string') {
+              if (v.includes('yüzde 50') || v.includes('%50') || v.includes('50 politika') || v.includes('%37') || v.includes('37 politika') || v.includes('Kendi portföy') || v.includes('Kur Kalkanı') || v.includes('portföyümüzde toplam')) {
+                continue;
+              }
             }
             cleaned[k] = v;
           }
@@ -564,7 +559,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem('broadcast_studio_custom_scripts_v6', JSON.stringify(customScripts));
+      localStorage.setItem('broadcast_studio_custom_scripts_v7', JSON.stringify(customScripts));
     } catch (e) {}
   }, [customScripts]);
 
@@ -575,7 +570,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     setIsRefreshing(true);
     try {
       try {
-        ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4', 'broadcast_studio_custom_scripts_v5', 'broadcast_studio_agenda', 'broadcast_studio_agenda_v4', 'broadcast_studio_agenda_v5'].forEach(k => {
+        ['broadcast_studio_custom_scripts', 'broadcast_studio_custom_scripts_v2', 'broadcast_studio_custom_scripts_v3', 'broadcast_studio_custom_scripts_v4', 'broadcast_studio_custom_scripts_v5', 'broadcast_studio_custom_scripts_v6', 'broadcast_studio_custom_scripts_v7', 'broadcast_studio_agenda', 'broadcast_studio_agenda_v4', 'broadcast_studio_agenda_v5'].forEach(k => {
           try { localStorage.removeItem(k); } catch (e) {}
         });
       } catch (e) {}
@@ -790,7 +785,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'Türkiye TÜFE (Yıllık)', val: `%${pulse?.inflation?.turkey || 31.51}`, chg: 0, note: 'Reel Faiz Dengesi' },
           { label: 'ABD ISM Hizmetler PMI', val: '54.9', chg: 3.2, isUp: true, note: '1.5 Yılın Zirvesi • Güçlü' }
         ],
-        defaultScript: generateDailyScript(1, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(1, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 2: Geopolitics & Energy Corridor
@@ -807,7 +802,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: variantIndex === 1 ? 'Crack Spread Marjı' : 'Navlun Risk Katsayısı', val: variantIndex === 1 ? '$24.80 / vrl' : '+%14.2', chg: 2.1, isUp: true, note: variantIndex === 1 ? 'Rafineri Baskısı' : 'Kızıldeniz & Ümit Burnu' },
           { label: 'Enerji Enflasyon Riski', val: 'Yüksek Risk', chg: 0, isUp: true }
         ],
-        defaultScript: generateDailyScript(2, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(2, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 3: Central Banks & Real Yield Shield
@@ -848,7 +843,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
             note: 'Düşüş Trendi' 
           }
         ],
-        defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(3, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 4: Wall Street & AI Ecosystem
@@ -865,7 +860,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: variantIndex === 1 ? 'Yıllık AI Capex Bütçesi' : 'ISM Hizmetler PMI', val: variantIndex === 1 ? '$205 Milyar' : '54.9', chg: 3.2, isUp: true, note: variantIndex === 1 ? 'Tarihi Zirve' : '1.5 Yılın Zirvesi' },
           { label: 'Tarihsel Q4 Getirisi', val: '+%4.1', chg: 0, isUp: true, note: 'Seçim Yılı Ortalaması' }
         ],
-        defaultScript: generateDailyScript(4, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(4, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 5: Commodities: Gold & Silver
@@ -882,7 +877,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'Gram Altın (Kapalıçarşı)', val: `${fmt(gramAltinTL, 0)} ₺`, chg: 0.15, isUp: true },
           { label: 'Altın / Gümüş Rasyosu', val: `${fmt(gold.price / (silver.price || 60.96), 1)}x`, chg: 0, note: 'Tarihsel Eşik' }
         ],
-        defaultScript: generateDailyScript(5, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(5, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 6: Dollar & Yield Curve
@@ -899,7 +894,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'ABD 2Y Tahvil Getirisi', val: `%${fmt(us2y.price, 3)}`, chg: us2y.change, isUp: us2y.change >= 0 },
           { label: '2Y / 10Y Verim Farkı', val: '+54 bp', chg: 1.2, isUp: true, note: 'Normalleşen Pozitif Eğim' }
         ],
-        defaultScript: generateDailyScript(6, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(6, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 7: Crypto & Spot ETF Flows
@@ -916,7 +911,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: 'TOTAL3 Altcoin Hacmi', val: `$${fmt(total3.price, 1)}B`, chg: total3.change, isUp: total3.change >= 0 },
           { label: 'Kurumsal Spot ETF', val: '+$210M / Gün', chg: 3.4, isUp: true, note: 'BlackRock & Fidelity' }
         ],
-        defaultScript: generateDailyScript(7, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(7, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 8: Borsa Istanbul & Sectors
@@ -933,24 +928,24 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           { label: '5 Yıllık CDS Primi', val: '216 bp', chg: -2.1, isUp: false, note: 'Tarihi Dip' },
           { label: 'Teknik Tepki Bandı', val: '12.200 - 13.500', chg: 0, note: 'Kurumsal Taban' }
         ],
-        defaultScript: generateDailyScript(8, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(8, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       },
 
       // SLIDE 9: Strategy, Cash & 48h Calendar
       {
         id: 9,
-        badge: variantIndex === 1 ? 'PİRAMİT PORTFÖY MODELİ' : (variantIndex === 2 ? '3 KADEMELİ RİSK YÖNETİMİ' : 'YATIRIMCI PUSULASI & TAKVİM'),
+        badge: variantIndex === 1 ? 'MODEL VARLIK DAĞILIMI' : (variantIndex === 2 ? '3 KADEMELİ RİSK YÖNETİMİ' : 'YATIRIMCI PUSULASI & TAKVİM'),
         badgeColor: 'rose',
-        title: variantIndex === 1 ? 'Piramit Portföy Tahsis Modeli & Bileşik Getiri' : (variantIndex === 2 ? '3 Kademeli Risk Yönetimi & Disiplin Çerçevesi' : 'Yatırımcı Pusulası & 48 Saatlik Takvim'),
-        subtitle: variantIndex === 1 ? '%25 Likit Kalkan, %45 Çekirdek Hisse, %20 Kıymetli Maden, %10 Fırsat' : (variantIndex === 2 ? 'Destek Testi (%30), Teyit (%40), Momentum (%30) Kademeli Alım' : 'Önümüzdeki 48 Saatin Randevuları, Nakit Kalkanı ve Portföy Disiplini'),
+        title: variantIndex === 1 ? 'Örnek Varlık Dağılım Çerçevesi & Risk Yönetimi' : (variantIndex === 2 ? '3 Kademeli Risk Yönetimi & Disiplin Çerçevesi' : 'Yatırımcı Pusulası & 48 Saatlik Takvim'),
+        subtitle: variantIndex === 1 ? 'Kurumsal Varlık Sınıfları: Nakit Tamponu, Çekirdek Hisse, Kıymetli Maden ve Fırsat Sepeti' : (variantIndex === 2 ? 'Destek Testi (%30), Teyit (%40), Momentum (%30) Kademeli Alım' : 'Önümüzdeki 48 Saatin Randevuları, Likit Nakit Tamponu ve Risk Disiplini'),
         durationEst: '45 sn',
         metrics: [
           { label: 'Takip Edilecek Veri', val: 'TÜİK TÜFE & ABD NFP', chg: 0, isUp: true },
           { label: 'Merkez Bankası Kararı', val: 'Gelecek PPK Toplantısı', chg: 0, note: 'Sıkı Para Duruşu' },
-          { label: 'Tavsiye Nakit Oranı', val: '%20 - %25', chg: 0, note: 'Likit Kalkan' },
+          { label: 'Tavsiye Nakit Oranı', val: '%20 - %25', chg: 0, note: 'Likit Tampon' },
           { label: 'Piyasa Stratejisi', val: 'Seçici & Korumalı', chg: 0, note: 'Hisse Bazlı Ayrışma' }
         ],
-        defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone, portfolioContext)
+        defaultScript: generateDailyScript(9, activeTheme, quotes, editionState.todayFullStr, editionState.slotTitle, customAgenda, broadcastTone)
       }
     ];
   }, [
@@ -959,7 +954,6 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     editionState,
     customAgenda,
     broadcastTone,
-    portfolioContext,
     pulse,
     quotes,
     dxy, vix, brent, wti, gold, silver, us10y, us2y, sp500, sp500Etf, nasdaq, nasdaqEtf, dow, dowEtf, bist100, btc, eth, total3, currentUsdTry, gramAltinTL, fgScore, fgLabel
@@ -3003,7 +2997,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                       <div style={{ background: '#070a12', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: 14 }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                           <PieChart size={14} />
-                          <span>PİRAMİT PORTFÖY TAHSİS MODELİ (DÖNEMSEL)</span>
+                          <span>ÖRNEK KURUMSAL VARLIK DAĞILIMI (GENEL STRATEJİ)</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '8px 11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3041,7 +3035,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                       <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                           <Compass size={14} />
-                          <span>DİSİPLİNLİ PORTFÖY YÖNETİM KURALLARI</span>
+                          <span>GENEL YATIRIMCI VE PORTFÖY YÖNETİM KURALLARI</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '9px 12px' }}>
@@ -3078,7 +3072,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           </div>
                           <div style={{ background: 'rgba(239, 68, 68, 0.08)', borderRadius: 6, padding: '9px 12px', borderLeft: '3px solid #ef4444' }}>
                             <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>🔴 Panik / Kriz Dönemi (VIX &gt; 22)</div>
-                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Panikle satış yapma zamanı değil; nakit kalkanıyla kurumsal taban seviyelerini toplama zamanı.</div>
+                            <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Panikle satış yapma zamanı değil; likit nakit tamponuyla kurumsal taban seviyelerini toplama zamanı.</div>
                           </div>
                         </div>
                       </div>
@@ -3137,7 +3131,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                       <div style={{ background: '#070a12', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: 14 }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                           <Compass size={14} />
-                          <span>HAKAN GENÇ FİNANS - SAĞLIKLI PORTFÖY PUSULASI</span>
+                          <span>YATIRIMCI PUSULASI & TEMEL PRENSİPLER</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ background: 'rgba(16, 185, 129, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
@@ -3146,7 +3140,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           </div>
 
                           <div style={{ background: 'rgba(56, 189, 248, 0.08)', borderRadius: 6, padding: '10px 12px' }}>
-                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>2. %20 - %25 Nakit Kalkanınızı Koruyun</div>
+                            <div style={{ fontWeight: 800, color: '#fff', fontSize: 11.5 }}>2. %20 - %25 Likit Nakit Tamponunuzu Koruyun</div>
                             <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 2 }}>Portföyde likit nakit bulundurmak piyasa geri çekilmelerini büyük fırsata çevirir.</div>
                           </div>
 
