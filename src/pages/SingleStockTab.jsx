@@ -864,12 +864,23 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
     if (!rawPts || rawPts.length === 0) return [];
 
-    // Seamlessly extend price line all the way to current live time (24.10.2026 / today's live price)
-    const pts = [...rawPts];
+    // Accurately anchor current live time (24.10.2026 / today's live price)
+    const q4Index = quarters.indexOf('Q4 2026');
+    const q3Index = quarters.indexOf('Q3 2026');
+    let targetCurrentX;
+    if (q4Index !== -1) {
+      // 24 October 2026 is week 4 in Q4 (which begins at q4Index - 0.5)
+      targetCurrentX = Number(((q4Index - 0.5) + (24 / 92)).toFixed(3)); // 18.761
+    } else if (q3Index !== -1) {
+      targetCurrentX = Number((q3Index + 0.48).toFixed(3));
+    } else {
+      targetCurrentX = Number((quarters.length - 1 - 0.2).toFixed(3));
+    }
+
+    // Filter out any synthesized points ahead of current live date
+    const validPastPoints = rawPts.filter(p => p.x <= targetCurrentX);
+    const pts = validPastPoints.length > 0 ? [...validPastPoints] : [...rawPts];
     const last = pts[pts.length - 1];
-    const lastQIndex = quarters.length - 1;
-    // Current live time: October 24 is week 4 in the final quarter
-    const targetCurrentX = Number((lastQIndex - 0.18).toFixed(3));
 
     if (last.x < targetCurrentX) {
       const gap = targetCurrentX - last.x;
@@ -977,11 +988,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         borderColor: '#fbbf24',
         backgroundColor: 'transparent',
         borderWidth: 1.8,
-        pointRadius: (ctx) => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 5 : 0),
-        pointHoverRadius: 7,
+        pointRadius: (ctx) => (ctx.dataIndex === ctx.dataset.data.length - 1 ? 6 : 0),
+        pointHoverRadius: 8,
         pointBackgroundColor: '#fbbf24',
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
+        pointBorderWidth: 2.5,
         tension: 0.15,
         xAxisID: 'xPrice',
         yAxisID: 'yPrice',
@@ -1070,8 +1081,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       xPrice: {
         type: 'linear',
         display: false,
-        min: -0.5,
-        max: quarters.length - 0.5
+        min: 0,
+        max: quarters.length - 1,
+        offset: true,
+        bounds: 'data',
+        ticks: { stepSize: 1 }
       },
       yFinancials: {
         type: 'linear',
