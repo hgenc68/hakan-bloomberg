@@ -589,21 +589,29 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   // Auto-sync DCF sliders when stock fundamentals load
   useEffect(() => {
     if (activeStock?.dcf?.inputs) {
+      const isTurkish = isBistTicker(cleanTickerUpper) || cleanTickerUpper.endsWith('.IS') || activeStock?.currency === 'TRY' || activeStock?.dcf?.currency === 'TRY';
+
       if (activeStock.dcf.inputs.growth_5y != null) {
         const rawG = Number(activeStock.dcf.inputs.growth_5y);
-        // Protect against raw single-quarter spikes (e.g. NVDA +88.5% YoY spike)
-        const safeG = Math.max(5.0, Math.min(32.0, rawG > 40 ? (20 + (rawG - 40) * 0.15) : rawG));
-        setGrowthRate(Math.min(32.0, Number(safeG.toFixed(1))));
+        const maxG = isTurkish ? 42.0 : 32.0;
+        const safeG = Math.max(5.0, Math.min(maxG, rawG > 45 ? (22 + (rawG - 45) * 0.15) : rawG));
+        setGrowthRate(Math.min(maxG, Number(safeG.toFixed(1))));
       }
       if (activeStock.dcf.inputs.wacc != null) {
         const rawW = Number(activeStock.dcf.inputs.wacc);
-        const safeW = Math.max(6.5, Math.min(16.0, rawW));
+        const minW = isTurkish ? 18.0 : 6.5;
+        const maxW = isTurkish ? 38.0 : 16.0;
+        const safeW = Math.max(minW, Math.min(maxW, rawW));
         setDiscountRate(Number(safeW.toFixed(1)));
       }
       if (activeStock.dcf.inputs.terminal_multiple != null) {
         const rawT = Number(activeStock.dcf.inputs.terminal_multiple);
-        const safeT = Math.max(10.0, Math.min(28.0, rawT));
+        const minT = isTurkish ? 5.0 : 10.0;
+        const maxT = isTurkish ? 14.0 : 28.0;
+        const safeT = Math.max(minT, Math.min(maxT, rawT));
         setTerminalMultiple(Number(safeT.toFixed(1)));
+      } else if (isTurkish) {
+        setTerminalMultiple(8.0);
       }
     }
   }, [currentTicker, activeStock?.is_live_data]);
@@ -770,18 +778,35 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   // 1-Click Scenario Presets for DCF
   const applyScenario = (preset) => {
     setActiveScenario(preset);
-    if (preset === 'conservative') {
-      setGrowthRate(12.0);
-      setDiscountRate(11.5);
-      setTerminalMultiple(16.0);
-    } else if (preset === 'base') {
-      setGrowthRate(22.0);
-      setDiscountRate(9.5);
-      setTerminalMultiple(22.0);
-    } else if (preset === 'bull') {
-      setGrowthRate(32.0);
-      setDiscountRate(8.0);
-      setTerminalMultiple(28.0);
+    const isTurkish = isBist || currentTicker.endsWith('.IS') || dcfData?.currency === 'TRY';
+    if (isTurkish) {
+      if (preset === 'conservative') {
+        setGrowthRate(18.0);
+        setDiscountRate(32.0);
+        setTerminalMultiple(6.0);
+      } else if (preset === 'base') {
+        setGrowthRate(26.0);
+        setDiscountRate(28.0);
+        setTerminalMultiple(8.0);
+      } else if (preset === 'bull') {
+        setGrowthRate(36.0);
+        setDiscountRate(24.0);
+        setTerminalMultiple(10.0);
+      }
+    } else {
+      if (preset === 'conservative') {
+        setGrowthRate(12.0);
+        setDiscountRate(11.5);
+        setTerminalMultiple(16.0);
+      } else if (preset === 'base') {
+        setGrowthRate(20.0);
+        setDiscountRate(9.5);
+        setTerminalMultiple(22.0);
+      } else if (preset === 'bull') {
+        setGrowthRate(28.0);
+        setDiscountRate(8.0);
+        setTerminalMultiple(26.0);
+      }
     }
   };
 
@@ -789,13 +814,14 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const curPrice = effectiveLivePrice;
   const currencySym = (dcfData?.currency === 'TRY' || currentTicker.endsWith('.IS')) ? '₺' : '$';
 
-  // Calculate normalized base FCF per share (scales perfectly for any stock price)
-  let baseFCFPerShare = curPrice * 0.035; // standard 3.5% normalized FCF yield baseline
+  // Calculate normalized base FCF per share (scales perfectly for any stock price and currency context)
+  const isTurkish = isBist || currentTicker.endsWith('.IS') || dcfData?.currency === 'TRY';
+  let baseFCFPerShare = curPrice * (isTurkish ? 0.065 : 0.035);
   const rawFCF = dcfData?.inputs?.fcf_base ?? dcfData?.inputs?.base_fcf;
   const rawShares = dcfData?.inputs?.shares_outstanding ?? dcfData?.inputs?.shares;
   if (rawFCF > 0 && rawShares > 0) {
     const ratio = rawFCF / rawShares;
-    if (ratio > curPrice * 0.015 && ratio < curPrice * 0.18) {
+    if (ratio > curPrice * 0.015 && ratio < curPrice * (isTurkish ? 0.22 : 0.18)) {
       baseFCFPerShare = ratio;
     }
   }
@@ -2436,8 +2462,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               </div>
               <input
                 type="range"
-                min="5"
-                max="50"
+                min={isBist ? "10" : "5"}
+                max={isBist ? "55" : "40"}
                 step="0.5"
                 value={growthRate}
                 onChange={(e) => {
@@ -2455,9 +2481,9 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               </div>
               <input
                 type="range"
-                min="6"
-                max="20"
-                step="0.25"
+                min={isBist ? "16" : "6"}
+                max={isBist ? "42" : "20"}
+                step={isBist ? "0.5" : "0.25"}
                 value={discountRate}
                 onChange={(e) => {
                   setDiscountRate(parseFloat(e.target.value));
@@ -2474,8 +2500,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               </div>
               <input
                 type="range"
-                min="10"
-                max="40"
+                min={isBist ? "4" : "8"}
+                max={isBist ? "18" : "36"}
                 step="0.5"
                 value={terminalMultiple}
                 onChange={(e) => {
