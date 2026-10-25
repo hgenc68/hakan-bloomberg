@@ -446,7 +446,8 @@ async function fetchStockFundamentals(rawSymbol) {
   const grossMargin = fin.grossMargins?.raw != null ? Number((fin.grossMargins.raw * 100).toFixed(1)) : 38.0;
   const revGrowth = fin.revenueGrowth?.raw != null ? Number((fin.revenueGrowth.raw * 100).toFixed(1)) : 14.0;
   const totalRev = fin.totalRevenue?.raw || (curPrice * 1e8);
-  const fcf = fin.freeCashflow?.raw || (totalRev * 0.12);
+  const fcfMargin = (grossMargin > 60 && roe > 25) ? 0.38 : (grossMargin > 40 ? 0.22 : 0.12);
+  const fcf = fin.freeCashflow?.raw || (totalRev * fcfMargin);
   const debtToEq = fin.debtToEquity?.raw != null ? Number(fin.debtToEquity.raw.toFixed(1)) : 65.0;
   const beta = stats.beta?.raw != null ? Number(stats.beta.raw.toFixed(2)) : 1.1;
   const trailingPE = detail.trailingPE?.raw != null ? Number(detail.trailingPE.raw.toFixed(1)) : (stats.forwardPE?.raw != null ? Number(stats.forwardPE.raw.toFixed(1)) : 22.0);
@@ -590,9 +591,9 @@ async function fetchStockFundamentals(rawSymbol) {
       inputs: {
         base_fcf: Math.max(100, Math.round(fcf / 1e6)),
         shares: Math.max(1, Math.round((meta.marketCap || (curPrice * 1e7)) / curPrice / 1e6)),
-        wacc: 9.5,
-        growth_5y: revGrowth,
-        terminal_multiple: Math.min(30, Math.max(12, forwardPE))
+        wacc: Math.max(8.0, Math.min(13.5, Number((8.5 + (beta > 1 ? (beta - 1) * 2.0 : 0)).toFixed(1)))),
+        growth_5y: Number((revGrowth > 50 ? Math.min(26.0, 20.0 + (revGrowth - 50) * 0.10) : revGrowth > 25 ? Math.min(24.0, 16.0 + (revGrowth - 25) * 0.30) : Math.max(5.0, Math.min(20.0, revGrowth * 0.85))).toFixed(1)),
+        terminal_multiple: Math.min(26, Math.max(14, forwardPE > 0 && forwardPE < 35 ? forwardPE : 20))
       }
     },
     qualtrim: {

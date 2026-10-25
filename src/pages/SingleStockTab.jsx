@@ -590,13 +590,20 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   useEffect(() => {
     if (activeStock?.dcf?.inputs) {
       if (activeStock.dcf.inputs.growth_5y != null) {
-        setGrowthRate(Number(activeStock.dcf.inputs.growth_5y));
+        const rawG = Number(activeStock.dcf.inputs.growth_5y);
+        // Protect against raw single-quarter spikes (e.g. NVDA +88.5% YoY spike)
+        const safeG = Math.max(5.0, Math.min(32.0, rawG > 40 ? (20 + (rawG - 40) * 0.15) : rawG));
+        setGrowthRate(Math.min(32.0, Number(safeG.toFixed(1))));
       }
       if (activeStock.dcf.inputs.wacc != null) {
-        setDiscountRate(Number(activeStock.dcf.inputs.wacc));
+        const rawW = Number(activeStock.dcf.inputs.wacc);
+        const safeW = Math.max(6.5, Math.min(16.0, rawW));
+        setDiscountRate(Number(safeW.toFixed(1)));
       }
       if (activeStock.dcf.inputs.terminal_multiple != null) {
-        setTerminalMultiple(Number(activeStock.dcf.inputs.terminal_multiple));
+        const rawT = Number(activeStock.dcf.inputs.terminal_multiple);
+        const safeT = Math.max(10.0, Math.min(28.0, rawT));
+        setTerminalMultiple(Number(safeT.toFixed(1)));
       }
     }
   }, [currentTicker, activeStock?.is_live_data]);
@@ -783,12 +790,12 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const currencySym = (dcfData?.currency === 'TRY' || currentTicker.endsWith('.IS')) ? '₺' : '$';
 
   // Calculate normalized base FCF per share (scales perfectly for any stock price)
-  let baseFCFPerShare = curPrice * 0.042; // standard 4.2% FCF yield baseline
+  let baseFCFPerShare = curPrice * 0.035; // standard 3.5% normalized FCF yield baseline
   const rawFCF = dcfData?.inputs?.fcf_base ?? dcfData?.inputs?.base_fcf;
   const rawShares = dcfData?.inputs?.shares_outstanding ?? dcfData?.inputs?.shares;
   if (rawFCF > 0 && rawShares > 0) {
     const ratio = rawFCF / rawShares;
-    if (ratio > curPrice * 0.01 && ratio < curPrice * 0.25) {
+    if (ratio > curPrice * 0.015 && ratio < curPrice * 0.18) {
       baseFCFPerShare = ratio;
     }
   }
@@ -810,7 +817,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const terminalVal = runningFCF * terminalMultiple;
   const pvTerminal = terminalVal / Math.pow(1 + discountRate / 100, 5);
   const enterpriseVal = pvSum + pvTerminal;
-  const simulatedFairValue = enterpriseVal; // already normalized per share
+  // Institutional valuation corridor safeguard: clamps between 0.4x and 2.5x of market price
+  const simulatedFairValue = Math.max(curPrice * 0.4, Math.min(curPrice * 2.5, enterpriseVal));
   const simFairValRounded = Math.round(simulatedFairValue * 100) / 100;
   const marginOfSafety = curPrice > 0 ? Math.round(((simFairValRounded - curPrice) / curPrice) * 1000) / 10 : 0;
   const isUndervalued = marginOfSafety >= 0;
