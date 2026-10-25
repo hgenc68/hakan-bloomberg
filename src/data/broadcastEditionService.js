@@ -225,7 +225,7 @@ Bu pozitif reel faiz tamponu, Dolar/TL'nin ${fmt(currentUsdTry, 2)} lira civarı
 
       return `Dördüncü durağımızda Wall Street ve yapay zeka ekosistemindeki devasa sermaye döngüsünü masaya yatırıyoruz. ${spMove}
 
-Büyük teknoloji devlerinin yıllık 200 milyar doları aşan AI Capex sermaye harcamaları çip ve veri merkezi üreticilerine can suyu olmaya devam ediyor. Takvimimizde Vertiv, Amazon, Microsoft, Apple ve ardından Nvidia'nın üçüncü çeyrek bilançoları yaklaşıyor. 
+Büyük teknoloji devlerinin yıllık 200 milyar doları aşan AI Capex sermaye harcamaları çip ve veri merkezi üreticilerine can suyu olmaya devam ediyor. Takvimimizde Vertiv'in açıkladığı güçlü sonuçların ardından Amazon, Alphabet, Microsoft, Apple ve ardından Nvidia'nın üçüncü çeyrek bilançoları öne çıkıyor. 
 
 Piyasada genel endeks yükselişinden ziyade serbest nakit akışı (FCF) üretebilen ve değerlemesi makul kalan şirketlerin pozitif ayrışacağı seçici bir döneme giriyoruz.`;
     }

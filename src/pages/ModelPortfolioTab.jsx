@@ -28,6 +28,13 @@ export default function ModelPortfolioTab({ onSelectStock }) {
 
   const currencySym = currentModel.currency === 'TRY' ? '₺' : '$';
 
+  const daysLeftToRebalance = useMemo(() => {
+    const now = new Date();
+    const nextTarget = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    return Math.max(0, Math.round((nextTarget - today) / (1000 * 60 * 60 * 24)));
+  }, []);
+
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
       {/* Workspace Header */}
@@ -39,7 +46,7 @@ export default function ModelPortfolioTab({ onSelectStock }) {
               <span>AYLIK QUANT MODEL PORTFÖYÜ</span>
             </h2>
             <span className="nav-badge emerald" style={{ fontSize: 11, padding: '3px 10px' }}>
-              📅 {modelData.period_name || 'Eylül / Ekim 2026'}
+              📅 {modelData.period_name || 'Ekim 2026'}
             </span>
           </div>
           <p className="workspace-subtitle" style={{ marginTop: 4 }}>
@@ -49,8 +56,8 @@ export default function ModelPortfolioTab({ onSelectStock }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right', lineHeight: 1.4 }}>
-            <div>Son Dengeleme: <strong style={{ color: '#fff' }}>{modelData.rebalance_date || '01.09.2026'}</strong></div>
-            <div>Sonraki Dengeleme: <strong style={{ color: 'var(--cyan)' }}>{modelData.next_rebalance_date || '01.10.2026'}</strong></div>
+            <div>Son Dengeleme: <strong style={{ color: '#fff' }}>{modelData.rebalance_date || '01.10.2026'}</strong></div>
+            <div>Sonraki Dengeleme: <strong style={{ color: 'var(--cyan)' }}>{modelData.next_rebalance_date || '01.11.2026'} ({daysLeftToRebalance} Gün Kaldı)</strong></div>
           </div>
         </div>
       </div>

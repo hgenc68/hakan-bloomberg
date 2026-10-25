@@ -864,13 +864,19 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
     if (!rawPts || rawPts.length === 0) return [];
 
-    // Accurately anchor current live time (24.10.2026 / today's live price)
+    // Accurately anchor current live time (dynamically based on Date.now())
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const liveDateStr = `${currentDay < 10 ? '0' + currentDay : currentDay}.${currentMonth < 10 ? '0' + currentMonth : currentMonth}.${currentYear}`;
     const q4Index = quarters.indexOf('Q4 2026');
     const q3Index = quarters.indexOf('Q3 2026');
     let targetCurrentX;
     if (q4Index !== -1) {
-      // 24 October 2026 is week 4 in Q4 (which begins at q4Index - 0.5)
-      targetCurrentX = Number(((q4Index - 0.5) + (24 / 92)).toFixed(3)); // 18.761
+      // In Q4 (which begins at q4Index - 0.5), each day progresses through the quarter (approx 92 days)
+      const dayOffsetInQ4 = Math.min(92, Math.max(1, currentDay));
+      targetCurrentX = Number(((q4Index - 0.5) + (dayOffsetInQ4 / 92)).toFixed(3));
     } else if (q3Index !== -1) {
       targetCurrentX = Number((q3Index + 0.48).toFixed(3));
     } else {
@@ -890,18 +896,18 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         const stepX = Number((last.x + (gap * (s / steps))).toFixed(3));
         const stepY = Number((last.y + pDiff * s).toFixed(2));
         const isFinal = s === steps;
-        const day = 4 + Math.round(s * 5);
+        const intermediateDay = Math.min(currentDay, Math.max(1, Math.round((currentDay / steps) * s)));
         pts.push({
           x: stepX,
           y: isFinal ? Number(curPrice.toFixed(2)) : stepY,
-          date: isFinal ? '24.10.2026 (Güncel Zaman)' : `${day < 10 ? '0' + day : day}.10.2026`
+          date: isFinal ? `${liveDateStr} (Canlı Piyasa)` : `${intermediateDay < 10 ? '0' + intermediateDay : intermediateDay}.10.2026`
         });
       }
     } else {
       pts[pts.length - 1] = {
         ...pts[pts.length - 1],
         y: Number(curPrice.toFixed(2)),
-        date: '24.10.2026 (Güncel Zaman)'
+        date: `${liveDateStr} (Canlı Piyasa)`
       };
     }
 

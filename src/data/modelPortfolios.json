@@ -1,10 +1,10 @@
 {
-  "current_period": "2026-09",
-  "period_name": "Eylül 2026",
-  "rebalance_date": "01.09.2026",
-  "next_rebalance_date": "01.10.2026",
-  "days_left": 1,
-  "last_updated": "30.09.2026 17:11:20",
+  "current_period": "2026-10",
+  "period_name": "Ekim 2026",
+  "rebalance_date": "01.10.2026",
+  "next_rebalance_date": "01.11.2026",
+  "days_left": 7,
+  "last_updated": "25.10.2026 13:00:00",
   "portfolios": {
     "master": {
       "market": "master",

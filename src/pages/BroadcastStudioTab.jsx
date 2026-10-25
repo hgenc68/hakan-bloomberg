@@ -3109,10 +3109,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {[
-                            { time: 'Pazartesi 10:00', event: 'TÜİK Yıllık ve Aylık TÜFE Enflasyonu', note: 'Önceki %29.73 / Beklenti Kritik' },
-                            { time: 'Çarşamba 21:00', event: 'Fed FOMC Tutanakları & Yetkili Mesajları', note: 'Warsh Şahin Faiz Yönlendirmesi' },
-                            { time: 'Cuma 15:30', event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik', note: 'Küresel Risk İştahı Barometresi' },
-                            { time: 'Gelecek PPK Toplantısı', event: 'TCMB Para Politikası Kurulu Faiz Kararı', note: 'Sıkı Para Politikası & Likidite Kararı' }
+                            { time: '28 Ekim Çarşamba 21:00', event: 'Fed FOMC Faiz Kararı & Powell Basın Toplantısı', note: 'Pas Beklentisi (%76) • Aralık Artış Riski (%24)' },
+                            { time: '29-31 Ekim', event: 'Mega-Cap AI Bilançoları (Amazon, SoFi, Apple)', note: 'AWS, Cloud & AI Capex Raporları' },
+                            { time: '03 Kasım Salı 10:00', event: 'TÜİK Ekim Ayı Resmi TÜFE Enflasyonu', note: 'Önceki %29.73 / Dezenflasyon Patikası' },
+                            { time: '06 Kasım Cuma 16:30', event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik', note: '140K Beklenti / Küresel Risk İştahı' },
+                            { time: '10 Aralık Perşembe', event: 'TCMB Para Politikası Kurulu Faiz Kararı', note: 'Mevcut %36.00 / Sıkı Likidite Duruşu' }
                           ].map((cal, idx) => (
                             <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div>

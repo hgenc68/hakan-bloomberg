@@ -306,6 +306,16 @@ const EXPOSURE_TIERS = [
   }
 ];
 
+// Dynamic day difference calculator (relative to midnight of local date)
+const calculateDayDiff = (targetDateStr) => {
+  if (!targetDateStr) return 0;
+  const target = new Date(targetDateStr);
+  const now = new Date();
+  const targetMidnight = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((targetMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+};
+
 // Institutional Earnings & Macro Catalyst Calendar Data (Quartr & Koyfin style)
 const UPCOMING_EARNINGS_CALENDAR = [
   {
@@ -314,23 +324,22 @@ const UPCOMING_EARNINGS_CALENDAR = [
     market: 'US',
     date: '23 Ekim 2026',
     time: 'Piyasa Açılışı Öncesi (BMO)',
-    daysLeft: 2,
-    badge: 'red',
+    targetDate: '2026-10-23T15:30:00+03:00',
     expectedEPS: '$0.69',
+    actualEPS: '$0.76 (Beat)',
     prevEPS: '$0.52',
     expectedRev: '$2.05B',
     beatRate: '%88',
     consensus: 'Güçlü Al',
-    catalyst: 'AI Veri Merkezi Sıvı Soğutma Siparişleri'
+    catalyst: 'AI Sıvı Soğutma & Sipariş Rekoru'
   },
   {
     ticker: 'AMZN',
     name: 'Amazon.com Inc',
     market: 'US',
-    date: '24 Ekim 2026',
+    date: '29 Ekim 2026',
     time: 'Piyasa Kapanışı Sonrası (AMC)',
-    daysLeft: 3,
-    badge: 'amber',
+    targetDate: '2026-10-29T23:00:00+03:00',
     expectedEPS: '$1.14',
     prevEPS: '$0.94',
     expectedRev: '$157.2B',
@@ -344,8 +353,7 @@ const UPCOMING_EARNINGS_CALENDAR = [
     market: 'US',
     date: '29 Ekim 2026',
     time: 'Piyasa Açılışı Öncesi (BMO)',
-    daysLeft: 8,
-    badge: 'cyan',
+    targetDate: '2026-10-29T14:00:00+03:00',
     expectedEPS: '$0.04',
     prevEPS: '$0.01',
     expectedRev: '$630M',
@@ -354,13 +362,26 @@ const UPCOMING_EARNINGS_CALENDAR = [
     catalyst: 'GAAP Net Kârlılık & Kredi Hacmi Büyümesi'
   },
   {
+    ticker: 'GOOGL',
+    name: 'Alphabet Inc',
+    market: 'US',
+    date: '29 Ekim 2026',
+    time: 'Piyasa Kapanışı Sonrası (AMC)',
+    targetDate: '2026-10-29T23:00:00+03:00',
+    expectedEPS: '$1.85',
+    prevEPS: '$1.55',
+    expectedRev: '$86.3B',
+    beatRate: '%85',
+    consensus: 'Güçlü Al',
+    catalyst: 'Google Cloud & Gemini AI Monetizasyonu'
+  },
+  {
     ticker: 'MSFT',
     name: 'Microsoft Corp',
     market: 'US',
     date: '30 Ekim 2026',
     time: 'Piyasa Kapanışı Sonrası (AMC)',
-    daysLeft: 9,
-    badge: 'cyan',
+    targetDate: '2026-10-30T23:00:00+03:00',
     expectedEPS: '$3.10',
     prevEPS: '$2.99',
     expectedRev: '$64.5B',
@@ -374,8 +395,7 @@ const UPCOMING_EARNINGS_CALENDAR = [
     market: 'US',
     date: '31 Ekim 2026',
     time: 'Piyasa Kapanışı Sonrası (AMC)',
-    daysLeft: 10,
-    badge: 'cyan',
+    targetDate: '2026-10-31T23:00:00+03:00',
     expectedEPS: '$1.55',
     prevEPS: '$1.46',
     expectedRev: '$94.2B',
@@ -389,8 +409,7 @@ const UPCOMING_EARNINGS_CALENDAR = [
     market: 'BIST',
     date: '04 Kasım 2026',
     time: 'KAP Bildirimi (Piyasa Kapanışı)',
-    daysLeft: 14,
-    badge: 'emerald',
+    targetDate: '2026-11-04T18:30:00+03:00',
     expectedEPS: '₺35.20',
     prevEPS: '₺28.40',
     expectedRev: '₺215.0B',
@@ -404,8 +423,7 @@ const UPCOMING_EARNINGS_CALENDAR = [
     market: 'BIST',
     date: '06 Kasım 2026',
     time: 'KAP Bildirimi',
-    daysLeft: 16,
-    badge: 'emerald',
+    targetDate: '2026-11-06T18:30:00+03:00',
     expectedEPS: '₺7.40',
     prevEPS: '₺6.80',
     expectedRev: '₺165.0B',
@@ -419,8 +437,7 @@ const UPCOMING_EARNINGS_CALENDAR = [
     market: 'BIST',
     date: '08 Kasım 2026',
     time: 'KAP Bildirimi',
-    daysLeft: 18,
-    badge: 'emerald',
+    targetDate: '2026-11-08T18:30:00+03:00',
     expectedEPS: '₺1.85',
     prevEPS: '₺1.20',
     expectedRev: '₺1.45B',
@@ -434,8 +451,7 @@ const UPCOMING_EARNINGS_CALENDAR = [
     market: 'US',
     date: '20 Kasım 2026',
     time: 'Piyasa Kapanışı Sonrası (AMC)',
-    daysLeft: 30,
-    badge: 'gold',
+    targetDate: '2026-11-20T23:00:00+03:00',
     expectedEPS: '$0.78',
     prevEPS: '$0.68',
     expectedRev: '$33.2B',
@@ -455,6 +471,16 @@ const UPCOMING_MACRO_CATALYSTS = [
     expectation: 'Politika Faizi Sabit Tutma / Pas (%76) • Aralık: 25 bp Artış Riski',
     prev: '%3.75 - %4.00',
     impact: 'Dolar Endeksi (DXY), 10Y Tahviller & Küresel Risk İştahı'
+  },
+  {
+    event: 'TÜİK Ekim Ayı Resmi TÜFE Enflasyonu',
+    date: '03 Kasım 2026',
+    time: '10:00 TSİ',
+    targetDate: '2026-11-03T10:00:00+03:00',
+    status: 'Yurt İçi Enflasyon',
+    expectation: 'Aylık %2.10 / Yıllık Dezenflasyon Patikası',
+    prev: '%29.73 (Eylül)',
+    impact: 'TL Reel Getiri, Mevduat & BIST 100 Fiyatlaması'
   },
   {
     event: 'ABD Tarım Dışı İstihdam (NFP) & İşsizlik',
@@ -1359,8 +1385,23 @@ export default function MarketPulseTab({ onSelectStock }) {
               </thead>
               <tbody>
                 {UPCOMING_EARNINGS_CALENDAR.map((item, idx) => {
-                  const daysText = item.daysLeft === 0 ? 'Bugün!' : (item.daysLeft === 1 ? 'Yarın!' : `${item.daysLeft} Gün Kaldı`);
-                  const daysBadge = item.daysLeft <= 3 ? 'red' : (item.daysLeft <= 10 ? 'amber' : 'cyan');
+                  const diff = calculateDayDiff(item.targetDate);
+                  let daysText = '';
+                  let daysBadge = 'cyan';
+
+                  if (diff < 0) {
+                    daysText = 'Açıklandı ✓';
+                    daysBadge = 'emerald';
+                  } else if (diff === 0) {
+                    daysText = 'Bugün!';
+                    daysBadge = 'red';
+                  } else if (diff === 1) {
+                    daysText = 'Yarın!';
+                    daysBadge = 'amber';
+                  } else {
+                    daysText = `${diff} Gün Kaldı`;
+                    daysBadge = diff <= 4 ? 'amber' : 'cyan';
+                  }
 
                   return (
                     <tr
@@ -1392,8 +1433,17 @@ export default function MarketPulseTab({ onSelectStock }) {
                         </span>
                       </td>
                       <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>
-                        {item.expectedEPS}
-                        <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Önceki: {item.prevEPS}</div>
+                        {diff < 0 && item.actualEPS ? (
+                          <>
+                            <div style={{ color: 'var(--emerald)' }}>{item.actualEPS}</div>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Beklenen: {item.expectedEPS}</div>
+                          </>
+                        ) : (
+                          <>
+                            {item.expectedEPS}
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Önceki: {item.prevEPS}</div>
+                          </>
+                        )}
                       </td>
                       <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', color: 'var(--cyan)', fontWeight: 700 }}>
                         {item.expectedRev}
@@ -1417,17 +1467,29 @@ export default function MarketPulseTab({ onSelectStock }) {
           /* Macro Catalysts Grid */
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
             {UPCOMING_MACRO_CATALYSTS.map((m, idx) => {
-              const diffDays = m.targetDate
-                ? Math.ceil((new Date(m.targetDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-                : (m.daysLeft ?? 0);
-              const remainingDays = Math.max(0, diffDays);
-              const countdownLabel = remainingDays === 0 ? 'Bugün!' : `${remainingDays} Gün Kaldı`;
+              const diff = calculateDayDiff(m.targetDate);
+              let countdownLabel = '';
+              let badgeColor = 'var(--cyan)';
+
+              if (diff < 0) {
+                countdownLabel = 'Gerçekleşti ✓';
+                badgeColor = '#94a3b8';
+              } else if (diff === 0) {
+                countdownLabel = 'Bugün!';
+                badgeColor = '#ef4444';
+              } else if (diff === 1) {
+                countdownLabel = 'Yarın!';
+                badgeColor = '#f59e0b';
+              } else {
+                countdownLabel = `${diff} Gün Kaldı`;
+                badgeColor = diff <= 4 ? 'var(--emerald)' : 'var(--amber)';
+              }
 
               return (
                 <div key={idx} style={{ background: '#090d18', padding: 14, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                     <span className="nav-badge cyan" style={{ fontSize: 9 }}>{m.status}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: remainingDays <= 4 ? 'var(--emerald)' : 'var(--amber)', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: badgeColor, fontFamily: 'var(--font-mono)' }}>
                       ⏱️ {countdownLabel}
                     </span>
                   </div>
