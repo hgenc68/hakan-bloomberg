@@ -352,7 +352,7 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
 
   // Monthly Heatmap sample data
   const heatmapYears = [
-    { year: 2026, months: [4.2, 2.1, 5.8, -1.2, 3.4, 6.1, 1.8, 4.5, 2.9, 0, 0, 0], total: 33.6 },
+    { year: 2026, months: [4.2, 2.1, 5.8, -1.2, 3.4, 6.1, 1.8, 4.5, 2.9, 1.8, 0, 0], total: 35.4 },
     { year: 2025, months: [3.1, -2.4, 4.8, 6.2, 1.5, -0.8, 5.4, 3.2, -1.1, 4.0, 7.2, 2.8], total: 38.4 }
   ];
   const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -844,7 +844,7 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
                 <tr key={yr.year} className="table-row">
                   <td style={{ textAlign: 'left', fontWeight: 800, color: '#fff' }}>{yr.year}</td>
                   {yr.months.map((val, idx) => {
-                    if (val === 0 && yr.year === 2026 && idx >= 9) {
+                    if (val === 0 && yr.year === 2026 && idx >= 10) {
                       return <td key={idx} style={{ color: 'var(--text-muted)' }}>--</td>;
                     }
                     const isPositive = val >= 0;

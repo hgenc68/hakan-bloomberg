@@ -527,7 +527,7 @@ async function fetchStockFundamentals(rawSymbol) {
     });
   }
 
-  const quarters = ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
   const baseQuarterRev = totalRev / 4;
   const revSeries = quarters.map((_, i) => Math.round(baseQuarterRev * Math.pow(1 + (revGrowth / 100) / 4, i)));
   const netIncomeSeries = revSeries.map(r => Math.round(r * (roe > 0 ? (roe / 100) * 0.6 : 0.12)));

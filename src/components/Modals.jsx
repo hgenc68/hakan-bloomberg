@@ -731,7 +731,10 @@ export function EditHoldingModal({ holding, onClose }) {
 export function TransferToShieldModal({ defaultAmount, onClose }) {
   const { transferToShield, portfolioSummary } = useApp();
   const [destination, setDestination] = useState('ppf');
-  const [amount, setAmount] = useState(defaultAmount ? String(Math.round(defaultAmount * 100) / 100) : '7547.95');
+  const initialAmt = (defaultAmount != null && Number(defaultAmount) > 0)
+    ? Number(defaultAmount)
+    : Math.max(0, Number(portfolioSummary?.realizedProfitTRY) || 0);
+  const [amount, setAmount] = useState(String(Math.round(initialAmt * 100) / 100));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -774,16 +777,16 @@ export function TransferToShieldModal({ defaultAmount, onClose }) {
           <button
             type="button"
             className="btn-quick-fill"
-            onClick={() => setAmount(String(portfolioSummary.realizedProfitTRY || 7547.95))}
+            onClick={() => setAmount(String(Math.max(0, Math.round((portfolioSummary?.realizedProfitTRY || 0) * 100) / 100)))}
           >
-            Toplam Kârı Yaz (₺{portfolioSummary.realizedProfitTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2 })})
+            Toplam Kârı Yaz (₺{(portfolioSummary?.realizedProfitTRY || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
           </button>
           <button
             type="button"
             className="btn-quick-fill"
-            onClick={() => setAmount(String(portfolioSummary.totalProceedsTRY || 21939.90))}
+            onClick={() => setAmount(String(Math.max(0, Math.round((portfolioSummary?.totalProceedsTRY || 0) * 100) / 100)))}
           >
-            Tüm Hasılatı Yaz (₺{portfolioSummary.totalProceedsTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2 })})
+            Tüm Hasılatı Yaz (₺{(portfolioSummary?.totalProceedsTRY || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
           </button>
         </div>
 

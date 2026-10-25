@@ -248,7 +248,7 @@ function MainTerminal() {
 
             {activeTab === 'ledger' && (
               <TradeLedgerTab
-                onOpenTransferModal={(amt) => setTransferModalAmount(amt || 7547.95)}
+                onOpenTransferModal={(amt) => setTransferModalAmount(typeof amt === 'number' ? Math.max(0, amt) : 0)}
               />
             )}
 

@@ -68,7 +68,7 @@ function extractQuarterlyClosesFromCandles(candles) {
 }
 
 function generateRealisticQuarterlyPrices(ticker, curPrice, low52, high52, quarters = [], beta = 1.25) {
-  const qList = quarters && quarters.length > 0 ? quarters : ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  const qList = quarters && quarters.length > 0 ? quarters : ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
   const n = qList.length;
   const p = Number(curPrice) || 100;
   const seed = hashStr(ticker || 'STOCK');
@@ -77,7 +77,7 @@ function generateRealisticQuarterlyPrices(ticker, curPrice, low52, high52, quart
   const mid = (baseLow + baseHigh) / 2;
   const amp = Math.max((baseHigh - baseLow) / 2, p * 0.15);
 
-  // Macro market trajectory (2023 recovery, spring surge, summer pullback, pivot rally, etc.)
+  // Macro market trajectory (recovery, spring surge, summer pullback, pivot rally, etc.)
   const macroCycles = [-0.65, -0.15, -0.45, 0.20, 0.75, 0.40, 0.60, 0.85];
 
   return qList.map((_, i) => {
@@ -97,7 +97,7 @@ function generateRealisticQuarterlyPrices(ticker, curPrice, low52, high52, quart
 }
 
 function generateQualtrimWeeklyPoints(ticker, curPrice, low52, high52, quarters, beta = 1.25) {
-  const qList = quarters && quarters.length > 0 ? quarters : ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  const qList = quarters && quarters.length > 0 ? quarters : ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
   const n = qList.length;
   const p = Number(curPrice) || 100;
   const seed = hashStr(ticker);
@@ -146,7 +146,7 @@ function synthesizePotentialStock(pot) {
   const grossMargin = parseFloat(pot.financials?.gross_margin) || 45;
   const mcapNum = Number(pot.market_cap_num) || 10;
 
-  const quarters = ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
   const baseQuarterRev = (mcapNum * 1000 * 0.08);
   const revenue = quarters.map((_, i) => Math.round(baseQuarterRev * Math.pow(1 + (revGrowth / 100) / 4, i)));
   const netIncome = revenue.map(r => Math.round(r * 0.18));
@@ -270,7 +270,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
   if (clean === 'AMZN') {
     const p = Number(marketQuotes['AMZN']?.price) || 251.40;
     const target = 295.00;
-    const quarters = ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+    const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
     const revenue = [127358, 134383, 143083, 169961, 143313, 147977, 158877, 187800];
     const netIncome = [3172, 6750, 9879, 10624, 10431, 13485, 15328, 18500];
     const fcf = [7900, 11200, 15400, 21400, 18200, 19500, 22100, 25800];
@@ -326,7 +326,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
   if (clean === 'SOFI') {
     const p = Number(marketQuotes['SOFI']?.price) || 15.92;
     const target = 22.00;
-    const quarters = ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+    const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
     const revenue = [472, 498, 537, 615, 645, 697, 742, 810];
     const netIncome = [-34, -48, -267, 48, 88, 97, 115, 140];
     const fcf = [62, 75, 92, 118, 142, 165, 195, 230];
@@ -384,7 +384,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
   const target = Math.round(p * 1.35 * 100) / 100;
   const low52 = Math.round(p * 0.65 * 100) / 100;
   const high52 = Math.round(p * 1.25 * 100) / 100;
-  const quarters = ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
   const baseRev = Math.round(p * 150);
   const revenue = quarters.map((_, i) => Math.round(baseRev * (1 + 0.05 * i)));
   const netIncome = revenue.map(r => Math.round(r * 0.16));
@@ -855,7 +855,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const isRSINormal = (mom.rsi_14 ?? 55) >= 35 && (mom.rsi_14 ?? 55) <= 68;
 
   // Qualtrim 4-metric Multi-Chart Data (Revenue, Net Income, FCF + Historical Stock Price Overlay)
-  const quarters = qData.quarters || ['Q1 2023', 'Q2 2023', 'Q3 2023', 'Q4 2023', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+  const quarters = qData.quarters || ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
   
   // Auto-scale large financial figures to Millions for crystal-clear readability
   const maxRev = Math.max(...(qData.revenue || [1000]).filter(v => v !== null));
