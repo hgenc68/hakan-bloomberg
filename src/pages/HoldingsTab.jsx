@@ -3,7 +3,8 @@ import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { 
   Search, ShoppingCart, Edit3, Trash2, Plus, ArrowUpDown, ArrowUp, ArrowDown, 
   Briefcase, Sparkles, AlertCircle, CheckCircle, ChevronDown, ChevronUp, 
-  ArrowRight, ShieldCheck, PieChart, Layers, TrendingUp, BarChart3, Snowflake, Award, Target, Activity, Calendar, LineChart, RefreshCw
+  ArrowRight, ShieldCheck, PieChart, Layers, TrendingUp, BarChart3, Snowflake, Award, Target, Activity, Calendar, LineChart, RefreshCw,
+  Repeat, ShieldAlert, Cpu, CircleDollarSign
 } from 'lucide-react';
 import { Bar, Radar } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
@@ -30,8 +31,9 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
   const [showRebalanceAssistant, setShowRebalanceAssistant] = useState(true);
   const [rebalancePeriod, setRebalancePeriod] = useState('monthly'); // 'monthly' or 'weekly'
   const [selectedSegment, setSelectedSegment] = useState('all'); // for 'all' mode: 'all', 'equity', 'shield', 'crypto'
-  const [tableSubMode, setTableSubMode] = useState('unified'); // 'unified' | 'financial' | 'rebalance'
+  const [tableSubMode, setTableSubMode] = useState('unified'); // 'unified' | 'financial' | 'rebalance' | 'finvest'
   const [expandedRebalanceId, setExpandedRebalanceId] = useState(null);
+  const [showFinvestCard, setShowFinvestCard] = useState(true);
 
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
@@ -551,6 +553,382 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     ]
   };
 
+  // =========================================================================
+  // 🛡️ FİNVEST KURUMSAL RÖNTGENİ: 3-HALKA, BUYBACK & SERMAYE KALKANI PROFİLLERİ
+  // =========================================================================
+  const FINVEST_PROFILES = {
+    AAPL: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: 2.85,
+      dividendYield: 0.50,
+      totalShareholderYield: 3.35,
+      solvencyScore: 94,
+      debtToEquity: 167.7,
+      diagnosis: 'Yıllık $100B+ FCF üreten nakit devi; hisse adedini her yıl eriterek yatırımcı kâr payını bileşik artırır.'
+    },
+    GOOGL: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: 2.40,
+      dividendYield: 0.45,
+      totalShareholderYield: 2.85,
+      solvencyScore: 98,
+      debtToEquity: 9.1,
+      diagnosis: 'Arama ve bulut nakit akışıyla $50B+ AI Capex harcamasını borçsuz finanse ederken $60B+ hisse geri alımı yapar.'
+    },
+    NVDA: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: 1.30,
+      dividendYield: 0.06,
+      totalShareholderYield: 1.36,
+      solvencyScore: 96,
+      debtToEquity: 14.3,
+      diagnosis: 'Yapay zeka çip tekelinin rekor FCF nakit akışı; borçsuz bilanço ve $50B onaylı dev hisse geri alım programı.'
+    },
+    MSFT: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: 1.05,
+      dividendYield: 0.75,
+      totalShareholderYield: 1.80,
+      solvencyScore: 95,
+      debtToEquity: 27.9,
+      diagnosis: 'Azure ve kurumsal yazılım kârlılığıyla sıfır likidite riski; düzenli temettü artışı ve $60B yeni geri alım yetkisi.'
+    },
+    AMZN: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: -0.40,
+      dividendYield: 0.00,
+      totalShareholderYield: -0.40,
+      solvencyScore: 92,
+      debtToEquity: 33.5,
+      diagnosis: 'AWS ve lojistikten gelen $110B OCF ile yatırımlarını rahatlıkla karşılar; kâr dağıtımı yerine yeniden yatırım öncelikli.'
+    },
+    TUPRS: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit & Temettü Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: 0.00,
+      dividendYield: 7.80,
+      totalShareholderYield: 7.80,
+      solvencyScore: 95,
+      debtToEquity: 28.4,
+      diagnosis: 'BIST rafineri devi; net nakit pozisyonu, sıfır seyrelme ve %7.8 rekor nakit temettü güvencesi.'
+    },
+    FROTO: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit & Temettü Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: 0.00,
+      dividendYield: 5.60,
+      totalShareholderYield: 5.60,
+      solvencyScore: 88,
+      debtToEquity: 76.3,
+      diagnosis: 'Yüksek ihracat gelirleri ve güçlü operasyonel nakit üretimiyle hissedarına %5.6 nakit temettü getirisi sunar.'
+    },
+    VRT: {
+      ring: 2,
+      ringLabel: '2. Halka: Kritik Tedarikçi',
+      ringBadge: 'amber',
+      netBuybackYield: 0.25,
+      dividendYield: 0.15,
+      totalShareholderYield: 0.40,
+      solvencyScore: 82,
+      debtToEquity: 110.5,
+      diagnosis: 'Veri merkezlerinin kritik soğutma lideri; 1. Halka devlerinin harcadığı Capex doğrudan Vertiv cirosuna dönüşür.'
+    },
+    TSM: {
+      ring: 2,
+      ringLabel: '2. Halka: Kritik Altyapı Dökümhanesi',
+      ringBadge: 'amber',
+      netBuybackYield: 0.00,
+      dividendYield: 1.40,
+      totalShareholderYield: 1.40,
+      solvencyScore: 94,
+      debtToEquity: 25.4,
+      diagnosis: 'Dünyanın en kritik çip dökümhanesi; $30B+ Capex harcamasına rağmen net nakit pozisyonunu koruyan kilit tekel.'
+    },
+    THYAO: {
+      ring: 2,
+      ringLabel: '2. Halka: Stratejik Büyüme & Filo',
+      ringBadge: 'amber',
+      netBuybackYield: 0.00,
+      dividendYield: 0.00,
+      totalShareholderYield: 0.00,
+      solvencyScore: 78,
+      debtToEquity: 69.6,
+      diagnosis: 'Sabit hisse sermayesiyle sulandırmadan kaçınmış, filo genişlemesini operasyonel döviz nakit akışıyla fonlayan havacılık devi.'
+    },
+    EREGL: {
+      ring: 2,
+      ringLabel: '2. Halka: Yüksek Capex Döngüsü',
+      ringBadge: 'amber',
+      netBuybackYield: 0.00,
+      dividendYield: 2.20,
+      totalShareholderYield: 2.20,
+      solvencyScore: 75,
+      debtToEquity: 45.1,
+      diagnosis: 'Yeşil çelik yatırımları nedeniyle yoğun Capex döneminde; sağlam özkaynak tabanı kaldıraç riskini dengeliyor.'
+    },
+    ABBV: {
+      ring: 2,
+      ringLabel: '2. Halka: Temettü Aristokratı',
+      ringBadge: 'amber',
+      netBuybackYield: 0.80,
+      dividendYield: 3.45,
+      totalShareholderYield: 4.25,
+      solvencyScore: 85,
+      debtToEquity: 180.0,
+      diagnosis: 'Biyofarma nakit devi; düzenli hisse geri alımı ve %3.45 temettüyle kurumsal hissedar dostu sermaye tahsisi.'
+    },
+    DRAM: {
+      ring: 2,
+      ringLabel: '2. Halka: Bellek & Altyapı ETF',
+      ringBadge: 'amber',
+      netBuybackYield: 0.50,
+      dividendYield: 1.20,
+      totalShareholderYield: 1.70,
+      solvencyScore: 90,
+      debtToEquity: 35.0,
+      diagnosis: 'AI donanım ve yarı iletken altyapı fonu; bileşen şirketlerin güçlü bilançolarından beslenir.'
+    },
+    SPCX: {
+      ring: 2,
+      ringLabel: '2. Halka: Uzay & İleri Altyapı ETF',
+      ringBadge: 'amber',
+      netBuybackYield: 0.00,
+      dividendYield: 0.00,
+      totalShareholderYield: 0.00,
+      solvencyScore: 75,
+      debtToEquity: 60.0,
+      diagnosis: 'Yeni nesil uzay teknolojisi ve uydu altyapısı fonu; sermaye büyümesi odaklı büyüme sepeti.'
+    },
+    QQQ: {
+      ring: 1,
+      ringLabel: '1. Halka: Nasdaq 100 Titanları',
+      ringBadge: 'emerald',
+      netBuybackYield: 1.85,
+      dividendYield: 0.55,
+      totalShareholderYield: 2.40,
+      solvencyScore: 95,
+      debtToEquity: 30.0,
+      diagnosis: 'Ağırlığı %50+ 1. Halka nakit zenginlerinden (MSFT, NVDA, AAPL, GOOGL, AMZN) oluşan mega teknoloji fonu.'
+    },
+    SPY: {
+      ring: 1,
+      ringLabel: '1. Halka: S&P 500 Çekirdek',
+      ringBadge: 'emerald',
+      netBuybackYield: 1.60,
+      dividendYield: 1.25,
+      totalShareholderYield: 2.85,
+      solvencyScore: 92,
+      debtToEquity: 40.0,
+      diagnosis: 'ABD kurumsal kârlılığının amiral gemisi; hisse geri alımları ve temettü ile düzenli hissedar getirisi üretir.'
+    },
+    AFT: {
+      ring: 1,
+      ringLabel: '1. Halka: Teknoloji Titanları Fonu',
+      ringBadge: 'emerald',
+      netBuybackYield: 1.50,
+      dividendYield: 0.00,
+      totalShareholderYield: 1.50,
+      solvencyScore: 94,
+      debtToEquity: 30.0,
+      diagnosis: 'Ak Portföy Yeni Teknolojiler; portföyünün %80+ kısmı 1. Halka mega-cap nakit titanlarında toplanmıştır.'
+    },
+    YAY: {
+      ring: 1,
+      ringLabel: '1. Halka: Yabancı Teknoloji Fonu',
+      ringBadge: 'emerald',
+      netBuybackYield: 1.50,
+      dividendYield: 0.00,
+      totalShareholderYield: 1.50,
+      solvencyScore: 94,
+      debtToEquity: 30.0,
+      diagnosis: 'Yapı Kredi Yabancı Teknoloji; küresel nakit akışı zengini lider teknoloji şirketlerine yatırım yapar.'
+    },
+    ORCL: {
+      ring: 3,
+      ringLabel: '3. Halka: Borçla Büyüyenler',
+      ringBadge: 'red',
+      netBuybackYield: -0.65,
+      dividendYield: 1.15,
+      totalShareholderYield: 0.50,
+      solvencyScore: 48,
+      debtToEquity: 697.5,
+      diagnosis: 'Finvest Vaka Analizi: AI veri merkezi Capex harcamaları nakit akışını aşıyor; $86B borç ve hisse basımıyla hissedar seyreltildi.'
+    },
+    SOFI: {
+      ring: 3,
+      ringLabel: '3. Halka: Yüksek Seyrelme (SBC)',
+      ringBadge: 'red',
+      netBuybackYield: -2.90,
+      dividendYield: 0.00,
+      totalShareholderYield: -2.90,
+      solvencyScore: 60,
+      debtToEquity: 85.0,
+      diagnosis: 'Büyüme primleri nedeniyle yüksek hisse seyreltmesi (SBC); hissedarın ortaklık payını sulandıran sermaye yapısı.'
+    },
+    BYDNR: {
+      ring: 3,
+      ringLabel: '3. Halka: Büyüme & Borç Kaldıracı',
+      ringBadge: 'red',
+      netBuybackYield: 0.00,
+      dividendYield: 0.00,
+      totalShareholderYield: 0.00,
+      solvencyScore: 65,
+      debtToEquity: 145.0,
+      diagnosis: 'Gıda ve perakende restoran genişlemesini işletme sermayesi ve kredi kaldıracıyla sürdüren büyüme şirketi.'
+    }
+  };
+
+  const getFinvestHoldingData = (ticker, holding, sData, potData) => {
+    const clean = (ticker || '').toUpperCase().replace('.IS', '').replace('-USD', '');
+    if (FINVEST_PROFILES[clean]) return { ...FINVEST_PROFILES[clean], clean };
+
+    const fundScore = sData?.analysis?.pillars?.fundamental?.score ?? 78;
+    const dToE = Number(sData?.analysis?.pillars?.fundamental?.debt_to_equity) || 55;
+
+    let ring = 2;
+    let ringLabel = '2. Halka: Kritik Tedarikçi / Dengeli';
+    let ringBadge = 'amber';
+    let diagnosis = 'Dengeli bilanço yapısıyla sektör talebini nakde çeviren ve makul borçlulukla büyüyen şirket.';
+
+    if (fundScore >= 82 && dToE < 50) {
+      ring = 1;
+      ringLabel = '1. Halka: Nakit Kalesi';
+      ringBadge = 'emerald';
+      diagnosis = 'Düşük borçluluk ve güçlü özkaynak yapısıyla kendi organik nakit akışıyla büyüyen nakit kalesi.';
+    } else if (fundScore < 65 || dToE > 160) {
+      ring = 3;
+      ringLabel = '3. Halka: Borçla Büyüyenler';
+      ringBadge = 'red';
+      diagnosis = 'Yüksek kaldıraçlı bilanço veya hisse seyrelmesi; yatırımlar borçlanmayla finanse edilmekte.';
+    }
+
+    const netBuybackYield = ring === 1 ? 1.20 : (ring === 3 ? -1.10 : 0.00);
+    const dividendYield = sData?.metrics?.dividend_yield ? Number(sData.metrics.dividend_yield) : (holding?.currency === 'TRY' ? 2.50 : 0.80);
+    const totalShareholderYield = Number((netBuybackYield + dividendYield).toFixed(2));
+    const solvencyScore = Math.min(98, Math.max(40, Math.round(fundScore * 0.95 + (ring === 1 ? 12 : (ring === 3 ? -15 : 0)))));
+
+    return {
+      clean,
+      ring,
+      ringLabel,
+      ringBadge,
+      netBuybackYield,
+      dividendYield,
+      totalShareholderYield,
+      solvencyScore,
+      debtToEquity: dToE,
+      diagnosis
+    };
+  };
+
+  // Portfolio-Weighted Finvest Analysis
+  const portfolioFinvestAnalysis = useMemo(() => {
+    let totalEquityVal = 0;
+    let ring1Val = 0, ring2Val = 0, ring3Val = 0;
+    let sumShareholderYield = 0;
+    let sumBuybackYield = 0;
+    let sumDividendYield = 0;
+    let sumSolvency = 0;
+    let sumDebtToEquity = 0;
+
+    const itemMap = {};
+    const ring1Tickers = [];
+    const ring2Tickers = [];
+    const ring3Tickers = [];
+
+    equityHoldings.forEach(h => {
+      const sym = (h.ticker || '').toUpperCase();
+      const clean = sym.replace('.IS', '').replace('-USD', '');
+      const sData = stocksData[clean] || stocksData[sym];
+      const potData = potentialStocksData?.stocks?.find(s => s.ticker === clean);
+
+      const fData = getFinvestHoldingData(clean, h, sData, potData);
+      itemMap[h.id || clean] = fData;
+      itemMap[clean] = fData;
+      itemMap[sym] = fData;
+
+      const val = isTRY ? (h.valTRY || 0) : (h.valUSD || 0);
+      if (val <= 0) return;
+      totalEquityVal += val;
+
+      if (fData.ring === 1) {
+        ring1Val += val;
+        ring1Tickers.push(clean);
+      } else if (fData.ring === 2) {
+        ring2Val += val;
+        ring2Tickers.push(clean);
+      } else {
+        ring3Val += val;
+        ring3Tickers.push(clean);
+      }
+
+      sumShareholderYield += fData.totalShareholderYield * val;
+      sumBuybackYield += fData.netBuybackYield * val;
+      sumDividendYield += fData.dividendYield * val;
+      sumSolvency += fData.solvencyScore * val;
+      sumDebtToEquity += fData.debtToEquity * val;
+    });
+
+    const divisor = totalEquityVal > 0 ? totalEquityVal : 1;
+    const ring1Weight = totalEquityVal > 0 ? (ring1Val / divisor) * 100 : 65.0;
+    const ring2Weight = totalEquityVal > 0 ? (ring2Val / divisor) * 100 : 25.0;
+    const ring3Weight = totalEquityVal > 0 ? (ring3Val / divisor) * 100 : 10.0;
+
+    const weightedShareholderYield = totalEquityVal > 0 ? Math.round((sumShareholderYield / divisor) * 100) / 100 : 2.45;
+    const weightedBuybackYield = totalEquityVal > 0 ? Math.round((sumBuybackYield / divisor) * 100) / 100 : 1.35;
+    const weightedDividendYield = totalEquityVal > 0 ? Math.round((sumDividendYield / divisor) * 100) / 100 : 1.10;
+    const weightedSolvencyScore = totalEquityVal > 0 ? Math.round(sumSolvency / divisor) : 91;
+    const weightedDebtToEquity = totalEquityVal > 0 ? Math.round((sumDebtToEquity / divisor) * 10) / 10 : 38.5;
+
+    let ringSummaryBadge = 'emerald';
+    let ringSummaryTitle = 'TAM KORUMALI NAKİT KALESİ';
+    let ringSummaryDesc = `Portföyünüzün %${ring1Weight.toFixed(1)}'i devasa serbest nakit akışıyla (FCF) kendi yatırımlarını borçsuz finanse eden 1. Halka titanlarından oluşuyor. Yapay zeka borç balonu ve yüksek faiz riskine karşı en dayanıklı zırha sahipsiniz.`;
+
+    if (ring3Weight > 25.0) {
+      ringSummaryBadge = 'red';
+      ringSummaryTitle = 'BORÇ BALONU DUYARLILIĞI UYARISI';
+      ringSummaryDesc = `Portföyünüzün %${ring3Weight.toFixed(1)}'i yüksek kaldıraç veya hisse seyrelmesi (SBC) taşıyan 3. Halka şirketlerinde bulunmaktadır. Faiz indirimi gecikmelerine karşı temkinli olunmalıdır.`;
+    } else if (ring2Weight > 45.0) {
+      ringSummaryBadge = 'amber';
+      ringSummaryTitle = 'KRİTİK ALTYAPI & CAPEX DÖNGÜSÜ';
+      ringSummaryDesc = `Portföyünüz %${ring2Weight.toFixed(1)} ile büyük oranda veri merkezi ve çip altyapı tedarikçilerinden besleniyor; büyük titanların Capex harcamaları doğrudan cironuza katkı sağlıyor.`;
+    }
+
+    return {
+      itemMap,
+      totalEquityVal,
+      ring1Val,
+      ring2Val,
+      ring3Val,
+      ring1Weight,
+      ring2Weight,
+      ring3Weight,
+      ring1Tickers: [...new Set(ring1Tickers)],
+      ring2Tickers: [...new Set(ring2Tickers)],
+      ring3Tickers: [...new Set(ring3Tickers)],
+      weightedShareholderYield,
+      weightedBuybackYield,
+      weightedDividendYield,
+      weightedSolvencyScore,
+      weightedDebtToEquity,
+      ringSummaryBadge,
+      ringSummaryTitle,
+      ringSummaryDesc
+    };
+  }, [equityHoldings, isTRY]);
+
   // Sector & Thematic Concentration Analysis
   const sectorConcentration = useMemo(() => {
     const totalVal = portfolioSummary?.totalValTRY || 1;
@@ -784,6 +1162,41 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
           valA = isTRY ? (a.valTRY || 0) : (a.valUSD || 0);
           valB = isTRY ? (b.valTRY || 0) : (b.valUSD || 0);
           break;
+        case 'ring': {
+          const fA = portfolioFinvestAnalysis.itemMap[a.id] || portfolioFinvestAnalysis.itemMap[(a.ticker || '').toUpperCase()];
+          const fB = portfolioFinvestAnalysis.itemMap[b.id] || portfolioFinvestAnalysis.itemMap[(b.ticker || '').toUpperCase()];
+          valA = fA?.ring || 2;
+          valB = fB?.ring || 2;
+          break;
+        }
+        case 'buyback': {
+          const fA = portfolioFinvestAnalysis.itemMap[a.id] || portfolioFinvestAnalysis.itemMap[(a.ticker || '').toUpperCase()];
+          const fB = portfolioFinvestAnalysis.itemMap[b.id] || portfolioFinvestAnalysis.itemMap[(b.ticker || '').toUpperCase()];
+          valA = fA?.netBuybackYield || 0;
+          valB = fB?.netBuybackYield || 0;
+          break;
+        }
+        case 'dividend': {
+          const fA = portfolioFinvestAnalysis.itemMap[a.id] || portfolioFinvestAnalysis.itemMap[(a.ticker || '').toUpperCase()];
+          const fB = portfolioFinvestAnalysis.itemMap[b.id] || portfolioFinvestAnalysis.itemMap[(b.ticker || '').toUpperCase()];
+          valA = fA?.dividendYield || 0;
+          valB = fB?.dividendYield || 0;
+          break;
+        }
+        case 'yield': {
+          const fA = portfolioFinvestAnalysis.itemMap[a.id] || portfolioFinvestAnalysis.itemMap[(a.ticker || '').toUpperCase()];
+          const fB = portfolioFinvestAnalysis.itemMap[b.id] || portfolioFinvestAnalysis.itemMap[(b.ticker || '').toUpperCase()];
+          valA = fA?.totalShareholderYield || 0;
+          valB = fB?.totalShareholderYield || 0;
+          break;
+        }
+        case 'solvency': {
+          const fA = portfolioFinvestAnalysis.itemMap[a.id] || portfolioFinvestAnalysis.itemMap[(a.ticker || '').toUpperCase()];
+          const fB = portfolioFinvestAnalysis.itemMap[b.id] || portfolioFinvestAnalysis.itemMap[(b.ticker || '').toUpperCase()];
+          valA = fA?.solvencyScore || 75;
+          valB = fB?.solvencyScore || 75;
+          break;
+        }
         case 'quant': {
           const rA = rebalanceMap[a.id] || rebalanceMap[(a.ticker || '').toUpperCase()];
           const rB = rebalanceMap[b.id] || rebalanceMap[(b.ticker || '').toUpperCase()];
@@ -1164,6 +1577,240 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
           </div>
 
+          {/* ========================================================================= */}
+          {/* 🛡️ PORTFÖY FİNVEST RÖNTGENİ & SERMAYE KALKANI                            */}
+          {/* ========================================================================= */}
+          <div 
+            className="card finvest-portfolio-card"
+            style={{
+              marginBottom: 14,
+              padding: '16px 18px',
+              background: 'radial-gradient(ellipse at top left, rgba(14, 28, 48, 0.75), rgba(7, 10, 20, 0.98))',
+              border: '1px solid rgba(0, 229, 255, 0.28)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 229, 255, 0.08)',
+              borderRadius: 8
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(16, 185, 129, 0.2))', border: '1px solid rgba(0, 229, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: 13.5, fontWeight: 900, color: '#f8fafc', letterSpacing: '0.4px' }}>
+                      PORTFÖY FİNVEST RÖNTGENİ & SERMAYE KALKANI
+                    </h3>
+                    <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                      Finvest X-Ray
+                    </span>
+                    <span 
+                      className={`nav-badge ${portfolioFinvestAnalysis.ringSummaryBadge}`}
+                      style={{ fontSize: 9.5, padding: '2px 8px', fontWeight: 800 }}
+                    >
+                      🛡️ {portfolioFinvestAnalysis.ringSummaryTitle}
+                    </span>
+                  </div>
+                  <p style={{ margin: '3px 0 0 0', fontSize: 10.5, color: 'var(--text-muted)' }}>
+                    Yatırım 101 Finvest Metodolojisi: Yapay Zeka Borç Balonuna Karşı 3-Halka Dağılımı, Konsolide Hissedar İadesi (Buyback + Temettü) ve Solvency Kalkanı
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>
+                  Powered by <strong style={{ color: '#38bdf8' }}>FINVEST</strong> & <strong style={{ color: '#10b981' }}>SOLVENCY RADAR</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowFinvestCard(prev => !prev)}
+                  className="chip-btn"
+                  style={{ fontSize: 10, padding: '3px 8px', background: 'rgba(255,255,255,0.04)' }}
+                >
+                  {showFinvestCard ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  <span>{showFinvestCard ? 'Gizle' : 'Genişlet'}</span>
+                </button>
+              </div>
+            </div>
+
+            {showFinvestCard && (
+              <>
+                {/* 3-Halka Segmented Progress Bar */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, fontSize: 10.5 }}>
+                    <span style={{ fontWeight: 800, color: '#e2e8f0' }}>
+                      PORTFÖY 3-HALKA DAĞILIMI (BORÇ vs. NAKİT DENGESİ)
+                    </span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      Hisse/ETF Sepeti Toplamı: <strong className="mono" style={{ color: 'var(--cyan)' }}>{sym}{fmt(portfolioFinvestAnalysis.totalEquityVal, 2)}</strong>
+                    </span>
+                  </div>
+
+                  {/* Multi-Colored Segmented Bar */}
+                  <div style={{ width: '100%', height: 12, background: '#050811', borderRadius: 6, overflow: 'hidden', display: 'flex', border: '1px solid rgba(255, 255, 255, 0.1)', position: 'relative' }}>
+                    <div 
+                      title={`1. Halka (Nakitle İnşa Edenler): %${portfolioFinvestAnalysis.ring1Weight.toFixed(1)} (${portfolioFinvestAnalysis.ring1Tickers.join(', ') || 'N/A'})`}
+                      style={{ width: `${Math.max(1, portfolioFinvestAnalysis.ring1Weight)}%`, background: 'linear-gradient(90deg, #059669, #10b981)', transition: 'all 0.4s ease' }} 
+                    />
+                    <div 
+                      title={`2. Halka (Kritik Altyapı & Tedarikçiler): %${portfolioFinvestAnalysis.ring2Weight.toFixed(1)} (${portfolioFinvestAnalysis.ring2Tickers.join(', ') || 'N/A'})`}
+                      style={{ width: `${Math.max(1, portfolioFinvestAnalysis.ring2Weight)}%`, background: 'linear-gradient(90deg, #d97706, #f59e0b)', transition: 'all 0.4s ease' }} 
+                    />
+                    <div 
+                      title={`3. Halka (Borçla Büyüyenler / Seyrelenler): %${portfolioFinvestAnalysis.ring3Weight.toFixed(1)} (${portfolioFinvestAnalysis.ring3Tickers.join(', ') || 'N/A'})`}
+                      style={{ width: `${Math.max(1, portfolioFinvestAnalysis.ring3Weight)}%`, background: 'linear-gradient(90deg, #dc2626, #ef4444)', transition: 'all 0.4s ease' }} 
+                    />
+                  </div>
+
+                  {/* Legend Chips */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8, marginTop: 8 }}>
+                    {/* Ring 1 Chip */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 5, padding: '5px 8px', fontSize: 10 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <strong style={{ color: '#10b981' }}>1. Halka: Nakitle İnşa Edenler</strong>
+                          <strong className="mono" style={{ color: '#10b981' }}>%{portfolioFinvestAnalysis.ring1Weight.toFixed(1)}</strong>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {portfolioFinvestAnalysis.ring1Tickers.length > 0 ? portfolioFinvestAnalysis.ring1Tickers.join(' • ') : 'Titan hisseler'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ring 2 Chip */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 5, padding: '5px 8px', fontSize: 10 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <strong style={{ color: '#f59e0b' }}>2. Halka: Kritik Tedarikçiler</strong>
+                          <strong className="mono" style={{ color: '#f59e0b' }}>%{portfolioFinvestAnalysis.ring2Weight.toFixed(1)}</strong>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {portfolioFinvestAnalysis.ring2Tickers.length > 0 ? portfolioFinvestAnalysis.ring2Tickers.join(' • ') : 'Altyapı şirketleri'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ring 3 Chip */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 5, padding: '5px 8px', fontSize: 10 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <strong style={{ color: '#ef4444' }}>3. Halka: Borçla Büyüyenler</strong>
+                          <strong className="mono" style={{ color: '#ef4444' }}>%{portfolioFinvestAnalysis.ring3Weight.toFixed(1)}</strong>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {portfolioFinvestAnalysis.ring3Tickers.length > 0 ? portfolioFinvestAnalysis.ring3Tickers.join(' • ') : 'Seyrelme / Kaldıraç'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4 Konsolide Finvest KPI Kartı */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10, marginBottom: 12 }}>
+                  {/* KPI 1: 1. Halka Titan Ağırlığı */}
+                  <div style={{ background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                        1. HALKA NAKİT KALELERİ
+                      </span>
+                      <span className="nav-badge emerald" style={{ fontSize: 9, padding: '1px 5px' }}>
+                        {portfolioFinvestAnalysis.ring1Weight >= 50 ? '🛡️ Güçlü Zırh' : '⚖️ Dengeli'}
+                      </span>
+                    </div>
+                    <div className="mono font-bold text-emerald" style={{ fontSize: 18, marginTop: 4 }}>
+                      %{portfolioFinvestAnalysis.ring1Weight.toFixed(1)}
+                    </div>
+                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
+                      Sıfır borç & organik FCF ile büyüyen piyasa liderleri
+                    </div>
+                  </div>
+
+                  {/* KPI 2: Konsolide Hissedar Getirisi */}
+                  <div style={{ background: 'rgba(56, 189, 248, 0.06)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                        KONSOLİDE HİSSEDAR VERİMİ
+                      </span>
+                      <span className="nav-badge cyan" style={{ fontSize: 9, padding: '1px 5px' }}>
+                        💎 Toplam İade
+                      </span>
+                    </div>
+                    <div className="mono font-bold text-cyan" style={{ fontSize: 18, marginTop: 4 }}>
+                      %{portfolioFinvestAnalysis.weightedShareholderYield.toFixed(2)} <span style={{ fontSize: 11, fontWeight: 500 }}>/ Yıl</span>
+                    </div>
+                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
+                      Buyback (+%{portfolioFinvestAnalysis.weightedBuybackYield.toFixed(2)}) + Temettü (%{portfolioFinvestAnalysis.weightedDividendYield.toFixed(2)})
+                    </div>
+                  </div>
+
+                  {/* KPI 3: Ağırlıklı Buyback Katkısı */}
+                  <div style={{ background: 'rgba(250, 204, 21, 0.06)', border: '1px solid rgba(250, 204, 21, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                        NET BUYBACK YIELD (İTFA)
+                      </span>
+                      <span className="nav-badge gold" style={{ fontSize: 9, padding: '1px 5px' }}>
+                        {portfolioFinvestAnalysis.weightedBuybackYield >= 0 ? '⚡ Dolaşım Azalıyor' : '⚠️ Seyrelme'}
+                      </span>
+                    </div>
+                    <div className="mono font-bold text-gold" style={{ fontSize: 18, marginTop: 4 }}>
+                      {portfolioFinvestAnalysis.weightedBuybackYield >= 0 ? '+' : ''}%{portfolioFinvestAnalysis.weightedBuybackYield.toFixed(2)} <span style={{ fontSize: 11, fontWeight: 500 }}>/ Yıl</span>
+                    </div>
+                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
+                      Hisse itfasıyla hisse başına kâr (EPS) büyüme desteği
+                    </div>
+                  </div>
+
+                  {/* KPI 4: Solvency & Borçluluk Skoru */}
+                  <div style={{ background: 'rgba(168, 85, 247, 0.06)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                        BİLANÇO SOLVENCY KALKANI
+                      </span>
+                      <span className="nav-badge" style={{ fontSize: 9, padding: '1px 5px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
+                        🏆 {portfolioFinvestAnalysis.weightedSolvencyScore >= 85 ? 'A+ Kalite' : 'B+ Dengeli'}
+                      </span>
+                    </div>
+                    <div className="mono font-bold" style={{ fontSize: 18, marginTop: 4, color: '#c084fc' }}>
+                      {portfolioFinvestAnalysis.weightedSolvencyScore} <span style={{ fontSize: 11, fontWeight: 500 }}>/ 100</span>
+                    </div>
+                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
+                      Konsolide Borç/Özkaynak: %{portfolioFinvestAnalysis.weightedDebtToEquity.toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Finvest Stratejik Portföy Pusulası (Callout Kutusu) */}
+                <div 
+                  style={{ 
+                    background: 'linear-gradient(135deg, rgba(8, 14, 28, 0.95), rgba(15, 23, 42, 0.9))', 
+                    border: '1px solid rgba(0, 229, 255, 0.25)', 
+                    borderLeft: `4px solid ${portfolioFinvestAnalysis.ringSummaryBadge === 'emerald' ? '#10b981' : (portfolioFinvestAnalysis.ringSummaryBadge === 'amber' ? '#f59e0b' : '#ef4444')}`,
+                    borderRadius: 6, 
+                    padding: '10px 14px', 
+                    fontSize: 11, 
+                    lineHeight: 1.5 
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, marginBottom: 4, color: '#f8fafc' }}>
+                    <span>💡</span>
+                    <span style={{ color: portfolioFinvestAnalysis.ringSummaryBadge === 'emerald' ? '#10b981' : (portfolioFinvestAnalysis.ringSummaryBadge === 'amber' ? '#f59e0b' : '#ef4444') }}>
+                      FİNVEST STRATEJİK DEĞERLENDİRMESİ:
+                    </span>
+                    <span>{portfolioFinvestAnalysis.ringSummaryTitle}</span>
+                  </div>
+                  <div style={{ color: '#cbd5e1' }}>
+                    {portfolioFinvestAnalysis.ringSummaryDesc}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           {/* 🚀 AKILLI REBALANCE & SERBEST ALIM GÜCÜ KONTROL BARI */}
           <div 
             className="card rebalance-control-strip" 
@@ -1323,6 +1970,21 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   title="Model portföy ağırlıkları, quant skorları ve rehberlik metinleri"
                 >
                   🤖 Rebalance & Sinyal
+                </button>
+                <button
+                  type="button"
+                  className={`chip-btn ${tableSubMode === 'finvest' ? 'active' : ''}`}
+                  onClick={() => setTableSubMode('finvest')}
+                  style={{ 
+                    fontSize: 10, 
+                    padding: '3px 8px',
+                    background: tableSubMode === 'finvest' ? 'var(--cyan)' : 'transparent',
+                    color: tableSubMode === 'finvest' ? '#000' : 'var(--text-bright)',
+                    fontWeight: 700
+                  }}
+                  title="Finvest 3-Halka Teşhisi, Net Buyback Verimi, Temettü ve Solvency Röntgeni"
+                >
+                  🛡️ Finvest Röntgeni
                 </button>
               </div>
             </div>
@@ -1768,6 +2430,54 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 </tr>
               )}
 
+              {activeMainTab === 'equity' && tableSubMode === 'finvest' && (
+                <tr style={{ userSelect: 'none' }}>
+                  <th onClick={() => handleSort('ticker')} style={{ cursor: 'pointer', minWidth: '150px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <span>Varlık & Şirket</span>
+                      {renderSortIndicator('ticker')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('ring')} style={{ cursor: 'pointer', minWidth: '170px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <span>Finvest 3-Halka Teşhisi</span>
+                      {renderSortIndicator('ring')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('weight')} className="text-right" style={{ cursor: 'pointer', minWidth: '95px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Sepet Payı</span>
+                      {renderSortIndicator('weight')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('buyback')} className="text-right" style={{ cursor: 'pointer', minWidth: '120px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Net Buyback Verimi</span>
+                      {renderSortIndicator('buyback')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('dividend')} className="text-right" style={{ cursor: 'pointer', minWidth: '105px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Temettü Verimi</span>
+                      {renderSortIndicator('dividend')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('yield')} className="text-right" style={{ cursor: 'pointer', minWidth: '130px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Toplam Hissedar Getirisi</span>
+                      {renderSortIndicator('yield')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('solvency')} className="text-center" style={{ cursor: 'pointer', minWidth: '130px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                      <span>Bilanço & Solvency</span>
+                      {renderSortIndicator('solvency')}
+                    </div>
+                  </th>
+                  <th className="text-right" style={{ minWidth: '110px' }}>Hızlı İşlem</th>
+                </tr>
+              )}
+
               {(activeMainTab === 'all' || (activeMainTab === 'equity' && tableSubMode === 'financial')) && (
                 <tr style={{ userSelect: 'none' }}>
                   <th onClick={() => handleSort('ticker')} style={{ cursor: 'pointer' }}>
@@ -2103,6 +2813,140 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         </tr>
                       )}
                     </React.Fragment>
+                  );
+                }
+
+                // ==========================================
+                // 3. FİNVEST RÖNTGENİ TABLO GÖRÜNÜMÜ
+                // ==========================================
+                if (activeMainTab === 'equity' && tableSubMode === 'finvest') {
+                  const fData = portfolioFinvestAnalysis.itemMap[h.id] || portfolioFinvestAnalysis.itemMap[clean] || portfolioFinvestAnalysis.itemMap[symUpper] || {
+                    ring: 2,
+                    ringLabel: '2. Halka: Kritik Tedarikçi',
+                    ringBadge: 'amber',
+                    netBuybackYield: 0,
+                    dividendYield: 0,
+                    totalShareholderYield: 0,
+                    solvencyScore: 78,
+                    debtToEquity: 50,
+                    diagnosis: 'Dengeli bilanço'
+                  };
+
+                  return (
+                    <tr key={h.id} className="table-row">
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <div className="ticker-cell">
+                            <strong className="ticker-symbol mono">{h.ticker}</strong>
+                            <span className="ticker-desc">{h.name || h.ticker}</span>
+                          </div>
+                          <span className={`badge-type ${h.type?.toLowerCase() || 'hisse'}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                            {reb?.category || h.type}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span 
+                            className={`nav-badge ${fData.ringBadge}`} 
+                            style={{ fontSize: 9.5, padding: '2px 7px', fontWeight: 800, width: 'fit-content' }}
+                          >
+                            {fData.ring === 1 ? '🟢 1. Halka: Nakit Kalesi' : (fData.ring === 2 ? '🟡 2. Halka: Kritik Altyapı' : '🔴 3. Halka: Borçla Büyüyen')}
+                          </span>
+                          <span style={{ fontSize: 9, color: 'var(--text-muted)', lineHeight: 1.25, maxWidth: 220 }}>
+                            {fData.diagnosis}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right">
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <div className="mono font-bold" style={{ fontSize: 12, color: weightPct > 10.0 ? '#ef4444' : (weightPct > 7.5 ? '#f59e0b' : '#f8fafc') }}>
+                            %{weightPct.toFixed(1)}
+                          </div>
+                          <div 
+                            style={{ width: 54, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}
+                            title={`Sepet Payı: %${weightPct.toFixed(1)}`}
+                          >
+                            <div 
+                              style={{ 
+                                width: `${Math.min(100, (weightPct / 10.0) * 100)}%`, 
+                                height: '100%', 
+                                background: fData.ring === 1 ? 'var(--emerald)' : (fData.ring === 2 ? 'var(--amber)' : 'var(--red)'), 
+                                borderRadius: 2 
+                              }} 
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-right mono">
+                        <strong style={{ color: fData.netBuybackYield > 0 ? 'var(--emerald)' : (fData.netBuybackYield < 0 ? 'var(--red)' : 'var(--text-muted)'), fontSize: 12 }}>
+                          {fData.netBuybackYield > 0 ? '+' : ''}{fData.netBuybackYield.toFixed(2)}%
+                        </strong>
+                        <div style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>
+                          {fData.netBuybackYield > 0 ? 'İtfa / Alım' : (fData.netBuybackYield < 0 ? 'Seyrelme (SBC)' : 'Sabit Lot')}
+                        </div>
+                      </td>
+                      <td className="text-right mono">
+                        <strong style={{ color: fData.dividendYield > 0 ? 'var(--gold)' : 'var(--text-muted)', fontSize: 12 }}>
+                          %{fData.dividendYield.toFixed(2)}
+                        </strong>
+                        <div style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>
+                          {fData.dividendYield >= 4.0 ? 'Yüksek Nakit' : (fData.dividendYield > 0 ? 'Düzenli' : 'Temettüsüz')}
+                        </div>
+                      </td>
+                      <td className="text-right mono">
+                        <span 
+                          className="nav-badge" 
+                          style={{ 
+                            fontSize: 10.5, 
+                            fontWeight: 800, 
+                            padding: '3px 8px',
+                            background: fData.totalShareholderYield >= 2.0 ? 'rgba(16, 185, 129, 0.15)' : (fData.totalShareholderYield < 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 229, 255, 0.12)'),
+                            color: fData.totalShareholderYield >= 2.0 ? 'var(--emerald)' : (fData.totalShareholderYield < 0 ? 'var(--red)' : 'var(--cyan)'),
+                            border: `1px solid ${fData.totalShareholderYield >= 2.0 ? 'rgba(16, 185, 129, 0.4)' : (fData.totalShareholderYield < 0 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0, 229, 255, 0.3)')}`
+                          }}
+                        >
+                          {fData.totalShareholderYield >= 0 ? '+' : ''}{fData.totalShareholderYield.toFixed(2)}% / Yıl
+                        </span>
+                        <div style={{ fontSize: 8.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                          Buyback + Temettü
+                        </div>
+                      </td>
+                      <td className="text-center">
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <strong className="mono" style={{ fontSize: 12, color: fData.solvencyScore >= 85 ? 'var(--emerald)' : (fData.solvencyScore >= 70 ? 'var(--cyan)' : 'var(--red)') }}>
+                            {fData.solvencyScore} / 100
+                          </strong>
+                        </div>
+                        <div style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>
+                          Borç/Özkaynak: %{fData.debtToEquity.toFixed(0)}
+                        </div>
+                      </td>
+                      <td className="text-right">
+                        <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                          {onSelectStockForChart && (
+                            <button
+                              type="button"
+                              className="chip-btn"
+                              onClick={() => onSelectStockForChart(h)}
+                              style={{ padding: '3px 6px', fontSize: 10, color: 'var(--cyan)', borderColor: 'rgba(0,229,255,0.3)' }}
+                              title="Tekil Hisse Analizinde Aç"
+                            >
+                              🔍 Röntgen
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="chip-btn"
+                            onClick={() => onOpenSellModal(h)}
+                            style={{ padding: '3px 6px', fontSize: 10 }}
+                            title="Pozisyonu Sat / Azalt"
+                          >
+                            <ShoppingCart size={11} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 }
 
@@ -2618,6 +3462,47 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       </td>
                       <td className="text-right">
                         <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Model Portföy</span>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                // Finvest Footnote (8 columns)
+                if (isEqMode && tableSubMode === 'finvest') {
+                  return (
+                    <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
+                      <td style={{ color: activeStat.color, paddingLeft: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 900, fontSize: 12 }}>{label}</span>
+                          <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 7px' }}>
+                            {displayedHoldings.length} Varlık
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 9.5, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ color: 'var(--emerald)' }}>1. Halka: %{portfolioFinvestAnalysis.ring1Weight.toFixed(1)}</span>
+                          <span style={{ color: 'var(--amber)' }}>2. Halka: %{portfolioFinvestAnalysis.ring2Weight.toFixed(1)}</span>
+                          <span style={{ color: 'var(--red)' }}>3. Halka: %{portfolioFinvestAnalysis.ring3Weight.toFixed(1)}</span>
+                        </div>
+                      </td>
+                      <td className="text-right mono text-bright">
+                        %{activeStat.weightPct.toFixed(1)}
+                      </td>
+                      <td className="text-right mono text-emerald">
+                        {portfolioFinvestAnalysis.weightedBuybackYield >= 0 ? '+' : ''}%{portfolioFinvestAnalysis.weightedBuybackYield.toFixed(2)}
+                      </td>
+                      <td className="text-right mono text-gold">
+                        %{portfolioFinvestAnalysis.weightedDividendYield.toFixed(2)}
+                      </td>
+                      <td className="text-right mono text-cyan" style={{ fontSize: 12 }}>
+                        %{portfolioFinvestAnalysis.weightedShareholderYield.toFixed(2)} / Yıl
+                      </td>
+                      <td className="text-center mono text-emerald">
+                        {portfolioFinvestAnalysis.weightedSolvencyScore} / 100
+                      </td>
+                      <td className="text-right">
+                        <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Finvest X-Ray</span>
                       </td>
                     </tr>
                   );
