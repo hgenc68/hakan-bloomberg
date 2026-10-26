@@ -42,6 +42,7 @@ const TradeLedgerTab = safeLazy(() => import('./pages/TradeLedgerTab'));
 const ManageTab = safeLazy(() => import('./pages/ManageTab'));
 const PotentialStocksTab = safeLazy(() => import('./pages/PotentialStocksTab'));
 const BroadcastStudioTab = safeLazy(() => import('./pages/BroadcastStudioTab'));
+const FundXRayTab = safeLazy(() => import('./pages/FundXRayTab'));
 
 import {
   AddHoldingModal,
@@ -150,6 +151,21 @@ function MainTerminal() {
             )}
 
             {activeTab === 'broadcast_studio' && <BroadcastStudioTab />}
+
+            {activeTab === 'fund_xray' && (
+              <FundXRayTab 
+                onSelectStock={(t) => {
+                  if (setLastNavigatedFrom) {
+                    setLastNavigatedFrom({
+                      tab: 'fund_xray',
+                      label: 'Fon & ETF Röntgeni'
+                    });
+                  }
+                  setSelectedStockTicker(t);
+                  setActiveTab('single_stock');
+                }}
+              />
+            )}
 
             {activeTab === 'market' && (
               <MarketPulseTab 
