@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Briefcase, Calendar, RefreshCw, Award, TrendingUp, CheckCircle, ArrowRight } from 'lucide-react';
 import modelData from '../data/modelPortfolios.json';
@@ -163,8 +163,8 @@ export default function ModelPortfolioTab({ onSelectStock }) {
             <tbody>
               {holdings.map((h, idx) => {
                 const livePrice = Number(
-                  marketQuotes[h.ticker]?.price || 
-                  marketQuotes[`${h.ticker}.IS`]?.price || 
+                  marketQuotes?.[h.ticker]?.price || 
+                  marketQuotes?.[`${h.ticker}.IS`]?.price || 
                   h.current_price || 
                   h.entry_price || 
                   0
