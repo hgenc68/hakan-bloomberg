@@ -196,7 +196,7 @@ export default function Top10QuantTab({ onSelectStock }) {
             <Trophy size={20} className="text-emerald" />
             <span>EN GÜÇLÜ HİSSELER & QUANT FIRSAT RADARI</span>
             <span className="nav-badge emerald" style={{ fontSize: 11, padding: '3px 8px' }}>
-              Seeking Alpha 5-Pillar Modeli
+              5-Faktörlü Quant Modeli
             </span>
           </h2>
           <p className="workspace-subtitle">

@@ -764,7 +764,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
       totalShareholderYield: 0.50,
       solvencyScore: 48,
       debtToEquity: 697.5,
-      diagnosis: 'Finvest Vaka Analizi: AI veri merkezi Capex harcamaları nakit akışını aşıyor; $86B borç ve hisse basımıyla hissedar seyreltildi.'
+      diagnosis: 'Stratejik Borç İncelemesi: AI veri merkezi Capex harcamaları nakit akışını aşıyor; $86B borç ve hisse basımıyla hissedar seyreltildi.'
     },
     SOFI: {
       ring: 3,
@@ -1578,7 +1578,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
           </div>
 
           {/* ========================================================================= */}
-          {/* 🛡️ PORTFÖY FİNVEST RÖNTGENİ & SERMAYE KALKANI                            */}
+          {/* 🛡️ PORTFÖY SERMAYE KALKANI & SOLVENCY RÖNTGENİ                            */}
           {/* ========================================================================= */}
           <div 
             className="card finvest-portfolio-card"
@@ -1603,7 +1603,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       PORTFÖY FİNVEST RÖNTGENİ & SERMAYE KALKANI
                     </h3>
                     <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
-                      Finvest X-Ray
+                      Sermaye Röntgeni
                     </span>
                     <span 
                       className={`nav-badge ${portfolioFinvestAnalysis.ringSummaryBadge}`}
@@ -1613,14 +1613,14 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     </span>
                   </div>
                   <p style={{ margin: '3px 0 0 0', fontSize: 10.5, color: 'var(--text-muted)' }}>
-                    Yatırım 101 Finvest Metodolojisi: Yapay Zeka Borç Balonuna Karşı 3-Halka Dağılımı, Konsolide Hissedar İadesi (Buyback + Temettü) ve Solvency Kalkanı
+                    Kurumsal Bilanço Metodolojisi: Yapay Zeka Borç Balonuna Karşı 3-Halka Dağılımı, Konsolide Hissedar İadesi (Buyback + Temettü) ve Solvency Kalkanı
                   </p>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>
-                  Powered by <strong style={{ color: '#38bdf8' }}>FINVEST</strong> & <strong style={{ color: '#10b981' }}>SOLVENCY RADAR</strong>
+                  <strong style={{ color: '#38bdf8', letterSpacing: '0.8px' }}>BLOOMBERG TERMINAL • SOLVENCY RADAR</strong>
                 </span>
                 <button
                   type="button"
@@ -1799,7 +1799,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, marginBottom: 4, color: '#f8fafc' }}>
                     <span>💡</span>
                     <span style={{ color: portfolioFinvestAnalysis.ringSummaryBadge === 'emerald' ? '#10b981' : (portfolioFinvestAnalysis.ringSummaryBadge === 'amber' ? '#f59e0b' : '#ef4444') }}>
-                      FİNVEST STRATEJİK DEĞERLENDİRMESİ:
+                      STRATEJİK SERMAYE VE KALKAN DEĞERLENDİRMESİ:
                     </span>
                     <span>{portfolioFinvestAnalysis.ringSummaryTitle}</span>
                   </div>
@@ -1982,9 +1982,9 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     color: tableSubMode === 'finvest' ? '#000' : 'var(--text-bright)',
                     fontWeight: 700
                   }}
-                  title="Finvest 3-Halka Teşhisi, Net Buyback Verimi, Temettü ve Solvency Röntgeni"
+                  title="3-Halka Bilanço Teşhisi, Net Buyback Verimi, Temettü ve Solvency Röntgeni"
                 >
-                  🛡️ Finvest Röntgeni
+                  🛡️ Sermaye & Solvency Röntgeni
                 </button>
               </div>
             </div>
@@ -2440,7 +2440,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   </th>
                   <th onClick={() => handleSort('ring')} style={{ cursor: 'pointer', minWidth: '170px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      <span>Finvest 3-Halka Teşhisi</span>
+                      <span>3-Halka Bilanço Sınıfı</span>
                       {renderSortIndicator('ring')}
                     </div>
                   </th>
@@ -3502,7 +3502,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         {portfolioFinvestAnalysis.weightedSolvencyScore} / 100
                       </td>
                       <td className="text-right">
-                        <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Finvest X-Ray</span>
+                        <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Solvency Röntgeni</span>
                       </td>
                     </tr>
                   );

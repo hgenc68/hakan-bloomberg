@@ -1484,7 +1484,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         ring: 3,
         ringLabel: '3. HALKA: BORÇLA BÜYÜYENLER',
         ringBadge: 'red',
-        ringDesc: 'Finvest Özel İncelemesi: AI veri merkezleri için devasa Capex harcarken OCF yetersiz kalmakta, FCF baskılanmakta ve büyüme borçla fonlanmaktadır.',
+        ringDesc: 'Stratejik Borç İncelemesi: AI veri merkezleri için devasa Capex harcarken OCF yetersiz kalmakta, FCF baskılanmakta ve büyüme borçla fonlanmaktadır.',
         totalDebt: 86500,
         totalEquity: 12400,
         cashBuffer: 10500,
@@ -1800,7 +1800,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'HİSSEDAR DOSTU ŞAMPİYON',
         statusBadge: 'emerald',
         diagnosis: 'Tarihin en agresif hisse geri alım programı. Apple son 10 yılda hisse adedini %38 azalttı; şirket kârı sabit kalsa dahi hisse başı kâr (EPS) her yıl bileşik olarak artmaktadır.',
-        principleNote: 'Finvest İlkesi: Şirket FCF fazlasını geri alıma ayırdığında yatırımcının şirket kârındaki ortaklık payı tek kuruş ek sermaye koymadan her çeyrek artar.'
+        principleNote: 'Sermaye İlkesi: Şirket FCF fazlasını geri alıma ayırdığında yatırımcının şirket kârındaki ortaklık payı tek kuruş ek sermaye koymadan her çeyrek artar.'
       },
       GOOGL: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1818,7 +1818,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'HİSSEDAR DOSTU GERİ ALIM',
         statusBadge: 'emerald',
         diagnosis: 'Arama motoru ve bulut kârlılığından gelen dev serbest nakit akışı, hem $50B+ AI Capex harcamasına hem de yıllık $60B+ hisse itfasına fazlasıyla yetiyor.',
-        principleNote: 'Finvest İlkesi: 1. Halka titanları yüksek yatırım harcamalarına rağmen hisse sayısını eriterek hissedarın sermayesini korur.'
+        principleNote: 'Sermaye İlkesi: 1. Halka titanları yüksek yatırım harcamalarına rağmen hisse sayısını eriterek hissedarın sermayesini korur.'
       },
       NVDA: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1836,7 +1836,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'HİSSEDAR DOSTU & BÜYÜME',
         statusBadge: 'emerald',
         diagnosis: 'Yapay zeka çip tekelinden akan rekor FCF sayesinde $50B yeni buyback bütçesi onaylandı. Hem agresif büyüme hem de dolaşım azaltımı bir arada yürütülüyor.',
-        principleNote: 'Finvest İlkesi: Üstel büyüyen şirketlerin hisse geri alımı yapması piyasaya tepe fiyat endişesi olmadığını ve nakit kalitesini kanıtlar.'
+        principleNote: 'Sermaye İlkesi: Üstel büyüyen şirketlerin hisse geri alımı yapması piyasaya tepe fiyat endişesi olmadığını ve nakit kalitesini kanıtlar.'
       },
       MSFT: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1854,7 +1854,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'DENGELİ HİSSEDAR İADESİ',
         statusBadge: 'emerald',
         diagnosis: 'Düzenli temettü artışı ve $60B yeni geri alım yetkisiyle kurumsal yatırımcının en güvendiği sermaye tahsisi modelini uyguluyor.',
-        principleNote: 'Finvest İlkesi: Temettü ve hisse geri alımını harmanlayan şirketler piyasa dalgalanmalarına karşı en yüksek savunma kalkanına sahiptir.'
+        principleNote: 'Sermaye İlkesi: Temettü ve hisse geri alımını harmanlayan şirketler piyasa dalgalanmalarına karşı en yüksek savunma kalkanına sahiptir.'
       },
       ORCL: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1871,8 +1871,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         status: 'dilutive',
         statusLabel: 'SERMAYE SEYRELME UYARISI',
         statusBadge: 'red',
-        diagnosis: 'Finvest Özel Teşhisi: Devasa Capex ve $86B borç baskısı sebebiyle FCF ezilmektedir. Geri alımlar fiilen durdurulmuş, yöneticilere hisse basılarak yatırımcı %4.8 seyreltilmiştir.',
-        principleNote: 'Finvest Uyarısı: Şirket kârını hissedara iade etmek yerine hisse sayısını artırıyorsa (seyrelme), hisse başı kâr (EPS) büyümesi baskılanır.'
+        diagnosis: 'Özel Sermaye Teşhisi: Devasa Capex ve $86B borç baskısı sebebiyle FCF ezilmektedir. Geri alımlar fiilen durdurulmuş, yöneticilere hisse basılarak yatırımcı %4.8 seyreltilmiştir.',
+        principleNote: 'Bilanço Uyarısı: Şirket kârını hissedara iade etmek yerine hisse sayısını artırıyorsa (seyrelme), hisse başı kâr (EPS) büyümesi baskılanır.'
       },
       AMZN: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1890,7 +1890,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'YÜKSEK CAPEX / HAFİF SEYRELME',
         statusBadge: 'amber',
         diagnosis: 'AWS ve lojistik ağı devasa OCF üretse de nakit akışı yapay zeka altyapısına ve lojistik genişlemeye harcanıyor; kâr dağıtımı yerine yeniden yatırım öncelikli.',
-        principleNote: 'Finvest İlkesi: Büyüme çağındaki şirketler hisse geri alımı yapmayabilir; ancak SBC seyreltmesi kontrol altında tutulmalıdır.'
+        principleNote: 'Sermaye İlkesi: Büyüme çağındaki şirketler hisse geri alımı yapmayabilir; ancak SBC seyreltmesi kontrol altında tutulmalıdır.'
       },
       VRT: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1908,7 +1908,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'DENGELİ DOLAŞIM & BÜYÜME',
         statusBadge: 'emerald',
         diagnosis: 'Veri merkezi altyapı patlamasını hisse sulandırması yapmadan karşılıyor. $1B geri alım yetkisi ve borç azaltımıyla hissedar değerini koruyor.',
-        principleNote: 'Finvest İlkesi: 2. Halka tedarikçileri operasyonel kaldıracını borç ödemeye ve hisse itfasına dönüştürdüğünde çarpan genişlemesi yaşar.'
+        principleNote: 'Sermaye İlkesi: 2. Halka tedarikçileri operasyonel kaldıracını borç ödemeye ve hisse itfasına dönüştürdüğünde çarpan genişlemesi yaşar.'
       },
       SOFI: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1926,7 +1926,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'YÜKSEK SEYRELME (SBC BASKISI)',
         statusBadge: 'red',
         diagnosis: 'Genç fintech şirketi büyüme yeteneklerini çekmek için yoğun hisse bazlı prim (SBC) dağıtıyor. Son 5 yılda hisse adedi %27.7 artarak hissedar kâr payını sulandırdı.',
-        principleNote: 'Finvest Uyarısı: Şirket kârlı hale gelse dahi yüksek hisse seyreltmesi (SBC) devam ederse hisse fiyatı ciro artışına ayak uyduramaz.'
+        principleNote: 'Bilanço Uyarısı: Şirket kârlı hale gelse dahi yüksek hisse seyreltmesi (SBC) devam ederse hisse fiyatı ciro artışına ayak uyduramaz.'
       },
       THYAO: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1944,7 +1944,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'SABİT SERMAYE / YATIRIM ODAKLI',
         statusBadge: 'cyan',
         diagnosis: 'Sermaye yapısını sabit tutarak sulandırıcı bedelli sermaye artışlarından kaçınmıştır. Kârlar filo büyümesine ve uçak yatırımlarına aktarılmaktadır.',
-        principleNote: 'BIST / Finvest Prensibi: Sabit dolaşım sermayesi, enflasyonist ortamda hisse değerinin doğrudan operasyonel büyüme ile artmasını sağlar.'
+        principleNote: 'BIST Sermaye Prensibi: Sabit dolaşım sermayesi, enflasyonist ortamda hisse değerinin doğrudan operasyonel büyüme ile artmasını sağlar.'
       },
       TUPRS: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1962,7 +1962,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'TEMETTÜ ŞAMPİYONU (%7.8)',
         statusBadge: 'emerald',
         diagnosis: 'Hisse geri alımı yerine kârının tamamına yakınını çift taksitli nakit temettü olarak dağıtmakta; hissedarına %7.8 saf nakit getirisi sunmaktadır.',
-        principleNote: 'Finvest İlkesi: Şirket kârını ya hisse geri alımıyla (itfa) ya da yüksek temettüyle hissedara geri vermelidir.'
+        principleNote: 'Sermaye İlkesi: Şirket kârını ya hisse geri alımıyla (itfa) ya da yüksek temettüyle hissedara geri vermelidir.'
       },
       FROTO: {
         sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
@@ -1980,7 +1980,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         statusLabel: 'TEMETTÜ DEVİ (%5.6)',
         statusBadge: 'emerald',
         diagnosis: 'Craiova ve Gölcük elektrikli araç yatırımlarını sürdürürken, hissedarına düzenli yüksek temettü akışı sağlayan sağlam sermaye yönetimi.',
-        principleNote: 'Finvest İlkesi: Düzenli temettü ödeyen ve sermayesi sabit kalan şirketler uzun vadeli servet birikiminin temel taşıdır.'
+        principleNote: 'Sermaye İlkesi: Düzenli temettü ödeyen ve sermayesi sabit kalan şirketler uzun vadeli servet birikiminin temel taşıdır.'
       }
     };
 
@@ -2025,7 +2025,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       statusLabel: isHealthy ? 'HİSSEDAR DOSTU SERMAYE' : (isDilutive ? 'SERMAYE SEYRELME UYARISI' : 'DENGELİ DOLAŞIM'),
       statusBadge: isHealthy ? 'emerald' : (isDilutive ? 'red' : 'cyan'),
       diagnosis: isHealthy ? 'Şirket sermaye verimliliğini korumakta ve hissedarını sulandırmadan nakit üretmektedir.' : (isDilutive ? 'Şirket borç veya çalışan teşvikleri sebebiyle yeni hisse basmakta, hissedar ortaklık payı seyreltilmektedir.' : 'Dolaşımdaki hisse sayısı dengeli seyretmektedir.'),
-      principleNote: 'Finvest İlkesi: Sermaye itfası hisse başına kârı besler; kontrolsüz hisse artışı ise büyümenin kaymağını seyreltir.'
+      principleNote: 'Sermaye İlkesi: Sermaye itfası hisse başına kârı besler; kontrolsüz hisse artışı ise büyümenin kaymağını seyreltir.'
     };
   }, [cleanTickerUpper, isBist, activeStock, curPrice, qualtrimMetrics]);
 
@@ -2108,7 +2108,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         sentimentLabel: '🔴 Yoğun Yönetici Satışları & Dikkat',
         sentimentColor: '#ef4444',
         sentimentBadge: 'red',
-        sentimentDesc: 'Finvest Video Uyarısı: Devasa Capex borcu sürerken kurucu Larry Ellison ve CEO Safra Catz yüklü açık piyasa ve planlı satışlar gerçekleştirmiştir. Kurumsal fonlar net çıkış yapmıştır.',
+        sentimentDesc: 'Kurumsal İşlem Uyarısı: Devasa Capex borcu sürerken kurucu Larry Ellison ve CEO Safra Catz yüklü açık piyasa ve planlı satışlar gerçekleştirmiştir. Kurumsal fonlar net çıkış yapmıştır.',
         netVolume90D: '-$125.8M',
         institutionalOwnership: 44.5,
         institutionalTrend: '-1.4% (Net Akıllı Para Çıkışı)',
@@ -2156,7 +2156,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         sentimentLabel: '🟢 CEO’dan Agresif Açık Piyasa Alımları',
         sentimentColor: '#10b981',
         sentimentBadge: 'emerald',
-        sentimentDesc: 'Finvest Özel Sinyali: CEO Anthony Noto kendi şahsi nakdiyle düzenli olarak açık piyasadan hisse satın alarak şirketin geleceğine olan mutlak inancını kanıtlıyor.',
+        sentimentDesc: 'Kurumsal Alım Sinyali: CEO Anthony Noto kendi şahsi nakdiyle düzenli olarak açık piyasadan hisse satın alarak şirketin geleceğine olan mutlak inancını kanıtlıyor.',
         netVolume90D: '+$4.8M',
         institutionalOwnership: 42.8,
         institutionalTrend: '+1.5% (Yükselen İlgi)',
@@ -2188,7 +2188,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         sentimentLabel: '🟢 Güçlü Ana Ortak Alımı (Koç Holding)',
         sentimentColor: '#10b981',
         sentimentBadge: 'emerald',
-        sentimentDesc: 'Finvest Sinyali: Temettü dağıtımının ardından Koç Holding temettü nakdiyle piyasadan pay artırımı yaparak şirkete olan kurumsal güvenini teyit etti.',
+        sentimentDesc: 'Ortaklık Güven Sinyali: Temettü dağıtımının ardından Koç Holding temettü nakdiyle piyasadan pay artırımı yaparak şirkete olan kurumsal güvenini teyit etti.',
         netVolume90D: '+₺45.0M',
         institutionalOwnership: 48.2,
         institutionalTrend: '+2.4% (Güçlü Kurumsal Giriş)',
@@ -2469,11 +2469,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <Target size={20} className="text-cyan" />
             <span>TEKİL HİSSE RADARI & DCF DEĞERLEME MOTORU</span>
             <span className="nav-badge emerald" style={{ fontSize: 11, padding: '3px 8px' }}>
-              Graham & Qualtrim Standartları
+              Graham & Kurumsal Değerleme Standartları
             </span>
           </h2>
           <p className="workspace-subtitle">
-            TradingView mum grafiği, dinamik indirgenmiş nakit akımı (DCF) simülatörü, değerleme koridoru ve Qualtrim 4-metrik bilanço analizi.
+            Teknik mum grafiği, dinamik indirgenmiş nakit akımı (DCF) simülatörü, değerleme koridoru ve 4-metrik bilanço analizi.
           </p>
         </div>
         <button
@@ -2915,7 +2915,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                   <span>HİSSE KAR TANESİ RADARI</span>
                 </div>
                 <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                  Simply Wall St 5-Faktörlü Model
+                  5-Faktörlü Kar Tanesi Modeli
                 </div>
               </div>
               <span className={`nav-badge ${stockTheme.badgeClass}`} style={{ fontSize: 9.5, fontWeight: 800 }}>
@@ -3202,7 +3202,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               <Award size={18} className="text-gold" />
               <div>
                 <span style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'block' }}>
-                  SEEKING ALPHA FAKTÖR KARNESİ & QUANT NOTU
+                  FAKTÖR NOTLARI & QUANT KARNESİ
                 </span>
                 <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
                   Sektör Akran Medyanına Göre 5-Faktörlü Harf Notu (A+ to F)
@@ -3298,14 +3298,14 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               <Zap size={18} className="text-cyan" />
               <div>
                 <span style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'block' }}>
-                  QUALTRIM SERMAYE VERİMLİLİĞİ & RULE OF 40
+                  SERMAYE VERİMLİLİĞİ & RULE OF 40
                 </span>
                 <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
                   Yatırılan Sermaye Getirisi (ROIC), Hendek & Nakit Kalitesi
                 </span>
               </div>
             </div>
-            <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Qualtrim LTM</span>
+            <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Kurumsal LTM</span>
           </div>
 
           {/* 4 KPI Grid */}
@@ -3368,7 +3368,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           </div>
 
           <div style={{ fontSize: 10.5, color: 'var(--text-muted)', background: '#0b0f19', padding: '8px 12px', borderRadius: 4, lineHeight: 1.45 }}>
-            💡 <strong>Qualtrim Özeti:</strong> Şirket yatırdığı her 100 TL/USD sermayeden <strong>%{qualtrimMetrics.roic}</strong> getiri üretmektedir. <strong>%{qualtrimMetrics.wacc}</strong> sermaye maliyetini aşarak güçlü ekonomik hendek (moat) yaratmaktadır.
+            💡 <strong>Sermaye Özeti:</strong> Şirket yatırdığı her 100 TL/USD sermayeden <strong>%{qualtrimMetrics.roic}</strong> getiri üretmektedir. <strong>%{qualtrimMetrics.wacc}</strong> sermaye maliyetini aşarak güçlü ekonomik hendek (moat) yaratmaktadır.
           </div>
         </div>
 
@@ -3567,22 +3567,22 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               {rightChartMode === 'qualtrim' ? (
                 <>
                   <BarChart3 size={16} className="text-emerald" />
-                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>QUALTRIM 4-METRİK TARİHSEL BİLANÇO GRAFİĞİ</span>
+                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>4-METRİK TARİHSEL BİLANÇO GRAFİĞİ</span>
                 </>
               ) : rightChartMode === 'solvency' ? (
                 <>
                   <ShieldCheck size={16} className="text-cyan" />
-                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>BİLANÇO & BORÇLULUK RADARI (FINVEST SOLVENCY X-RAY)</span>
+                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>BİLANÇO & BORÇLULUK RADARI (SOLVENCY X-RAY)</span>
                 </>
               ) : rightChartMode === 'buyback' ? (
                 <>
                   <Repeat size={16} className="text-emerald" />
-                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>HİSSE GERİ ALIM & DOLAŞIM RADARI (FINVEST BUYBACK YIELD)</span>
+                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>HİSSE GERİ ALIM & DOLAŞIM RADARI (BUYBACK YIELD)</span>
                 </>
               ) : (
                 <>
                   <TrendingUp size={16} className="text-gold" />
-                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>KOYFIN RÖLATİF PERFORMANS (% KIYASLAMA)</span>
+                  <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>RÖLATİF PERFORMANS (% KIYASLAMA)</span>
                 </>
               )}
             </div>
@@ -3596,14 +3596,14 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 style={{ fontSize: 10, padding: '3px 8px' }}
                 title="Gelir, Net Kâr ve FCF geçmişini hisse fiyatıyla karşılaştırın"
               >
-                ✨ Qualtrim Bilanço
+                ✨ 4-Metrik Bilanço
               </button>
               <button
                 type="button"
                 className={`chip-btn ${rightChartMode === 'solvency' ? 'active' : ''}`}
                 onClick={() => setRightChartMode('solvency')}
                 style={{ fontSize: 10, padding: '3px 8px' }}
-                title="Finvest Borç vs. Özkaynak ve OCF vs. FCF Nakit Akışı / Capex Röntgeni"
+                title="Borç vs. Özkaynak ve OCF vs. FCF Nakit Akışı / Capex Röntgeni"
               >
                 🛡️ Borç & Nakit Röntgeni
               </button>
@@ -3623,7 +3623,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 style={{ fontSize: 10, padding: '3px 8px' }}
                 title="S&P 500, Nasdaq 100, BIST 100 ve Altın ile normalize getiri kıyaslaması"
               >
-                📈 Koyfin Rölatif %
+                📈 Rölatif Getiri %
               </button>
             </div>
           </div>
@@ -3662,7 +3662,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           {rightChartMode === 'solvency' && (
             <div style={{ textAlign: 'center', marginBottom: 10 }}>
               <div style={{ fontSize: 13.5, fontWeight: 800, color: '#f1f5f9', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span>{currentTicker} - Finvest Borçluluk & Nakit Akışı Röntgeni</span>
+                <span>{currentTicker} - Borçluluk & Nakit Akışı Röntgeni</span>
                 <span style={{
                   fontSize: 9.5,
                   fontWeight: 800,
@@ -3739,7 +3739,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           {rightChartMode === 'qualtrim' && (
             <>
               <div style={{ textAlign: 'right', fontSize: 10, color: '#64748b', fontWeight: 600, marginTop: 2, marginBottom: 8, letterSpacing: '0.5px' }}>
-                Powered by <strong style={{ color: '#94a3b8', letterSpacing: '1px' }}>QUALTRIM</strong>
+                <strong style={{ color: '#94a3b8', letterSpacing: '1px' }}>BLOOMBERG TERMINAL • FINANCIAL ANALYTICS</strong>
               </div>
 
               <div style={{
@@ -3818,7 +3818,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           {rightChartMode === 'solvency' && (
             <>
               <div style={{ textAlign: 'right', fontSize: 10, color: '#64748b', fontWeight: 600, marginTop: 2, marginBottom: 8, letterSpacing: '0.5px' }}>
-                Powered by <strong style={{ color: '#38bdf8', letterSpacing: '1px' }}>FINVEST</strong> & <strong style={{ color: '#94a3b8', letterSpacing: '1px' }}>SOLVENCY RADAR</strong>
+                <strong style={{ color: '#38bdf8', letterSpacing: '1px' }}>BLOOMBERG TERMINAL • SOLVENCY RADAR</strong>
               </div>
 
               {/* 4 Solvency KPI Cards */}
@@ -3873,13 +3873,13 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 700, color: solvencyData.ring === 1 ? '#10b981' : (solvencyData.ring === 2 ? '#f59e0b' : '#ef4444') }}>
                   <span>{solvencyData.ring === 1 ? '🛡️' : (solvencyData.ring === 2 ? '⚙️' : '⚠️')}</span>
-                  <span>FINVEST STRATEJİK TEŞHİS: {solvencyData.ringLabel}</span>
+                  <span>STRATEJİK BİLANÇO TEŞHİSİ: {solvencyData.ringLabel}</span>
                 </div>
                 <div style={{ color: '#cbd5e1' }}>
                   {solvencyData.ringDesc}
                 </div>
                 <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>
-                  * Finvest Prensibi: OCF &gt; Capex olduğunda FCF pozitiftir ve yatırımlar organik nakitle yapılır. Capex OCF'yi aştığında şirket borca mecbur kalır.
+                  * Sermaye Prensibi: OCF &gt; Capex olduğunda FCF pozitiftir ve yatırımlar organik nakitle yapılır. Capex OCF'yi aştığında şirket borca mecbur kalır.
                 </div>
               </div>
             </>
@@ -3889,7 +3889,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
           {rightChartMode === 'buyback' && (
             <>
               <div style={{ textAlign: 'right', fontSize: 10, color: '#64748b', fontWeight: 600, marginTop: 2, marginBottom: 8, letterSpacing: '0.5px' }}>
-                Powered by <strong style={{ color: '#10b981', letterSpacing: '1px' }}>FINVEST</strong> & <strong style={{ color: '#94a3b8', letterSpacing: '1px' }}>BUYBACK RADAR</strong>
+                <strong style={{ color: '#10b981', letterSpacing: '1px' }}>BLOOMBERG TERMINAL • BUYBACK RADAR</strong>
               </div>
 
               {/* 4 Buyback KPI Cards */}
@@ -3939,7 +3939,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 700, color: buybackData.status === 'friendly' ? '#10b981' : (buybackData.status === 'neutral' ? '#38bdf8' : '#ef4444') }}>
                   <span>{buybackData.status === 'friendly' ? '🛡️' : (buybackData.status === 'neutral' ? '⚖️' : '⚠️')}</span>
-                  <span>FINVEST SERMAYE POLİTİKASI: {buybackData.statusLabel}</span>
+                  <span>SERMAYE VE GERİ ALIM POLİTİKASI: {buybackData.statusLabel}</span>
                 </div>
                 <div style={{ color: '#cbd5e1' }}>
                   {buybackData.diagnosis}
@@ -4164,7 +4164,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🛡️ FINVEST SERMAYE POLİTİKASI & İÇERİDEN ÖĞRENENLER RADARI              */}
+      {/* 🛡️ SERMAYE POLİTİKASI & İÇERİDEN ÖĞRENENLER RADARI              */}
       {/* ========================================================================= */}
       <div style={{ marginTop: 24, marginBottom: 24 }}>
         
@@ -4177,9 +4177,9 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 14, fontWeight: 900, color: '#f8fafc', letterSpacing: '0.4px' }}>
-                  FINVEST SERMAYE POLİTİKASI & İÇERİDEN ÖĞRENENLER RADARI
+                  KURUMSAL SERMAYE POLİTİKASI & İÇERİDEN ÖĞRENENLER RADARI
                 </span>
-                <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Finvest X-Ray</span>
+                <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Sermaye Röntgeni</span>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
                 Hissedar Dostu Geri Alım (Buyback Yield), Dolaşım Seyrelme Teşhisi ve Yöneticilerin (Insider) Açık Piyasa İşlem Defteri
@@ -4513,13 +4513,13 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 700, color: insiderData.sentimentColor }}>
                 <span>{insiderData.sentimentBadge === 'emerald' ? '🟢' : (insiderData.sentimentBadge === 'cyan' ? '⚖️' : '⚠️')}</span>
-                <span>FINVEST AKILLI PARA TEŞHİSİ: {insiderData.sentimentLabel}</span>
+                <span>AKILLI PARA VE YÖNETİCİ TEŞHİSİ: {insiderData.sentimentLabel}</span>
               </div>
               <div style={{ color: '#cbd5e1' }}>
                 {insiderData.sentimentDesc}
               </div>
               <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>
-                * Finvest Prensibi: SEC Kuralı 10b5-1 planlı satışları rutin çeşitlendirmedir ve alarm değildir; ancak birden fazla C-Level yöneticinin açık piyasada (discretionary) plansız satış yapması bilançodan önce alarm sinyali olabilir.
+                * Kurumsal Yönetici Prensibi: SEC Kuralı 10b5-1 planlı satışları rutin çeşitlendirmedir ve alarm değildir; ancak birden fazla C-Level yöneticinin açık piyasada (discretionary) plansız satış yapması bilançodan önce alarm sinyali olabilir.
               </div>
             </div>
 

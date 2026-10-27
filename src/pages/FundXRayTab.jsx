@@ -174,7 +174,7 @@ export default function FundXRayTab({ onSelectStock }) {
                   LOOK-THROUGH & ÇAKIŞMA
                 </span>
                 <span style={{ fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.12)', color: 'var(--emerald)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-                  FINVEST STANDARDI
+                  KURUMSAL HALKA STANDARDI
                 </span>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -364,7 +364,7 @@ export default function FundXRayTab({ onSelectStock }) {
                 </div>
               </div>
 
-              {/* Finvest 3-Ring Breakdown Bar */}
+              {/* 3-Ring Breakdown Bar */}
               <div style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                   <span style={{ fontSize: 9.5, fontWeight: 800, color: '#cbd5e1' }}>FİNVEST 3-HALKA BİLANÇO DAĞILIMI</span>
@@ -391,7 +391,7 @@ export default function FundXRayTab({ onSelectStock }) {
                 </div>
               </div>
 
-              {/* Finvest Strategic Insight Box */}
+              {/* Strategic Insight Box */}
               <div style={{ background: 'rgba(251, 191, 36, 0.05)', border: '1px solid rgba(251, 191, 36, 0.2)', borderRadius: 6, padding: '9px 12px', fontSize: 10.5, lineHeight: 1.5, color: '#e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, fontWeight: 800, color: 'var(--gold)' }}>
                   <Sparkles size={13} />

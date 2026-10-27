@@ -367,7 +367,7 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
             <span>PORTFÖY SAĞLIK & RİSK RADARI (KAR TANESİ MODELİ)</span>
           </h2>
           <p className="workspace-subtitle">
-            Simply Wall St çok faktörlü Kar Tanesi (Snowflake) analizi, makro şok stres simülatörü ve çapraz korelasyon matrisi.
+            Çok faktörlü Kar Tanesi (Snowflake) analizi, makro şok stres simülatörü ve çapraz korelasyon matrisi.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -389,7 +389,7 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
                 <span>KAR TANESİ SAĞLIK RADARI</span>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                Simply Wall St 5-Faktörlü Kurumsal Standart
+                5-Faktörlü Kurumsal Standart
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -630,7 +630,7 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
                 </span>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                Bilanço kalitesi, tek varlık risk tavanı ve Simply Wall St analitiğine göre üretilen net aksiyon reçetesi
+                Bilanço kalitesi, tek varlık risk tavanı ve çok faktörlü kurumsal analitiğe göre üretilen net aksiyon reçetesi
               </div>
             </div>
           </div>

@@ -324,7 +324,7 @@ export default function OverviewTab() {
                 </span>
               </div>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                Simply Wall St & Koyfin Usulü Ağırlıklı Temel Analiz Röntgeni ({portfolioDNA.stockCount} Hisse Konsolide)
+                Kurumsal Ağırlıklı Temel Analiz Röntgeni ({portfolioDNA.stockCount} Hisse Konsolide)
               </span>
             </div>
           </div>

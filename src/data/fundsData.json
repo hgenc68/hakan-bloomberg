@@ -165,7 +165,7 @@
         { "ticker": "ENKAI", "name": "Enka İnşaat", "pct": 5.8, "market": "TR", "ring": 1, "sector": "İnşaat & Enerji" },
         { "ticker": "PETKM", "name": "Petkim Petrokimya", "pct": 4.5, "market": "TR", "ring": 2, "sector": "Petrokimya" }
       ],
-      "finvest_insight": "Finvest felsefesine en uygun BIST fonudur. Şirketlerin tamamına yakını 1. Halka (Nakit Titanı) sınıfındadır; yüksek temettü akışı ve düşük borçlulukla sermayeyi korur."
+      "finvest_insight": "Kurumsal sermaye kalkanı felsefesine en uygun BIST fonudur. Şirketlerin tamamına yakını 1. Halka (Nakit Titanı) sınıfındadır; yüksek temettü akışı ve düşük borçlulukla sermayeyi korur."
     },
     "GCT": {
       "code": "GCT",
@@ -324,7 +324,7 @@
         { "ticker": "JPM", "name": "JPMorgan Chase & Co.", "pct": 1.4, "market": "US", "ring": 1, "sector": "Bankacılık" },
         { "ticker": "TSLA", "name": "Tesla Inc.", "pct": 1.3, "market": "US", "ring": 2, "sector": "Otomotiv" }
       ],
-      "finvest_insight": "Finvest Videosu Uyarısı: S&P 500 tarihin en yüksek yoğunlaşma dönemindedir. Endeksin %35'ini ilk 10 hisse taşımaktadır; 500 hissenin 308'i endeks gerisinde kalmıştır."
+      "finvest_insight": "Konsantrasyon Uyarısı: S&P 500 tarihin en yüksek yoğunlaşma dönemindedir. Endeksin %35'ini ilk 10 hisse taşımaktadır; 500 hissenin 308'i endeks gerisinde kalmıştır."
     },
     "RSP": {
       "code": "RSP",
@@ -358,7 +358,7 @@
         { "ticker": "PG", "name": "Procter & Gamble", "pct": 0.20, "market": "US", "ring": 1, "sector": "Tüketici" },
         { "ticker": "JPM", "name": "JPMorgan Chase", "pct": 0.20, "market": "US", "ring": 1, "sector": "Bankacılık" }
       ],
-      "finvest_insight": "Finvest Videosu Favorisi: SPY'da teknoloji devleri düşerse endeks çöker. RSP'de ise 500 şirketin her biri eşit (%0.20) ağırlıktadır; yapay zeka balonu patlarsa en korunaklı sığınaktır."
+      "finvest_insight": "Eşit Ağırlık Avantajı: SPY'da teknoloji devleri düşerse endeks çöker. RSP'de ise 500 şirketin her biri eşit (%0.20) ağırlıktadır; yapay zeka balonu patlarsa en korunaklı sığınaktır."
     },
     "SCHD": {
       "code": "SCHD",
@@ -393,7 +393,7 @@
         { "ticker": "LMT", "name": "Lockheed Martin", "pct": 3.7, "market": "US", "ring": 1, "sector": "Savunma" },
         { "ticker": "KO", "name": "The Coca-Cola Company", "pct": 3.6, "market": "US", "ring": 1, "sector": "İçecek" }
       ],
-      "finvest_insight": "Finvest Videosu Özel Önerisi: Yapay zeka borç balonundan kaçınmak isteyenler için 10 yıl üst üste temettü artıran, yüksek ROE ve düşük borç taşıyan kurumsal kalelerdir. Temettü verimi %3.45'tir."
+      "finvest_insight": "Sermaye Koruma Önerisi: Yapay zeka borç balonundan kaçınmak isteyenler için 10 yıl üst üste temettü artıran, yüksek ROE ve düşük borç taşıyan kurumsal kalelerdir. Temettü verimi %3.45'tir."
     },
     "SMH": {
       "code": "SMH",

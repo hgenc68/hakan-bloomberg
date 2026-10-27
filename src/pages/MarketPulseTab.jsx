@@ -1095,7 +1095,7 @@ export default function MarketPulseTab({ onSelectStock }) {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🔥 FINVIZ SEKTÖREL PİYASA ISI HARİTASI (FINVIZ HEATMAP & TREEMAP)         */}
+      {/* 🔥 SEKTÖREL PİYASA ISI HARİTASI (MARKET HEATMAP & TREEMAP)         */}
       {/* ========================================================================= */}
       {(() => {
         const getHeatmapColor = (pct) => {
@@ -1158,7 +1158,7 @@ export default function MarketPulseTab({ onSelectStock }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <LayoutGrid size={17} className="text-cyan" />
                   <span style={{ fontWeight: 800, fontSize: 13.5, color: '#f8fafc', letterSpacing: '0.4px' }}>
-                    SEKTÖREL PİYASA ISI HARİTASI (FINVIZ HEATMAP)
+                    SEKTÖREL PİYASA ISI HARİTASI (MARKET HEATMAP)
                   </span>
                   <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
                     Sektör Ağırlıkları & Canlı Performans
@@ -1328,7 +1328,7 @@ export default function MarketPulseTab({ onSelectStock }) {
       })()}
 
       {/* ========================================================================= */}
-      {/* 📅 BİLANÇO & KATALİZÖR TAKVİMİ (Quartr & Koyfin Usulü)                     */}
+      {/* 📅 BİLANÇO & MAKRO KATALİZÖR TAKVİMİ                                 */}
       {/* ========================================================================= */}
       <div className="card" style={{ padding: 18, background: '#070a13', border: '1px solid var(--border)', marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
@@ -1339,7 +1339,7 @@ export default function MarketPulseTab({ onSelectStock }) {
             <div>
               <div style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>BİLANÇO & MAKRO KATALİZÖR TAKVİMİ</span>
-                <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Quartr & Koyfin Hub</span>
+                <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Katalizör Takvimi</span>
               </div>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                 Şirket Bilanço Açıklama Günleri, Konsensüs Beklentileri & Fed / TCMB Toplantıları
