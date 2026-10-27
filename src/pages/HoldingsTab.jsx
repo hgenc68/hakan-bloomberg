@@ -1600,7 +1600,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: 13.5, fontWeight: 900, color: '#f8fafc', letterSpacing: '0.4px' }}>
-                      PORTFÖY FİNVEST RÖNTGENİ & SERMAYE KALKANI
+                      PORTFÖY SERMAYE KALKANI & SOLVENCY RÖNTGENİ
                     </h3>
                     <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
                       Sermaye Röntgeni

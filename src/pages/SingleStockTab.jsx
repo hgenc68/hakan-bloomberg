@@ -4355,7 +4355,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 700, color: buybackData.status === 'friendly' ? '#10b981' : (buybackData.status === 'neutral' ? '#38bdf8' : '#ef4444') }}>
                 <span>{buybackData.status === 'friendly' ? '🛡️' : (buybackData.status === 'neutral' ? '⚖️' : '⚠️')}</span>
-                <span>FİNVEST TEŞHİSİ: {buybackData.statusLabel}</span>
+                <span>SERMAYE VE DOLAŞIM TEŞHİSİ: {buybackData.statusLabel}</span>
               </div>
               <div style={{ color: '#cbd5e1' }}>
                 {buybackData.diagnosis}

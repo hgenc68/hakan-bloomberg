@@ -367,7 +367,7 @@ export default function FundXRayTab({ onSelectStock }) {
               {/* 3-Ring Breakdown Bar */}
               <div style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, color: '#cbd5e1' }}>FİNVEST 3-HALKA BİLANÇO DAĞILIMI</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, color: '#cbd5e1' }}>3-HALKA BİLANÇO DAĞILIMI</span>
                   <span style={{ fontSize: 9, color: '#64748b' }}>Fon İçi Sermaye Gücü</span>
                 </div>
                 <div style={{ height: 12, borderRadius: 4, display: 'flex', overflow: 'hidden', background: '#040711', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -395,7 +395,7 @@ export default function FundXRayTab({ onSelectStock }) {
               <div style={{ background: 'rgba(251, 191, 36, 0.05)', border: '1px solid rgba(251, 191, 36, 0.2)', borderRadius: 6, padding: '9px 12px', fontSize: 10.5, lineHeight: 1.5, color: '#e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, fontWeight: 800, color: 'var(--gold)' }}>
                   <Sparkles size={13} />
-                  <span>FİNVEST VİDEO ANALİZİ & RÖNTGENİ</span>
+                  <span>STRATEJİK FON ANALİZİ & RÖNTGENİ</span>
                 </div>
                 <div>{activeFund.finvest_insight}</div>
               </div>
@@ -531,7 +531,7 @@ export default function FundXRayTab({ onSelectStock }) {
                     <th style={{ textAlign: 'left', padding: '6px 8px' }}>#</th>
                     <th style={{ textAlign: 'left', padding: '6px 8px' }}>HİSSE / VARLIK</th>
                     <th style={{ textAlign: 'left', padding: '6px 8px' }}>SEKTÖR</th>
-                    <th style={{ textAlign: 'center', padding: '6px 8px' }}>HALKA (FİNVEST)</th>
+                    <th style={{ textAlign: 'center', padding: '6px 8px' }}>BİLANÇO HALKASI</th>
                     <th style={{ textAlign: 'right', padding: '6px 8px' }}>FON İÇİ AĞIRLIK</th>
                     <th style={{ textAlign: 'right', padding: '6px 8px' }}>AĞIRLIK ÇUBUĞU</th>
                     <th style={{ textAlign: 'center', padding: '6px 8px' }}>EYLEM</th>

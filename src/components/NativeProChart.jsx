@@ -2316,7 +2316,7 @@ export default function NativeProChart({
             rel="noopener noreferrer"
             className="chip-btn"
             style={{ fontSize: 10, padding: '3px 8px', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.4)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}
-            title="TradingView resmi sitesinde aç"
+            title="Gelişmiş grafiği harici sekmede aç"
           >
             <ExternalLink size={11} />
             <span>TV ↗</span>
