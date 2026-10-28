@@ -929,6 +929,66 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     };
   }, [equityHoldings, isTRY]);
 
+  // Akıllı Rotasyon Pusulası & Varlık Sayısı Disiplini (Pairs Rotation: 1-Çıkar ➔ 1-Ekle)
+  const rotationAnalysis = useMemo(() => {
+    const equityCount = equityHoldings.length;
+    const maxCeiling = 16;
+    const isAtLimit = equityCount >= 14;
+    const isOverLimit = equityCount >= 18;
+
+    // 1. Zayıf hisseyi tespit et (Düşük Solvency, 3. Halka veya en zayıf PnL)
+    const scoredList = [...equityHoldings].map(h => {
+      const sym = (h.ticker || '').toUpperCase();
+      const clean = sym.replace('.IS', '').replace('-USD', '');
+      const fData = portfolioFinvestAnalysis.itemMap[h.id || clean] || { ring: 2, solvencyScore: 70, totalShareholderYield: 0 };
+      const pnl = h.returnPct || 0;
+      const compositeScore = (fData.solvencyScore || 70) * 0.4 + (fData.ring === 1 ? 40 : (fData.ring === 2 ? 20 : 0)) + Math.min(20, Math.max(-20, pnl));
+      return {
+        ...h,
+        clean,
+        ring: fData.ring,
+        solvencyScore: fData.solvencyScore,
+        yieldTotal: fData.totalShareholderYield,
+        pnl,
+        compositeScore
+      };
+    }).sort((a, b) => a.compositeScore - b.compositeScore);
+
+    const weakestStock = scoredList.length > 0 ? scoredList[0] : null;
+
+    // 2. Portföyde bulunmayan en güçlü 1. Halka titanını bul
+    const heldCleanSet = new Set(equityHoldings.map(h => (h.ticker || '').toUpperCase().replace('.IS', '').replace('-USD', '')));
+    
+    const titanPool = [
+      { ticker: 'GOOGL', name: 'Alphabet (Google)', market: 'US', ring: 1, solvency: 98, reason: '1. Halka Nakit Titanı, $130M+ net nakit rezervi, yüksek FCF büyümesi' },
+      { ticker: 'NVDA', name: 'Nvidia Corp.', market: 'US', ring: 1, solvency: 96, reason: 'Yapay zeka pazar lideri, %55+ serbest nakit akışı marjı' },
+      { ticker: 'MSFT', name: 'Microsoft Corp.', market: 'US', ring: 1, solvency: 97, reason: 'Bulut tekeli, AAA kredi notu ve düzenli temettü/buyback' },
+      { ticker: 'TUPRS', name: 'Tüpraş', market: 'BIST', ring: 1, solvency: 94, reason: 'Yüksek temettü verimi, ihracat kalkanı ve güçlü operasyonel nakit' },
+      { ticker: 'THYAO', name: 'Türk Hava Yolları', market: 'BIST', ring: 2, solvency: 88, reason: 'Küresel kargo ve yolcu lideri, 4.5x F/K iskontolu değerleme' },
+      { ticker: 'FROTO', name: 'Ford Otosan', market: 'BIST', ring: 1, solvency: 92, reason: 'Avrupa ticari araç lideri, düzenli temettü & FCF üretimi' },
+      { ticker: 'SMH', name: 'VanEck Semiconductor ETF', market: 'ETF', ring: 2, solvency: 92, reason: 'Küresel çip devleri sepeti' },
+      { ticker: 'QQQ', name: 'Invesco QQQ Trust', market: 'ETF', ring: 1, solvency: 95, reason: 'Nasdaq 100 teknoloji kaleleri' }
+    ];
+
+    const bestTarget = titanPool.find(t => !heldCleanSet.has(t.ticker)) || titanPool[0];
+
+    return {
+      equityCount,
+      maxCeiling,
+      isAtLimit,
+      isOverLimit,
+      weakestStock,
+      bestTarget,
+      statusBadge: isOverLimit ? '🔴 Aşırı Dağılma' : (isAtLimit ? '🟡 Tavan Sınırı (Rotasyon Önerilir)' : '🟢 Optimal Sweet Spot'),
+      statusBadgeClass: isOverLimit ? 'red' : (isAtLimit ? 'amber' : 'emerald'),
+      adviceText: isOverLimit 
+        ? `${equityCount} Hisse/ETF ile portföy getirisi seyreltilmektedir. En zayıf halkayı satıp 12-16 aralığına konsolide olun.`
+        : isAtLimit
+        ? `${equityCount} Hisse/ETF ile tavan sınırına (14-16) ulaşıldı. Yeni nakit eklemek yerine zayıfı güçlüyle değiştirin.`
+        : `${equityCount} Hisse/ETF ile odaklanma ve takip edilebilirlik mükemmel seviyededir. (Kripto ve Altın hariçtir)`
+    };
+  }, [equityHoldings, portfolioFinvestAnalysis]);
+
   // Sector & Thematic Concentration Analysis
   const sectorConcentration = useMemo(() => {
     const totalVal = portfolioSummary?.totalValTRY || 1;
@@ -1807,6 +1867,128 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     {portfolioFinvestAnalysis.ringSummaryDesc}
                   </div>
                 </div>
+
+                {/* 🎯 PORTFÖY VARLIK SAYISI DİSİPLİNİ & AKILLI ROTASYON PUSULASI (1-GİRER, 1-ÇIKAR) */}
+                <div style={{
+                  marginTop: 12,
+                  padding: '12px 14px',
+                  background: 'linear-gradient(135deg, rgba(6, 12, 24, 0.95), rgba(10, 18, 36, 0.95))',
+                  border: '1px solid rgba(0, 229, 255, 0.3)',
+                  borderRadius: 6,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: 12
+                }}>
+                  {/* Sol Kutu: Varlık Sayısı Barometresi */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 13 }}>🎯</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#f8fafc', letterSpacing: '0.3px' }}>
+                          HİSSE & ETF SAYISI DİSİPLİNİ
+                        </span>
+                      </div>
+                      <span className={`nav-badge ${rotationAnalysis.statusBadgeClass}`} style={{ fontSize: 9.5, padding: '2px 7px' }}>
+                        {rotationAnalysis.statusBadge}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+                      <span className="mono" style={{ fontSize: 18, fontWeight: 900, color: 'var(--cyan)' }}>
+                        {rotationAnalysis.equityCount}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                        / {rotationAnalysis.maxCeiling} Hisse & ETF (Tatlı Nokta)
+                      </span>
+                      <span style={{ fontSize: 9.5, color: '#64748b', marginLeft: 'auto' }}>
+                        * Kripto & Altın hariçtir
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div style={{ width: '100%', height: 6, background: '#0a0f1d', borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{
+                        width: `${Math.min(100, (rotationAnalysis.equityCount / rotationAnalysis.maxCeiling) * 100)}%`,
+                        height: '100%',
+                        background: rotationAnalysis.isOverLimit 
+                          ? '#ef4444' 
+                          : (rotationAnalysis.isAtLimit ? '#f59e0b' : 'linear-gradient(90deg, #00e5ff, #10b981)'),
+                        transition: 'all 0.4s ease'
+                      }} />
+                    </div>
+
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, lineHeight: 1.4 }}>
+                      {rotationAnalysis.adviceText}
+                    </div>
+                  </div>
+
+                  {/* Sağ Kutu: Akıllı Pairs Rotasyon Pusulası (1-Çıkar ➔ 1-Ekle) */}
+                  {rotationAnalysis.weakestStock && rotationAnalysis.bestTarget && (
+                    <div style={{
+                      background: 'rgba(0, 229, 255, 0.04)',
+                      border: '1px solid rgba(0, 229, 255, 0.2)',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--cyan)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span>🔄</span>
+                          <span>AKILLI ROTASYON (1-ÇIKAR ➔ 1-EKLE)</span>
+                        </span>
+                        <span style={{ fontSize: 9, color: '#94a3b8', fontStyle: 'italic' }}>
+                          Pairs Rotation Kuralı
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, margin: '4px 0' }}>
+                        {/* Çıkarılacak */}
+                        <div style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 4, padding: '5px 8px' }}>
+                          <div style={{ fontSize: 8.5, color: '#f87171', fontWeight: 700, textTransform: 'uppercase' }}>
+                            🛑 ÇIKARILACAK
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 }}>
+                            <strong className="mono" style={{ color: '#fff', fontSize: 12 }}>
+                              {rotationAnalysis.weakestStock.clean}
+                            </strong>
+                            <span style={{ fontSize: 9.5, color: '#f87171', fontFamily: 'var(--font-mono)' }}>
+                              {rotationAnalysis.weakestStock.pnl >= 0 ? '+' : ''}%{rotationAnalysis.weakestStock.pnl.toFixed(1)}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 8.5, color: '#cbd5e1', marginTop: 1 }}>
+                            {rotationAnalysis.weakestStock.ring}. Halka • Solvency: {rotationAnalysis.weakestStock.solvencyScore}
+                          </div>
+                        </div>
+
+                        <div style={{ color: 'var(--cyan)', fontWeight: 900, fontSize: 14 }}>➔</div>
+
+                        {/* Eklenecek */}
+                        <div style={{ flex: 1, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 4, padding: '5px 8px' }}>
+                          <div style={{ fontSize: 8.5, color: '#34d399', fontWeight: 700, textTransform: 'uppercase' }}>
+                            ⚡ GÜÇLÜ KALE
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 }}>
+                            <strong className="mono" style={{ color: '#fff', fontSize: 12 }}>
+                              {rotationAnalysis.bestTarget.ticker}
+                            </strong>
+                            <span style={{ fontSize: 9.5, color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                              Skor: {rotationAnalysis.bestTarget.solvency}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 8.5, color: '#cbd5e1', marginTop: 1 }}>
+                            {rotationAnalysis.bestTarget.ring}. Halka Titanı • {rotationAnalysis.bestTarget.market}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3 }}>
+                        💡 <strong>Strateji:</strong> {rotationAnalysis.bestTarget.reason}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1876,6 +2058,13 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   title="Ağırlık ve risk sınırları içerisinde korunan pozisyonlar"
                 >
                   🟢 {rebalanceSummary.holdCount} Dengeli
+                </span>
+                <span 
+                  className="nav-badge" 
+                  style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(0, 229, 255, 0.15)', color: 'var(--cyan)', border: '1px solid rgba(0, 229, 255, 0.35)' }}
+                  title="Hisse & ETF varlık sayısı (Kripto ve Altın hariç)"
+                >
+                  🎯 {rotationAnalysis.equityCount} / 16 Hisse
                 </span>
 
                 {rebalanceSummary.trimCount > 0 && (
