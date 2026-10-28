@@ -331,7 +331,19 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setToast(null), duration);
   }, []);
 
-  // 1. Subscribe to Firestore Collections in Real-Time & sync to local cache
+  const syncSharedPortfolioBridge = (list) => {
+    if (!Array.isArray(list)) return;
+    fetch('/api/sync-portfolio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        holdings: list,
+        lastUpdated: new Date().toISOString()
+      })
+    }).catch(() => {});
+  };
+
+  // 1. Subscribe to Firestore Collections & Real-Time Sync
   useEffect(() => {
     const unsubHoldings = onSnapshot(collection(db, 'holdings'), (snap) => {
       const list = snap.docs.map(d => {
@@ -920,6 +932,87 @@ export const AppProvider = ({ children }) => {
     };
   }, [holdings, goldPurchases, allocation, tradeLedger, marketQuotes, usdtry, gramGoldPrice]);
 
+  // Automatic Real-Time Broadcast to H2B Terminal via Local Shared Bridge
+  useEffect(() => {
+    if (!portfolioSummary || !Array.isArray(portfolioSummary.enrichedHoldings) || portfolioSummary.enrichedHoldings.length === 0) return;
+
+    const timeout = setTimeout(() => {
+      const exportList = portfolioSummary.enrichedHoldings.map(h => ({
+        id: h.id || h.cleanTicker || h.ticker,
+        ticker: h.ticker,
+        clean_ticker: h.cleanTicker || h.ticker,
+        name: h.name || h.ticker,
+        type: h.type,
+        shares: Number(h.shares || 0),
+        avg_cost: Number(h.avg_cost || 0),
+        currency: h.quoteCurrency || h.currency,
+        cost_rate: Number(h.cost_rate || 1),
+        current_price: Number(h.livePrice || h.current_price || h.avg_cost || 0),
+        prev_price: Number(h.prevClose || h.livePrice || 0),
+        day_change_pct: Number(h.changePct || 0),
+        day_pl_try: Number(h.dayPLTRY || 0),
+        day_pl_usd: Number(h.dayPLUSD || 0),
+        val_try: Number(h.valTRY || 0),
+        val_usd: Number(h.valUSD || 0),
+        cost_try: Number(h.costTRY || 0),
+        cost_usd: Number(h.costUSD || 0),
+        profit_try: Number(h.profitTRY || 0),
+        profit_usd: Number(h.profitUSD || 0),
+        return_pct: Number(h.returnPct || 0)
+      }));
+
+      // Add Gram Gold position
+      if (portfolioSummary.totalGrams > 0) {
+        exportList.push({
+          id: 'bloomberg_gram_altin',
+          ticker: 'GRAM_ALTIN',
+          clean_ticker: 'GRAM_ALTIN',
+          name: 'Gram Altın (Kur Kalkanı)',
+          type: 'Altın',
+          shares: Number(portfolioSummary.totalGrams || 0),
+          avg_cost: Number(((portfolioSummary.totalGoldCostTRY || 0) / (portfolioSummary.totalGrams || 1)).toFixed(2)),
+          currency: 'TRY',
+          cost_rate: 1,
+          current_price: Number(portfolioSummary.gramGoldPrice || gramGoldPrice || 0),
+          prev_price: Number(((portfolioSummary.gramGoldPrice || gramGoldPrice || 0) * 0.99).toFixed(2)),
+          val_try: Number(portfolioSummary.totalGoldValTRY || 0),
+          val_usd: usdtry > 0 ? Number((portfolioSummary.totalGoldValTRY / usdtry).toFixed(2)) : 0,
+          cost_try: Number(portfolioSummary.totalGoldCostTRY || 0),
+          cost_usd: usdtry > 0 ? Number((portfolioSummary.totalGoldCostTRY / usdtry).toFixed(2)) : 0,
+          profit_try: Number(portfolioSummary.goldProfitTRY || 0),
+          profit_usd: usdtry > 0 ? Number((portfolioSummary.goldProfitTRY / usdtry).toFixed(2)) : 0,
+          return_pct: Number(portfolioSummary.goldReturnPct || 0),
+          day_change_pct: 0.92
+        });
+      }
+
+      fetch('/api/sync-portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          holdings: exportList,
+          summary: {
+            total_val_try: portfolioSummary.totalValTRY,
+            total_val_usd: portfolioSummary.totalValUSD,
+            total_cost_try: portfolioSummary.totalCostTRY,
+            total_cost_usd: portfolioSummary.totalCostUSD,
+            unrealized_profit_try: portfolioSummary.unrealizedProfitTRY,
+            unrealized_profit_usd: portfolioSummary.unrealizedProfitUSD,
+            realized_profit_try: portfolioSummary.realizedProfitTRY,
+            realized_profit_usd: portfolioSummary.realizedProfitUSD,
+            consolidated_profit_try: portfolioSummary.consolidatedProfitTRY,
+            consolidated_profit_usd: portfolioSummary.consolidatedProfitUSD,
+            day_pl_try: portfolioSummary.dayPLTRY,
+            day_pl_usd: portfolioSummary.dayPLUSD
+          },
+          lastUpdated: new Date().toISOString()
+        })
+      }).catch(() => {});
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [portfolioSummary, gramGoldPrice, usdtry]);
+
   // 4. CRUD Actions interacting with Firestore
   const addHolding = async (holdingData) => {
     try {
@@ -975,7 +1068,10 @@ export const AppProvider = ({ children }) => {
             }
             return h;
           });
-          try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+          try {
+            localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated));
+            syncSharedPortfolioBridge(updated);
+          } catch (e) {}
           return updated;
         });
 
@@ -996,7 +1092,10 @@ export const AppProvider = ({ children }) => {
         // Optimistic UI state & cache update
         setHoldings(prev => {
           const updated = [...prev, newHoldingObj];
-          try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+          try {
+            localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated));
+            syncSharedPortfolioBridge(updated);
+          } catch (e) {}
           return updated;
         });
         showToast(`${inputTicker} portföye başarıyla eklendi!`, '✅');
@@ -1021,7 +1120,10 @@ export const AppProvider = ({ children }) => {
       // Optimistic UI state & cache update
       setHoldings(prev => {
         const updated = prev.map(h => (h.id === docId || (h.ticker || '').toUpperCase() === (holdingData.ticker || docId).toUpperCase() ? { ...h, ...holdingData, shares, avg_cost } : h));
-        try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+        try {
+          localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated));
+          syncSharedPortfolioBridge(updated);
+        } catch (e) {}
         return updated;
       });
       showToast(`${holdingData.ticker || docId} güncellendi!`, '✅');
@@ -1038,7 +1140,10 @@ export const AppProvider = ({ children }) => {
       // Optimistic UI state & cache update
       setHoldings(prev => {
         const updated = prev.filter(h => h.id !== docId && (h.ticker || '').toUpperCase() !== docId.toUpperCase());
-        try { localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated)); } catch (e) {}
+        try {
+          localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated));
+          syncSharedPortfolioBridge(updated);
+        } catch (e) {}
         return updated;
       });
       showToast(`Varlık başarıyla silindi!`, '🗑️');
@@ -1135,6 +1240,7 @@ export const AppProvider = ({ children }) => {
         }
         try {
           localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated));
+          syncSharedPortfolioBridge(updated);
         } catch (e) {}
         return updated;
       });

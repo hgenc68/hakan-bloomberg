@@ -772,6 +772,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       setCurrentTicker(clean);
       if (onSelectTicker) onSelectTicker(clean);
       setSearchQuery('');
+      setShowSuggestions(false);
     }
   };
 
@@ -2501,8 +2502,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       </div>
 
       {/* Search & Quick Picker Bar */}
-      <div className="card" style={{ padding: 14, background: '#090d16', border: '1px solid var(--border)', marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+      <div className="card" style={{ padding: 14, background: '#090d16', border: '1px solid var(--border)', marginBottom: 16, overflow: 'visible', position: 'relative', zIndex: 120 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, position: 'relative', zIndex: 120 }}>
           <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 8, position: 'relative' }} ref={searchBoxRef}>
             <div className="search-box" style={{ width: 320, position: 'relative' }}>
               <Search size={14} className="search-icon" />
@@ -2515,6 +2516,9 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                   setShowSuggestions(true);
                 }}
                 onFocus={() => setShowSuggestions(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setShowSuggestions(false);
+                }}
                 className="search-input"
               />
               {searchQuery && (
@@ -2542,15 +2546,15 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 <div
                   style={{
                     position: 'absolute',
-                    top: 'calc(100% + 4px)',
+                    top: 'calc(100% + 6px)',
                     left: 0,
                     right: 0,
                     background: '#0a0f1d',
                     border: '1px solid var(--cyan)',
                     borderRadius: 6,
-                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.85)',
-                    zIndex: 9999,
-                    maxHeight: 320,
+                    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 229, 255, 0.2)',
+                    zIndex: 99999,
+                    maxHeight: 360,
                     overflowY: 'auto',
                     padding: '4px 0'
                   }}
