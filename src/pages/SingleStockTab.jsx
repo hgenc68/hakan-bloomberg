@@ -472,7 +472,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     allocation
   } = useApp();
   const [currentTicker, setCurrentTicker] = useState(() => {
-    const raw = (selectedTicker || 'NVDA').toUpperCase().trim().replace('.IS', '');
+    const safe = typeof selectedTicker === 'object' && selectedTicker !== null ? (selectedTicker.clean_ticker || selectedTicker.ticker || 'NVDA') : (selectedTicker || 'NVDA');
+    const raw = String(safe).toUpperCase().trim().replace('.IS', '');
     return TICKER_ALIAS_MAP[raw] || raw;
   });
   const [localQuotes, setLocalQuotes] = useState({});
@@ -508,9 +509,12 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   useEffect(() => {
     if (selectedTicker) {
-      const raw = selectedTicker.toUpperCase().trim().replace('.IS', '');
-      const clean = TICKER_ALIAS_MAP[raw] || raw;
-      setCurrentTicker(clean);
+      const safe = typeof selectedTicker === 'object' && selectedTicker !== null ? (selectedTicker.clean_ticker || selectedTicker.ticker || '') : selectedTicker;
+      if (safe) {
+        const raw = String(safe).toUpperCase().trim().replace('.IS', '');
+        const clean = TICKER_ALIAS_MAP[raw] || raw;
+        setCurrentTicker(clean);
+      }
     }
   }, [selectedTicker]);
 

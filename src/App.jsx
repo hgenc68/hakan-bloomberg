@@ -207,7 +207,8 @@ function MainTerminal() {
                 onOpenEditModal={(h) => setSelectedEditHolding(h)}
                 onOpenCashModal={() => setShowCashModal(true)}
                 onOpenPpfModal={() => setShowPpfModal(true)}
-                onSelectStockForChart={(ticker) => {
+                onSelectStockForChart={(t) => {
+                  const ticker = typeof t === 'object' && t !== null ? (t.clean_ticker || t.ticker || '') : (t || '');
                   if (setLastNavigatedFrom) {
                     setLastNavigatedFrom({
                       tab: 'holdings',
@@ -216,6 +217,17 @@ function MainTerminal() {
                   }
                   setSelectedStockTicker(ticker);
                   setActiveTab('pro_chart');
+                }}
+                onSelectStockForAnalysis={(t) => {
+                  const ticker = typeof t === 'object' && t !== null ? (t.clean_ticker || t.ticker || '') : (t || '');
+                  if (setLastNavigatedFrom) {
+                    setLastNavigatedFrom({
+                      tab: 'holdings',
+                      label: 'Pozisyonlar & Varlıklar'
+                    });
+                  }
+                  setSelectedStockTicker(ticker);
+                  setActiveTab('single_stock');
                 }}
               />
             )}

@@ -369,7 +369,8 @@ function calcHeikinAshi(candles) {
 // Universal ticker normalizer across aliases (e.g. BTCUSDT -> BTC, BTC-USD -> BTC, THYAO.IS -> THYAO)
 export function normalizeTicker(t) {
   if (!t) return '';
-  let s = String(t).toUpperCase().trim();
+  let s = typeof t === 'object' && t !== null ? (t.clean_ticker || t.ticker || '') : String(t);
+  s = s.toUpperCase().trim();
   if (s.includes(':')) s = s.split(':')[1];
   s = s.replace('.IS', '');
   if (s.endsWith('USDT')) s = s.slice(0, -4);

@@ -231,7 +231,9 @@ if showFib and not na(lastHigh) and not na(lastLow) and (lastHigh > lastLow)
 // Helper to convert any market ticker into TradingView compatible symbol string
 export function getTradingViewSymbol(ticker) {
   if (!ticker) return 'NASDAQ:NVDA';
-  const clean = ticker.trim().toUpperCase();
+  const raw = typeof ticker === 'object' && ticker !== null ? (ticker.clean_ticker || ticker.ticker || '') : String(ticker);
+  const clean = raw.trim().toUpperCase();
+  if (!clean) return 'NASDAQ:NVDA';
 
   // If already prefixed
   if (clean.includes(':')) return clean;
@@ -666,7 +668,9 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Current active symbol on chart
   const [currentSymbol, setCurrentSymbol] = useState(() => {
-    return selectedTicker || 'SPCX';
+    const t = selectedTicker;
+    if (typeof t === 'object' && t !== null) return t.clean_ticker || t.ticker || 'SPCX';
+    return t || 'SPCX';
   });
 
   // Watchlist Active Category
@@ -978,8 +982,11 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Sync when prop selectedTicker changes from outside
   useEffect(() => {
-    if (selectedTicker && selectedTicker !== currentSymbol) {
-      setCurrentSymbol(selectedTicker);
+    if (selectedTicker) {
+      const t = typeof selectedTicker === 'object' && selectedTicker !== null ? (selectedTicker.clean_ticker || selectedTicker.ticker) : selectedTicker;
+      if (t && t !== currentSymbol) {
+        setCurrentSymbol(t);
+      }
     }
   }, [selectedTicker]);
 
@@ -1119,8 +1126,9 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Extract clean ticker
   const cleanActiveTicker = useMemo(() => {
-    if (!currentSymbol) return 'SPCX';
     let s = currentSymbol;
+    if (typeof s === 'object' && s !== null) s = s.clean_ticker || s.ticker || '';
+    if (!s || typeof s !== 'string') return 'SPCX';
     if (s.includes(':')) s = s.split(':')[1];
     return s.trim().toUpperCase();
   }, [currentSymbol]);
@@ -1421,7 +1429,8 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const activeHolding = useMemo(() => {
     function normalizeTicker(t) {
       if (!t) return '';
-      let s = String(t).toUpperCase().trim();
+      let s = typeof t === 'object' && t !== null ? (t.clean_ticker || t.ticker || '') : String(t);
+      s = s.toUpperCase().trim();
       if (s.includes(':')) s = s.split(':')[1];
       s = s.replace('.IS', '');
       if (s.endsWith('USDT')) s = s.slice(0, -4);

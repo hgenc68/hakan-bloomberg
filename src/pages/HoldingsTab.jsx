@@ -16,7 +16,7 @@ import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS } fro
 
 ChartJS.register(...registerables);
 
-export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal, onOpenPpfModal, onSelectStockForChart }) {
+export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAddModal, onOpenCashModal, onOpenPpfModal, onSelectStockForChart, onSelectStockForAnalysis }) {
   const { portfolioSummary, currentCurrency, deleteHolding, gramGoldPrice, usdtry, setActiveTab, fetchMarketData, isUpdatingMarket, lastMarketUpdate } = useApp();
   
   // 🌟 Main Sub-View: 'equity' (HİSSE - ETF) or 'all' (TÜM PORTFÖY)
@@ -3113,13 +3113,18 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       </td>
                       <td className="text-right">
                         <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                          {onSelectStockForChart && (
+                          {(onSelectStockForAnalysis || onSelectStockForChart) && (
                             <button
                               type="button"
                               className="chip-btn"
-                              onClick={() => onSelectStockForChart(h)}
+                              onClick={() => {
+                                const t = h.clean_ticker || h.ticker;
+                                if (onSelectStockForAnalysis) onSelectStockForAnalysis(t);
+                                else if (onSelectStockForChart) onSelectStockForChart(t);
+                                else if (setActiveTab) setActiveTab('single_stock');
+                              }}
                               style={{ padding: '3px 6px', fontSize: 10, color: 'var(--cyan)', borderColor: 'rgba(0,229,255,0.3)' }}
-                              title="Tekil Hisse Analizinde Aç"
+                              title="Tekil Hisse Analizinde Aç (Bilanço & Solvency Röntgeni)"
                             >
                               🔍 Röntgen
                             </button>
