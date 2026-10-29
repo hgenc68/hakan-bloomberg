@@ -485,7 +485,7 @@ const UPCOMING_MACRO_CATALYSTS = [
     expectation: 'Politika Faizi Sabit Tutma / Pas (%76) • Aralık: 25 bp Artış Riski',
     prev: '%3.75 - %4.00',
     impact: 'Dolar Endeksi (DXY), 10Y Tahviller & Küresel Risk İştahı',
-    actualResult: 'Politika faizi %3.75 - %4.00 aralığında OYBİRLİĞİYLE SABİT (PAS) TUTULDU. Powell: "Ekonomi güçlü, enflasyon iniş patikasında; ani faiz artışı baz senaryomuzda yok."'
+    actualResult: 'Politika faizi %3.75 - %4.00 aralığında OYBİRLİĞİYLE SABİT (PAS) TUTULDU. Fed Başkanı Kevin Warsh: "Ekonomi güçlü, enflasyon iniş patikasında; ani faiz artışı baz senaryomuzda yok."'
   },
   {
     event: 'TÜİK Ekim Ayı Resmi TÜFE Enflasyonu',
