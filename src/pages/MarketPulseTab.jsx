@@ -325,12 +325,18 @@ const UPCOMING_EARNINGS_CALENDAR = [
     date: '23 Ekim 2026',
     time: 'Piyasa Açılışı Öncesi (BMO)',
     targetDate: '2026-10-23T15:30:00+03:00',
+    isAnnounced: true,
     expectedEPS: '$0.69',
-    actualEPS: '$0.76 (Beat)',
+    actualEPS: '$0.76',
+    epsSurprise: '+%10.1 Beat',
     prevEPS: '$0.52',
     expectedRev: '$2.05B',
+    actualRev: '$2.07B (+%19 YoY)',
     beatRate: '%88',
     consensus: 'Güçlü Al',
+    resultBadge: '🟢 ÇİFTE BEAT',
+    priceReaction: '+%16.5',
+    resultSummary: 'EPS $0.76 (Bekl: $0.69) • Ciro $2.07B (Bekl: $2.05B). Sıvı soğutma ve yapay zeka veri merkezi siparişleri %60 artışla rekor kırdı; 2026 kâr rehberliği yukarı yönlü revize edildi.',
     catalyst: 'AI Sıvı Soğutma & Sipariş Rekoru'
   },
   {
@@ -354,11 +360,18 @@ const UPCOMING_EARNINGS_CALENDAR = [
     date: '29 Ekim 2026',
     time: 'Piyasa Açılışı Öncesi (BMO)',
     targetDate: '2026-10-29T14:00:00+03:00',
+    isAnnounced: true,
     expectedEPS: '$0.04',
+    actualEPS: '$0.05',
+    epsSurprise: '+%25.0 Beat',
     prevEPS: '$0.01',
     expectedRev: '$630M',
+    actualRev: '$689M (+%30 YoY)',
     beatRate: '%100',
     consensus: 'Al',
+    resultBadge: '🟢 ÇİFTE BEAT',
+    priceReaction: '+%4.2',
+    resultSummary: 'EPS $0.05 (Bekl: $0.04) • Net Gelir $689M (Bekl: $630M). Üst üste 4. çeyrekte GAAP kârlılığı teyit edildi, üye tabanı 9.4 milyona ulaştı.',
     catalyst: 'GAAP Net Kârlılık & Kredi Hacmi Büyümesi'
   },
   {
@@ -468,9 +481,11 @@ const UPCOMING_MACRO_CATALYSTS = [
     time: '21:00 TSİ',
     targetDate: '2026-10-28T21:00:00+03:00',
     status: 'Yüksek Etki (Tier 1)',
+    isAnnounced: true,
     expectation: 'Politika Faizi Sabit Tutma / Pas (%76) • Aralık: 25 bp Artış Riski',
     prev: '%3.75 - %4.00',
-    impact: 'Dolar Endeksi (DXY), 10Y Tahviller & Küresel Risk İştahı'
+    impact: 'Dolar Endeksi (DXY), 10Y Tahviller & Küresel Risk İştahı',
+    actualResult: 'Politika faizi %3.75 - %4.00 aralığında OYBİRLİĞİYLE SABİT (PAS) TUTULDU. Powell: "Ekonomi güçlü, enflasyon iniş patikasında; ani faiz artışı baz senaryomuzda yok."'
   },
   {
     event: 'TÜİK Ekim Ayı Resmi TÜFE Enflasyonu',
@@ -1376,20 +1391,21 @@ export default function MarketPulseTab({ onSelectStock }) {
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: 10 }}>
                   <th style={{ textAlign: 'left', padding: '6px 8px' }}>HİSSE & ŞİRKET</th>
                   <th style={{ textAlign: 'left', padding: '6px 8px' }}>BİLANÇO TARİHİ & SAATİ</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>GERİ SAYIM</th>
-                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>BEKLENEN EPS</th>
-                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>BEKLENEN CİRO</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>KONSENSÜS</th>
-                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>ANA KATALİZÖR</th>
+                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>DURUM / GERİ SAYIM</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>EPS (BEKLENEN / GERÇEK)</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>CİRO (BEKLENEN / GERÇEK)</th>
+                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>KONSENSÜS / SONUÇ</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>ANA KATALİZÖR & ÖZET SONUÇ NOTU</th>
                 </tr>
               </thead>
               <tbody>
                 {UPCOMING_EARNINGS_CALENDAR.map((item, idx) => {
                   const diff = calculateDayDiff(item.targetDate);
+                  const isAnnounced = item.isAnnounced || diff < 0;
                   let daysText = '';
                   let daysBadge = 'cyan';
 
-                  if (diff < 0) {
+                  if (isAnnounced) {
                     daysText = 'Açıklandı ✓';
                     daysBadge = 'emerald';
                   } else if (diff === 0) {
@@ -1431,31 +1447,74 @@ export default function MarketPulseTab({ onSelectStock }) {
                         <span className={`nav-badge ${daysBadge}`} style={{ fontSize: 9.5, padding: '2px 8px', fontWeight: 800 }}>
                           {daysText}
                         </span>
+                        {isAnnounced && item.priceReaction && (
+                          <div style={{ fontSize: 9.5, fontWeight: 700, color: item.priceReaction.startsWith('+') ? '#10b981' : '#ef4444', marginTop: 3 }}>
+                            Reaksiyon: {item.priceReaction}
+                          </div>
+                        )}
                       </td>
-                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>
-                        {diff < 0 && item.actualEPS ? (
+                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                        {isAnnounced && item.actualEPS ? (
                           <>
-                            <div style={{ color: 'var(--emerald)' }}>{item.actualEPS}</div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Beklenen: {item.expectedEPS}</div>
+                            <div style={{ color: '#10b981', fontSize: 12 }}>{item.actualEPS}</div>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Bekl: {item.expectedEPS}</div>
+                            {item.epsSurprise && (
+                              <div style={{ fontSize: 8.5, color: '#10b981', fontWeight: 600 }}>{item.epsSurprise}</div>
+                            )}
                           </>
                         ) : (
                           <>
-                            {item.expectedEPS}
+                            <div style={{ color: '#fff' }}>{item.expectedEPS}</div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Önceki: {item.prevEPS}</div>
                           </>
                         )}
                       </td>
-                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', color: 'var(--cyan)', fontWeight: 700 }}>
-                        {item.expectedRev}
+                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                        {isAnnounced && item.actualRev ? (
+                          <>
+                            <div style={{ color: '#38bdf8', fontSize: 12 }}>{item.actualRev}</div>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Bekl: {item.expectedRev}</div>
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--cyan)' }}>{item.expectedRev}</span>
+                        )}
                       </td>
                       <td style={{ textAlign: 'center', padding: '8px 8px' }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--emerald)' }}>
-                          {item.consensus}
-                        </span>
-                        <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Tarihsel Beat: {item.beatRate}</div>
+                        {isAnnounced ? (
+                          <>
+                            <span style={{ fontSize: 9.5, fontWeight: 800, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)', display: 'inline-block' }}>
+                              {item.resultBadge || 'BEAT ✓'}
+                            </span>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>Tarihsel: {item.beatRate}</div>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--emerald)' }}>
+                              {item.consensus}
+                            </span>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Tarihsel Beat: {item.beatRate}</div>
+                          </>
+                        )}
                       </td>
-                      <td style={{ padding: '8px 8px', fontSize: 10.5, color: '#94a3b8' }}>
-                        {item.catalyst}
+                      <td style={{ padding: '8px 8px', fontSize: 10.5 }}>
+                        {isAnnounced && item.resultSummary ? (
+                          <div style={{
+                            background: 'rgba(16,185,129,0.06)',
+                            borderLeft: '2px solid #10b981',
+                            padding: '5px 8px',
+                            borderRadius: '0 4px 4px 0',
+                            maxWidth: 440
+                          }}>
+                            <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 10, lineHeight: 1.35 }}>
+                              {item.resultSummary}
+                            </div>
+                            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
+                              📌 Katalizör: {item.catalyst}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: '#94a3b8' }}>{item.catalyst}</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1468,10 +1527,11 @@ export default function MarketPulseTab({ onSelectStock }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
             {UPCOMING_MACRO_CATALYSTS.map((m, idx) => {
               const diff = calculateDayDiff(m.targetDate);
+              const isAnnounced = m.isAnnounced || diff < 0;
               let countdownLabel = '';
               let badgeColor = 'var(--cyan)';
 
-              if (diff < 0) {
+              if (isAnnounced) {
                 countdownLabel = 'Gerçekleşti ✓';
                 badgeColor = '#94a3b8';
               } else if (diff === 0) {
@@ -1506,6 +1566,22 @@ export default function MarketPulseTab({ onSelectStock }) {
                   <div style={{ fontSize: 10, color: 'var(--cyan)' }}>
                     🎯 Etki: <strong>{m.impact}</strong>
                   </div>
+                  {m.actualResult && (
+                    <div style={{
+                      marginTop: 8,
+                      background: 'rgba(16,185,129,0.08)',
+                      border: '1px solid rgba(16,185,129,0.25)',
+                      borderLeft: '3px solid #10b981',
+                      padding: '7px 9px',
+                      borderRadius: 4,
+                      fontSize: 10.5
+                    }}>
+                      <div style={{ fontSize: 9.5, fontWeight: 800, color: '#10b981', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>✓ GERÇEKLEŞEN KARAR & ÖZET</span>
+                      </div>
+                      <div style={{ color: '#f1f5f9', lineHeight: 1.35, fontWeight: 600 }}>{m.actualResult}</div>
+                    </div>
+                  )}
                 </div>
               );
             })}
