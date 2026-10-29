@@ -1402,12 +1402,18 @@ export default function MarketPulseTab({ onSelectStock }) {
                 {UPCOMING_EARNINGS_CALENDAR.map((item, idx) => {
                   const diff = calculateDayDiff(item.targetDate);
                   const isAnnounced = item.isAnnounced || diff < 0;
+                  const isNegative = item.resultStatus === 'MISS' || (item.resultBadge && (item.resultBadge.includes('MISS') || item.resultBadge.includes('🔴')));
+                  const isMixed = item.resultStatus === 'MIXED' || (item.resultBadge && (item.resultBadge.includes('KARIŞIK') || item.resultBadge.includes('NÖTR') || item.resultBadge.includes('🟡')));
+                  const statusColor = isNegative ? '#ef4444' : isMixed ? '#f59e0b' : '#10b981';
+                  const statusBg = isNegative ? 'rgba(239,68,68,0.08)' : isMixed ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.06)';
+                  const statusBorder = isNegative ? 'rgba(239,68,68,0.3)' : isMixed ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)';
+
                   let daysText = '';
                   let daysBadge = 'cyan';
 
                   if (isAnnounced) {
                     daysText = 'Açıklandı ✓';
-                    daysBadge = 'emerald';
+                    daysBadge = isNegative ? 'red' : isMixed ? 'amber' : 'emerald';
                   } else if (diff === 0) {
                     daysText = 'Bugün!';
                     daysBadge = 'red';
@@ -1448,7 +1454,7 @@ export default function MarketPulseTab({ onSelectStock }) {
                           {daysText}
                         </span>
                         {isAnnounced && item.priceReaction && (
-                          <div style={{ fontSize: 9.5, fontWeight: 700, color: item.priceReaction.startsWith('+') ? '#10b981' : '#ef4444', marginTop: 3 }}>
+                          <div style={{ fontSize: 9.5, fontWeight: 700, color: item.priceReaction.startsWith('+') ? '#10b981' : item.priceReaction.startsWith('-') ? '#ef4444' : '#f59e0b', marginTop: 3 }}>
                             Reaksiyon: {item.priceReaction}
                           </div>
                         )}
@@ -1456,10 +1462,10 @@ export default function MarketPulseTab({ onSelectStock }) {
                       <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
                         {isAnnounced && item.actualEPS ? (
                           <>
-                            <div style={{ color: '#10b981', fontSize: 12 }}>{item.actualEPS}</div>
+                            <div style={{ color: statusColor, fontSize: 12 }}>{item.actualEPS}</div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Bekl: {item.expectedEPS}</div>
                             {item.epsSurprise && (
-                              <div style={{ fontSize: 8.5, color: '#10b981', fontWeight: 600 }}>{item.epsSurprise}</div>
+                              <div style={{ fontSize: 8.5, color: statusColor, fontWeight: 600 }}>{item.epsSurprise}</div>
                             )}
                           </>
                         ) : (
@@ -1482,8 +1488,8 @@ export default function MarketPulseTab({ onSelectStock }) {
                       <td style={{ textAlign: 'center', padding: '8px 8px' }}>
                         {isAnnounced ? (
                           <>
-                            <span style={{ fontSize: 9.5, fontWeight: 800, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)', display: 'inline-block' }}>
-                              {item.resultBadge || 'BEAT ✓'}
+                            <span style={{ fontSize: 9.5, fontWeight: 800, color: statusColor, background: statusBg, padding: '2px 6px', borderRadius: 4, border: `1px solid ${statusBorder}`, display: 'inline-block' }}>
+                              {item.resultBadge || (isNegative ? '🔴 MISS' : isMixed ? '🟡 KARIŞIK' : '🟢 BEAT')}
                             </span>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>Tarihsel: {item.beatRate}</div>
                           </>
@@ -1499,8 +1505,8 @@ export default function MarketPulseTab({ onSelectStock }) {
                       <td style={{ padding: '8px 8px', fontSize: 10.5 }}>
                         {isAnnounced && item.resultSummary ? (
                           <div style={{
-                            background: 'rgba(16,185,129,0.06)',
-                            borderLeft: '2px solid #10b981',
+                            background: statusBg,
+                            borderLeft: `3px solid ${statusColor}`,
                             padding: '5px 8px',
                             borderRadius: '0 4px 4px 0',
                             maxWidth: 440
