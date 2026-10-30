@@ -374,7 +374,15 @@ export const ANNOUNCED_EARNINGS_REGISTRY = {
   }
 };
 
-// Automatic Dynamic Scorecard Resolver Engine
+// Helper to parse clean numerical value from strings like "$3.10", "₺35.20", "$157.2B", "2.12"
+const parseMoneyValue = (valStr) => {
+  if (!valStr || typeof valStr !== 'string') return null;
+  const clean = valStr.replace(/[$₺€,\s]/g, '').trim();
+  const num = parseFloat(clean);
+  return isNaN(num) ? null : num;
+};
+
+// Automatic Dynamic Scorecard Resolver Engine with Institutional Verification Standard
 export const resolveEarningsItem = (item, marketQuotes = {}, registry = ANNOUNCED_EARNINGS_REGISTRY) => {
   const now = Date.now();
   const targetTime = item.targetDate ? new Date(item.targetDate).getTime() : 0;
@@ -395,40 +403,90 @@ export const resolveEarningsItem = (item, marketQuotes = {}, registry = ANNOUNCE
   const quote = marketQuotes && (marketQuotes[item.ticker] || marketQuotes[item.ticker + '.IS']);
   const liveChange = quote && typeof quote.changePct === 'number' ? quote.changePct : null;
 
-  const actualEPS = reg.actualEPS || item.actualEPS || (item.expectedEPS ? `${item.expectedEPS} (Beat)` : 'Açıklandı ✓');
-  const actualRev = reg.actualRev || item.actualRev || (item.expectedRev ? `${item.expectedRev} (Geldi)` : 'Açıklandı ✓');
-  const epsSurprise = reg.epsSurprise || item.epsSurprise || (liveChange !== null && liveChange > 0 ? `+${liveChange.toFixed(1)}% Beat` : '');
+  // Extract EPS values
+  const actualEPS = reg.actualEPS || item.actualEPS || null;
+  const expectedEPS = item.expectedEPS || reg.expectedEPS || null;
 
+  // Numerical Sanity Check: If actualEPS < expectedEPS, it is STRICTLY an EPS Miss
+  const numActual = parseMoneyValue(actualEPS);
+  const numExpected = parseMoneyValue(expectedEPS);
+  const isEpsMiss = numActual !== null && numExpected !== null && numActual < numExpected;
+  const isEpsBeat = numActual !== null && numExpected !== null && numActual > numExpected;
+
+  // Price reaction derivation: prioritize official recorded reaction, fallback to live market quote change
   let priceReaction = reg.priceReaction || item.priceReaction;
   if (!priceReaction && liveChange !== null) {
     priceReaction = `${liveChange >= 0 ? '+' : ''}${liveChange.toFixed(1)}%`;
   }
 
+  // Extract numerical price reaction for sanity verification
+  let numPriceReaction = null;
+  if (priceReaction) {
+    const cleanPct = priceReaction.replace(/[%+\s]/g, '');
+    const p = parseFloat(cleanPct);
+    if (!isNaN(p)) numPriceReaction = p;
+  } else if (liveChange !== null) {
+    numPriceReaction = liveChange;
+  }
+
+  // REACTION INTEGRITY RULE (Piyasa Çapası & Gerçeklik Kilidi):
+  // If price dropped by more than -2.5% OR EPS missed expectations,
+  // it is IMPOSSIBLE under institutional standards for it to be a "BEAT" or "ÇİFTE BEAT"!
+  const isDefiniteMiss = reg.status === 'MISS' || isEpsMiss || (numPriceReaction !== null && numPriceReaction <= -3.0);
+  const isMixedReaction = reg.status === 'MIXED' || (numPriceReaction !== null && numPriceReaction > -3.0 && numPriceReaction < 1.0 && !isEpsBeat);
+
   let resultBadge = reg.resultBadge || item.resultBadge;
-  if (!resultBadge) {
-    if (liveChange !== null) {
-      resultBadge = liveChange >= 2 ? '🟢 ÇİFTE BEAT' : liveChange >= 0 ? '🟢 BEAT' : liveChange >= -2 ? '🟡 KARIŞIK' : '🔴 MISS';
-    } else {
+  let resultStatus = reg.status || item.resultStatus;
+
+  if (isDefiniteMiss) {
+    resultStatus = 'MISS';
+    if (!resultBadge || resultBadge.includes('BEAT')) {
+      resultBadge = isEpsMiss ? '🔴 KÂR & FCF ISKASI' : '🔴 PİYASA SATIŞI (REHBERLİK BASKISI)';
+    }
+  } else if (isMixedReaction) {
+    resultStatus = 'MIXED';
+    if (!resultBadge || resultBadge.includes('ÇİFTE BEAT')) {
+      resultBadge = '🟡 KARIŞIK / NÖTR TEPKİ';
+    }
+  } else if (!resultBadge) {
+    if (numPriceReaction !== null && numPriceReaction >= 2.0 && isEpsBeat) {
       resultBadge = '🟢 ÇİFTE BEAT';
+      resultStatus = 'BEAT';
+    } else if (numPriceReaction !== null && numPriceReaction > 0) {
+      resultBadge = '🟢 BEAT ✓';
+      resultStatus = 'BEAT';
+    } else {
+      // ZERO-ASSUMPTION PRINCIPLE: If no verified data is available, NEVER assume a beat!
+      resultBadge = '⚪ RAPORLANDI (Teyit Ediliyor)';
+      resultStatus = 'PENDING';
     }
   }
+
+  const actualRev = reg.actualRev || item.actualRev || (isDefiniteMiss ? (item.expectedRev ? `${item.expectedRev} (Iskalandı)` : 'Açıklandı ✓') : (item.expectedRev || 'Açıklandı ✓'));
+  const epsSurprise = reg.epsSurprise || item.epsSurprise || (isEpsMiss ? '-% Iska' : isEpsBeat ? '+% Beat' : '');
 
   let resultSummary = reg.resultSummary || item.resultSummary;
   if (!resultSummary) {
     const rxText = priceReaction ? `Piyasa fiyat reaksiyonu ${priceReaction}` : 'KAP/SEC finansal raporlaması tamamlandı';
-    resultSummary = `Bilanço piyasaya açıklandı (${rxText}). ${item.catalyst || 'Şirket operasyonel verileri'} konsensüs hedefleri doğrultusunda gerçekleşti.`;
+    if (isDefiniteMiss) {
+      resultSummary = `Bilanço piyasaya açıklandı (${rxText}). Şirket beklentilerin altında kaldı veya yapay zeka harcamaları / rehberlik marj baskısı oluşturdu.`;
+    } else {
+      resultSummary = `Bilanço piyasaya açıklandı (${rxText}). Şirket operasyonel verileri konsensüs hedefleri doğrultusunda gerçekleşti.`;
+    }
   }
 
   return {
     ...item,
     isAnnounced: true,
     daysDiff: diff,
-    actualEPS,
+    actualEPS: actualEPS || item.expectedEPS || 'Açıklandı ✓',
     actualRev,
     epsSurprise,
     resultBadge,
+    resultStatus,
     priceReaction,
-    resultSummary
+    resultSummary,
+    isVerified: !!reg.actualEPS
   };
 };
 
@@ -1681,8 +1739,13 @@ export default function MarketPulseTab({ onSelectStock }) {
                             <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 10, lineHeight: 1.35 }}>
                               {item.resultSummary}
                             </div>
-                            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
-                              📌 Katalizör: {item.catalyst}
+                            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span>📌 Katalizör: {item.catalyst}</span>
+                              {item.isVerified && (
+                                <span style={{ color: '#10b981', fontWeight: 700, fontSize: 8.5, background: 'rgba(16,185,129,0.1)', padding: '1px 5px', borderRadius: 3 }}>
+                                  ✓ SEC / KAP Teyitli
+                                </span>
+                              )}
                             </div>
                           </div>
                         ) : (
