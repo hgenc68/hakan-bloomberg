@@ -173,11 +173,12 @@ const ANNOUNCED_EARNINGS_REGISTRY = {
   'GOOGL': {
     ticker: 'GOOGL',
     actualEPS: '$2.12',
-    epsSurprise: '+%14.6 Beat',
-    actualRev: '$88.3B (+%15 YoY)',
-    resultBadge: '🟢 ÇİFTE BEAT',
-    priceReaction: '+%6.8',
-    resultSummary: 'EPS $2.12 (Bekl: $1.85) • Ciro $88.3B (Bekl: $86.3B). Google Cloud gelirleri %35 sıçrayarak $11.4B oldu; Gemini AI ve bulut altyapısı kârlılığı katladı.',
+    epsSurprise: '-%29.8 Iska',
+    actualRev: '$127.6B (+%25 YoY)',
+    resultBadge: '🔴 KÂR & FCF ISKASI',
+    priceReaction: '-%11.8',
+    resultSummary: 'EPS $2.12 (Bekl: $3.02 Iska) • FCF -$9.07B ile negatife döndü. Rekor $51.4B yapay zeka Capex harcaması ve Arama motoru büyümesindeki yavaşlama (%12) sebebiyle hisse %11.8 sert düştü.',
+    status: 'MISS',
     announcedAt: '2026-10-29T23:00:00+03:00'
   },
   'MSFT': {
