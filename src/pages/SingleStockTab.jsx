@@ -379,7 +379,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
   }
 
   // Universal fallback synthesizer for ANY stock (TSLA, GOOGL, META, PLTR, AMD, etc.)
-  const quotePrice = Number(marketQuotes[clean]?.price || marketQuotes[`${clean}.IS`]?.price) || (isBIST ? (clean === 'AGHOL' ? 376.50 : 185.0) : 85.0);
+  const quotePrice = Number(marketQuotes[clean]?.price || marketQuotes[`${clean}.IS`]?.price) || (isBIST ? (clean === 'AGHOL' ? 25.02 : 185.0) : 85.0);
   const p = quotePrice;
   const target = Math.round(p * 1.35 * 100) / 100;
   const low52 = Math.round(p * 0.65 * 100) / 100;
@@ -648,7 +648,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
      cleanTickerUpper === 'BYDNR' ? 23.28 :
      cleanTickerUpper === 'SPCX' ? 163.84 :
      cleanTickerUpper === 'DRAM' ? 54.67 :
-     cleanTickerUpper === 'AGHOL' ? 376.50 : isBist ? 185.0 : 150.0)
+     cleanTickerUpper === 'AGHOL' ? 25.02 : isBist ? 185.0 : 150.0)
   );
 
   const effectiveChangePct = candidateQuote?.changePct != null
