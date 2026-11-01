@@ -9,27 +9,113 @@
       "currency": "TRY",
       "return_1y": 58.4,
       "return_3y": 245.8,
-      "expense_ratio": 2.90,
+      "expense_ratio": 2.9,
       "risk_level": 6,
       "theme": "Yapay Zeka & Global Teknoloji Tekelleri",
-      "ring_distribution": { "ring1": 58, "ring2": 32, "ring3": 10 },
+      "ring_distribution": {
+        "ring1": 58,
+        "ring2": 32,
+        "ring3": 10
+      },
       "sector_distribution": [
-        { "name": "Yarı İletken & Donanım", "pct": 52 },
-        { "name": "Bulut & Kurumsal Yazılım", "pct": 30 },
-        { "name": "İnternet & E-Ticaret", "pct": 14 },
-        { "name": "Nakit & Türev", "pct": 4 }
+        {
+          "name": "Yarı İletken & Donanım",
+          "pct": 52
+        },
+        {
+          "name": "Bulut & Kurumsal Yazılım",
+          "pct": 30
+        },
+        {
+          "name": "İnternet & E-Ticaret",
+          "pct": 14
+        },
+        {
+          "name": "Nakit & Türev",
+          "pct": 4
+        }
       ],
       "holdings": [
-        { "ticker": "NVDA", "name": "NVIDIA Corporation", "pct": 20.4, "market": "US", "ring": 1, "sector": "Yarı İletken" },
-        { "ticker": "GOOGL", "name": "Alphabet Inc.", "pct": 16.2, "market": "US", "ring": 1, "sector": "İnternet & Yapay Zeka" },
-        { "ticker": "MSFT", "name": "Microsoft Corporation", "pct": 12.8, "market": "US", "ring": 1, "sector": "Bulut & Yazılım" },
-        { "ticker": "AMZN", "name": "Amazon.com Inc.", "pct": 8.5, "market": "US", "ring": 1, "sector": "E-Ticaret & Bulut" },
-        { "ticker": "TSM", "name": "Taiwan Semiconductor", "pct": 7.2, "market": "US", "ring": 2, "sector": "Dökümhane & Çip" },
-        { "ticker": "AVGO", "name": "Broadcom Inc.", "pct": 6.8, "market": "US", "ring": 2, "sector": "Ağ Donanımı" },
-        { "ticker": "MU", "name": "Micron Technology", "pct": 5.4, "market": "US", "ring": 2, "sector": "HBM Bellek" },
-        { "ticker": "ASML", "name": "ASML Holding", "pct": 4.8, "market": "US", "ring": 2, "sector": "Litografi" },
-        { "ticker": "AAPL", "name": "Apple Inc.", "pct": 4.5, "market": "US", "ring": 1, "sector": "Tüketici Elektroniği" },
-        { "ticker": "ORCL", "name": "Oracle Corporation", "pct": 3.2, "market": "US", "ring": 3, "sector": "Bulut Altyapısı" }
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 20.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 16.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet & Yapay Zeka"
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 12.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bulut & Yazılım"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 8.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret & Bulut"
+        },
+        {
+          "ticker": "TSM",
+          "name": "Taiwan Semiconductor",
+          "pct": 7.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Dökümhane & Çip"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 6.8,
+          "market": "US",
+          "ring": 2,
+          "sector": "Ağ Donanımı"
+        },
+        {
+          "ticker": "MU",
+          "name": "Micron Technology",
+          "pct": 5.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "HBM Bellek"
+        },
+        {
+          "ticker": "ASML",
+          "name": "ASML Holding",
+          "pct": 4.8,
+          "market": "US",
+          "ring": 2,
+          "sector": "Litografi"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 4.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Tüketici Elektroniği"
+        },
+        {
+          "ticker": "ORCL",
+          "name": "Oracle Corporation",
+          "pct": 3.2,
+          "market": "US",
+          "ring": 3,
+          "sector": "Bulut Altyapısı"
+        }
       ],
       "finvest_insight": "AFT fonu aldığınızda aslında tüm Amerika'ya değil; %58 oranında 4 büyük AI titanına (Nvidia, Google, Microsoft, Amazon) yatırım yaparsınız. Getiri çok yüksektir ancak yapay zeka konsantrasyonu aşırıdır."
     },
@@ -45,24 +131,110 @@
       "expense_ratio": 2.75,
       "risk_level": 6,
       "theme": "Mega-Cap ABD Teknoloji Liderleri",
-      "ring_distribution": { "ring1": 66, "ring2": 26, "ring3": 8 },
+      "ring_distribution": {
+        "ring1": 66,
+        "ring2": 26,
+        "ring3": 8
+      },
       "sector_distribution": [
-        { "name": "Donanım & Cihazlar", "pct": 38 },
-        { "name": "Yazılım & Bulut", "pct": 34 },
-        { "name": "Yarı İletken", "pct": 22 },
-        { "name": "Nakit & Vadeli", "pct": 6 }
+        {
+          "name": "Donanım & Cihazlar",
+          "pct": 38
+        },
+        {
+          "name": "Yazılım & Bulut",
+          "pct": 34
+        },
+        {
+          "name": "Yarı İletken",
+          "pct": 22
+        },
+        {
+          "name": "Nakit & Vadeli",
+          "pct": 6
+        }
       ],
       "holdings": [
-        { "ticker": "AAPL", "name": "Apple Inc.", "pct": 18.5, "market": "US", "ring": 1, "sector": "Tüketici Elektroniği" },
-        { "ticker": "MSFT", "name": "Microsoft Corporation", "pct": 16.2, "market": "US", "ring": 1, "sector": "Bulut & Yazılım" },
-        { "ticker": "NVDA", "name": "NVIDIA Corporation", "pct": 15.0, "market": "US", "ring": 1, "sector": "Yarı İletken" },
-        { "ticker": "GOOGL", "name": "Alphabet Inc.", "pct": 11.4, "market": "US", "ring": 1, "sector": "İnternet" },
-        { "ticker": "AMZN", "name": "Amazon.com Inc.", "pct": 9.2, "market": "US", "ring": 1, "sector": "E-Ticaret" },
-        { "ticker": "META", "name": "Meta Platforms", "pct": 7.5, "market": "US", "ring": 1, "sector": "Sosyal Medya" },
-        { "ticker": "TSM", "name": "Taiwan Semiconductor", "pct": 5.8, "market": "US", "ring": 2, "sector": "Çip Üretimi" },
-        { "ticker": "AVGO", "name": "Broadcom Inc.", "pct": 4.9, "market": "US", "ring": 2, "sector": "Ağ Donanımı" },
-        { "ticker": "QCOM", "name": "Qualcomm Inc.", "pct": 4.2, "market": "US", "ring": 2, "sector": "Mobil Çipler" },
-        { "ticker": "AMD", "name": "Advanced Micro Devices", "pct": 3.4, "market": "US", "ring": 2, "sector": "İşlemciler" }
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 18.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Tüketici Elektroniği"
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 16.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bulut & Yazılım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 15,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 11.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 9.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 7.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sosyal Medya"
+        },
+        {
+          "ticker": "TSM",
+          "name": "Taiwan Semiconductor",
+          "pct": 5.8,
+          "market": "US",
+          "ring": 2,
+          "sector": "Çip Üretimi"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 4.9,
+          "market": "US",
+          "ring": 2,
+          "sector": "Ağ Donanımı"
+        },
+        {
+          "ticker": "QCOM",
+          "name": "Qualcomm Inc.",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Mobil Çipler"
+        },
+        {
+          "ticker": "AMD",
+          "name": "Advanced Micro Devices",
+          "pct": 3.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "İşlemciler"
+        }
       ],
       "finvest_insight": "YAY fonu AFT'ye kıyasla daha yüksek Apple ve Meta ağırlığı taşır. Çip volatilitesinden biraz daha defansif, tüketici nakit akışına daha yakındır."
     },
@@ -74,28 +246,114 @@
       "manager": "İş Portföy",
       "currency": "TRY",
       "return_1y": 48.2,
-      "return_3y": 380.0,
-      "expense_ratio": 2.50,
+      "return_3y": 380,
+      "expense_ratio": 2.5,
       "risk_level": 7,
       "theme": "BIST Savunma, Yazılım ve Dijital Dönüşüm",
-      "ring_distribution": { "ring1": 45, "ring2": 45, "ring3": 10 },
+      "ring_distribution": {
+        "ring1": 45,
+        "ring2": 45,
+        "ring3": 10
+      },
       "sector_distribution": [
-        { "name": "Savunma & Aviyonik", "pct": 36 },
-        { "name": "Kurumsal Yazılım & Fintech", "pct": 32 },
-        { "name": "Telekom & Entegrasyon", "pct": 20 },
-        { "name": "Nakit & Repo", "pct": 12 }
+        {
+          "name": "Savunma & Aviyonik",
+          "pct": 36
+        },
+        {
+          "name": "Kurumsal Yazılım & Fintech",
+          "pct": 32
+        },
+        {
+          "name": "Telekom & Entegrasyon",
+          "pct": 20
+        },
+        {
+          "name": "Nakit & Repo",
+          "pct": 12
+        }
       ],
       "holdings": [
-        { "ticker": "ASELS", "name": "Aselsan Elektronik", "pct": 18.4, "market": "TR", "ring": 1, "sector": "Savunma Elektroniği" },
-        { "ticker": "KFEIN", "name": "Kafein Yazılım", "pct": 12.5, "market": "TR", "ring": 2, "sector": "Yazılım Hizmetleri" },
-        { "ticker": "LOGO", "name": "Logo Yazılım", "pct": 11.2, "market": "TR", "ring": 1, "sector": "ERP & Fintek" },
-        { "ticker": "VBTYZ", "name": "VBT Yazılım", "pct": 9.8, "market": "TR", "ring": 2, "sector": "Sistem Entegrasyonu" },
-        { "ticker": "ARDYZ", "name": "ARD Bilişim", "pct": 8.5, "market": "TR", "ring": 2, "sector": "Kurumsal Çözümler" },
-        { "ticker": "REEDR", "name": "Reeder Teknoloji", "pct": 7.4, "market": "TR", "ring": 3, "sector": "Tüketici Cihazları" },
-        { "ticker": "MIATK", "name": "Mia Teknoloji", "pct": 6.9, "market": "TR", "ring": 3, "sector": "Ar-Ge & Güvenlik" },
-        { "ticker": "SDTTR", "name": "SDT Uzay ve Savunma", "pct": 6.2, "market": "TR", "ring": 2, "sector": "Uydu & Radar" },
-        { "ticker": "NETAS", "name": "Netaş Telekom", "pct": 5.5, "market": "TR", "ring": 2, "sector": "Telekom Altyapısı" },
-        { "ticker": "PENTA", "name": "Penta Teknoloji", "pct": 4.2, "market": "TR", "ring": 2, "sector": "Distribütörlük" }
+        {
+          "ticker": "ASELS",
+          "name": "Aselsan Elektronik",
+          "pct": 18.4,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Savunma Elektroniği"
+        },
+        {
+          "ticker": "KFEIN",
+          "name": "Kafein Yazılım",
+          "pct": 12.5,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Yazılım Hizmetleri"
+        },
+        {
+          "ticker": "LOGO",
+          "name": "Logo Yazılım",
+          "pct": 11.2,
+          "market": "TR",
+          "ring": 1,
+          "sector": "ERP & Fintek"
+        },
+        {
+          "ticker": "VBTYZ",
+          "name": "VBT Yazılım",
+          "pct": 9.8,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Sistem Entegrasyonu"
+        },
+        {
+          "ticker": "ARDYZ",
+          "name": "ARD Bilişim",
+          "pct": 8.5,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Kurumsal Çözümler"
+        },
+        {
+          "ticker": "REEDR",
+          "name": "Reeder Teknoloji",
+          "pct": 7.4,
+          "market": "TR",
+          "ring": 3,
+          "sector": "Tüketici Cihazları"
+        },
+        {
+          "ticker": "MIATK",
+          "name": "Mia Teknoloji",
+          "pct": 6.9,
+          "market": "TR",
+          "ring": 3,
+          "sector": "Ar-Ge & Güvenlik"
+        },
+        {
+          "ticker": "SDTTR",
+          "name": "SDT Uzay ve Savunma",
+          "pct": 6.2,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Uydu & Radar"
+        },
+        {
+          "ticker": "NETAS",
+          "name": "Netaş Telekom",
+          "pct": 5.5,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Telekom Altyapısı"
+        },
+        {
+          "ticker": "PENTA",
+          "name": "Penta Teknoloji",
+          "pct": 4.2,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Distribütörlük"
+        }
       ],
       "finvest_insight": "BIST Teknoloji endeksinin lokomotifidir. Aselsan ve Logo Yazılım gibi nakit üretenler ağırlıktadır ancak yerel büyüme hisselerinin volatilitesi yüksektir."
     },
@@ -107,29 +365,118 @@
       "manager": "Garanti BBVA Emeklilik",
       "currency": "TRY",
       "return_1y": 46.5,
-      "return_3y": 320.0,
-      "expense_ratio": 1.90,
+      "return_3y": 320,
+      "expense_ratio": 1.9,
       "risk_level": 6,
       "theme": "BIST 30 İhracatçı ve Nakit Zenginleri",
-      "ring_distribution": { "ring1": 65, "ring2": 30, "ring3": 5 },
+      "ring_distribution": {
+        "ring1": 65,
+        "ring2": 30,
+        "ring3": 5
+      },
       "sector_distribution": [
-        { "name": "Ulaştırma & Lojistik", "pct": 22 },
-        { "name": "Enerji & Rafineri", "pct": 18 },
-        { "name": "Perakende & Gıda", "pct": 16 },
-        { "name": "Bankacılık & Holding", "pct": 28 },
-        { "name": "Sanayi & Otomotiv", "pct": 16 }
+        {
+          "name": "Ulaştırma & Lojistik",
+          "pct": 22
+        },
+        {
+          "name": "Enerji & Rafineri",
+          "pct": 18
+        },
+        {
+          "name": "Perakende & Gıda",
+          "pct": 16
+        },
+        {
+          "name": "Bankacılık & Holding",
+          "pct": 28
+        },
+        {
+          "name": "Sanayi & Otomotiv",
+          "pct": 16
+        }
       ],
       "holdings": [
-        { "ticker": "THYAO", "name": "Türk Hava Yolları", "pct": 14.2, "market": "TR", "ring": 2, "sector": "Havacılık" },
-        { "ticker": "TUPRS", "name": "Tüpraş Rafineri", "pct": 11.8, "market": "TR", "ring": 1, "sector": "Rafineri" },
-        { "ticker": "BIMAS", "name": "BİM Birleşik Mağazalar", "pct": 10.5, "market": "TR", "ring": 1, "sector": "Perakende" },
-        { "ticker": "AKBNK", "name": "Akbank T.A.Ş.", "pct": 9.4, "market": "TR", "ring": 1, "sector": "Bankacılık" },
-        { "ticker": "KCHOL", "name": "Koç Holding", "pct": 8.8, "market": "TR", "ring": 1, "sector": "Holding" },
-        { "ticker": "FROTO", "name": "Ford Otosan", "pct": 8.2, "market": "TR", "ring": 1, "sector": "Otomotiv" },
-        { "ticker": "EREGL", "name": "Erdemir Çelik", "pct": 7.5, "market": "TR", "ring": 2, "sector": "Demir Çelik" },
-        { "ticker": "SAHOL", "name": "Sabancı Holding", "pct": 6.8, "market": "TR", "ring": 1, "sector": "Holding" },
-        { "ticker": "ISCTR", "name": "İş Bankası (C)", "pct": 6.5, "market": "TR", "ring": 1, "sector": "Bankacılık" },
-        { "ticker": "SISE", "name": "Şişecam", "pct": 5.8, "market": "TR", "ring": 1, "sector": "Cam Sanayi" }
+        {
+          "ticker": "THYAO",
+          "name": "Türk Hava Yolları",
+          "pct": 14.2,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Havacılık"
+        },
+        {
+          "ticker": "TUPRS",
+          "name": "Tüpraş Rafineri",
+          "pct": 11.8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Rafineri"
+        },
+        {
+          "ticker": "BIMAS",
+          "name": "BİM Birleşik Mağazalar",
+          "pct": 10.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Perakende"
+        },
+        {
+          "ticker": "AKBNK",
+          "name": "Akbank T.A.Ş.",
+          "pct": 9.4,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "KCHOL",
+          "name": "Koç Holding",
+          "pct": 8.8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Holding"
+        },
+        {
+          "ticker": "FROTO",
+          "name": "Ford Otosan",
+          "pct": 8.2,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Otomotiv"
+        },
+        {
+          "ticker": "EREGL",
+          "name": "Erdemir Çelik",
+          "pct": 7.5,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Demir Çelik"
+        },
+        {
+          "ticker": "SAHOL",
+          "name": "Sabancı Holding",
+          "pct": 6.8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Holding"
+        },
+        {
+          "ticker": "ISCTR",
+          "name": "İş Bankası (C)",
+          "pct": 6.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "SISE",
+          "name": "Şişecam",
+          "pct": 5.8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Cam Sanayi"
+        }
       ],
       "finvest_insight": "Kullanıcının BES portföyünün omurgasıdır. Portföyün %65'i net nakit üreten kurumsal devlerden oluşur; borç riski minimumdur."
     },
@@ -140,30 +487,119 @@
       "category_label": "Kullanıcı BES Portföyü",
       "manager": "Garanti BBVA Emeklilik",
       "currency": "TRY",
-      "return_1y": 42.0,
-      "return_3y": 285.0,
+      "return_1y": 42,
+      "return_3y": 285,
       "expense_ratio": 1.85,
       "risk_level": 6,
       "theme": "Düzenli Nakit Temettü & Sağlam Bilanço",
-      "ring_distribution": { "ring1": 80, "ring2": 20, "ring3": 0 },
+      "ring_distribution": {
+        "ring1": 80,
+        "ring2": 20,
+        "ring3": 0
+      },
       "sector_distribution": [
-        { "name": "Otomotiv & Sanayi", "pct": 35 },
-        { "name": "Rafineri & Enerji", "pct": 28 },
-        { "name": "Madencilik & Çelik", "pct": 18 },
-        { "name": "İnşaat & Gayrimenkul", "pct": 12 },
-        { "name": "Nakit", "pct": 7 }
+        {
+          "name": "Otomotiv & Sanayi",
+          "pct": 35
+        },
+        {
+          "name": "Rafineri & Enerji",
+          "pct": 28
+        },
+        {
+          "name": "Madencilik & Çelik",
+          "pct": 18
+        },
+        {
+          "name": "İnşaat & Gayrimenkul",
+          "pct": 12
+        },
+        {
+          "name": "Nakit",
+          "pct": 7
+        }
       ],
       "holdings": [
-        { "ticker": "TUPRS", "name": "Tüpraş Rafineri", "pct": 16.5, "market": "TR", "ring": 1, "sector": "Enerji" },
-        { "ticker": "FROTO", "name": "Ford Otosan", "pct": 14.8, "market": "TR", "ring": 1, "sector": "Otomotiv" },
-        { "ticker": "EREGL", "name": "Erdemir Çelik", "pct": 12.2, "market": "TR", "ring": 2, "sector": "Demir Çelik" },
-        { "ticker": "DOAS", "name": "Doğuş Otomotiv", "pct": 10.4, "market": "TR", "ring": 1, "sector": "Otomotiv" },
-        { "ticker": "TSKB", "name": "TSKB Kalkınma", "pct": 8.5, "market": "TR", "ring": 1, "sector": "Bankacılık" },
-        { "ticker": "TOASO", "name": "Tofaş Oto Fabrika", "pct": 8.0, "market": "TR", "ring": 1, "sector": "Otomotiv" },
-        { "ticker": "TTRAK", "name": "Türk Traktör", "pct": 7.4, "market": "TR", "ring": 1, "sector": "Sanayi" },
-        { "ticker": "AYGAZ", "name": "Aygaz Sanayi", "pct": 6.2, "market": "TR", "ring": 1, "sector": "LPG Dağıtım" },
-        { "ticker": "ENKAI", "name": "Enka İnşaat", "pct": 5.8, "market": "TR", "ring": 1, "sector": "İnşaat & Enerji" },
-        { "ticker": "PETKM", "name": "Petkim Petrokimya", "pct": 4.5, "market": "TR", "ring": 2, "sector": "Petrokimya" }
+        {
+          "ticker": "TUPRS",
+          "name": "Tüpraş Rafineri",
+          "pct": 16.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Enerji"
+        },
+        {
+          "ticker": "FROTO",
+          "name": "Ford Otosan",
+          "pct": 14.8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Otomotiv"
+        },
+        {
+          "ticker": "EREGL",
+          "name": "Erdemir Çelik",
+          "pct": 12.2,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Demir Çelik"
+        },
+        {
+          "ticker": "DOAS",
+          "name": "Doğuş Otomotiv",
+          "pct": 10.4,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Otomotiv"
+        },
+        {
+          "ticker": "TSKB",
+          "name": "TSKB Kalkınma",
+          "pct": 8.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "TOASO",
+          "name": "Tofaş Oto Fabrika",
+          "pct": 8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Otomotiv"
+        },
+        {
+          "ticker": "TTRAK",
+          "name": "Türk Traktör",
+          "pct": 7.4,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Sanayi"
+        },
+        {
+          "ticker": "AYGAZ",
+          "name": "Aygaz Sanayi",
+          "pct": 6.2,
+          "market": "TR",
+          "ring": 1,
+          "sector": "LPG Dağıtım"
+        },
+        {
+          "ticker": "ENKAI",
+          "name": "Enka İnşaat",
+          "pct": 5.8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "İnşaat & Enerji"
+        },
+        {
+          "ticker": "PETKM",
+          "name": "Petkim Petrokimya",
+          "pct": 4.5,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Petrokimya"
+        }
       ],
       "finvest_insight": "Kurumsal sermaye kalkanı felsefesine en uygun BIST fonudur. Şirketlerin tamamına yakını 1. Halka (Nakit Titanı) sınıfındadır; yüksek temettü akışı ve düşük borçlulukla sermayeyi korur."
     },
@@ -175,28 +611,114 @@
       "manager": "Garanti BBVA Emeklilik",
       "currency": "TRY",
       "return_1y": 62.5,
-      "return_3y": 270.0,
-      "expense_ratio": 2.10,
+      "return_3y": 270,
+      "expense_ratio": 2.1,
       "risk_level": 6,
       "theme": "BES İçi Küresel Yapay Zeka & Çip Gücü",
-      "ring_distribution": { "ring1": 68, "ring2": 28, "ring3": 4 },
+      "ring_distribution": {
+        "ring1": 68,
+        "ring2": 28,
+        "ring3": 4
+      },
       "sector_distribution": [
-        { "name": "Yarı İletken", "pct": 42 },
-        { "name": "Büyük Dil Modelleri & Bulut", "pct": 36 },
-        { "name": "Cihaz & Ekosistem", "pct": 16 },
-        { "name": "Likit Dolar", "pct": 6 }
+        {
+          "name": "Yarı İletken",
+          "pct": 42
+        },
+        {
+          "name": "Büyük Dil Modelleri & Bulut",
+          "pct": 36
+        },
+        {
+          "name": "Cihaz & Ekosistem",
+          "pct": 16
+        },
+        {
+          "name": "Likit Dolar",
+          "pct": 6
+        }
       ],
       "holdings": [
-        { "ticker": "NVDA", "name": "NVIDIA Corporation", "pct": 18.2, "market": "US", "ring": 1, "sector": "Yarı İletken" },
-        { "ticker": "MSFT", "name": "Microsoft Corporation", "pct": 15.5, "market": "US", "ring": 1, "sector": "Bulut & Yapay Zeka" },
-        { "ticker": "AAPL", "name": "Apple Inc.", "pct": 14.8, "market": "US", "ring": 1, "sector": "Donanım" },
-        { "ticker": "GOOGL", "name": "Alphabet Inc.", "pct": 12.4, "market": "US", "ring": 1, "sector": "Arama & Bulut" },
-        { "ticker": "AMZN", "name": "Amazon.com Inc.", "pct": 10.2, "market": "US", "ring": 1, "sector": "AWS & E-Ticaret" },
-        { "ticker": "META", "name": "Meta Platforms", "pct": 8.5, "market": "US", "ring": 1, "sector": "Sosyal Ağ & LLM" },
-        { "ticker": "TSM", "name": "Taiwan Semiconductor", "pct": 6.8, "market": "US", "ring": 2, "sector": "Dökümhane" },
-        { "ticker": "AVGO", "name": "Broadcom Inc.", "pct": 5.4, "market": "US", "ring": 2, "sector": "Çip & Ağ" },
-        { "ticker": "AMD", "name": "Advanced Micro Devices", "pct": 4.2, "market": "US", "ring": 2, "sector": "İşlemci" },
-        { "ticker": "ASML", "name": "ASML Holding", "pct": 4.0, "market": "US", "ring": 2, "sector": "EUV Litografi" }
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 18.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 15.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bulut & Yapay Zeka"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 14.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 12.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Arama & Bulut"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 10.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "AWS & E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 8.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sosyal Ağ & LLM"
+        },
+        {
+          "ticker": "TSM",
+          "name": "Taiwan Semiconductor",
+          "pct": 6.8,
+          "market": "US",
+          "ring": 2,
+          "sector": "Dökümhane"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 5.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "Çip & Ağ"
+        },
+        {
+          "ticker": "AMD",
+          "name": "Advanced Micro Devices",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "İşlemci"
+        },
+        {
+          "ticker": "ASML",
+          "name": "ASML Holding",
+          "pct": 4,
+          "market": "US",
+          "ring": 2,
+          "sector": "EUV Litografi"
+        }
       ],
       "finvest_insight": "BES sisteminde devlet katkısı avantajıyla ABD teknolojisine yatırım yapma imkanı tanır. İlk 5 hisse fonun %71'ini oluşturur."
     },
@@ -208,20 +730,54 @@
       "manager": "Garanti BBVA Emeklilik",
       "currency": "TRY",
       "return_1y": 74.2,
-      "return_3y": 340.0,
+      "return_3y": 340,
       "expense_ratio": 1.25,
       "risk_level": 4,
       "theme": "%100 Fiziki Kıymetli Maden & Kur Kalkanı",
-      "ring_distribution": { "ring1": 100, "ring2": 0, "ring3": 0 },
+      "ring_distribution": {
+        "ring1": 100,
+        "ring2": 0,
+        "ring3": 0
+      },
       "sector_distribution": [
-        { "name": "Borsa İstanbul Kıymetli Madenler (Altın)", "pct": 92.5 },
-        { "name": "Altın Kira Sertifikası (Sukuk)", "pct": 5.5 },
-        { "name": "Nakit / Takasbank", "pct": 2.0 }
+        {
+          "name": "Borsa İstanbul Kıymetli Madenler (Altın)",
+          "pct": 92.5
+        },
+        {
+          "name": "Altın Kira Sertifikası (Sukuk)",
+          "pct": 5.5
+        },
+        {
+          "name": "Nakit / Takasbank",
+          "pct": 2
+        }
       ],
       "holdings": [
-        { "ticker": "XAU/TRY", "name": "Fiziki Gram Altın", "pct": 92.5, "market": "TR", "ring": 1, "sector": "Emtia" },
-        { "ticker": "ALTIN-SUKUK", "name": "Hazine Altın Tahvili", "pct": 5.5, "market": "TR", "ring": 1, "sector": "Kira Sertifikası" },
-        { "ticker": "TRY-NAKIT", "name": "Likit Katılım Hesabı", "pct": 2.0, "market": "TR", "ring": 1, "sector": "Nakit" }
+        {
+          "ticker": "XAU/TRY",
+          "name": "Fiziki Gram Altın",
+          "pct": 92.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Emtia"
+        },
+        {
+          "ticker": "ALTIN-SUKUK",
+          "name": "Hazine Altın Tahvili",
+          "pct": 5.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Kira Sertifikası"
+        },
+        {
+          "ticker": "TRY-NAKIT",
+          "name": "Likit Katılım Hesabı",
+          "pct": 2,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Nakit"
+        }
       ],
       "finvest_insight": "Kullanıcının BES portföyünün kur ve jeopolitik kalkanıdır. Şirket iflas riski taşımaz, ons altın ve dolar/TL ile bileşik getiri üretir."
     },
@@ -232,29 +788,115 @@
       "category_label": "Kullanıcı BES Portföyü",
       "manager": "Garanti BBVA Emeklilik",
       "currency": "TRY",
-      "return_1y": 51.0,
-      "return_3y": 260.0,
-      "expense_ratio": 1.70,
+      "return_1y": 51,
+      "return_3y": 260,
+      "expense_ratio": 1.7,
       "risk_level": 5,
       "theme": "Dinamik Çoklu Varlık Dağılımı",
-      "ring_distribution": { "ring1": 75, "ring2": 25, "ring3": 0 },
+      "ring_distribution": {
+        "ring1": 75,
+        "ring2": 25,
+        "ring3": 0
+      },
       "sector_distribution": [
-        { "name": "TC Hazine Eurobond (USD)", "pct": 38 },
-        { "name": "BIST 100 Hisse Senetleri", "pct": 28 },
-        { "name": "Ters Repo & Takasbank Para Piyasası", "pct": 21 },
-        { "name": "Kıymetli Madenler", "pct": 13 }
+        {
+          "name": "TC Hazine Eurobond (USD)",
+          "pct": 38
+        },
+        {
+          "name": "BIST 100 Hisse Senetleri",
+          "pct": 28
+        },
+        {
+          "name": "Ters Repo & Takasbank Para Piyasası",
+          "pct": 21
+        },
+        {
+          "name": "Kıymetli Madenler",
+          "pct": 13
+        }
       ],
       "holdings": [
-        { "ticker": "EUROBOND-TR", "name": "TC Hazine Eurobond ($)", "pct": 38.0, "market": "TR", "ring": 1, "sector": "Döviz Tahvil" },
-        { "ticker": "THYAO", "name": "Türk Hava Yolları", "pct": 5.8, "market": "TR", "ring": 2, "sector": "Havacılık" },
-        { "ticker": "TUPRS", "name": "Tüpraş Rafineri", "pct": 5.2, "market": "TR", "ring": 1, "sector": "Rafineri" },
-        { "ticker": "KCHOL", "name": "Koç Holding", "pct": 4.5, "market": "TR", "ring": 1, "sector": "Holding" },
-        { "ticker": "AKBNK", "name": "Akbank T.A.Ş.", "pct": 4.2, "market": "TR", "ring": 1, "sector": "Bankacılık" },
-        { "ticker": "FROTO", "name": "Ford Otosan", "pct": 3.8, "market": "TR", "ring": 1, "sector": "Otomotiv" },
-        { "ticker": "GLD", "name": "Kıymetli Madenler", "pct": 13.0, "market": "TR", "ring": 1, "sector": "Emtia" },
-        { "ticker": "PPF-NAKIT", "name": "Para Piyasası Fonu", "pct": 21.0, "market": "TR", "ring": 1, "sector": "Likit Nakit" },
-        { "ticker": "BIMAS", "name": "BİM Mağazalar", "pct": 2.5, "market": "TR", "ring": 1, "sector": "Perakende" },
-        { "ticker": "ASELS", "name": "Aselsan Elektronik", "pct": 2.0, "market": "TR", "ring": 1, "sector": "Savunma" }
+        {
+          "ticker": "EUROBOND-TR",
+          "name": "TC Hazine Eurobond ($)",
+          "pct": 38,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Döviz Tahvil"
+        },
+        {
+          "ticker": "THYAO",
+          "name": "Türk Hava Yolları",
+          "pct": 5.8,
+          "market": "TR",
+          "ring": 2,
+          "sector": "Havacılık"
+        },
+        {
+          "ticker": "TUPRS",
+          "name": "Tüpraş Rafineri",
+          "pct": 5.2,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Rafineri"
+        },
+        {
+          "ticker": "KCHOL",
+          "name": "Koç Holding",
+          "pct": 4.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Holding"
+        },
+        {
+          "ticker": "AKBNK",
+          "name": "Akbank T.A.Ş.",
+          "pct": 4.2,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "FROTO",
+          "name": "Ford Otosan",
+          "pct": 3.8,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Otomotiv"
+        },
+        {
+          "ticker": "GLD",
+          "name": "Kıymetli Madenler",
+          "pct": 13,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Emtia"
+        },
+        {
+          "ticker": "PPF-NAKIT",
+          "name": "Para Piyasası Fonu",
+          "pct": 21,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Likit Nakit"
+        },
+        {
+          "ticker": "BIMAS",
+          "name": "BİM Mağazalar",
+          "pct": 2.5,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Perakende"
+        },
+        {
+          "ticker": "ASELS",
+          "name": "Aselsan Elektronik",
+          "pct": 2,
+          "market": "TR",
+          "ring": 1,
+          "sector": "Savunma"
+        }
       ],
       "finvest_insight": "Dengeli piyasa koşullarında otomatik dengeleme yapar. Döviz bazlı Eurobond ve nakit tamponu sayesinde piyasa çökerken portföyü tutar."
     },
@@ -267,28 +909,117 @@
       "currency": "USD",
       "return_1y": 34.2,
       "return_3y": 58.5,
-      "expense_ratio": 0.20,
+      "expense_ratio": 0.2,
       "risk_level": 6,
       "theme": "Nasdaq 100 Piyasa Değeri Ağırlıklı Büyüme",
-      "ring_distribution": { "ring1": 62, "ring2": 30, "ring3": 8 },
+      "ring_distribution": {
+        "ring1": 62,
+        "ring2": 30,
+        "ring3": 8
+      },
       "sector_distribution": [
-        { "name": "Teknoloji", "pct": 51 },
-        { "name": "İletişim Hizmetleri", "pct": 16 },
-        { "name": "Tüketici Ürünleri", "pct": 13 },
-        { "name": "Sağlık", "pct": 7 },
-        { "name": "Sanayi & Diğer", "pct": 13 }
+        {
+          "name": "Teknoloji",
+          "pct": 51
+        },
+        {
+          "name": "İletişim Hizmetleri",
+          "pct": 16
+        },
+        {
+          "name": "Tüketici Ürünleri",
+          "pct": 13
+        },
+        {
+          "name": "Sağlık",
+          "pct": 7
+        },
+        {
+          "name": "Sanayi & Diğer",
+          "pct": 13
+        }
       ],
       "holdings": [
-        { "ticker": "AAPL", "name": "Apple Inc.", "pct": 8.9, "market": "US", "ring": 1, "sector": "Donanım" },
-        { "ticker": "MSFT", "name": "Microsoft Corporation", "pct": 8.4, "market": "US", "ring": 1, "sector": "Yazılım" },
-        { "ticker": "NVDA", "name": "NVIDIA Corporation", "pct": 7.8, "market": "US", "ring": 1, "sector": "Yarı İletken" },
-        { "ticker": "AMZN", "name": "Amazon.com Inc.", "pct": 5.6, "market": "US", "ring": 1, "sector": "E-Ticaret" },
-        { "ticker": "META", "name": "Meta Platforms", "pct": 4.8, "market": "US", "ring": 1, "sector": "Sosyal Medya" },
-        { "ticker": "GOOGL", "name": "Alphabet Inc.", "pct": 4.6, "market": "US", "ring": 1, "sector": "İnternet" },
-        { "ticker": "AVGO", "name": "Broadcom Inc.", "pct": 4.2, "market": "US", "ring": 2, "sector": "Çip" },
-        { "ticker": "TSLA", "name": "Tesla Inc.", "pct": 3.8, "market": "US", "ring": 2, "sector": "Otomotiv & AI" },
-        { "ticker": "COST", "name": "Costco Wholesale", "pct": 2.5, "market": "US", "ring": 1, "sector": "Tüketici" },
-        { "ticker": "AMD", "name": "Advanced Micro Devices", "pct": 2.2, "market": "US", "ring": 2, "sector": "İşlemci" }
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 8.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 8.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 7.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 5.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 4.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sosyal Medya"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 4.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Çip"
+        },
+        {
+          "ticker": "TSLA",
+          "name": "Tesla Inc.",
+          "pct": 3.8,
+          "market": "US",
+          "ring": 2,
+          "sector": "Otomotiv & AI"
+        },
+        {
+          "ticker": "COST",
+          "name": "Costco Wholesale",
+          "pct": 2.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Tüketici"
+        },
+        {
+          "ticker": "AMD",
+          "name": "Advanced Micro Devices",
+          "pct": 2.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "İşlemci"
+        }
       ],
       "finvest_insight": "Dünyanın en popüler teknoloji ETF'si. İlk 10 hisse fonun %52'sini oluşturur; boğa piyasasında çok hızlı koşar ancak teknoloji satışlarında sert düşer."
     },
@@ -304,25 +1035,114 @@
       "expense_ratio": 0.09,
       "risk_level": 5,
       "theme": "S&P 500 Piyasa Değeri Ağırlıklı",
-      "ring_distribution": { "ring1": 55, "ring2": 32, "ring3": 13 },
+      "ring_distribution": {
+        "ring1": 55,
+        "ring2": 32,
+        "ring3": 13
+      },
       "sector_distribution": [
-        { "name": "Bilgi Teknolojisi", "pct": 32 },
-        { "name": "Finans", "pct": 13 },
-        { "name": "Sağlık", "pct": 12 },
-        { "name": "Tüketici & İletişim", "pct": 20 },
-        { "name": "Sanayi, Enerji & Diğer", "pct": 23 }
+        {
+          "name": "Bilgi Teknolojisi",
+          "pct": 32
+        },
+        {
+          "name": "Finans",
+          "pct": 13
+        },
+        {
+          "name": "Sağlık",
+          "pct": 12
+        },
+        {
+          "name": "Tüketici & İletişim",
+          "pct": 20
+        },
+        {
+          "name": "Sanayi, Enerji & Diğer",
+          "pct": 23
+        }
       ],
       "holdings": [
-        { "ticker": "MSFT", "name": "Microsoft Corporation", "pct": 6.8, "market": "US", "ring": 1, "sector": "Yazılım" },
-        { "ticker": "AAPL", "name": "Apple Inc.", "pct": 6.5, "market": "US", "ring": 1, "sector": "Donanım" },
-        { "ticker": "NVDA", "name": "NVIDIA Corporation", "pct": 5.9, "market": "US", "ring": 1, "sector": "Yarı İletken" },
-        { "ticker": "AMZN", "name": "Amazon.com Inc.", "pct": 3.8, "market": "US", "ring": 1, "sector": "E-Ticaret" },
-        { "ticker": "META", "name": "Meta Platforms", "pct": 2.6, "market": "US", "ring": 1, "sector": "İletişim" },
-        { "ticker": "GOOGL", "name": "Alphabet Inc.", "pct": 2.2, "market": "US", "ring": 1, "sector": "İnternet" },
-        { "ticker": "BRK.B", "name": "Berkshire Hathaway", "pct": 1.8, "market": "US", "ring": 1, "sector": "Finans & Holding" },
-        { "ticker": "LLY", "name": "Eli Lilly and Company", "pct": 1.6, "market": "US", "ring": 1, "sector": "İlaç & Biyoteknoloji" },
-        { "ticker": "JPM", "name": "JPMorgan Chase & Co.", "pct": 1.4, "market": "US", "ring": 1, "sector": "Bankacılık" },
-        { "ticker": "TSLA", "name": "Tesla Inc.", "pct": 1.3, "market": "US", "ring": 2, "sector": "Otomotiv" }
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 6.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 6.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 5.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 3.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 2.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "İletişim"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 2.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "BRK.B",
+          "name": "Berkshire Hathaway",
+          "pct": 1.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Finans & Holding"
+        },
+        {
+          "ticker": "LLY",
+          "name": "Eli Lilly and Company",
+          "pct": 1.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç & Biyoteknoloji"
+        },
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase & Co.",
+          "pct": 1.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "TSLA",
+          "name": "Tesla Inc.",
+          "pct": 1.3,
+          "market": "US",
+          "ring": 2,
+          "sector": "Otomotiv"
+        }
       ],
       "finvest_insight": "Konsantrasyon Uyarısı: S&P 500 tarihin en yüksek yoğunlaşma dönemindedir. Endeksin %35'ini ilk 10 hisse taşımaktadır; 500 hissenin 308'i endeks gerisinde kalmıştır."
     },
@@ -335,28 +1155,117 @@
       "currency": "USD",
       "return_1y": 16.8,
       "return_3y": 22.4,
-      "expense_ratio": 0.20,
+      "expense_ratio": 0.2,
       "risk_level": 4,
       "theme": "S&P 500 Eşit Ağırlıklı (Balon Kalkanı)",
-      "ring_distribution": { "ring1": 42, "ring2": 44, "ring3": 14 },
+      "ring_distribution": {
+        "ring1": 42,
+        "ring2": 44,
+        "ring3": 14
+      },
       "sector_distribution": [
-        { "name": "Sanayi & İmalat", "pct": 16 },
-        { "name": "Finans", "pct": 15 },
-        { "name": "Teknoloji", "pct": 14 },
-        { "name": "Sağlık", "pct": 13 },
-        { "name": "Tüketici, Enerji, Kamu & Diğer", "pct": 42 }
+        {
+          "name": "Sanayi & İmalat",
+          "pct": 16
+        },
+        {
+          "name": "Finans",
+          "pct": 15
+        },
+        {
+          "name": "Teknoloji",
+          "pct": 14
+        },
+        {
+          "name": "Sağlık",
+          "pct": 13
+        },
+        {
+          "name": "Tüketici, Enerji, Kamu & Diğer",
+          "pct": 42
+        }
       ],
       "holdings": [
-        { "ticker": "VRT", "name": "Vertiv Holdings", "pct": 0.28, "market": "US", "ring": 2, "sector": "Altyapı" },
-        { "ticker": "GE", "name": "GE Aerospace", "pct": 0.26, "market": "US", "ring": 1, "sector": "Havacılık" },
-        { "ticker": "CEG", "name": "Constellation Energy", "pct": 0.25, "market": "US", "ring": 2, "sector": "Nükleer & Enerji" },
-        { "ticker": "LLY", "name": "Eli Lilly", "pct": 0.24, "market": "US", "ring": 1, "sector": "Sağlık" },
-        { "ticker": "AAPL", "name": "Apple Inc.", "pct": 0.22, "market": "US", "ring": 1, "sector": "Donanım" },
-        { "ticker": "MSFT", "name": "Microsoft Corp.", "pct": 0.21, "market": "US", "ring": 1, "sector": "Yazılım" },
-        { "ticker": "NVDA", "name": "NVIDIA Corp.", "pct": 0.21, "market": "US", "ring": 1, "sector": "Yarı İletken" },
-        { "ticker": "JNJ", "name": "Johnson & Johnson", "pct": 0.20, "market": "US", "ring": 1, "sector": "Sağlık" },
-        { "ticker": "PG", "name": "Procter & Gamble", "pct": 0.20, "market": "US", "ring": 1, "sector": "Tüketici" },
-        { "ticker": "JPM", "name": "JPMorgan Chase", "pct": 0.20, "market": "US", "ring": 1, "sector": "Bankacılık" }
+        {
+          "ticker": "VRT",
+          "name": "Vertiv Holdings",
+          "pct": 0.28,
+          "market": "US",
+          "ring": 2,
+          "sector": "Altyapı"
+        },
+        {
+          "ticker": "GE",
+          "name": "GE Aerospace",
+          "pct": 0.26,
+          "market": "US",
+          "ring": 1,
+          "sector": "Havacılık"
+        },
+        {
+          "ticker": "CEG",
+          "name": "Constellation Energy",
+          "pct": 0.25,
+          "market": "US",
+          "ring": 2,
+          "sector": "Nükleer & Enerji"
+        },
+        {
+          "ticker": "LLY",
+          "name": "Eli Lilly",
+          "pct": 0.24,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sağlık"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 0.22,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corp.",
+          "pct": 0.21,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corp.",
+          "pct": 0.21,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "JNJ",
+          "name": "Johnson & Johnson",
+          "pct": 0.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sağlık"
+        },
+        {
+          "ticker": "PG",
+          "name": "Procter & Gamble",
+          "pct": 0.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Tüketici"
+        },
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase",
+          "pct": 0.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bankacılık"
+        }
       ],
       "finvest_insight": "Eşit Ağırlık Avantajı: SPY'da teknoloji devleri düşerse endeks çöker. RSP'de ise 500 şirketin her biri eşit (%0.20) ağırlıktadır; yapay zeka balonu patlarsa en korunaklı sığınaktır."
     },
@@ -372,26 +1281,118 @@
       "expense_ratio": 0.06,
       "risk_level": 4,
       "theme": "Sıfır Borç Balonu & Nakit Temettü Şampiyonları",
-      "ring_distribution": { "ring1": 85, "ring2": 15, "ring3": 0 },
+      "ring_distribution": {
+        "ring1": 85,
+        "ring2": 15,
+        "ring3": 0
+      },
       "sector_distribution": [
-        { "name": "Finans & Sigorta", "pct": 18 },
-        { "name": "Sağlık & İlaç", "pct": 16 },
-        { "name": "Tüketici Ürünleri", "pct": 15 },
-        { "name": "Sanayi & Savunma", "pct": 14 },
-        { "name": "Teknoloji (Nakit Üreten)", "pct": 12 },
-        { "name": "Enerji & Diğer", "pct": 25 }
+        {
+          "name": "Finans & Sigorta",
+          "pct": 18
+        },
+        {
+          "name": "Sağlık & İlaç",
+          "pct": 16
+        },
+        {
+          "name": "Tüketici Ürünleri",
+          "pct": 15
+        },
+        {
+          "name": "Sanayi & Savunma",
+          "pct": 14
+        },
+        {
+          "name": "Teknoloji (Nakit Üreten)",
+          "pct": 12
+        },
+        {
+          "name": "Enerji & Diğer",
+          "pct": 25
+        }
       ],
       "holdings": [
-        { "ticker": "HD", "name": "The Home Depot", "pct": 4.8, "market": "US", "ring": 1, "sector": "Perakende" },
-        { "ticker": "CSCO", "name": "Cisco Systems", "pct": 4.6, "market": "US", "ring": 1, "sector": "Ağ Donanımı" },
-        { "ticker": "TXN", "name": "Texas Instruments", "pct": 4.4, "market": "US", "ring": 1, "sector": "Analog Çipler" },
-        { "ticker": "PFE", "name": "Pfizer Inc.", "pct": 4.2, "market": "US", "ring": 1, "sector": "İlaç" },
-        { "ticker": "AMGN", "name": "Amgen Inc.", "pct": 4.1, "market": "US", "ring": 1, "sector": "Biyoteknoloji" },
-        { "ticker": "CVX", "name": "Chevron Corporation", "pct": 4.0, "market": "US", "ring": 1, "sector": "Petrol & Gaz" },
-        { "ticker": "PEP", "name": "PepsiCo Inc.", "pct": 3.9, "market": "US", "ring": 1, "sector": "Gıda & İçecek" },
-        { "ticker": "ABBV", "name": "AbbVie Inc.", "pct": 3.8, "market": "US", "ring": 1, "sector": "İlaç" },
-        { "ticker": "LMT", "name": "Lockheed Martin", "pct": 3.7, "market": "US", "ring": 1, "sector": "Savunma" },
-        { "ticker": "KO", "name": "The Coca-Cola Company", "pct": 3.6, "market": "US", "ring": 1, "sector": "İçecek" }
+        {
+          "ticker": "HD",
+          "name": "The Home Depot",
+          "pct": 4.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Perakende"
+        },
+        {
+          "ticker": "CSCO",
+          "name": "Cisco Systems",
+          "pct": 4.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ağ Donanımı"
+        },
+        {
+          "ticker": "TXN",
+          "name": "Texas Instruments",
+          "pct": 4.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Analog Çipler"
+        },
+        {
+          "ticker": "PFE",
+          "name": "Pfizer Inc.",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç"
+        },
+        {
+          "ticker": "AMGN",
+          "name": "Amgen Inc.",
+          "pct": 4.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Biyoteknoloji"
+        },
+        {
+          "ticker": "CVX",
+          "name": "Chevron Corporation",
+          "pct": 4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Petrol & Gaz"
+        },
+        {
+          "ticker": "PEP",
+          "name": "PepsiCo Inc.",
+          "pct": 3.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Gıda & İçecek"
+        },
+        {
+          "ticker": "ABBV",
+          "name": "AbbVie Inc.",
+          "pct": 3.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç"
+        },
+        {
+          "ticker": "LMT",
+          "name": "Lockheed Martin",
+          "pct": 3.7,
+          "market": "US",
+          "ring": 1,
+          "sector": "Savunma"
+        },
+        {
+          "ticker": "KO",
+          "name": "The Coca-Cola Company",
+          "pct": 3.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "İçecek"
+        }
       ],
       "finvest_insight": "Sermaye Koruma Önerisi: Yapay zeka borç balonundan kaçınmak isteyenler için 10 yıl üst üste temettü artıran, yüksek ROE ve düşük borç taşıyan kurumsal kalelerdir. Temettü verimi %3.45'tir."
     },
@@ -403,30 +1404,1963 @@
       "manager": "VanEck",
       "currency": "USD",
       "return_1y": 68.4,
-      "return_3y": 142.0,
+      "return_3y": 142,
       "expense_ratio": 0.35,
       "risk_level": 7,
       "theme": "Saf Yapay Zeka Çip ve Yarı İletken Monopolü",
-      "ring_distribution": { "ring1": 45, "ring2": 52, "ring3": 3 },
+      "ring_distribution": {
+        "ring1": 45,
+        "ring2": 52,
+        "ring3": 3
+      },
       "sector_distribution": [
-        { "name": "GPU & Yapay Zeka Hızlandırıcı", "pct": 36 },
-        { "name": "Dökümhane & Fabrikasyon", "pct": 24 },
-        { "name": "Yarı İletken Ekipman & Litografi", "pct": 22 },
-        { "name": "Ağ & İletişim Çipleri", "pct": 18 }
+        {
+          "name": "GPU & Yapay Zeka Hızlandırıcı",
+          "pct": 36
+        },
+        {
+          "name": "Dökümhane & Fabrikasyon",
+          "pct": 24
+        },
+        {
+          "name": "Yarı İletken Ekipman & Litografi",
+          "pct": 22
+        },
+        {
+          "name": "Ağ & İletişim Çipleri",
+          "pct": 18
+        }
       ],
       "holdings": [
-        { "ticker": "NVDA", "name": "NVIDIA Corporation", "pct": 22.8, "market": "US", "ring": 1, "sector": "GPU & AI" },
-        { "ticker": "TSM", "name": "Taiwan Semiconductor", "pct": 13.5, "market": "US", "ring": 2, "sector": "Dökümhane" },
-        { "ticker": "AVGO", "name": "Broadcom Inc.", "pct": 8.2, "market": "US", "ring": 2, "sector": "Özel ASIC Çipler" },
-        { "ticker": "ASML", "name": "ASML Holding", "pct": 5.4, "market": "US", "ring": 2, "sector": "EUV Litografi" },
-        { "ticker": "QCOM", "name": "Qualcomm Inc.", "pct": 4.8, "market": "US", "ring": 2, "sector": "Mobil & Edge AI" },
-        { "ticker": "TXN", "name": "Texas Instruments", "pct": 4.5, "market": "US", "ring": 1, "sector": "Analog Çip" },
-        { "ticker": "AMD", "name": "Advanced Micro Devices", "pct": 4.3, "market": "US", "ring": 2, "sector": "CPU & GPU" },
-        { "ticker": "AMAT", "name": "Applied Materials", "pct": 4.1, "market": "US", "ring": 2, "sector": "Üretim Ekipmanı" },
-        { "ticker": "MU", "name": "Micron Technology", "pct": 3.9, "market": "US", "ring": 2, "sector": "HBM Bellek" },
-        { "ticker": "ADI", "name": "Analog Devices", "pct": 3.6, "market": "US", "ring": 1, "sector": "Sinyal İşleme" }
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 22.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "GPU & AI"
+        },
+        {
+          "ticker": "TSM",
+          "name": "Taiwan Semiconductor",
+          "pct": 13.5,
+          "market": "US",
+          "ring": 2,
+          "sector": "Dökümhane"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 8.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Özel ASIC Çipler"
+        },
+        {
+          "ticker": "ASML",
+          "name": "ASML Holding",
+          "pct": 5.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "EUV Litografi"
+        },
+        {
+          "ticker": "QCOM",
+          "name": "Qualcomm Inc.",
+          "pct": 4.8,
+          "market": "US",
+          "ring": 2,
+          "sector": "Mobil & Edge AI"
+        },
+        {
+          "ticker": "TXN",
+          "name": "Texas Instruments",
+          "pct": 4.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Analog Çip"
+        },
+        {
+          "ticker": "AMD",
+          "name": "Advanced Micro Devices",
+          "pct": 4.3,
+          "market": "US",
+          "ring": 2,
+          "sector": "CPU & GPU"
+        },
+        {
+          "ticker": "AMAT",
+          "name": "Applied Materials",
+          "pct": 4.1,
+          "market": "US",
+          "ring": 2,
+          "sector": "Üretim Ekipmanı"
+        },
+        {
+          "ticker": "MU",
+          "name": "Micron Technology",
+          "pct": 3.9,
+          "market": "US",
+          "ring": 2,
+          "sector": "HBM Bellek"
+        },
+        {
+          "ticker": "ADI",
+          "name": "Analog Devices",
+          "pct": 3.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sinyal İşleme"
+        }
       ],
       "finvest_insight": "Nvidia ve TSMC ağırlıklı çip tekeli. 1. Halka'nın harcadığı sermaye yatırımlarının (Capex) doğrudan kasasına aktığı 2. Halka tedarikçilerini barındırır."
+    },
+    "VOO": {
+      "code": "VOO",
+      "name": "Vanguard S&P 500 ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "Vanguard Group",
+      "currency": "USD",
+      "return_1y": 26.8,
+      "return_3y": 38.5,
+      "expense_ratio": 0.03,
+      "risk_level": 5,
+      "theme": "S&P 500 Düşük Maliyetli Çekirdek Endeks",
+      "ring_distribution": {
+        "ring1": 56,
+        "ring2": 31,
+        "ring3": 13
+      },
+      "sector_distribution": [
+        {
+          "name": "Bilgi Teknolojisi",
+          "pct": 32
+        },
+        {
+          "name": "Finans",
+          "pct": 13
+        },
+        {
+          "name": "Sağlık",
+          "pct": 12
+        },
+        {
+          "name": "Tüketici & İletişim",
+          "pct": 20
+        },
+        {
+          "name": "Sanayi, Enerji & Diğer",
+          "pct": 23
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 6.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 6.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 6.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 3.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 2.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "İletişim"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 2.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "BRK.B",
+          "name": "Berkshire Hathaway",
+          "pct": 1.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Finans & Holding"
+        },
+        {
+          "ticker": "LLY",
+          "name": "Eli Lilly and Company",
+          "pct": 1.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç & Biyoteknoloji"
+        },
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase & Co.",
+          "pct": 1.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "TSLA",
+          "name": "Tesla Inc.",
+          "pct": 1.3,
+          "market": "US",
+          "ring": 2,
+          "sector": "Otomotiv"
+        }
+      ],
+      "finvest_insight": "Dünyanın en popüler ve %0.03 ultra düşük gider oranına sahip S&P 500 fonudur. SPY ile aynı endeksi takip eder ancak uzun vadeli biriktiriciler için masraf avantajı sunar. Portföyün %35 kısmını 1. Halka nakit kaleleri (MSFT, AAPL, NVDA, AMZN) sırtlamaktadır."
+    },
+    "VTI": {
+      "code": "VTI",
+      "name": "Vanguard Total Stock Market ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "Vanguard Group",
+      "currency": "USD",
+      "return_1y": 25.9,
+      "return_3y": 34.8,
+      "expense_ratio": 0.03,
+      "risk_level": 5,
+      "theme": "Tüm ABD Hisse Senedi Piyasası (Büyük, Orta ve Küçük Ölçek)",
+      "ring_distribution": {
+        "ring1": 50,
+        "ring2": 34,
+        "ring3": 16
+      },
+      "sector_distribution": [
+        {
+          "name": "Bilgi Teknolojisi",
+          "pct": 30
+        },
+        {
+          "name": "Finans",
+          "pct": 14
+        },
+        {
+          "name": "Sağlık",
+          "pct": 12
+        },
+        {
+          "name": "Tüketici & İletişim",
+          "pct": 18
+        },
+        {
+          "name": "Sanayi, Enerji & Diğer",
+          "pct": 26
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 6.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 5.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 5.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 3.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 2.3,
+          "market": "US",
+          "ring": 1,
+          "sector": "İletişim"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 2,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "BRK.B",
+          "name": "Berkshire Hathaway",
+          "pct": 1.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Finans & Holding"
+        },
+        {
+          "ticker": "LLY",
+          "name": "Eli Lilly and Company",
+          "pct": 1.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç & Biyoteknoloji"
+        },
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase & Co.",
+          "pct": 1.3,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "TSLA",
+          "name": "Tesla Inc.",
+          "pct": 1.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Otomotiv"
+        }
+      ],
+      "finvest_insight": "S&P 500 sınırlarını aşarak ABD borsalarındaki 3.600 şirketi (büyük, orta ve küçük ölçek) tek pakette kapsar. Boglehead felsefesinin kalbidir; %72 büyük ölçek, %19 orta ölçek ve %9 küçük ölçek dağılımıyla tam piyasa nötr pozisyon sağlar."
+    },
+    "VT": {
+      "code": "VT",
+      "name": "Vanguard Total World Stock ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "Vanguard Group",
+      "currency": "USD",
+      "return_1y": 21.4,
+      "return_3y": 26.2,
+      "expense_ratio": 0.07,
+      "risk_level": 5,
+      "theme": "Tüm Dünya Küresel Hisse Senedi Endeksi (ABD + Gelişmiş + Gelişmekte Olan)",
+      "ring_distribution": {
+        "ring1": 48,
+        "ring2": 36,
+        "ring3": 16
+      },
+      "sector_distribution": [
+        {
+          "name": "Teknoloji",
+          "pct": 26
+        },
+        {
+          "name": "Finans",
+          "pct": 16
+        },
+        {
+          "name": "Sanayi",
+          "pct": 13
+        },
+        {
+          "name": "Tüketici",
+          "pct": 13
+        },
+        {
+          "name": "Sağlık",
+          "pct": 11
+        },
+        {
+          "name": "Diğer",
+          "pct": 21
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 3.7,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 2.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 1.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "İletişim"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 1.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "TSM",
+          "name": "Taiwan Semiconductor (TSMC)",
+          "pct": 1.2,
+          "market": "Global",
+          "ring": 2,
+          "sector": "Çip Döküm"
+        },
+        {
+          "ticker": "BRK.B",
+          "name": "Berkshire Hathaway",
+          "pct": 1.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Finans"
+        },
+        {
+          "ticker": "LLY",
+          "name": "Eli Lilly and Company",
+          "pct": 1,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç"
+        },
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase & Co.",
+          "pct": 0.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bankacılık"
+        }
+      ],
+      "finvest_insight": "Tek bir ETF ile dünya üzerindeki 9.800 şirkete ortak olma imkanı sunar. Coğrafi dağılım: %62 ABD, %16 Avrupa, %10 Pasifik, %10 Gelişmekte Olan Piyasalar. Tek bir ülke veya para birimi riskine bağımlı kalmak istemeyen küresel yatırımcılar için ideal baz varlıktır."
+    },
+    "VXUS": {
+      "code": "VXUS",
+      "name": "Vanguard Total International Stock ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "Vanguard Group",
+      "currency": "USD",
+      "return_1y": 14.8,
+      "return_3y": 11.2,
+      "expense_ratio": 0.07,
+      "risk_level": 4,
+      "theme": "ABD Dışı Tüm Dünya Hisse Senetleri (All-World ex-US)",
+      "ring_distribution": {
+        "ring1": 42,
+        "ring2": 44,
+        "ring3": 14
+      },
+      "sector_distribution": [
+        {
+          "name": "Finans",
+          "pct": 21
+        },
+        {
+          "name": "Sanayi",
+          "pct": 17
+        },
+        {
+          "name": "Teknoloji",
+          "pct": 14
+        },
+        {
+          "name": "Tüketici",
+          "pct": 12
+        },
+        {
+          "name": "Sağlık",
+          "pct": 10
+        },
+        {
+          "name": "Diğer",
+          "pct": 26
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "TSM",
+          "name": "Taiwan Semiconductor (TSMC)",
+          "pct": 3.2,
+          "market": "Global",
+          "ring": 2,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "NOVO-B",
+          "name": "Novo Nordisk",
+          "pct": 2.2,
+          "market": "Global",
+          "ring": 1,
+          "sector": "İlaç & Sağlık"
+        },
+        {
+          "ticker": "ASML",
+          "name": "ASML Holding",
+          "pct": 1.9,
+          "market": "Global",
+          "ring": 2,
+          "sector": "Litografi"
+        },
+        {
+          "ticker": "0700",
+          "name": "Tencent Holdings",
+          "pct": 1.6,
+          "market": "Global",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "SAP",
+          "name": "SAP SE",
+          "pct": 1.4,
+          "market": "Global",
+          "ring": 1,
+          "sector": "Kurumsal Yazılım"
+        },
+        {
+          "ticker": "005930",
+          "name": "Samsung Electronics",
+          "pct": 1.3,
+          "market": "Global",
+          "ring": 2,
+          "sector": "Bellek & Çip"
+        },
+        {
+          "ticker": "7203",
+          "name": "Toyota Motor",
+          "pct": 1.1,
+          "market": "Global",
+          "ring": 2,
+          "sector": "Otomotiv"
+        },
+        {
+          "ticker": "AZN",
+          "name": "AstraZeneca",
+          "pct": 1,
+          "market": "Global",
+          "ring": 1,
+          "sector": "Biyoteknoloji"
+        },
+        {
+          "ticker": "SHEL",
+          "name": "Shell plc",
+          "pct": 0.9,
+          "market": "Global",
+          "ring": 2,
+          "sector": "Enerji"
+        },
+        {
+          "ticker": "NOVN",
+          "name": "Novartis AG",
+          "pct": 0.8,
+          "market": "Global",
+          "ring": 1,
+          "sector": "İlaç"
+        }
+      ],
+      "finvest_insight": "ABD dışındaki küresel şirketleri kapsayan en kapsamlı fondur (8.500+ hisse). Avrupa devleri (Novo Nordisk, ASML, SAP) ve Asya yarı iletken/teknoloji devleri (TSMC, Tencent, Samsung) ağırlıklıdır."
+    },
+    "DIA": {
+      "code": "DIA",
+      "name": "SPDR Dow Jones Industrial Average ETF Trust",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "State Street Global Advisors",
+      "currency": "USD",
+      "return_1y": 22.1,
+      "return_3y": 31.5,
+      "expense_ratio": 0.16,
+      "risk_level": 4,
+      "theme": "Dow Jones 30 Dev Blue-Chip Şirketi (Fiyat Ağırlıklı)",
+      "ring_distribution": {
+        "ring1": 68,
+        "ring2": 24,
+        "ring3": 8
+      },
+      "sector_distribution": [
+        {
+          "name": "Finans",
+          "pct": 24
+        },
+        {
+          "name": "Sağlık",
+          "pct": 19
+        },
+        {
+          "name": "Teknoloji",
+          "pct": 18
+        },
+        {
+          "name": "Sanayi",
+          "pct": 15
+        },
+        {
+          "name": "Tüketici",
+          "pct": 14
+        },
+        {
+          "name": "Diğer",
+          "pct": 10
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "UNH",
+          "name": "UnitedHealth Group",
+          "pct": 9.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sağlık Sigortası"
+        },
+        {
+          "ticker": "GS",
+          "name": "Goldman Sachs",
+          "pct": 7.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yatırım Bankacılığı"
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 6.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "HD",
+          "name": "Home Depot",
+          "pct": 5.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yapı & Perakende"
+        },
+        {
+          "ticker": "CAT",
+          "name": "Caterpillar Inc.",
+          "pct": 5.5,
+          "market": "US",
+          "ring": 2,
+          "sector": "Ağır Sanayi"
+        },
+        {
+          "ticker": "AMGN",
+          "name": "Amgen Inc.",
+          "pct": 4.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Biyoteknoloji"
+        },
+        {
+          "ticker": "V",
+          "name": "Visa Inc.",
+          "pct": 4.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ödeme Sistemleri"
+        },
+        {
+          "ticker": "MCD",
+          "name": "McDonalds Corporation",
+          "pct": 4.3,
+          "market": "US",
+          "ring": 1,
+          "sector": "Restoran & Gıda"
+        },
+        {
+          "ticker": "CRM",
+          "name": "Salesforce Inc.",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bulut CRM"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 3.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Tüketici Elektroniği"
+        }
+      ],
+      "finvest_insight": "Dünyanın en köklü 30 Blue-Chip kalesini fiyat ağırlıklı modelle taşır. Piyasa değeri ağırlıklı S&P 500 ve Nasdaq kıyasla teknoloji yoğunlaşması çok daha düşüktür; defansif nakit akışı ve temettü ödeme gücü son derece yüksektir."
+    },
+    "IWM": {
+      "code": "IWM",
+      "name": "iShares Russell 2000 ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "BlackRock",
+      "currency": "USD",
+      "return_1y": 19.8,
+      "return_3y": 12.4,
+      "expense_ratio": 0.19,
+      "risk_level": 5,
+      "theme": "ABD Küçük Ölçekli Şirketler (Russell 2000 Small-Cap)",
+      "ring_distribution": {
+        "ring1": 20,
+        "ring2": 45,
+        "ring3": 35
+      },
+      "sector_distribution": [
+        {
+          "name": "Sanayi",
+          "pct": 18
+        },
+        {
+          "name": "Finans",
+          "pct": 17
+        },
+        {
+          "name": "Sağlık",
+          "pct": 15
+        },
+        {
+          "name": "Teknoloji",
+          "pct": 14
+        },
+        {
+          "name": "Tüketici",
+          "pct": 11
+        },
+        {
+          "name": "Diğer",
+          "pct": 25
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "SMCI",
+          "name": "Super Micro Computer",
+          "pct": 1.1,
+          "market": "US",
+          "ring": 2,
+          "sector": "AI Sunucuları"
+        },
+        {
+          "ticker": "MSTR",
+          "name": "MicroStrategy Inc.",
+          "pct": 1,
+          "market": "US",
+          "ring": 3,
+          "sector": "Kurumsal Yazılım & BTC"
+        },
+        {
+          "ticker": "FIX",
+          "name": "Comfort Systems USA",
+          "pct": 0.6,
+          "market": "US",
+          "ring": 2,
+          "sector": "HVAC & Soğutma"
+        },
+        {
+          "ticker": "LNW",
+          "name": "Light & Wonder",
+          "pct": 0.5,
+          "market": "US",
+          "ring": 2,
+          "sector": "Oyun Teknolojileri"
+        },
+        {
+          "ticker": "ONTO",
+          "name": "Onto Innovation",
+          "pct": 0.5,
+          "market": "US",
+          "ring": 2,
+          "sector": "Yarı İletken Ekipman"
+        },
+        {
+          "ticker": "ELF",
+          "name": "e.l.f. Beauty Inc.",
+          "pct": 0.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Kozmetik"
+        },
+        {
+          "ticker": "CRVL",
+          "name": "CorVel Corp",
+          "pct": 0.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "Sağlık Hizmetleri"
+        },
+        {
+          "ticker": "FTI",
+          "name": "TechnipFMC",
+          "pct": 0.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "Enerji Altyapısı"
+        },
+        {
+          "ticker": "SPXC",
+          "name": "SPX Technologies",
+          "pct": 0.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "Endüstriyel Altyapı"
+        },
+        {
+          "ticker": "ENSG",
+          "name": "Ensign Group",
+          "pct": 0.4,
+          "market": "US",
+          "ring": 2,
+          "sector": "Bakım Hizmetleri"
+        }
+      ],
+      "finvest_insight": "Fed faiz indirim döngüsünde en yüksek getiri potansiyeline ve en yüksek betaya sahip varlık sınıfıdır. Şirketlerin %40 kısmı değişken faizli borç taşıdığı için faizlerin düşmesi borç yükünü hafifletip kâr marjlarını hızla patlatır; ancak resesyon dönemlerinde oynaklığı çok yüksektir."
+    },
+    "SOXX": {
+      "code": "SOXX",
+      "name": "iShares Semiconductor ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "BlackRock",
+      "currency": "USD",
+      "return_1y": 42.5,
+      "return_3y": 84.1,
+      "expense_ratio": 0.35,
+      "risk_level": 5,
+      "theme": "Küresel Yarı İletken & Çip Ekosistemi",
+      "ring_distribution": {
+        "ring1": 62,
+        "ring2": 32,
+        "ring3": 6
+      },
+      "sector_distribution": [
+        {
+          "name": "Yarı İletken Tasarım & Üretim",
+          "pct": 82
+        },
+        {
+          "name": "Çip Üretim Ekipmanı",
+          "pct": 18
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 8.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "GPU & AI Hızlandırıcı"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 8.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Özel AI Çipleri (ASIC)"
+        },
+        {
+          "ticker": "AMD",
+          "name": "Advanced Micro Devices",
+          "pct": 7.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "İşlemci & GPU"
+        },
+        {
+          "ticker": "QCOM",
+          "name": "Qualcomm Inc.",
+          "pct": 6.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Mobil & Edge AI"
+        },
+        {
+          "ticker": "TSM",
+          "name": "Taiwan Semiconductor (TSMC)",
+          "pct": 4.8,
+          "market": "Global",
+          "ring": 2,
+          "sector": "Saf Çip Dökümhanesi"
+        },
+        {
+          "ticker": "TXN",
+          "name": "Texas Instruments",
+          "pct": 4.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Analog Çipler"
+        },
+        {
+          "ticker": "INTC",
+          "name": "Intel Corporation",
+          "pct": 4.3,
+          "market": "US",
+          "ring": 2,
+          "sector": "CPU & Dökümhane"
+        },
+        {
+          "ticker": "AMAT",
+          "name": "Applied Materials",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Çip Üretim Makineleri"
+        },
+        {
+          "ticker": "LRCX",
+          "name": "Lam Research",
+          "pct": 4.1,
+          "market": "US",
+          "ring": 2,
+          "sector": "Aşındırma Ekipmanı"
+        },
+        {
+          "ticker": "ASML",
+          "name": "ASML Holding",
+          "pct": 4,
+          "market": "Global",
+          "ring": 2,
+          "sector": "EUV Litografi"
+        }
+      ],
+      "finvest_insight": "Yapay zeka devriminin en kritik kazma kürek tedarikçileridir. SMH fonuna göre hisse ağırlıklandırması daha dengelidir (Nvidia tavanı %8 bandındadır). Süper döngüde yüksek nakit üretir ancak yarı iletken stok çevrimlerine karşı yüksek beta taşır."
+    },
+    "XLK": {
+      "code": "XLK",
+      "name": "Technology Select Sector SPDR Fund",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "State Street Global Advisors",
+      "currency": "USD",
+      "return_1y": 33.5,
+      "return_3y": 62.1,
+      "expense_ratio": 0.09,
+      "risk_level": 5,
+      "theme": "S&P 500 Saf Teknoloji ve Yazılım Sektörü",
+      "ring_distribution": {
+        "ring1": 72,
+        "ring2": 22,
+        "ring3": 6
+      },
+      "sector_distribution": [
+        {
+          "name": "Yazılım & Bulut",
+          "pct": 42
+        },
+        {
+          "name": "Yarı İletken",
+          "pct": 32
+        },
+        {
+          "name": "Donanım & Altyapı",
+          "pct": 26
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 16.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bulut & AI"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 15.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım Ekosistemi"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 14.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "AI Çipleri"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 5.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Özel Çip & Yazılım"
+        },
+        {
+          "ticker": "CRM",
+          "name": "Salesforce Inc.",
+          "pct": 3.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Kurumsal Yazılım"
+        },
+        {
+          "ticker": "AMD",
+          "name": "Advanced Micro Devices",
+          "pct": 3.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "İşlemci"
+        },
+        {
+          "ticker": "ADBE",
+          "name": "Adobe Inc.",
+          "pct": 3.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yaratıcı Yazılım"
+        },
+        {
+          "ticker": "ACN",
+          "name": "Accenture plc",
+          "pct": 3.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "IT Danışmanlık"
+        },
+        {
+          "ticker": "CSCO",
+          "name": "Cisco Systems",
+          "pct": 2.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ağ Ekipmanları"
+        },
+        {
+          "ticker": "INTU",
+          "name": "Intuit Inc.",
+          "pct": 2.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Finansal Yazılım"
+        }
+      ],
+      "finvest_insight": "S&P 500 içerisindeki en kârlı 1. Halka teknoloji kalelerini konsantre biçimde toplar. Microsoft, Apple ve Nvidia üçlüsü fonun neredeyse yarısını (%46) oluşturur; saf yapay zeka ve yazılım üretkenliği arayan yatırımcılar için turbo motordur."
+    },
+    "XLF": {
+      "code": "XLF",
+      "name": "Financial Select Sector SPDR Fund",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "State Street Global Advisors",
+      "currency": "USD",
+      "return_1y": 28.4,
+      "return_3y": 33.2,
+      "expense_ratio": 0.09,
+      "risk_level": 4,
+      "theme": "S&P 500 Finans, Bankacılık & Sigorta Sektörü",
+      "ring_distribution": {
+        "ring1": 65,
+        "ring2": 25,
+        "ring3": 10
+      },
+      "sector_distribution": [
+        {
+          "name": "Bankacılık",
+          "pct": 38
+        },
+        {
+          "name": "Finansal Hizmetler",
+          "pct": 32
+        },
+        {
+          "name": "Sigorta",
+          "pct": 22
+        },
+        {
+          "name": "Tüketici Finansmanı",
+          "pct": 8
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "BRK.B",
+          "name": "Berkshire Hathaway",
+          "pct": 13.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Finans & Holding"
+        },
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase & Co.",
+          "pct": 10.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Küresel Bankacılık"
+        },
+        {
+          "ticker": "V",
+          "name": "Visa Inc.",
+          "pct": 8.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ödeme Ağları"
+        },
+        {
+          "ticker": "MA",
+          "name": "Mastercard Inc.",
+          "pct": 7.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ödeme Ağları"
+        },
+        {
+          "ticker": "BAC",
+          "name": "Bank of America",
+          "pct": 4.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Mevduat Bankası"
+        },
+        {
+          "ticker": "WFC",
+          "name": "Wells Fargo",
+          "pct": 4.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bireysel Bankacılık"
+        },
+        {
+          "ticker": "MS",
+          "name": "Morgan Stanley",
+          "pct": 3.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Varlık Yönetimi"
+        },
+        {
+          "ticker": "GS",
+          "name": "Goldman Sachs",
+          "pct": 3.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yatırım Bankacılığı"
+        },
+        {
+          "ticker": "SPGI",
+          "name": "S&P Global Inc.",
+          "pct": 2.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Kredi Derecelendirme"
+        },
+        {
+          "ticker": "BLK",
+          "name": "BlackRock Inc.",
+          "pct": 2.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Varlık Yönetimi"
+        }
+      ],
+      "finvest_insight": "Berkshire Hathaway ve JPMorgan liderliğinde ABD finans sisteminin belkemiğidir. Faiz marjlarının yüksek kaldığı ortamlarda güçlü kâr ve temettü üretir. Bilanço solvency oranları 2008 krizinden bu yana en sağlam seviyededir."
+    },
+    "JEPI": {
+      "code": "JEPI",
+      "name": "JPMorgan Equity Premium Income ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "J.P. Morgan Asset Management",
+      "currency": "USD",
+      "return_1y": 15.2,
+      "return_3y": 28.6,
+      "expense_ratio": 0.35,
+      "risk_level": 3,
+      "theme": "Düşük Volatiliteli Hisse + Aylık Temettü / Covered Call Stratejisi",
+      "ring_distribution": {
+        "ring1": 58,
+        "ring2": 32,
+        "ring3": 10
+      },
+      "sector_distribution": [
+        {
+          "name": "Finans",
+          "pct": 16
+        },
+        {
+          "name": "Sanayi",
+          "pct": 15
+        },
+        {
+          "name": "Teknoloji",
+          "pct": 14
+        },
+        {
+          "name": "Sağlık",
+          "pct": 13
+        },
+        {
+          "name": "Tüketici",
+          "pct": 12
+        },
+        {
+          "name": "Diğer",
+          "pct": 30
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 1.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 1.7,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "TT",
+          "name": "Trane Technologies",
+          "pct": 1.6,
+          "market": "US",
+          "ring": 2,
+          "sector": "İklimlendirme"
+        },
+        {
+          "ticker": "PGR",
+          "name": "Progressive Corp.",
+          "pct": 1.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sigorta"
+        },
+        {
+          "ticker": "INTU",
+          "name": "Intuit Inc.",
+          "pct": 1.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Fintek"
+        },
+        {
+          "ticker": "ABBV",
+          "name": "AbbVie Inc.",
+          "pct": 1.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Biyofarmasötik"
+        },
+        {
+          "ticker": "MA",
+          "name": "Mastercard Inc.",
+          "pct": 1.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ödemeler"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 1.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "İletişim"
+        },
+        {
+          "ticker": "UNH",
+          "name": "UnitedHealth Group",
+          "pct": 1.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sağlık"
+        },
+        {
+          "ticker": "LLY",
+          "name": "Eli Lilly and Company",
+          "pct": 1.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç"
+        }
+      ],
+      "finvest_insight": "Hisse senedi yatırımı yaparken hisseler üzerine alım opsiyonu (covered call) satarak yıllık %7-%9 bandında aylık nakit temettü üreten popüler savunma fonudur. Düşen ve yatay piyasalarda opsiyon primleri sayesinde S&P 500 endeksine göre daha az değer kaybeder."
+    },
+    "JEPQ": {
+      "code": "JEPQ",
+      "name": "JPMorgan Nasdaq Equity Premium Income ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "J.P. Morgan Asset Management",
+      "currency": "USD",
+      "return_1y": 21.8,
+      "return_3y": 36.4,
+      "expense_ratio": 0.35,
+      "risk_level": 4,
+      "theme": "Nasdaq-100 Şirketleri + Aylık Yüksek Temettü / Opsiyon Primi",
+      "ring_distribution": {
+        "ring1": 64,
+        "ring2": 28,
+        "ring3": 8
+      },
+      "sector_distribution": [
+        {
+          "name": "Bilgi Teknolojisi",
+          "pct": 45
+        },
+        {
+          "name": "İletişim",
+          "pct": 18
+        },
+        {
+          "name": "Tüketici",
+          "pct": 15
+        },
+        {
+          "name": "Sağlık",
+          "pct": 8
+        },
+        {
+          "name": "Sanayi",
+          "pct": 14
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 8.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 7.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 7.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "AI Çipleri"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 4.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bulut & Perakende"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sosyal Ağ & VR"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 3.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Arama Motoru"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 3.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ağ & Çip"
+        },
+        {
+          "ticker": "TSLA",
+          "name": "Tesla Inc.",
+          "pct": 2.6,
+          "market": "US",
+          "ring": 2,
+          "sector": "EV & Enerji"
+        },
+        {
+          "ticker": "COST",
+          "name": "Costco Wholesale",
+          "pct": 2.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Toptan Perakende"
+        },
+        {
+          "ticker": "NFLX",
+          "name": "Netflix Inc.",
+          "pct": 1.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yayıncılık"
+        }
+      ],
+      "finvest_insight": "Nasdaq 100 teknoloji hisselerinin büyüme potansiyeli ile yüksek aylık opsiyon temettü getirisini (%9-%11) birleştirir. Teknoloji volatilitesinden yararlanarak düzenli nakit akışı arayan emeklilik ve gelir yatırımcıları için tasarlanmıştır."
+    },
+    "TLT": {
+      "code": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "BlackRock",
+      "currency": "USD",
+      "return_1y": 8.5,
+      "return_3y": -14.2,
+      "expense_ratio": 0.15,
+      "risk_level": 3,
+      "theme": "20+ Yıl Vadeli ABD Hazine Tahvilleri (Faiz İndirimi & Kriz Zırhı)",
+      "ring_distribution": {
+        "ring1": 100,
+        "ring2": 0,
+        "ring3": 0
+      },
+      "sector_distribution": [
+        {
+          "name": "ABD Devlet Tahvili",
+          "pct": 100
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "US-T-2044",
+          "name": "ABD Hazine Tahvili 2044 %4.25",
+          "pct": 12.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Devlet Tahvili"
+        },
+        {
+          "ticker": "US-T-2045",
+          "name": "ABD Hazine Tahvili 2045 %4.00",
+          "pct": 11.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Devlet Tahvili"
+        },
+        {
+          "ticker": "US-T-2053",
+          "name": "ABD Hazine Tahvili 2053 %4.75",
+          "pct": 10.4,
+          "market": "US",
+          "ring": 1,
+          "sector": "Devlet Tahvili"
+        }
+      ],
+      "finvest_insight": "Fed faiz indirimlerine başladığında veya küresel resesyon anında en güçlü sermaye kazancı sağlayan güvenli liman tahvil fonudur. Faizlerin her 100 baz puan düşüşünde tahvil fiyatı yaklaşık %15-%18 değer kazanır."
+    },
+    "GLD": {
+      "code": "GLD",
+      "name": "SPDR Gold Shares (Fiziki Altın ETF)",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "State Street Global Advisors",
+      "currency": "USD",
+      "return_1y": 38.2,
+      "return_3y": 52.4,
+      "expense_ratio": 0.4,
+      "risk_level": 3,
+      "theme": "Londra Kasalarında Saklanan %100 Fiziki Külçe Altın",
+      "ring_distribution": {
+        "ring1": 100,
+        "ring2": 0,
+        "ring3": 0
+      },
+      "sector_distribution": [
+        {
+          "name": "Fiziki Altın Külçe",
+          "pct": 100
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "XAU",
+          "name": "Fiziki Altın Külçeleri (London Vaults)",
+          "pct": 100,
+          "market": "Global",
+          "ring": 1,
+          "sector": "Kıymetli Maden"
+        }
+      ],
+      "finvest_insight": "Dünyanın en büyük ve en likit altın fonudur. Karşılığında Londra kasalarında fiziki altın külçeleri tutulur. Para birimlerindeki enflasyon devalüasyonuna ve jeopolitik kırılmalara karşı nihai sermaye kalkanıdır."
+    },
+    "IBIT": {
+      "code": "IBIT",
+      "name": "iShares Bitcoin Trust ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "BlackRock",
+      "currency": "USD",
+      "return_1y": 98.4,
+      "return_3y": 145.2,
+      "expense_ratio": 0.25,
+      "risk_level": 5,
+      "theme": "BlackRock Spot Bitcoin ETF (Kurumsal Kripto Rezervi)",
+      "ring_distribution": {
+        "ring1": 25,
+        "ring2": 40,
+        "ring3": 35
+      },
+      "sector_distribution": [
+        {
+          "name": "Spot Kripto Varlık",
+          "pct": 100
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "BTC",
+          "name": "Spot Bitcoin (Coinbase Custody)",
+          "pct": 100,
+          "market": "Crypto",
+          "ring": 1,
+          "sector": "Kripto Rezerv"
+        }
+      ],
+      "finvest_insight": "Tarihin en hızlı büyüyen ETF lansmanıdır. Wall Street kurumsal sermayesinin (emeklilik fonları, egemen varlık fonları) spot Bitcoin erişim kapısıdır."
+    },
+    "VUG": {
+      "code": "VUG",
+      "name": "Vanguard Growth ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "Vanguard Group",
+      "currency": "USD",
+      "return_1y": 31.2,
+      "return_3y": 45.6,
+      "expense_ratio": 0.04,
+      "risk_level": 5,
+      "theme": "ABD Büyük Ölçekli Büyüme Hisseleri (Large-Cap Growth)",
+      "ring_distribution": {
+        "ring1": 68,
+        "ring2": 24,
+        "ring3": 8
+      },
+      "sector_distribution": [
+        {
+          "name": "Teknoloji",
+          "pct": 55
+        },
+        {
+          "name": "Tüketici",
+          "pct": 19
+        },
+        {
+          "name": "Sağlık",
+          "pct": 9
+        },
+        {
+          "name": "Finans",
+          "pct": 7
+        },
+        {
+          "name": "Sanayi",
+          "pct": 10
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "MSFT",
+          "name": "Microsoft Corporation",
+          "pct": 12.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yazılım"
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "pct": 12.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "Donanım"
+        },
+        {
+          "ticker": "NVDA",
+          "name": "NVIDIA Corporation",
+          "pct": 11.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "AMZN",
+          "name": "Amazon.com Inc.",
+          "pct": 7.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "E-Ticaret"
+        },
+        {
+          "ticker": "META",
+          "name": "Meta Platforms",
+          "pct": 5.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "İletişim"
+        },
+        {
+          "ticker": "GOOGL",
+          "name": "Alphabet Inc.",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "İnternet"
+        },
+        {
+          "ticker": "LLY",
+          "name": "Eli Lilly and Company",
+          "pct": 3.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç"
+        },
+        {
+          "ticker": "TSLA",
+          "name": "Tesla Inc.",
+          "pct": 2.6,
+          "market": "US",
+          "ring": 2,
+          "sector": "Otomotiv"
+        },
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 2.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Çip"
+        },
+        {
+          "ticker": "V",
+          "name": "Visa Inc.",
+          "pct": 1.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Ödemeler"
+        }
+      ],
+      "finvest_insight": "Hızlı büyüyen, yüksek kâr marjlı ve sermaye getirisi güçlü ABD devlerine odaklanır. %0.04 masraf oranıyla büyüme odaklı yatırımcılar için düşük maliyetli ana motordur."
+    },
+    "VYM": {
+      "code": "VYM",
+      "name": "Vanguard High Dividend Yield ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "Vanguard Group",
+      "currency": "USD",
+      "return_1y": 23.4,
+      "return_3y": 30.1,
+      "expense_ratio": 0.06,
+      "risk_level": 4,
+      "theme": "ABD Yüksek Temettü Verimi & Bilanço Gücü",
+      "ring_distribution": {
+        "ring1": 70,
+        "ring2": 22,
+        "ring3": 8
+      },
+      "sector_distribution": [
+        {
+          "name": "Finans",
+          "pct": 21
+        },
+        {
+          "name": "Sanayi",
+          "pct": 13
+        },
+        {
+          "name": "Tüketici",
+          "pct": 12
+        },
+        {
+          "name": "Sağlık",
+          "pct": 12
+        },
+        {
+          "name": "Teknoloji",
+          "pct": 10
+        },
+        {
+          "name": "Enerji",
+          "pct": 10
+        },
+        {
+          "name": "Diğer",
+          "pct": 22
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "AVGO",
+          "name": "Broadcom Inc.",
+          "pct": 4.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Yarı İletken"
+        },
+        {
+          "ticker": "JPM",
+          "name": "JPMorgan Chase & Co.",
+          "pct": 3.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bankacılık"
+        },
+        {
+          "ticker": "XOM",
+          "name": "Exxon Mobil",
+          "pct": 3.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Petrol & Gaz"
+        },
+        {
+          "ticker": "JNJ",
+          "name": "Johnson & Johnson",
+          "pct": 2.8,
+          "market": "US",
+          "ring": 1,
+          "sector": "Sağlık"
+        },
+        {
+          "ticker": "HD",
+          "name": "Home Depot",
+          "pct": 2.6,
+          "market": "US",
+          "ring": 1,
+          "sector": "Perakende"
+        },
+        {
+          "ticker": "PG",
+          "name": "Procter & Gamble",
+          "pct": 2.5,
+          "market": "US",
+          "ring": 1,
+          "sector": "Tüketici Ürünleri"
+        },
+        {
+          "ticker": "ABBV",
+          "name": "AbbVie Inc.",
+          "pct": 2.3,
+          "market": "US",
+          "ring": 1,
+          "sector": "Biyofarmasötik"
+        },
+        {
+          "ticker": "MRK",
+          "name": "Merck & Co.",
+          "pct": 2.1,
+          "market": "US",
+          "ring": 1,
+          "sector": "İlaç"
+        },
+        {
+          "ticker": "CVX",
+          "name": "Chevron Corp.",
+          "pct": 2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Petrol & Gaz"
+        },
+        {
+          "ticker": "BAC",
+          "name": "Bank of America",
+          "pct": 1.9,
+          "market": "US",
+          "ring": 1,
+          "sector": "Bankacılık"
+        }
+      ],
+      "finvest_insight": "Ortalamanın üzerinde temettü dağıtan ve bilanço borçluluğu düşük 450 şirketi içerir. Gayrimenkul (REIT) içermez, bu sayede faiz artış dönemlerinde daha dayanıklı bir performans sergiler."
+    },
+    "ARKK": {
+      "code": "ARKK",
+      "name": "ARK Innovation ETF",
+      "category": "etf",
+      "category_label": "ABD & Global ETF",
+      "manager": "ARK Invest (Cathie Wood)",
+      "currency": "USD",
+      "return_1y": 18.5,
+      "return_3y": -12.4,
+      "expense_ratio": 0.75,
+      "risk_level": 5,
+      "theme": "Yıkıcı İnovasyon, Otonom Teknoloji & Genetik Devrim",
+      "ring_distribution": {
+        "ring1": 15,
+        "ring2": 35,
+        "ring3": 50
+      },
+      "sector_distribution": [
+        {
+          "name": "Teknoloji",
+          "pct": 36
+        },
+        {
+          "name": "Sağlık & Genomik",
+          "pct": 28
+        },
+        {
+          "name": "İletişim",
+          "pct": 18
+        },
+        {
+          "name": "Fintek",
+          "pct": 12
+        },
+        {
+          "name": "Sanayi",
+          "pct": 6
+        }
+      ],
+      "holdings": [
+        {
+          "ticker": "TSLA",
+          "name": "Tesla Inc.",
+          "pct": 11.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Otonom Araç & EV"
+        },
+        {
+          "ticker": "ROKU",
+          "name": "Roku Inc.",
+          "pct": 8.5,
+          "market": "US",
+          "ring": 3,
+          "sector": "Streaming Platformu"
+        },
+        {
+          "ticker": "COIN",
+          "name": "Coinbase Global",
+          "pct": 7.8,
+          "market": "US",
+          "ring": 2,
+          "sector": "Kripto Borsası"
+        },
+        {
+          "ticker": "SQ",
+          "name": "Block Inc.",
+          "pct": 6.9,
+          "market": "US",
+          "ring": 2,
+          "sector": "Fintek & Ödemeler"
+        },
+        {
+          "ticker": "PATH",
+          "name": "UiPath Inc.",
+          "pct": 5.2,
+          "market": "US",
+          "ring": 2,
+          "sector": "Robotik Süreç Otomasyonu"
+        },
+        {
+          "ticker": "RBLX",
+          "name": "Roblox Corp.",
+          "pct": 4.8,
+          "market": "US",
+          "ring": 3,
+          "sector": "Metaverse & Oyun"
+        },
+        {
+          "ticker": "CRSP",
+          "name": "CRISPR Therapeutics",
+          "pct": 4.4,
+          "market": "US",
+          "ring": 3,
+          "sector": "Gen Düzenleme"
+        },
+        {
+          "ticker": "HOOD",
+          "name": "Robinhood Markets",
+          "pct": 3.9,
+          "market": "US",
+          "ring": 2,
+          "sector": "Fintek Brokerage"
+        },
+        {
+          "ticker": "TWST",
+          "name": "Twist Bioscience",
+          "pct": 3.5,
+          "market": "US",
+          "ring": 3,
+          "sector": "Sentetik DNA"
+        },
+        {
+          "ticker": "PLTR",
+          "name": "Palantir Technologies",
+          "pct": 3.2,
+          "market": "US",
+          "ring": 1,
+          "sector": "Savunma & AI Analitiği"
+        }
+      ],
+      "finvest_insight": "Yıkıcı inovasyon ve yeni nesil teknolojilere odaklanan aktif yönetimli yüksek betalı fondur. Boğa piyasalarında patlayıcı getiri üretirken, sıkılaşma dönemlerinde 3. Halka sermaye seyrelmesi ve kârsız büyüme riski taşır."
     }
   }
 }

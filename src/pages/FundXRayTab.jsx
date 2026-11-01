@@ -35,11 +35,15 @@ export default function FundXRayTab({ onSelectStock }) {
   // Filtered funds by category and search
   const filteredFunds = useMemo(() => {
     return fundList.filter(f => {
-      const matchCat = activeCategory === 'all' || f.category === activeCategory;
-      const matchSearch = searchQuery.trim() === '' || 
-        f.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        f.theme.toLowerCase().includes(searchQuery.toLowerCase());
+      const isSearching = searchQuery.trim() !== '';
+      const matchCat = isSearching || activeCategory === 'all' || f.category === activeCategory;
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch = q === '' || 
+        f.code.toLowerCase().includes(q) || 
+        f.name.toLowerCase().includes(q) ||
+        (f.theme && f.theme.toLowerCase().includes(q)) ||
+        (f.manager && f.manager.toLowerCase().includes(q)) ||
+        (f.holdings && f.holdings.some(h => h.ticker.toLowerCase().includes(q) || h.name.toLowerCase().includes(q)));
       return matchCat && matchSearch;
     });
   }, [fundList, activeCategory, searchQuery]);
@@ -240,16 +244,16 @@ export default function FundXRayTab({ onSelectStock }) {
               onClick={() => setActiveCategory('etf')}
               style={{ fontSize: 10, padding: '2px 8px' }}
             >
-              🇺🇸 ABD & Global ETF'ler
+              🇺🇸 ABD & Global ETF'ler ({fundList.filter(f => f.category === 'etf').length})
             </button>
           </div>
 
           {/* Search Input */}
-          <div style={{ position: 'relative', width: 200 }}>
+          <div style={{ position: 'relative', width: 230 }}>
             <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
             <input
               type="text"
-              placeholder="Fon veya hisse ara..."
+              placeholder="Fon, ETF (VOO, VTI...) veya hisse ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -257,12 +261,33 @@ export default function FundXRayTab({ onSelectStock }) {
                 background: '#040711',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 5,
-                padding: '4px 8px 4px 26px',
+                padding: '4px 24px 4px 26px',
                 fontSize: 10.5,
                 color: '#f8fafc',
                 outline: 'none'
               }}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  padding: 0
+                }}
+                title="Aramayı Temizle"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
@@ -299,6 +324,30 @@ export default function FundXRayTab({ onSelectStock }) {
               </button>
             );
           })}
+          {filteredFunds.length === 0 && (
+            <div style={{ padding: '6px 10px', fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>"{searchQuery}" için sonuç bulunamadı. Popüler ETF'ler:</span>
+              {['VOO', 'VTI', 'QQQ', 'SPY', 'VT', 'SCHD', 'SOXX', 'XLK'].map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setSelectedFundCode(c); }}
+                  style={{
+                    background: 'rgba(0, 229, 255, 0.1)',
+                    border: '1px solid rgba(0, 229, 255, 0.3)',
+                    color: 'var(--cyan)',
+                    padding: '2px 7px',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    cursor: 'pointer',
+                    fontWeight: 700
+                  }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
