@@ -610,6 +610,9 @@ export default function NativeProChart({
 
   // Dynamic SVG Trendline Coordinates state
   const [svgTrendlines, setSvgTrendlines] = useState([]);
+  const [selectedTrendlineId, setSelectedTrendlineId] = useState(null);
+  const [dragHandleState, setDragHandleState] = useState(null); // { lineId, point: 'p1' | 'p2', pointerId, curX, curY, curPrice, curTime }
+  const [hoveredHandle, setHoveredHandle] = useState(null); // { lineId, point: 'p1' | 'p2' }
 
   // Drawing Tools State
   // Modes: null, 'horizontal', 'trendline'
@@ -1735,8 +1738,125 @@ export default function NativeProChart({
     }, 150);
   }, [candles, candleType, indicators, indicatorSettings, activeHolding, isBist, recalcSvgLines, syncHorizontalPriceLines]);
 
+  // Resolve chart time from pixel X coordinate with intelligent bar snapping
+  const resolveTimeFromCoordinate = useCallback((x) => {
+    if (!chartInstanceRef.current) return null;
+    const timeScale = chartInstanceRef.current.timeScale();
+    const rawTime = timeScale.coordinateToTime(x);
+    if (rawTime) return normalizeChartTime(rawTime);
+
+    // Fallback: Snap to nearest candle on current timescale
+    const activeCandles = candlesRef.current || [];
+    if (activeCandles.length > 0) {
+      let closestCandle = activeCandles[0];
+      let minDiff = Infinity;
+      for (let i = 0; i < activeCandles.length; i++) {
+        const c = activeCandles[i];
+        const barX = timeScale.timeToCoordinate(c.time);
+        if (barX !== null) {
+          const diff = Math.abs(barX - x);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestCandle = c;
+          }
+        }
+      }
+      return normalizeChartTime(closestCandle.time);
+    }
+    return null;
+  }, []);
+
+  // Draggable Trendline Endpoints Handlers (TradingView-style handles)
+  const handleEndpointPointerDown = (e, lineId, pointKey) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+
+    const rect = chartContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+
+    const price = candlestickSeriesRef.current?.coordinateToPrice(y);
+    const time = resolveTimeFromCoordinate(x);
+
+    setDragHandleState({
+      lineId,
+      point: pointKey,
+      pointerId: e.pointerId,
+      curX: x,
+      curY: y,
+      curPrice: price !== null && !isNaN(price) ? Number(price.toFixed(2)) : null,
+      curTime: time
+    });
+    setSelectedTrendlineId(lineId);
+  };
+
+  const handleEndpointPointerMove = (e) => {
+    if (!dragHandleState) return;
+    e.stopPropagation();
+    e.preventDefault();
+
+    const rect = chartContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+
+    const price = candlestickSeriesRef.current?.coordinateToPrice(y);
+    const time = resolveTimeFromCoordinate(x);
+
+    if (price !== null && !isNaN(price)) {
+      setDragHandleState(prev => ({
+        ...prev,
+        curX: x,
+        curY: y,
+        curPrice: Number(price.toFixed(2)),
+        curTime: time || prev.curTime
+      }));
+    }
+  };
+
+  const handleEndpointPointerUp = (e) => {
+    if (!dragHandleState) return;
+    e.stopPropagation();
+    e.preventDefault();
+
+    try {
+      e.currentTarget.releasePointerCapture(dragHandleState.pointerId);
+    } catch (err) {}
+
+    const { lineId, point, curPrice, curTime } = dragHandleState;
+    if (curPrice !== null && curTime !== null) {
+      const updatedTrendlines = (drawings.trendlines || []).map(t => {
+        if (t.id === lineId) {
+          return {
+            ...t,
+            [point]: {
+              time: curTime,
+              price: curPrice
+            }
+          };
+        }
+        return t;
+      });
+      saveDrawings({ ...drawings, trendlines: updatedTrendlines });
+      setTimeout(() => {
+        recalcSvgLines();
+      }, 40);
+    }
+    setDragHandleState(null);
+  };
+
   // Click & Drawing handler on Chart Container
   const handleChartClick = (e) => {
+    if (dragHandleState) return;
+    if (selectedTrendlineId) {
+      setSelectedTrendlineId(null);
+    }
+
     if (!activeDrawTool || !chartInstanceRef.current || !candlestickSeriesRef.current) return;
 
     const rect = chartContainerRef.current.getBoundingClientRect();
@@ -1785,6 +1905,10 @@ export default function NativeProChart({
   };
 
   const handleMouseMove = (e) => {
+    if (dragHandleState) {
+      handleEndpointPointerMove(e);
+      return;
+    }
     if (activeDrawTool === 'trendline' && trendStartPoint && chartContainerRef.current) {
       const rect = chartContainerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -2437,11 +2561,12 @@ export default function NativeProChart({
           flex: 1, 
           width: '100%', 
           minHeight: 350, 
-          cursor: activeDrawTool ? 'crosshair' : 'default',
+          cursor: activeDrawTool ? 'crosshair' : (dragHandleState ? 'grabbing' : 'default'),
           overflow: 'hidden'
         }}
         onClick={handleChartClick}
         onMouseMove={handleMouseMove}
+        onPointerUp={handleEndpointPointerUp}
       >
         {/* Loading Spinner */}
         {isLoading && (
@@ -2502,26 +2627,217 @@ export default function NativeProChart({
             inset: 0,
             width: '100%',
             height: '100%',
-            pointerEvents: 'none',
+            pointerEvents: dragHandleState ? 'all' : 'none',
             zIndex: 15
           }}
+          onPointerMove={handleEndpointPointerMove}
+          onPointerUp={handleEndpointPointerUp}
         >
           {/* Render Persistent Trendlines */}
           {svgTrendlines.map(t => {
             if (!t.valid) return null;
+            const isDraggingP1 = dragHandleState?.lineId === t.id && dragHandleState?.point === 'p1';
+            const isDraggingP2 = dragHandleState?.lineId === t.id && dragHandleState?.point === 'p2';
+            const isLineActive = dragHandleState?.lineId === t.id;
+            
+            const x1 = isDraggingP1 ? dragHandleState.curX : t.x1;
+            const y1 = isDraggingP1 ? dragHandleState.curY : t.y1;
+            const x2 = isDraggingP2 ? dragHandleState.curX : t.x2;
+            const y2 = isDraggingP2 ? dragHandleState.curY : t.y2;
+            const isSelected = selectedTrendlineId === t.id || isLineActive;
+            const color = t.color || '#38bdf8';
+
             return (
               <g key={t.id}>
+                {/* Wide invisible click target for the line body to select/highlight */}
                 <line
-                  x1={t.x1}
-                  y1={t.y1}
-                  x2={t.x2}
-                  y2={t.y2}
-                  stroke={t.color || '#38bdf8'}
-                  strokeWidth={2}
-                  strokeLinecap="round"
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="transparent"
+                  strokeWidth={14}
+                  style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedTrendlineId(prev => prev === t.id ? null : t.id);
+                  }}
                 />
-                <circle cx={t.x1} cy={t.y1} r={4} fill={t.color || '#38bdf8'} />
-                <circle cx={t.x2} cy={t.y2} r={4} fill={t.color || '#38bdf8'} />
+
+                {/* Visible Trendline */}
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={color}
+                  strokeWidth={isSelected ? 3 : 2}
+                  strokeLinecap="round"
+                  strokeDasharray={isLineActive ? '4 2' : undefined}
+                  style={{ pointerEvents: 'none' }}
+                />
+
+                {/* Point A Handle (P1) - Draggable */}
+                <g
+                  style={{ cursor: isDraggingP1 ? 'grabbing' : 'grab', pointerEvents: 'all' }}
+                  onPointerDown={(e) => handleEndpointPointerDown(e, t.id, 'p1')}
+                  onMouseEnter={() => setHoveredHandle({ lineId: t.id, point: 'p1' })}
+                  onMouseLeave={() => setHoveredHandle(null)}
+                >
+                  {/* Large invisible hit area (16px radius) so it's super easy to grab on touchpad/mouse */}
+                  <circle cx={x1} cy={y1} r={16} fill="transparent" />
+                  
+                  {/* Outer selection / hover glow ring */}
+                  {(isSelected || (hoveredHandle?.lineId === t.id && hoveredHandle?.point === 'p1')) && (
+                    <circle
+                      cx={x1}
+                      cy={y1}
+                      r={isDraggingP1 ? 11 : 9}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={2}
+                      opacity={0.8}
+                    />
+                  )}
+
+                  {/* Main Handle Circle */}
+                  <circle
+                    cx={x1}
+                    cy={y1}
+                    r={isDraggingP1 ? 6.5 : (isSelected ? 5.5 : 4.5)}
+                    fill={isDraggingP1 ? '#00e5ff' : '#ffffff'}
+                    stroke={color}
+                    strokeWidth={2}
+                  />
+                </g>
+
+                {/* Point B Handle (P2) - Draggable */}
+                <g
+                  style={{ cursor: isDraggingP2 ? 'grabbing' : 'grab', pointerEvents: 'all' }}
+                  onPointerDown={(e) => handleEndpointPointerDown(e, t.id, 'p2')}
+                  onMouseEnter={() => setHoveredHandle({ lineId: t.id, point: 'p2' })}
+                  onMouseLeave={() => setHoveredHandle(null)}
+                >
+                  {/* Large invisible hit area (16px radius) */}
+                  <circle cx={x2} cy={y2} r={16} fill="transparent" />
+                  
+                  {/* Outer selection / hover glow ring */}
+                  {(isSelected || (hoveredHandle?.lineId === t.id && hoveredHandle?.point === 'p2')) && (
+                    <circle
+                      cx={x2}
+                      cy={y2}
+                      r={isDraggingP2 ? 11 : 9}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={2}
+                      opacity={0.8}
+                    />
+                  )}
+
+                  {/* Main Handle Circle */}
+                  <circle
+                    cx={x2}
+                    cy={y2}
+                    r={isDraggingP2 ? 6.5 : (isSelected ? 5.5 : 4.5)}
+                    fill={isDraggingP2 ? '#00e5ff' : '#ffffff'}
+                    stroke={color}
+                    strokeWidth={2}
+                  />
+                </g>
+
+                {/* Floating Mini Action Bar for Selected Trendline */}
+                {isSelected && !dragHandleState && (
+                  <foreignObject
+                    x={Math.max(10, Math.min((chartContainerRef.current?.clientWidth || 800) - 170, (x1 + x2) / 2 - 80))}
+                    y={Math.max(10, Math.min(y1, y2) - 36)}
+                    width={170}
+                    height={32}
+                    style={{ overflow: 'visible', pointerEvents: 'all' }}
+                  >
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(8, 12, 24, 0.96)',
+                      border: '1px solid rgba(0, 229, 255, 0.4)',
+                      borderRadius: 6,
+                      padding: '3px 8px',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.7)',
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      color: '#fff',
+                      userSelect: 'none'
+                    }}>
+                      <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>Trend</span>
+                      {/* Color Palette Chips */}
+                      {['#38bdf8', '#10b981', '#f59e0b', '#ef4444', '#a855f7'].map(c => (
+                        <span
+                          key={c}
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            const updated = (drawings.trendlines || []).map(item => item.id === t.id ? { ...item, color: c } : item);
+                            saveDrawings({ ...drawings, trendlines: updated });
+                          }}
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            background: c,
+                            cursor: 'pointer',
+                            boxSizing: 'border-box',
+                            border: color === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)'
+                          }}
+                          title="Renk Değiştir"
+                        />
+                      ))}
+                      {/* Quick Delete */}
+                      <span
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          deleteTrendline(t.id);
+                          setSelectedTrendlineId(null);
+                        }}
+                        style={{
+                          cursor: 'pointer',
+                          color: '#ef4444',
+                          fontWeight: 800,
+                          padding: '0 4px',
+                          borderRadius: 3,
+                          background: 'rgba(239, 68, 68, 0.15)'
+                        }}
+                        title="Çizgiyi Sil"
+                      >
+                        ✕
+                      </span>
+                    </div>
+                  </foreignObject>
+                )}
+
+                {/* Live Price Tag HUD during Handle Dragging */}
+                {(isDraggingP1 || isDraggingP2) && dragHandleState?.curPrice && (
+                  <foreignObject
+                    x={(isDraggingP1 ? x1 : x2) + 12}
+                    y={(isDraggingP1 ? y1 : y2) - 14}
+                    width={130}
+                    height={28}
+                    style={{ overflow: 'visible', pointerEvents: 'none' }}
+                  >
+                    <div style={{
+                      background: 'rgba(0, 229, 255, 0.95)',
+                      color: '#06080e',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      fontFamily: 'monospace',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {isDraggingP1 ? 'A: ' : 'B: '}
+                      {isBist ? `₺${dragHandleState.curPrice}` : `$${dragHandleState.curPrice}`}
+                    </div>
+                  </foreignObject>
+                )}
               </g>
             );
           })}
