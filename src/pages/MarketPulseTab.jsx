@@ -1837,6 +1837,10 @@ export default function MarketPulseTab({ onSelectStock }) {
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: isLiveNewsActive ? '#10b981' : '#38bdf8', display: 'inline-block' }} />
               {isLiveNewsActive ? 'CANLI RSS / API AKTİF' : 'GÜNCEL AKIŞ'}
             </span>
+            <span className="nav-badge cyan" style={{ fontSize: 9, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0, 229, 255, 0.1)', border: '1px solid rgba(0, 229, 255, 0.25)', color: 'var(--cyan)' }}>
+              <span>🇹🇷</span>
+              <span>TÜRKÇE ÇEVİRİ AKTİF</span>
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1966,6 +1970,25 @@ export default function MarketPulseTab({ onSelectStock }) {
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {n.translated && (
+                      <span
+                        title={n.original_title ? `Orijinal Başlık: ${n.original_title}` : 'İngilizce kaynaktan Türkçeye çevrildi'}
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: 3,
+                          background: 'rgba(0, 229, 255, 0.12)',
+                          color: 'var(--cyan)',
+                          border: '1px solid rgba(0, 229, 255, 0.25)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3
+                        }}
+                      >
+                        🇹🇷 TR
+                      </span>
+                    )}
                     <span
                       style={{
                         fontSize: 9.5,
@@ -1982,9 +2005,29 @@ export default function MarketPulseTab({ onSelectStock }) {
                     {n.link && <ExternalLink size={11} style={{ color: 'var(--text-muted)' }} />}
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: '#e2e8f0', lineHeight: 1.45, fontWeight: 500 }}>
+                <div 
+                  style={{ fontSize: 12, color: '#e2e8f0', lineHeight: 1.45, fontWeight: 500 }}
+                  title={n.original_title ? `Orijinal Başlık: ${n.original_title}` : undefined}
+                >
                   {n.title}
                 </div>
+                {n.original_title && (
+                  <div 
+                    style={{ 
+                      fontSize: 10, 
+                      color: 'var(--text-dim)', 
+                      fontStyle: 'italic',
+                      lineHeight: 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 1,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}
+                    title={n.original_title}
+                  >
+                    ENG: {n.original_title}
+                  </div>
+                )}
               </a>
             );
           })}

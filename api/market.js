@@ -238,17 +238,63 @@ const CAP_BENCHMARKS = {
   'TOTALDEFI': { price: 94100000000, changePct: 1.90, label: '$94.1B', currency: 'USD' }
 };
 
+// In-memory cache for news translations to avoid repeated API calls
+const newsTranslationCache = new Map();
+
+async function translateToTurkish(text) {
+  if (!text || typeof text !== 'string') return text;
+  const clean = text.trim();
+  if (!clean || clean.length < 5) return clean;
+  if (newsTranslationCache.has(clean)) return newsTranslationCache.get(clean);
+
+  // Check if text contains typical English words
+  const isLikelyEnglish = /\b(the|and|in|on|at|to|for|with|as|by|from|after|before|amid|surges|drops|falls|climbs|record|high|low|quarter|shares|stock|market|earnings|revenue|growth|ceo|fed|rate|rates|inflation|report|ahead|plans|deals|soars|slumps|beats|misses|warning|cuts|hikes|steady|unveils|plunges|losses|gains|rally|selloff|analysts|target|investors|wall street|yields|treasury|crypto|bitcoin|etf|sec)\b/i.test(clean);
+
+  if (!isLikelyEnglish) {
+    newsTranslationCache.set(clean, clean);
+    return clean;
+  }
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(clean)}`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json) && json[0]) {
+        const translated = json[0].map(part => part[0]).join('').trim();
+        if (translated && translated.length > 3) {
+          newsTranslationCache.set(clean, translated);
+          return translated;
+        }
+      }
+    }
+  } catch (e) {}
+
+  return clean;
+}
+
 async function fetchMarketNews() {
   try {
-    const trPromise = fetch('https://news.google.com/rss/search?q=(BIST+OR+TCMB+OR+borsa+OR+enflasyon)+when:3d&hl=tr&gl=TR&ceid=TR:tr', {
+    // 1. Domestic BIST, TCMB, TÜİK news in Turkish
+    const trPromise = fetch('https://news.google.com/rss/search?q=(BIST+OR+TCMB+OR+borsa+OR+enflasyon+OR+faiz)+when:3d&hl=tr&gl=TR&ceid=TR:tr', {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     }).then(r => r.text()).catch(() => '');
 
+    // 2. Global Wall St, Fed, Tech news from Turkish financial media (BloombergHT, Foreks, Dünya, Ekonomim)
+    const trGlobalPromise = fetch('https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+Wall+Street+OR+Bitcoin+OR+Nasdaq+OR+hisse+OR+alt%C4%B1n)+when:3d&hl=tr&gl=TR&ceid=TR:tr', {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    }).then(r => r.text()).catch(() => '');
+
+    // 3. International Global news (Reuters, Bloomberg, CNBC) to be auto-translated to Turkish
     const globalPromise = fetch('https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+stocks+OR+crypto)+when:2d&hl=en-US&gl=US&ceid=US:en', {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     }).then(r => r.text()).catch(() => '');
 
-    const [trXml, globalXml] = await Promise.all([trPromise, globalPromise]);
+    const [trXml, trGlobalXml, globalXml] = await Promise.all([trPromise, trGlobalPromise, globalPromise]);
 
     function parseXmlItems(xml, defaultCategory) {
       if (!xml) return [];
@@ -271,15 +317,15 @@ async function fetchMarketNews() {
           tag = 'BIST & KAP';
         } else if (lower.includes('tcmb') || lower.includes('merkez bank') || lower.includes('faiz') || lower.includes('enflasyon') || lower.includes('şimşek') || lower.includes('tüik')) {
           tag = 'TCMB & Makro';
-        } else if (lower.includes('nvidia') || lower.includes('chip') || lower.includes('çip') || lower.includes('ai') || lower.includes('yapay zeka') || lower.includes('tsmc') || lower.includes('semiconductor')) {
+        } else if (lower.includes('nvidia') || lower.includes('chip') || lower.includes('çip') || lower.includes('ai') || lower.includes('yapay zeka') || lower.includes('tsmc') || lower.includes('semiconductor') || lower.includes('apple') || lower.includes('microsoft')) {
           tag = 'Teknoloji & AI';
-        } else if (lower.includes('bitcoin') || lower.includes('kripto') || lower.includes('crypto') || lower.includes('altın') || lower.includes('gold') || lower.includes('petrol')) {
+        } else if (lower.includes('bitcoin') || lower.includes('kripto') || lower.includes('crypto') || lower.includes('altın') || lower.includes('gold') || lower.includes('petrol') || lower.includes('emtia')) {
           tag = 'Kripto & Emtia';
-        } else if (lower.includes('fed') || lower.includes('fomc') || lower.includes('powell') || lower.includes('wall st') || lower.includes('s&p')) {
+        } else if (lower.includes('fed') || lower.includes('fomc') || lower.includes('powell') || lower.includes('warsh') || lower.includes('wall st') || lower.includes('s&p') || lower.includes('nasdaq')) {
           tag = 'Fed & Wall St';
         }
 
-        const bearishWords = ['düştü', 'geriledi', 'kayıp', 'baskı', 'satıcılı', 'risk', 'çöktü', 'alarm', 'slump', 'falls', 'tumbles', 'drop', 'warning'];
+        const bearishWords = ['düştü', 'geriledi', 'kayıp', 'baskı', 'satıcılı', 'risk', 'çöktü', 'alarm', 'slump', 'falls', 'tumbles', 'drop', 'warning', 'down', 'losses', 'plunge'];
         const bull = !bearishWords.some(w => lower.includes(w));
 
         return {
@@ -294,15 +340,34 @@ async function fetchMarketNews() {
       }).filter(n => n.title.length > 5);
     }
 
-    const trItems = parseXmlItems(trXml, 'BIST & TCMB');
-    const globalItems = parseXmlItems(globalXml, 'Fed & Küresel');
+    const trItems = parseXmlItems(trXml, 'BIST & KAP');
+    const trGlobalItems = parseXmlItems(trGlobalXml, 'Fed & Wall St');
+    const globalItems = parseXmlItems(globalXml, 'Fed & Wall St');
 
+    // Combine items alternately for diverse coverage
     const combined = [];
-    const maxLen = Math.max(trItems.length, globalItems.length);
+    const maxLen = Math.max(trItems.length, trGlobalItems.length, globalItems.length);
     for (let i = 0; i < maxLen; i++) {
       if (trItems[i]) combined.push(trItems[i]);
+      if (trGlobalItems[i]) combined.push(trGlobalItems[i]);
       if (globalItems[i]) combined.push(globalItems[i]);
     }
+
+    // Auto-translate any English headlines into fluent Turkish
+    await Promise.all(
+      combined.map(async (item) => {
+        try {
+          const original = item.title;
+          const translated = await translateToTurkish(original);
+          if (translated && translated !== original) {
+            item.title = translated;
+            item.original_title = original;
+            item.translated = true;
+          }
+        } catch (e) {}
+      })
+    );
+
     return combined;
   } catch (err) {
     return [];
