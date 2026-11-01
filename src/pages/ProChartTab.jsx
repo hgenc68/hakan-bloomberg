@@ -447,6 +447,7 @@ export const SEARCH_CATALOG = [
   { ticker: "EREGL.IS", name: "Ereğli Demir ve Çelik", market: "BIST", keywords: "eregl erdemir çelik demir yassı metal sanayi" },
   { ticker: "KCHOL.IS", name: "Koç Holding", market: "BIST", keywords: "kchol koç holding sanayi otomotiv enerji" },
   { ticker: "SAHOL.IS", name: "Sabancı Holding", market: "BIST", keywords: "sahol sabancı holding enerji banka sanayi" },
+  { ticker: "AGHOL.IS", name: "AG Anadolu Grubu Holding", market: "BIST", keywords: "aghol anadolu grubu holding efes ccola migros togg perakende otomotiv meşrubat" },
   { ticker: "BIMAS.IS", name: "BİM Birleşik Mağazalar", market: "BIST", keywords: "bimas bim perakende market gıda indirim" },
   { ticker: "SISE.IS", name: "Şişecam Cam Sanayii", market: "BIST", keywords: "sise şişe cam düzcam kimyasallar global" },
   { ticker: "FROTO.IS", name: "Ford Otosan", market: "BIST", keywords: "froto ford otomotiv araba ticari araç ihracat" },

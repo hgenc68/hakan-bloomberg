@@ -358,17 +358,29 @@ export function getTickerSector(ticker, type) {
 export const KNOWN_EXPORTERS = new Set(['THYAO', 'FROTO', 'SISE', 'CCOLA', 'PGSUS', 'TOASO', 'TUPRS', 'EREGL', 'ASELS']);
 export const KNOWN_CRYPTO = new Set(['BTC', 'ETH', 'SUI', 'OP', 'ARKM', 'DOGE', 'BIO', 'LDO', 'SOL', 'AVAX', 'XRP', 'LINK', 'BNB', 'DOGE-USD', 'BTC-USD', 'ETH-USD', 'BIO-USD']);
 
-// BIST 100 & Popüler Türk Şirketleri Havuzu
+// BIST 100 & Popüler Türk Şirketleri Havuzu (Kapsamlı BIST Evreni)
 export const BIST_TICKERS = new Set([
+  // BIST 30 & Çekirdek Holding / Sanayi
   'THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 
   'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK',
   'PGSUS', 'CCOLA', 'TOASO', 'TRGYO', 'ENKAI', 'VAKBN', 'HALKB',
   'ASTOR', 'SASA', 'KRDMD', 'ARCLK', 'VESTL', 'VESBE', 'TCELL',
-  'TTKOM', 'TAVHL', 'TTRAK', 'OTKAR', 'GUBRF', 'HEKTS', 'KONTRA',
+  'TTKOM', 'TAVHL', 'TTRAK', 'OTKAR', 'GUBRF', 'HEKTS', 'KONTR', 'KONTRA',
   'SMRTG', 'EUPWR', 'CWENE', 'ALARK', 'ENJSA', 'AKSEN', 'ODAS',
   'KOZAL', 'KOZAA', 'IPEKE', 'TKFEN', 'DOHOL', 'EKGYO', 'ISGYO',
   'MAVI', 'ULKER', 'AEFES', 'BRSAN', 'KORDS', 'OYAKC', 'CIMSA',
-  'BERA', 'KCAER', 'ISMEN', 'TABGD', 'SOKM', 'MGROS', 'PETKM'
+  'BERA', 'KCAER', 'ISMEN', 'TABGD', 'SOKM', 'MGROS', 'PETKM',
+  // BIST 100 Genişleme & Popüler Şirketler (AGHOL ve BIST Blue-Chip Ekosistemi)
+  'AGHOL', 'AGROT', 'AHGAZ', 'AKCNS', 'AKFGY', 'AKFYE', 'AKSA', 'ALBRK', 
+  'ALFAS', 'ANSGR', 'ARDYZ', 'AYDEM', 'BFREN', 'BINHO', 'BIOEN', 'BOBET', 
+  'BRYAT', 'BSOKE', 'BTCIM', 'BUCIM', 'CANTE', 'CLEBI', 'DOAS', 'ECILC', 
+  'ECZYT', 'EGEEN', 'ENERY', 'EUREN', 'GENIL', 'GESAN', 'GLYHO', 'GOLTS', 
+  'GSDHO', 'GWIND', 'INVES', 'ISDMR', 'IZMDC', 'KARSN', 'KAYSE', 'KMPUR', 
+  'KONYA', 'KZBGY', 'MIATK', 'MOBTL', 'PASEU', 'PENTA', 'QUAGR', 'REEDR', 
+  'SDTTR', 'SKBNK', 'TARKM', 'TATEN', 'TMSN', 'TSKB', 'TURSG', 'YEOTK', 
+  'YYLGD', 'ZOREN',
+  // BIST Endeksleri
+  'XU100', 'XU030', 'XBANK', 'XUSIN'
 ]);
 
 /**

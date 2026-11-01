@@ -263,7 +263,7 @@ function synthesizePotentialStock(pot) {
 
 function synthesizeGenericStock(sym, marketQuotes = {}) {
   const clean = sym.toUpperCase().trim().replace('.IS', '');
-  const isBIST = sym.toUpperCase().endsWith('.IS') || ['THYAO', 'TUPRS', 'EREGL', 'FROTO', 'BYDNR', 'BIMAS', 'ASELS', 'KCHOL', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'YKBNK'].includes(clean);
+  const isBIST = sym.toUpperCase().endsWith('.IS') || isBistTicker(clean);
   const currency = isBIST ? 'TRY' : 'USD';
   
   // Specific model for AMZN (Amazon.com Inc.)
@@ -379,7 +379,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
   }
 
   // Universal fallback synthesizer for ANY stock (TSLA, GOOGL, META, PLTR, AMD, etc.)
-  const quotePrice = Number(marketQuotes[clean]?.price || marketQuotes[`${clean}.IS`]?.price) || (isBIST ? 120.0 : 85.0);
+  const quotePrice = Number(marketQuotes[clean]?.price || marketQuotes[`${clean}.IS`]?.price) || (isBIST ? (clean === 'AGHOL' ? 376.50 : 185.0) : 85.0);
   const p = quotePrice;
   const target = Math.round(p * 1.35 * 100) / 100;
   const low52 = Math.round(p * 0.65 * 100) / 100;
@@ -396,7 +396,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
     full_ticker: clean,
     candlestick: {
       ticker: clean,
-      name: `${clean} Corp`,
+      name: isBIST ? (clean === 'AGHOL' ? 'AG Anadolu Grubu Holding A.Ş.' : `${clean} Sanayi ve Ticaret A.Ş.`) : `${clean} Corp`,
       currency,
       current_price: p,
       day_change_pct: 1.10,
@@ -406,7 +406,7 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
     },
     dcf: {
       ticker: clean,
-      company_name: `${clean} Inc.`,
+      company_name: isBIST ? (clean === 'AGHOL' ? 'AG Anadolu Grubu Holding A.Ş.' : `${clean} Sanayi ve Ticaret A.Ş.`) : `${clean} Inc.`,
       currency,
       current_price: p,
       analyst_target: target,
@@ -414,9 +414,9 @@ function synthesizeGenericStock(sym, marketQuotes = {}) {
       inputs: {
         base_fcf: Math.max(100, Math.round(p * 25)),
         shares: Math.max(10, Math.round(p * 12)),
-        wacc: 9.5,
-        growth_5y: 18.0,
-        terminal_multiple: 22.0
+        wacc: isBIST ? 26.0 : 9.5,
+        growth_5y: isBIST ? 28.0 : 18.0,
+        terminal_multiple: isBIST ? 8.0 : 22.0
       }
     },
     qualtrim: { quarters, revenue, net_income: netIncome, fcf, price: priceHistory },
@@ -648,7 +648,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
      cleanTickerUpper === 'BYDNR' ? 23.28 :
      cleanTickerUpper === 'SPCX' ? 163.84 :
      cleanTickerUpper === 'DRAM' ? 54.67 :
-     150.0)
+     cleanTickerUpper === 'AGHOL' ? 376.50 : isBist ? 185.0 : 150.0)
   );
 
   const effectiveChangePct = candidateQuote?.changePct != null
@@ -664,6 +664,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   const dcfData = {
     ...(activeStock?.dcf || {}),
+    currency: (isBist || currentTicker.endsWith('.IS') || isBistTicker(currentTicker)) ? 'TRY' : (activeStock?.dcf?.currency || 'USD'),
     current_price: effectiveLivePrice,
     analyst_target: (activeStock?.dcf?.analyst_target && activeStock.dcf.analyst_target > effectiveLivePrice * 0.75 && activeStock.dcf.analyst_target < effectiveLivePrice * 2.5)
       ? activeStock.dcf.analyst_target
@@ -817,7 +818,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   // Dynamic DCF recalculation based on sliders
   const curPrice = effectiveLivePrice;
-  const currencySym = (dcfData?.currency === 'TRY' || currentTicker.endsWith('.IS')) ? '₺' : '$';
+  const currencySym = (isBist || isBistTicker(currentTicker) || dcfData?.currency === 'TRY' || currentTicker.endsWith('.IS')) ? '₺' : '$';
 
   // Calculate normalized base FCF per share (scales perfectly for any stock price and currency context)
   const isTurkish = isBist || currentTicker.endsWith('.IS') || dcfData?.currency === 'TRY';
@@ -2374,7 +2375,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     };
   }, [buybackData]);
 
-  const quickChips = ['NVDA', 'GOOGL', 'MSFT', 'AAPL', 'AMZN', 'ORCL', 'VRT', 'TSM', 'SOFI', 'THYAO', 'TUPRS', 'FROTO'];
+  const quickChips = ['NVDA', 'GOOGL', 'MSFT', 'AAPL', 'AMZN', 'ORCL', 'VRT', 'TSM', 'SOFI', 'THYAO', 'TUPRS', 'FROTO', 'AGHOL'];
 
   const originInfo = useMemo(() => {
     if (!lastNavigatedFrom) return null;
@@ -2677,7 +2678,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 {dcfData?.company_name || currentTicker}
               </span>
               <span className="nav-badge cyan" style={{ fontSize: 10 }}>
-                {dcfData?.currency || 'USD'}
+                {(isBist || isBistTicker(currentTicker)) ? 'TRY' : (dcfData?.currency || 'USD')}
               </span>
               {activeStock?.is_live_data && (
                 <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 8px', letterSpacing: '0.3px' }}>
