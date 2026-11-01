@@ -729,7 +729,7 @@ export default function MarketPulseTab({ onSelectStock }) {
     return SEED_NEWS.map(n => ({
       ...n,
       timeMs: now - n.timeAgoMin * 60 * 1000
-    }));
+    })).sort((a, b) => (b.timeMs || 0) - (a.timeMs || 0));
   });
   const [newsFilter, setNewsFilter] = useState('ALL');
   const [isRefreshingNews, setIsRefreshingNews] = useState(false);
@@ -813,8 +813,10 @@ export default function MarketPulseTab({ onSelectStock }) {
           if (Array.isArray(j.news) && j.news.length > 0) {
             const mapped = j.news.map(item => ({
               ...item,
-              timeMs: item.pubDate ? new Date(item.pubDate).getTime() : Date.now()
+              timeMs: item.pubDate ? new Date(item.pubDate).getTime() : (item.timeMs || Date.now())
             }));
+            // Sort chronologically descending: newest first (yeniden eskiye doğru)
+            mapped.sort((a, b) => (b.timeMs || 0) - (a.timeMs || 0));
             setNewsItems(mapped);
             setIsLiveNewsActive(true);
             setLastNewsUpdated(new Date());
@@ -899,15 +901,23 @@ export default function MarketPulseTab({ onSelectStock }) {
       })
     : defaultEquities;
 
-  const filteredNews = newsItems.filter(item => {
-    if (newsFilter === 'ALL') return true;
-    if (newsFilter === 'BIST') return item.tag?.includes('BIST');
-    if (newsFilter === 'TCMB') return item.tag?.includes('TCMB') || item.tag?.includes('Makro');
-    if (newsFilter === 'FED') return item.tag?.includes('Fed') || item.tag?.includes('Wall St');
-    if (newsFilter === 'TECH') return item.tag?.includes('Teknoloji') || item.tag?.includes('AI');
-    if (newsFilter === 'CRYPTO') return item.tag?.includes('Kripto') || item.tag?.includes('Emtia');
-    return true;
-  });
+  const filteredNews = useMemo(() => {
+    return newsItems
+      .filter(item => {
+        if (newsFilter === 'ALL') return true;
+        if (newsFilter === 'BIST') return item.tag?.includes('BIST');
+        if (newsFilter === 'TCMB') return item.tag?.includes('TCMB') || item.tag?.includes('Makro');
+        if (newsFilter === 'FED') return item.tag?.includes('Fed') || item.tag?.includes('Wall St');
+        if (newsFilter === 'TECH') return item.tag?.includes('Teknoloji') || item.tag?.includes('AI');
+        if (newsFilter === 'CRYPTO') return item.tag?.includes('Kripto') || item.tag?.includes('Emtia');
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = a.timeMs || (a.pubDate ? new Date(a.pubDate).getTime() : 0);
+        const timeB = b.timeMs || (b.pubDate ? new Date(b.pubDate).getTime() : 0);
+        return timeB - timeA; // Yeniden eskiye doğru (en son haber en önde)
+      });
+  }, [newsItems, newsFilter]);
 
   const vixValue = Number(pulse?.vix?.value) || 16.46;
   const spyObj = equities.find(e => e.symbol === 'SPY');
@@ -1840,6 +1850,10 @@ export default function MarketPulseTab({ onSelectStock }) {
             <span className="nav-badge cyan" style={{ fontSize: 9, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0, 229, 255, 0.1)', border: '1px solid rgba(0, 229, 255, 0.25)', color: 'var(--cyan)' }}>
               <span>🇹🇷</span>
               <span>TÜRKÇE ÇEVİRİ AKTİF</span>
+            </span>
+            <span className="nav-badge" style={{ fontSize: 9, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#cbd5e1' }}>
+              <span>⏱️</span>
+              <span>YENİDEN ESKİYE SIRALI</span>
             </span>
           </div>
 

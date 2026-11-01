@@ -344,14 +344,27 @@ async function fetchMarketNews() {
     const trGlobalItems = parseXmlItems(trGlobalXml, 'Fed & Wall St');
     const globalItems = parseXmlItems(globalXml, 'Fed & Wall St');
 
-    // Combine items alternately for diverse coverage
+    // Combine all feeds and deduplicate by link/title
+    const rawAll = [...trItems, ...trGlobalItems, ...globalItems];
+    const seenLinks = new Set();
+    const seenTitles = new Set();
     const combined = [];
-    const maxLen = Math.max(trItems.length, trGlobalItems.length, globalItems.length);
-    for (let i = 0; i < maxLen; i++) {
-      if (trItems[i]) combined.push(trItems[i]);
-      if (trGlobalItems[i]) combined.push(trGlobalItems[i]);
-      if (globalItems[i]) combined.push(globalItems[i]);
+
+    for (const item of rawAll) {
+      const cleanTitle = (item.title || '').trim().toLowerCase();
+      if (item.link && seenLinks.has(item.link)) continue;
+      if (cleanTitle && seenTitles.has(cleanTitle)) continue;
+      if (item.link) seenLinks.add(item.link);
+      if (cleanTitle) seenTitles.add(cleanTitle);
+      combined.push(item);
     }
+
+    // Sort chronologically descending: newest first (yeniden eskiye doğru)
+    combined.sort((a, b) => {
+      const timeA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+      const timeB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+      return timeB - timeA;
+    });
 
     // Auto-translate any English headlines into fluent Turkish
     await Promise.all(
