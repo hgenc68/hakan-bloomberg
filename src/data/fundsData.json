@@ -117,7 +117,16 @@
           "sector": "Bulut Altyapısı"
         }
       ],
-      "finvest_insight": "AFT fonu aldığınızda aslında tüm Amerika'ya değil; %58 oranında 4 büyük AI titanına (Nvidia, Google, Microsoft, Amazon) yatırım yaparsınız. Getiri çok yüksektir ancak yapay zeka konsantrasyonu aşırıdır."
+      "finvest_insight": "AFT fonu aldığınızda aslında tüm Amerika'ya değil; %58 oranında 4 büyük AI titanına (Nvidia, Google, Microsoft, Amazon) yatırım yaparsınız. Getiri çok yüksektir ancak yapay zeka konsantrasyonu aşırıdır.",
+      "period_returns": {
+        "1m": 4.8,
+        "3m": 10.2,
+        "6m": 26.4,
+        "ytd": 41.5,
+        "1y": 58.4,
+        "3y": 245.8,
+        "5y": 580
+      }
     },
     "YAY": {
       "code": "YAY",
@@ -236,7 +245,16 @@
           "sector": "İşlemciler"
         }
       ],
-      "finvest_insight": "YAY fonu AFT'ye kıyasla daha yüksek Apple ve Meta ağırlığı taşır. Çip volatilitesinden biraz daha defansif, tüketici nakit akışına daha yakındır."
+      "finvest_insight": "YAY fonu AFT'ye kıyasla daha yüksek Apple ve Meta ağırlığı taşır. Çip volatilitesinden biraz daha defansif, tüketici nakit akışına daha yakındır.",
+      "period_returns": {
+        "1m": 4.5,
+        "3m": 9.8,
+        "6m": 24.8,
+        "ytd": 39.2,
+        "1y": 54.8,
+        "3y": 230.5,
+        "5y": 540
+      }
     },
     "TTE": {
       "code": "TTE",
@@ -355,7 +373,16 @@
           "sector": "Distribütörlük"
         }
       ],
-      "finvest_insight": "BIST Teknoloji endeksinin lokomotifidir. Aselsan ve Logo Yazılım gibi nakit üretenler ağırlıktadır ancak yerel büyüme hisselerinin volatilitesi yüksektir."
+      "finvest_insight": "BIST Teknoloji endeksinin lokomotifidir. Aselsan ve Logo Yazılım gibi nakit üretenler ağırlıktadır ancak yerel büyüme hisselerinin volatilitesi yüksektir.",
+      "period_returns": {
+        "1m": 3.8,
+        "3m": 8.2,
+        "6m": 21.5,
+        "ytd": 34.8,
+        "1y": 48.2,
+        "3y": 380,
+        "5y": 720
+      }
     },
     "GHA": {
       "code": "GHA",
@@ -478,7 +505,16 @@
           "sector": "Cam Sanayi"
         }
       ],
-      "finvest_insight": "Kullanıcının BES portföyünün omurgasıdır. Portföyün %65'i net nakit üreten kurumsal devlerden oluşur; borç riski minimumdur."
+      "finvest_insight": "Kullanıcının BES portföyünün omurgasıdır. Portföyün %65'i net nakit üreten kurumsal devlerden oluşur; borç riski minimumdur.",
+      "period_returns": {
+        "1m": 3.4,
+        "3m": 7.8,
+        "6m": 19.5,
+        "ytd": 32.1,
+        "1y": 46.5,
+        "3y": 320,
+        "5y": 610
+      }
     },
     "GEA": {
       "code": "GEA",
@@ -601,7 +637,16 @@
           "sector": "Petrokimya"
         }
       ],
-      "finvest_insight": "Kurumsal sermaye kalkanı felsefesine en uygun BIST fonudur. Şirketlerin tamamına yakını 1. Halka (Nakit Titanı) sınıfındadır; yüksek temettü akışı ve düşük borçlulukla sermayeyi korur."
+      "finvest_insight": "Kurumsal sermaye kalkanı felsefesine en uygun BIST fonudur. Şirketlerin tamamına yakını 1. Halka (Nakit Titanı) sınıfındadır; yüksek temettü akışı ve düşük borçlulukla sermayeyi korur.",
+      "period_returns": {
+        "1m": 3.1,
+        "3m": 7.2,
+        "6m": 18.2,
+        "ytd": 29.8,
+        "1y": 42,
+        "3y": 285,
+        "5y": 560
+      }
     },
     "GCT": {
       "code": "GCT",
@@ -720,7 +765,16 @@
           "sector": "EUV Litografi"
         }
       ],
-      "finvest_insight": "BES sisteminde devlet katkısı avantajıyla ABD teknolojisine yatırım yapma imkanı tanır. İlk 5 hisse fonun %71'ini oluşturur."
+      "finvest_insight": "BES sisteminde devlet katkısı avantajıyla ABD teknolojisine yatırım yapma imkanı tanır. İlk 5 hisse fonun %71'ini oluşturur.",
+      "period_returns": {
+        "1m": 5.1,
+        "3m": 11.4,
+        "6m": 28.5,
+        "ytd": 44.8,
+        "1y": 62.5,
+        "3y": 270,
+        "5y": 630
+      }
     },
     "GCN": {
       "code": "GCN",
@@ -779,7 +833,16 @@
           "sector": "Nakit"
         }
       ],
-      "finvest_insight": "Kullanıcının BES portföyünün kur ve jeopolitik kalkanıdır. Şirket iflas riski taşımaz, ons altın ve dolar/TL ile bileşik getiri üretir."
+      "finvest_insight": "Kullanıcının BES portföyünün kur ve jeopolitik kalkanıdır. Şirket iflas riski taşımaz, ons altın ve dolar/TL ile bileşik getiri üretir.",
+      "period_returns": {
+        "1m": 5.8,
+        "3m": 13.2,
+        "6m": 33.4,
+        "ytd": 52.1,
+        "1y": 74.2,
+        "3y": 340,
+        "5y": 710
+      }
     },
     "GGJ": {
       "code": "GGJ",
@@ -898,7 +961,16 @@
           "sector": "Savunma"
         }
       ],
-      "finvest_insight": "Dengeli piyasa koşullarında otomatik dengeleme yapar. Döviz bazlı Eurobond ve nakit tamponu sayesinde piyasa çökerken portföyü tutar."
+      "finvest_insight": "Dengeli piyasa koşullarında otomatik dengeleme yapar. Döviz bazlı Eurobond ve nakit tamponu sayesinde piyasa çökerken portföyü tutar.",
+      "period_returns": {
+        "1m": 3.9,
+        "3m": 8.8,
+        "6m": 22.1,
+        "ytd": 36.4,
+        "1y": 51,
+        "3y": 260,
+        "5y": 590
+      }
     },
     "QQQ": {
       "code": "QQQ",
@@ -1021,7 +1093,16 @@
           "sector": "İşlemci"
         }
       ],
-      "finvest_insight": "Dünyanın en popüler teknoloji ETF'si. İlk 10 hisse fonun %52'sini oluşturur; boğa piyasasında çok hızlı koşar ancak teknoloji satışlarında sert düşer."
+      "finvest_insight": "Dünyanın en popüler teknoloji ETF'si. İlk 10 hisse fonun %52'sini oluşturur; boğa piyasasında çok hızlı koşar ancak teknoloji satışlarında sert düşer.",
+      "period_returns": {
+        "1m": 2.8,
+        "3m": 5.4,
+        "6m": 14.2,
+        "ytd": 21.8,
+        "1y": 34.2,
+        "3y": 58.5,
+        "5y": 124.6
+      }
     },
     "SPY": {
       "code": "SPY",
@@ -1144,7 +1225,16 @@
           "sector": "Otomotiv"
         }
       ],
-      "finvest_insight": "Konsantrasyon Uyarısı: S&P 500 tarihin en yüksek yoğunlaşma dönemindedir. Endeksin %35'ini ilk 10 hisse taşımaktadır; 500 hissenin 308'i endeks gerisinde kalmıştır."
+      "finvest_insight": "Konsantrasyon Uyarısı: S&P 500 tarihin en yüksek yoğunlaşma dönemindedir. Endeksin %35'ini ilk 10 hisse taşımaktadır; 500 hissenin 308'i endeks gerisinde kalmıştır.",
+      "period_returns": {
+        "1m": 2,
+        "3m": 4.7,
+        "6m": 11.1,
+        "ytd": 18.4,
+        "1y": 26.5,
+        "3y": 38.2,
+        "5y": 87.9
+      }
     },
     "RSP": {
       "code": "RSP",
@@ -1267,7 +1357,16 @@
           "sector": "Bankacılık"
         }
       ],
-      "finvest_insight": "Eşit Ağırlık Avantajı: SPY'da teknoloji devleri düşerse endeks çöker. RSP'de ise 500 şirketin her biri eşit (%0.20) ağırlıktadır; yapay zeka balonu patlarsa en korunaklı sığınaktır."
+      "finvest_insight": "Eşit Ağırlık Avantajı: SPY'da teknoloji devleri düşerse endeks çöker. RSP'de ise 500 şirketin her biri eşit (%0.20) ağırlıktadır; yapay zeka balonu patlarsa en korunaklı sığınaktır.",
+      "period_returns": {
+        "1m": 1.3,
+        "3m": 3.1,
+        "6m": 7.4,
+        "ytd": 12.5,
+        "1y": 16.8,
+        "3y": 22.4,
+        "5y": 54.2
+      }
     },
     "SCHD": {
       "code": "SCHD",
@@ -1394,7 +1493,16 @@
           "sector": "İçecek"
         }
       ],
-      "finvest_insight": "Sermaye Koruma Önerisi: Yapay zeka borç balonundan kaçınmak isteyenler için 10 yıl üst üste temettü artıran, yüksek ROE ve düşük borç taşıyan kurumsal kalelerdir. Temettü verimi %3.45'tir."
+      "finvest_insight": "Sermaye Koruma Önerisi: Yapay zeka borç balonundan kaçınmak isteyenler için 10 yıl üst üste temettü artıran, yüksek ROE ve düşük borç taşıyan kurumsal kalelerdir. Temettü verimi %3.45'tir.",
+      "period_returns": {
+        "1m": 1.7,
+        "3m": 3.9,
+        "6m": 8.9,
+        "ytd": 14.8,
+        "1y": 19.5,
+        "3y": 31.2,
+        "5y": 68.4
+      }
     },
     "SMH": {
       "code": "SMH",
@@ -1513,7 +1621,16 @@
           "sector": "Sinyal İşleme"
         }
       ],
-      "finvest_insight": "Nvidia ve TSMC ağırlıklı çip tekeli. 1. Halka'nın harcadığı sermaye yatırımlarının (Capex) doğrudan kasasına aktığı 2. Halka tedarikçilerini barındırır."
+      "finvest_insight": "Nvidia ve TSMC ağırlıklı çip tekeli. 1. Halka'nın harcadığı sermaye yatırımlarının (Capex) doğrudan kasasına aktığı 2. Halka tedarikçilerini barındırır.",
+      "period_returns": {
+        "1m": 4.2,
+        "3m": 8.9,
+        "6m": 24.5,
+        "ytd": 42.1,
+        "1y": 68.4,
+        "3y": 142,
+        "5y": 248.5
+      }
     },
     "VOO": {
       "code": "VOO",
@@ -1636,7 +1753,16 @@
           "sector": "Otomotiv"
         }
       ],
-      "finvest_insight": "Dünyanın en popüler ve %0.03 ultra düşük gider oranına sahip S&P 500 fonudur. SPY ile aynı endeksi takip eder ancak uzun vadeli biriktiriciler için masraf avantajı sunar. Portföyün %35 kısmını 1. Halka nakit kaleleri (MSFT, AAPL, NVDA, AMZN) sırtlamaktadır."
+      "finvest_insight": "Dünyanın en popüler ve %0.03 ultra düşük gider oranına sahip S&P 500 fonudur. SPY ile aynı endeksi takip eder ancak uzun vadeli biriktiriciler için masraf avantajı sunar. Portföyün %35 kısmını 1. Halka nakit kaleleri (MSFT, AAPL, NVDA, AMZN) sırtlamaktadır.",
+      "period_returns": {
+        "1m": 2.1,
+        "3m": 4.8,
+        "6m": 11.2,
+        "ytd": 18.5,
+        "1y": 26.8,
+        "3y": 38.5,
+        "5y": 88.4
+      }
     },
     "VTI": {
       "code": "VTI",
@@ -1759,7 +1885,16 @@
           "sector": "Otomotiv"
         }
       ],
-      "finvest_insight": "S&P 500 sınırlarını aşarak ABD borsalarındaki 3.600 şirketi (büyük, orta ve küçük ölçek) tek pakette kapsar. Boglehead felsefesinin kalbidir; %72 büyük ölçek, %19 orta ölçek ve %9 küçük ölçek dağılımıyla tam piyasa nötr pozisyon sağlar."
+      "finvest_insight": "S&P 500 sınırlarını aşarak ABD borsalarındaki 3.600 şirketi (büyük, orta ve küçük ölçek) tek pakette kapsar. Boglehead felsefesinin kalbidir; %72 büyük ölçek, %19 orta ölçek ve %9 küçük ölçek dağılımıyla tam piyasa nötr pozisyon sağlar.",
+      "period_returns": {
+        "1m": 1.9,
+        "3m": 4.5,
+        "6m": 10.8,
+        "ytd": 17.8,
+        "1y": 25.9,
+        "3y": 34.8,
+        "5y": 82.1
+      }
     },
     "VT": {
       "code": "VT",
@@ -1886,7 +2021,16 @@
           "sector": "Bankacılık"
         }
       ],
-      "finvest_insight": "Tek bir ETF ile dünya üzerindeki 9.800 şirkete ortak olma imkanı sunar. Coğrafi dağılım: %62 ABD, %16 Avrupa, %10 Pasifik, %10 Gelişmekte Olan Piyasalar. Tek bir ülke veya para birimi riskine bağımlı kalmak istemeyen küresel yatırımcılar için ideal baz varlıktır."
+      "finvest_insight": "Tek bir ETF ile dünya üzerindeki 9.800 şirkete ortak olma imkanı sunar. Coğrafi dağılım: %62 ABD, %16 Avrupa, %10 Pasifik, %10 Gelişmekte Olan Piyasalar. Tek bir ülke veya para birimi riskine bağımlı kalmak istemeyen küresel yatırımcılar için ideal baz varlıktır.",
+      "period_returns": {
+        "1m": 1.6,
+        "3m": 3.8,
+        "6m": 9.2,
+        "ytd": 15.4,
+        "1y": 21.4,
+        "3y": 26.2,
+        "5y": 62.8
+      }
     },
     "VXUS": {
       "code": "VXUS",
@@ -2013,7 +2157,16 @@
           "sector": "İlaç"
         }
       ],
-      "finvest_insight": "ABD dışındaki küresel şirketleri kapsayan en kapsamlı fondur (8.500+ hisse). Avrupa devleri (Novo Nordisk, ASML, SAP) ve Asya yarı iletken/teknoloji devleri (TSMC, Tencent, Samsung) ağırlıklıdır."
+      "finvest_insight": "ABD dışındaki küresel şirketleri kapsayan en kapsamlı fondur (8.500+ hisse). Avrupa devleri (Novo Nordisk, ASML, SAP) ve Asya yarı iletken/teknoloji devleri (TSMC, Tencent, Samsung) ağırlıklıdır.",
+      "period_returns": {
+        "1m": 1.1,
+        "3m": 2.4,
+        "6m": 6.1,
+        "ytd": 10.2,
+        "1y": 14.8,
+        "3y": 11.2,
+        "5y": 28.4
+      }
     },
     "DIA": {
       "code": "DIA",
@@ -2140,7 +2293,16 @@
           "sector": "Tüketici Elektroniği"
         }
       ],
-      "finvest_insight": "Dünyanın en köklü 30 Blue-Chip kalesini fiyat ağırlıklı modelle taşır. Piyasa değeri ağırlıklı S&P 500 ve Nasdaq kıyasla teknoloji yoğunlaşması çok daha düşüktür; defansif nakit akışı ve temettü ödeme gücü son derece yüksektir."
+      "finvest_insight": "Dünyanın en köklü 30 Blue-Chip kalesini fiyat ağırlıklı modelle taşır. Piyasa değeri ağırlıklı S&P 500 ve Nasdaq kıyasla teknoloji yoğunlaşması çok daha düşüktür; defansif nakit akışı ve temettü ödeme gücü son derece yüksektir.",
+      "period_returns": {
+        "1m": 1.8,
+        "3m": 4.1,
+        "6m": 9.8,
+        "ytd": 16.2,
+        "1y": 22.1,
+        "3y": 31.5,
+        "5y": 64.2
+      }
     },
     "IWM": {
       "code": "IWM",
@@ -2267,7 +2429,16 @@
           "sector": "Bakım Hizmetleri"
         }
       ],
-      "finvest_insight": "Fed faiz indirim döngüsünde en yüksek getiri potansiyeline ve en yüksek betaya sahip varlık sınıfıdır. Şirketlerin %40 kısmı değişken faizli borç taşıdığı için faizlerin düşmesi borç yükünü hafifletip kâr marjlarını hızla patlatır; ancak resesyon dönemlerinde oynaklığı çok yüksektir."
+      "finvest_insight": "Fed faiz indirim döngüsünde en yüksek getiri potansiyeline ve en yüksek betaya sahip varlık sınıfıdır. Şirketlerin %40 kısmı değişken faizli borç taşıdığı için faizlerin düşmesi borç yükünü hafifletip kâr marjlarını hızla patlatır; ancak resesyon dönemlerinde oynaklığı çok yüksektir.",
+      "period_returns": {
+        "1m": 1.4,
+        "3m": 3.2,
+        "6m": 8.5,
+        "ytd": 14.1,
+        "1y": 19.8,
+        "3y": 12.4,
+        "5y": 41.6
+      }
     },
     "SOXX": {
       "code": "SOXX",
@@ -2378,7 +2549,16 @@
           "sector": "EUV Litografi"
         }
       ],
-      "finvest_insight": "Yapay zeka devriminin en kritik kazma kürek tedarikçileridir. SMH fonuna göre hisse ağırlıklandırması daha dengelidir (Nvidia tavanı %8 bandındadır). Süper döngüde yüksek nakit üretir ancak yarı iletken stok çevrimlerine karşı yüksek beta taşır."
+      "finvest_insight": "Yapay zeka devriminin en kritik kazma kürek tedarikçileridir. SMH fonuna göre hisse ağırlıklandırması daha dengelidir (Nvidia tavanı %8 bandındadır). Süper döngüde yüksek nakit üretir ancak yarı iletken stok çevrimlerine karşı yüksek beta taşır.",
+      "period_returns": {
+        "1m": 3.1,
+        "3m": 6.8,
+        "6m": 18.2,
+        "ytd": 28.4,
+        "1y": 42.5,
+        "3y": 84.1,
+        "5y": 165.2
+      }
     },
     "XLK": {
       "code": "XLK",
@@ -2493,7 +2673,16 @@
           "sector": "Finansal Yazılım"
         }
       ],
-      "finvest_insight": "S&P 500 içerisindeki en kârlı 1. Halka teknoloji kalelerini konsantre biçimde toplar. Microsoft, Apple ve Nvidia üçlüsü fonun neredeyse yarısını (%46) oluşturur; saf yapay zeka ve yazılım üretkenliği arayan yatırımcılar için turbo motordur."
+      "finvest_insight": "S&P 500 içerisindeki en kârlı 1. Halka teknoloji kalelerini konsantre biçimde toplar. Microsoft, Apple ve Nvidia üçlüsü fonun neredeyse yarısını (%46) oluşturur; saf yapay zeka ve yazılım üretkenliği arayan yatırımcılar için turbo motordur.",
+      "period_returns": {
+        "1m": 2.7,
+        "3m": 5.2,
+        "6m": 13.9,
+        "ytd": 21.2,
+        "1y": 33.5,
+        "3y": 62.1,
+        "5y": 136
+      }
     },
     "XLF": {
       "code": "XLF",
@@ -2612,7 +2801,16 @@
           "sector": "Varlık Yönetimi"
         }
       ],
-      "finvest_insight": "Berkshire Hathaway ve JPMorgan liderliğinde ABD finans sisteminin belkemiğidir. Faiz marjlarının yüksek kaldığı ortamlarda güçlü kâr ve temettü üretir. Bilanço solvency oranları 2008 krizinden bu yana en sağlam seviyededir."
+      "finvest_insight": "Berkshire Hathaway ve JPMorgan liderliğinde ABD finans sisteminin belkemiğidir. Faiz marjlarının yüksek kaldığı ortamlarda güçlü kâr ve temettü üretir. Bilanço solvency oranları 2008 krizinden bu yana en sağlam seviyededir.",
+      "period_returns": {
+        "1m": 2.2,
+        "3m": 5.1,
+        "6m": 12.4,
+        "ytd": 20.1,
+        "1y": 28.4,
+        "3y": 33.2,
+        "5y": 72.5
+      }
     },
     "JEPI": {
       "code": "JEPI",
@@ -2739,7 +2937,16 @@
           "sector": "İlaç"
         }
       ],
-      "finvest_insight": "Hisse senedi yatırımı yaparken hisseler üzerine alım opsiyonu (covered call) satarak yıllık %7-%9 bandında aylık nakit temettü üreten popüler savunma fonudur. Düşen ve yatay piyasalarda opsiyon primleri sayesinde S&P 500 endeksine göre daha az değer kaybeder."
+      "finvest_insight": "Hisse senedi yatırımı yaparken hisseler üzerine alım opsiyonu (covered call) satarak yıllık %7-%9 bandında aylık nakit temettü üreten popüler savunma fonudur. Düşen ve yatay piyasalarda opsiyon primleri sayesinde S&P 500 endeksine göre daha az değer kaybeder.",
+      "period_returns": {
+        "1m": 1.2,
+        "3m": 2.9,
+        "6m": 6.8,
+        "ytd": 11.4,
+        "1y": 15.2,
+        "3y": 28.6,
+        "5y": 52.1
+      }
     },
     "JEPQ": {
       "code": "JEPQ",
@@ -2862,7 +3069,16 @@
           "sector": "Yayıncılık"
         }
       ],
-      "finvest_insight": "Nasdaq 100 teknoloji hisselerinin büyüme potansiyeli ile yüksek aylık opsiyon temettü getirisini (%9-%11) birleştirir. Teknoloji volatilitesinden yararlanarak düzenli nakit akışı arayan emeklilik ve gelir yatırımcıları için tasarlanmıştır."
+      "finvest_insight": "Nasdaq 100 teknoloji hisselerinin büyüme potansiyeli ile yüksek aylık opsiyon temettü getirisini (%9-%11) birleştirir. Teknoloji volatilitesinden yararlanarak düzenli nakit akışı arayan emeklilik ve gelir yatırımcıları için tasarlanmıştır.",
+      "period_returns": {
+        "1m": 1.8,
+        "3m": 4.2,
+        "6m": 9.6,
+        "ytd": 15.8,
+        "1y": 21.8,
+        "3y": 36.4,
+        "5y": 65.4
+      }
     },
     "TLT": {
       "code": "TLT",
@@ -2913,7 +3129,16 @@
           "sector": "Devlet Tahvili"
         }
       ],
-      "finvest_insight": "Fed faiz indirimlerine başladığında veya küresel resesyon anında en güçlü sermaye kazancı sağlayan güvenli liman tahvil fonudur. Faizlerin her 100 baz puan düşüşünde tahvil fiyatı yaklaşık %15-%18 değer kazanır."
+      "finvest_insight": "Fed faiz indirimlerine başladığında veya küresel resesyon anında en güçlü sermaye kazancı sağlayan güvenli liman tahvil fonudur. Faizlerin her 100 baz puan düşüşünde tahvil fiyatı yaklaşık %15-%18 değer kazanır.",
+      "period_returns": {
+        "1m": -0.8,
+        "3m": 1.2,
+        "6m": 3.5,
+        "ytd": 4.2,
+        "1y": 8.5,
+        "3y": -14.2,
+        "5y": -28.5
+      }
     },
     "GLD": {
       "code": "GLD",
@@ -2948,7 +3173,16 @@
           "sector": "Kıymetli Maden"
         }
       ],
-      "finvest_insight": "Dünyanın en büyük ve en likit altın fonudur. Karşılığında Londra kasalarında fiziki altın külçeleri tutulur. Para birimlerindeki enflasyon devalüasyonuna ve jeopolitik kırılmalara karşı nihai sermaye kalkanıdır."
+      "finvest_insight": "Dünyanın en büyük ve en likit altın fonudur. Karşılığında Londra kasalarında fiziki altın külçeleri tutulur. Para birimlerindeki enflasyon devalüasyonuna ve jeopolitik kırılmalara karşı nihai sermaye kalkanıdır.",
+      "period_returns": {
+        "1m": 3.4,
+        "3m": 7.2,
+        "6m": 16.8,
+        "ytd": 26.5,
+        "1y": 38.2,
+        "3y": 52.4,
+        "5y": 82.5
+      }
     },
     "IBIT": {
       "code": "IBIT",
@@ -2983,7 +3217,16 @@
           "sector": "Kripto Rezerv"
         }
       ],
-      "finvest_insight": "Tarihin en hızlı büyüyen ETF lansmanıdır. Wall Street kurumsal sermayesinin (emeklilik fonları, egemen varlık fonları) spot Bitcoin erişim kapısıdır."
+      "finvest_insight": "Tarihin en hızlı büyüyen ETF lansmanıdır. Wall Street kurumsal sermayesinin (emeklilik fonları, egemen varlık fonları) spot Bitcoin erişim kapısıdır.",
+      "period_returns": {
+        "1m": 6.2,
+        "3m": 14.8,
+        "6m": 38.4,
+        "ytd": 62.5,
+        "1y": 98.4,
+        "3y": 145.2,
+        "5y": 280
+      }
     },
     "VUG": {
       "code": "VUG",
@@ -3106,7 +3349,16 @@
           "sector": "Ödemeler"
         }
       ],
-      "finvest_insight": "Hızlı büyüyen, yüksek kâr marjlı ve sermaye getirisi güçlü ABD devlerine odaklanır. %0.04 masraf oranıyla büyüme odaklı yatırımcılar için düşük maliyetli ana motordur."
+      "finvest_insight": "Hızlı büyüyen, yüksek kâr marjlı ve sermaye getirisi güçlü ABD devlerine odaklanır. %0.04 masraf oranıyla büyüme odaklı yatırımcılar için düşük maliyetli ana motordur.",
+      "period_returns": {
+        "1m": 2.6,
+        "3m": 5.1,
+        "6m": 13.5,
+        "ytd": 20.8,
+        "1y": 31.2,
+        "3y": 45.6,
+        "5y": 104.2
+      }
     },
     "VYM": {
       "code": "VYM",
@@ -3237,7 +3489,16 @@
           "sector": "Bankacılık"
         }
       ],
-      "finvest_insight": "Ortalamanın üzerinde temettü dağıtan ve bilanço borçluluğu düşük 450 şirketi içerir. Gayrimenkul (REIT) içermez, bu sayede faiz artış dönemlerinde daha dayanıklı bir performans sergiler."
+      "finvest_insight": "Ortalamanın üzerinde temettü dağıtan ve bilanço borçluluğu düşük 450 şirketi içerir. Gayrimenkul (REIT) içermez, bu sayede faiz artış dönemlerinde daha dayanıklı bir performans sergiler.",
+      "period_returns": {
+        "1m": 1.9,
+        "3m": 4.4,
+        "6m": 10.2,
+        "ytd": 17.1,
+        "1y": 23.4,
+        "3y": 30.1,
+        "5y": 64.8
+      }
     },
     "ARKK": {
       "code": "ARKK",
@@ -3360,7 +3621,29 @@
           "sector": "Savunma & AI Analitiği"
         }
       ],
-      "finvest_insight": "Yıkıcı inovasyon ve yeni nesil teknolojilere odaklanan aktif yönetimli yüksek betalı fondur. Boğa piyasalarında patlayıcı getiri üretirken, sıkılaşma dönemlerinde 3. Halka sermaye seyrelmesi ve kârsız büyüme riski taşır."
+      "finvest_insight": "Yıkıcı inovasyon ve yeni nesil teknolojilere odaklanan aktif yönetimli yüksek betalı fondur. Boğa piyasalarında patlayıcı getiri üretirken, sıkılaşma dönemlerinde 3. Halka sermaye seyrelmesi ve kârsız büyüme riski taşır.",
+      "period_returns": {
+        "1m": 2.1,
+        "3m": 4.8,
+        "6m": 8.9,
+        "ytd": 12.4,
+        "1y": 18.5,
+        "3y": -12.4,
+        "5y": -18.2
+      }
+    }
+  },
+  "nasdaq_benchmark": {
+    "code": "QQQ",
+    "name": "Invesco QQQ Trust (Nasdaq-100)",
+    "period_returns": {
+      "1m": 2.8,
+      "3m": 5.4,
+      "6m": 14.2,
+      "ytd": 21.8,
+      "1y": 34.2,
+      "3y": 58.5,
+      "5y": 124.6
     }
   }
 }
