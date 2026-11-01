@@ -1011,15 +1011,15 @@ export default function NativeProChart({
       yRange = '15y';
     } else if (chartInterval === '4S') {
       yInterval = '1h';
-      yRange = '3mo';
+      yRange = '2y';
       resampleGroup = 4;
     } else if (chartInterval === '2S') {
       yInterval = '1h';
-      yRange = '1mo';
+      yRange = '2y';
       resampleGroup = 2;
     } else if (chartInterval === '1S') {
       yInterval = '1h';
-      yRange = '1mo';
+      yRange = '2y';
     }
 
     try {

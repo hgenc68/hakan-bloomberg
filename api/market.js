@@ -824,7 +824,7 @@ export default async function handler(req, res) {
         if (reqInterval === '1wk') reqRange = '5y';
         else if (reqInterval === '1mo') reqRange = '10y';
         else if (reqInterval === '3mo') reqRange = '15y';
-        else if (reqInterval === '1h') reqRange = '3mo';
+        else if (reqInterval === '1h') reqRange = '2y';
         else reqRange = '2y';
       }
 
@@ -1058,10 +1058,10 @@ export default async function handler(req, res) {
     const interval = req.query.interval || '1d';
     const resolvedSymbol = resolveSymbol(rawSymbol.toUpperCase().trim());
     
-    let range = '1y';
+    let range = '2y';
     if (interval === '15m') range = '5d';
-    else if (interval === '1h' || interval === '60m') range = '1mo';
-    else if (interval === '4h') range = '3mo';
+    else if (interval === '1h' || interval === '60m') range = '2y';
+    else if (interval === '4h') range = '2y';
 
     try {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolvedSymbol)}?interval=${interval}&range=${range}`;
