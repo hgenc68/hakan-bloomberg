@@ -1502,7 +1502,8 @@ export default function NativeProChart({
         },
         rightPriceScale: {
           borderColor: 'rgba(255, 255, 255, 0.08)',
-          scaleMargins: { top: 0.12, bottom: 0.12 }
+          scaleMargins: { top: 0.10, bottom: 0.10 },
+          autoScale: true
         },
         timeScale: {
           visible: false,
@@ -1514,10 +1515,19 @@ export default function NativeProChart({
       });
       rsiChartInstanceRef.current = rsiChart;
 
+      // RSI Serisi: [0, 100] Sabit Skala (30 ve 70 Asla Kaybolmaz), Pembe Çizgi Kapalı, Sağ Değer Açık
       const rsiSeries = rsiChart.addSeries(LineSeries, {
         color: '#ec4899',
         lineWidth: 2,
-        title: `RSI (${indicatorSettings.rsiPeriod || 14})`
+        priceLineVisible: false, // Pembe noktalı yatay çizgi kapatıldı
+        lastValueVisible: true,  // Sağ taraftaki RSI seviyesi rozeti görünür
+        title: `RSI (${indicatorSettings.rsiPeriod || 14})`,
+        autoscaleInfoProvider: () => ({
+          priceRange: {
+            minValue: 0,
+            maxValue: 100
+          }
+        })
       });
       rsiSeriesRef.current = rsiSeries;
       rsiMarkersPluginRef.current = createSeriesMarkers(rsiSeries, []);
@@ -1529,26 +1539,57 @@ export default function NativeProChart({
           lineWidth: 1.5,
           priceLineVisible: false,
           lastValueVisible: true,
-          title: `RSI MA (${indicatorSettings.rsiMaPeriod || 14})`
+          title: `RSI MA (${indicatorSettings.rsiMaPeriod || 14})`,
+          autoscaleInfoProvider: () => ({
+            priceRange: {
+              minValue: 0,
+              maxValue: 100
+            }
+          })
         });
       } else {
         rsiMaSeriesRef.current = null;
       }
 
-      // Add 70 (Overbought) and 30 (Oversold) lines
+      // Sabit ve Kalıcı RSI Referans Seviyeleri: 70, 50, 30 ve 0 Taban Çizgisi
+      // 70 (Aşırı Alım) Seviyesi
       rsiSeries.createPriceLine({
         price: 70,
         color: '#ef4444',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
-        title: 'Aşırı Alım (70)'
+        axisLabelVisible: true,
+        title: '70'
       });
+
+      // 50 (Denge / Nötr) Seviyesi
+      rsiSeries.createPriceLine({
+        price: 50,
+        color: 'rgba(255, 255, 255, 0.12)',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: true,
+        title: '50'
+      });
+
+      // 30 (Aşırı Satım) Seviyesi
       rsiSeries.createPriceLine({
         price: 30,
         color: '#10b981',
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
-        title: 'Aşırı Satım (30)'
+        axisLabelVisible: true,
+        title: '30'
+      });
+
+      // 0 (Taban) Seviyesi
+      rsiSeries.createPriceLine({
+        price: 0,
+        color: 'rgba(148, 163, 184, 0.45)',
+        lineWidth: 1,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: '0'
       });
 
       // Synchronize visible time range between Main and RSI Chart & persist user zoom/scroll
