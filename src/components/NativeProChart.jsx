@@ -1545,7 +1545,7 @@ export default function NativeProChart({
         },
         rightPriceScale: {
           borderColor: 'rgba(255, 255, 255, 0.08)',
-          scaleMargins: { top: 0.08, bottom: 0.14 },
+          scaleMargins: { top: 0.10, bottom: 0.10 },
           autoScale: true
         },
         timeScale: {
@@ -1558,7 +1558,7 @@ export default function NativeProChart({
       });
       rsiChartInstanceRef.current = rsiChart;
 
-      // RSI Serisi: [0, 100] Sabit Skala (30 ve 70 Asla Kaybolmaz), Pembe Çizgi Kapalı, Sağ Değer Açık
+      // RSI Serisi: [0, 100] Sabit Skala (30, 50, 70 Asla Kaybolmaz), Pembe Çizgi Kapalı, Sağ Değer Açık
       const rsiSeries = rsiChart.addSeries(LineSeries, {
         color: '#ec4899',
         lineWidth: 2,
@@ -1594,23 +1594,23 @@ export default function NativeProChart({
         rsiMaSeriesRef.current = null;
       }
 
-      // Sabit ve Kalıcı RSI Referans Seviyeleri: 70, 50, 30 ve 0 Taban Çizgisi
+      // Sabit ve Kalıcı RSI Referans Seviyeleri: 70 (Aşırı Alım), 50 (Denge), 30 (Aşırı Satım)
       // 70 (Aşırı Alım) Seviyesi
       rsiSeries.createPriceLine({
         price: 70,
         color: '#ef4444',
-        lineWidth: 1,
+        lineWidth: 1.5,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
         title: '70'
       });
 
-      // 50 (Denge / Nötr) Seviyesi
+      // 50 (Denge / Boğa-Ayı Sınırı) Seviyesi - Belirgin, Net Açık Gümüş Gri & 1.5px Dashed
       rsiSeries.createPriceLine({
         price: 50,
-        color: 'rgba(255, 255, 255, 0.12)',
-        lineWidth: 1,
-        lineStyle: LineStyle.Dotted,
+        color: '#94a3b8',
+        lineWidth: 1.5,
+        lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
         title: '50'
       });
@@ -1619,20 +1619,10 @@ export default function NativeProChart({
       rsiSeries.createPriceLine({
         price: 30,
         color: '#10b981',
-        lineWidth: 1,
+        lineWidth: 1.5,
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
         title: '30'
-      });
-
-      // 0 (Taban) Seviyesi - Belirgin, Net Açık Gümüş Gri & 1.5px Solid
-      rsiSeries.createPriceLine({
-        price: 0,
-        color: '#94a3b8',
-        lineWidth: 1.5,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: true,
-        title: '0'
       });
 
       // Synchronize visible time range between Main and RSI Chart & persist user zoom/scroll
@@ -3157,7 +3147,7 @@ export default function NativeProChart({
               {indicators.rsiMa && (
                 <span style={{ color: '#facc15' }}>• MA ({indicatorSettings.rsiMaPeriod || 14})</span>
               )}
-              <span style={{ color: '#64748b' }}>• [0 - 100]</span>
+              <span style={{ color: '#64748b' }}>• 70 / 50 / 30</span>
 
               {/* Quick in-panel toggles */}
               <button
