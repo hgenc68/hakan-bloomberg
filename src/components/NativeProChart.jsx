@@ -1384,7 +1384,9 @@ export default function NativeProChart({
     const mainChart = createChart(container, {
       width,
       height,
+      attributionLogo: false,
       layout: {
+        attributionLogo: false,
         background: { type: 'solid', color: '#040711' },
         textColor: '#94a3b8',
         fontSize: 11,
@@ -1534,7 +1536,9 @@ export default function NativeProChart({
       const rsiChart = createChart(rsiContainer, {
         width,
         height: rsiHeightRef.current,
+        attributionLogo: false,
         layout: {
+          attributionLogo: false,
           background: { type: 'solid', color: '#03050c' },
           textColor: '#64748b',
           fontSize: 10
@@ -1545,7 +1549,7 @@ export default function NativeProChart({
         },
         rightPriceScale: {
           borderColor: 'rgba(255, 255, 255, 0.08)',
-          scaleMargins: { top: 0.10, bottom: 0.10 },
+          scaleMargins: { top: 0.07, bottom: 0.02 },
           autoScale: true
         },
         timeScale: {
@@ -1558,19 +1562,28 @@ export default function NativeProChart({
       });
       rsiChartInstanceRef.current = rsiChart;
 
-      // RSI Serisi: [0, 100] Sabit Skala (30, 50, 70 Asla Kaybolmaz), Pembe Çizgi Kapalı, Sağ Değer Açık
+      // RSI Autoscale Info: Alttaki gereksiz ölü boşluğu kaldırır, tabanı 20'ye çekerek RSI'ı aşağı alır
+      // 30, 50, 70 seviyeleri daima görünür kalır ve uç hareketlerde taşma yapmadan dinamik esner
+      const getRsiAutoscaleInfo = (original) => {
+        const res = typeof original === 'function' ? original() : null;
+        const minData = res?.priceRange?.minValue ?? 30;
+        const maxData = res?.priceRange?.maxValue ?? 70;
+        return {
+          priceRange: {
+            minValue: Math.min(20, Math.floor(minData - 2)),
+            maxValue: Math.max(80, Math.ceil(maxData + 2))
+          }
+        };
+      };
+
+      // RSI Serisi: Tabanı 20, tavanı 80 dinamik skala (30, 50, 70 Asla Kaybolmaz), Pembe Çizgi Kapalı, Sağ Değer Açık
       const rsiSeries = rsiChart.addSeries(LineSeries, {
         color: '#ec4899',
         lineWidth: 2,
         priceLineVisible: false, // Pembe noktalı yatay çizgi kapatıldı
         lastValueVisible: true,  // Sağ taraftaki RSI seviyesi rozeti görünür
         title: `RSI (${indicatorSettings.rsiPeriod || 14})`,
-        autoscaleInfoProvider: () => ({
-          priceRange: {
-            minValue: 0,
-            maxValue: 100
-          }
-        })
+        autoscaleInfoProvider: getRsiAutoscaleInfo
       });
       rsiSeriesRef.current = rsiSeries;
       rsiMarkersPluginRef.current = createSeriesMarkers(rsiSeries, []);
@@ -1583,12 +1596,7 @@ export default function NativeProChart({
           priceLineVisible: false,
           lastValueVisible: true,
           title: `RSI MA (${indicatorSettings.rsiMaPeriod || 14})`,
-          autoscaleInfoProvider: () => ({
-            priceRange: {
-              minValue: 0,
-              maxValue: 100
-            }
-          })
+          autoscaleInfoProvider: getRsiAutoscaleInfo
         });
       } else {
         rsiMaSeriesRef.current = null;
