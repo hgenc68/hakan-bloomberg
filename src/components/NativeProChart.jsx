@@ -504,8 +504,55 @@ export function calcAutoSR(data, lookback = 90) {
   return { supports, resistances };
 }
 
-// Otomatik Dinamik Fibonacci Geri Çekilme (Genişletilmiş Makro Döngü Lookback)
-export function calcAutoFib(data, lookback = 180) {
+// Varsayılan Dinamik Fibonacci Seviyeleri (TradingView & Kurumsal Standart: -0.618 Genişleme'den 1.618 Altın Hedefe)
+export const DEFAULT_FIB_LEVELS = [
+  { ratio: -0.618, label: '-0.618', enabled: true, color: '#06b6d4', lineWidth: 1, lineStyle: 'dashed', desc: 'Hedef Genişleme (Breakout Target)' },
+  { ratio: 0.000, label: '0.000', enabled: true, color: '#94a3b8', lineWidth: 1, lineStyle: 'solid', desc: 'Tepe / Dip Uç Noktası' },
+  { ratio: 0.236, label: '0.236', enabled: true, color: '#c084fc', lineWidth: 1, lineStyle: 'dotted', desc: 'Hafif Düzeltme' },
+  { ratio: 0.382, label: '0.382', enabled: true, color: '#f472b6', lineWidth: 1, lineStyle: 'dotted', desc: 'İlk Önemli Destek/Direnç' },
+  { ratio: 0.500, label: '0.500', enabled: true, color: '#ef4444', lineWidth: 2, lineStyle: 'solid', desc: '%50 Denge Seviyesi' },
+  { ratio: 0.618, label: '0.618', enabled: true, color: '#f97316', lineWidth: 2, lineStyle: 'solid', desc: 'Altın Oran (Golden Ratio)' },
+  { ratio: 0.786, label: '0.786', enabled: true, color: '#38bdf8', lineWidth: 1, lineStyle: 'dotted', desc: 'Derin Düzeltme / Son Savunma' },
+  { ratio: 1.000, label: '1.000', enabled: true, color: '#94a3b8', lineWidth: 1, lineStyle: 'solid', desc: 'Dalga Başlangıç Tabanı' },
+  { ratio: 1.618, label: '1.618', enabled: true, color: '#10b981', lineWidth: 1, lineStyle: 'dashed', desc: 'Altın Genişleme (Golden Extension)' }
+];
+
+// Seviyeleri güvenle birleştirici yardımcı fonksiyon
+export function mergeFibLevels(savedLevels) {
+  if (!Array.isArray(savedLevels) || savedLevels.length === 0) {
+    return DEFAULT_FIB_LEVELS;
+  }
+  return DEFAULT_FIB_LEVELS.map(def => {
+    const found = savedLevels.find(s => {
+      const sRatio = typeof s.ratio === 'number' ? s.ratio : parseFloat(s.ratio);
+      return Math.abs(sRatio - def.ratio) < 0.005 || String(s.label) === String(def.label);
+    });
+    if (found) {
+      let color = found.color;
+      if (color && !color.startsWith('#')) {
+        if (color.includes('148, 163, 184')) color = '#94a3b8';
+        else if (color.includes('192, 132, 252')) color = '#c084fc';
+        else if (color.includes('244, 114, 182')) color = '#f472b6';
+        else if (color.includes('6, 182, 212')) color = '#06b6d4';
+        else color = def.color;
+      }
+      return {
+        ...def,
+        ...found,
+        color: color || def.color,
+        ratio: def.ratio,
+        label: def.label,
+        enabled: found.enabled !== false,
+        lineWidth: Number(found.lineWidth) || def.lineWidth,
+        lineStyle: found.lineStyle || def.lineStyle
+      };
+    }
+    return def;
+  });
+}
+
+// Otomatik Dinamik Fibonacci Geri Çekilme (Genişletilmiş Makro Döngü Lookback & Hedef Genişlemeleri)
+export function calcAutoFib(data, lookback = 180, customLevels = null) {
   if (!data || data.length < 10) return null;
   const slice = data.slice(-Math.min(data.length, Math.max(20, lookback)));
   
@@ -530,15 +577,24 @@ export function calcAutoFib(data, lookback = 180) {
   const isUptrend = minLowIdx < maxHighIdx;
   const diff = maxHigh - minLow;
 
-  const levels = [
-    { ratio: '0.000', label: '0.000', price: isUptrend ? maxHigh : minLow, color: 'rgba(148, 163, 184, 0.35)' },
-    { ratio: '0.236', label: '0.236', price: isUptrend ? maxHigh - 0.236 * diff : minLow + 0.236 * diff, color: 'rgba(192, 132, 252, 0.45)' },
-    { ratio: '0.382', label: '0.382', price: isUptrend ? maxHigh - 0.382 * diff : minLow + 0.382 * diff, color: 'rgba(244, 114, 182, 0.45)' },
-    { ratio: '0.500', label: '0.500', price: isUptrend ? maxHigh - 0.500 * diff : minLow + 0.500 * diff, color: '#ef4444' }, // 0.50 Kırmızı & Kalın
-    { ratio: '0.618', label: '0.618', price: isUptrend ? maxHigh - 0.618 * diff : minLow + 0.618 * diff, color: '#f97316' }, // 0.618 Turuncu
-    { ratio: '0.786', label: '0.786', price: isUptrend ? maxHigh - 0.786 * diff : minLow + 0.786 * diff, color: 'rgba(6, 182, 212, 0.45)' },
-    { ratio: '1.000', label: '1.000', price: isUptrend ? minLow : maxHigh, color: 'rgba(148, 163, 184, 0.35)' }
-  ];
+  const activeLevelConfigs = mergeFibLevels(customLevels);
+
+  const levels = activeLevelConfigs
+    .filter(lvl => lvl.enabled !== false)
+    .map(lvl => {
+      const r = typeof lvl.ratio === 'number' ? lvl.ratio : parseFloat(lvl.ratio);
+      const price = isUptrend ? (maxHigh - r * diff) : (minLow + r * diff);
+      return {
+        ratio: String(lvl.ratio),
+        label: lvl.label || String(lvl.ratio),
+        price: Number(price.toFixed(2)),
+        color: lvl.color || '#38bdf8',
+        lineWidth: Number(lvl.lineWidth) || 1,
+        lineStyle: lvl.lineStyle || 'solid',
+        enabled: lvl.enabled !== false,
+        desc: lvl.desc || ''
+      };
+    });
 
   return { isUptrend, maxHigh, minLow, levels };
 }
@@ -623,6 +679,7 @@ export default function NativeProChart({
 
   // Modal for Indicator Settings
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('general'); // 'general' | 'fib'
   const [latestDivergence, setLatestDivergence] = useState(null);
 
   // Flags to avoid feedback loop between Firestore subscription and local state updates
@@ -634,7 +691,14 @@ export default function NativeProChart({
   const [indicatorSettings, setIndicatorSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('terminal_indicator_settings');
-      if (saved) return { rsiMaPeriod: 14, ...JSON.parse(saved) };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          rsiMaPeriod: 14,
+          ...parsed,
+          fibLevels: mergeFibLevels(parsed.fibLevels)
+        };
+      }
     } catch (e) {}
     return {
       rsiPeriod: 24,
@@ -646,7 +710,8 @@ export default function NativeProChart({
       bollingerStdDev: 2,
       fibLookback: 180,
       srLookback: 90,
-      showLevelTitles: false
+      showLevelTitles: false,
+      fibLevels: DEFAULT_FIB_LEVELS
     };
   });
 
@@ -697,7 +762,8 @@ export default function NativeProChart({
           isApplyingCloudSettingsRef.current = true;
           const mergedSettings = {
             rsiMaPeriod: 14,
-            ...data.indicatorSettings
+            ...data.indicatorSettings,
+            fibLevels: mergeFibLevels(data.indicatorSettings.fibLevels)
           };
           setIndicatorSettings(prev => {
             if (JSON.stringify(prev) !== JSON.stringify(mergedSettings)) {
@@ -785,6 +851,37 @@ export default function NativeProChart({
       return updated;
     });
   }, []);
+
+  // Fibonacci Seviyeleri Güncelleyici Yardımcıları
+  const updateFibLevel = useCallback((index, field, value) => {
+    updateIndicatorSettings(prev => {
+      const currentLevels = mergeFibLevels(prev.fibLevels);
+      const updated = currentLevels.map((lvl, idx) => {
+        if (idx === index) {
+          return { ...lvl, [field]: value };
+        }
+        return lvl;
+      });
+      return { ...prev, fibLevels: updated };
+    });
+  }, [updateIndicatorSettings]);
+
+  const setAllFibLevels = useCallback((enabledState) => {
+    updateIndicatorSettings(prev => {
+      const currentLevels = mergeFibLevels(prev.fibLevels);
+      const updated = currentLevels.map(lvl => ({ ...lvl, enabled: enabledState }));
+      return { ...prev, fibLevels: updated };
+    });
+  }, [updateIndicatorSettings]);
+
+  const resetFibLevelsToDefault = useCallback(() => {
+    updateIndicatorSettings(prev => ({
+      ...prev,
+      fibLookback: 180,
+      showLevelTitles: false,
+      fibLevels: DEFAULT_FIB_LEVELS
+    }));
+  }, [updateIndicatorSettings]);
 
   // User persistent drawings per base symbol
   // { horizontals: [{ id, price, label, color }], trendlines: [{ id, p1: { time, price }, p2: { time, price }, color }] }
@@ -1679,7 +1776,7 @@ export default function NativeProChart({
         console.warn('Auto SR drawing error:', err);
       }
 
-      // 8. Auto Fibonacci Retracement Lines (Makro Döngü, Mumları Kapatmayan Sade Çizgiler)
+      // 8. Auto Fibonacci Retracement Lines (Makro Döngü & Hedef Genişlemeleri - Kişiselleştirilebilir)
       try {
         autoFibLinesRef.current.forEach(line => {
           try { candlestickSeriesRef.current.removePriceLine(line); } catch (e) {}
@@ -1687,16 +1784,24 @@ export default function NativeProChart({
         autoFibLinesRef.current = [];
 
         if (indicators.autoFib && candles.length > 10) {
-          const fibData = calcAutoFib(candles, indicatorSettings.fibLookback || 180);
+          const fibData = calcAutoFib(
+            candles, 
+            indicatorSettings.fibLookback || 180,
+            indicatorSettings.fibLevels
+          );
           if (fibData && fibData.levels) {
             fibData.levels.forEach(lvl => {
-              const isHalf = lvl.ratio === '0.500';
-              const isGolden = lvl.ratio === '0.618';
+              const lineStyleEnum = lvl.lineStyle === 'dashed'
+                ? LineStyle.Dashed
+                : lvl.lineStyle === 'dotted'
+                  ? LineStyle.Dotted
+                  : LineStyle.Solid;
+
               const fibLine = candlestickSeriesRef.current.createPriceLine({
                 price: lvl.price,
                 color: lvl.color,
-                lineWidth: isHalf ? 2 : 1, // 0.500 kırmızı ve daha kalın (2px), 0.618 ve diğerleri 1px
-                lineStyle: isHalf ? LineStyle.Solid : isGolden ? LineStyle.Dashed : LineStyle.Dotted,
+                lineWidth: lvl.lineWidth || 1,
+                lineStyle: lineStyleEnum,
                 axisLabelVisible: true,
                 title: indicatorSettings.showLevelTitles ? `Fib ${lvl.label}` : ''
               });
@@ -2010,17 +2115,17 @@ export default function NativeProChart({
         {/* Left: Timeframes & Indicators */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           
-          {/* ⏱️ Zaman Dilimi Seçici */}
+          {/* ⏱️ Zaman Dilimi Seçici (Sıralı: 1S En Solda -> 3A En Sağda) */}
           <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.6)', borderRadius: 5, padding: 2, border: '1px solid rgba(255,255,255,0.1)' }}>
             {[
+              { id: '1S', label: '1S (1 Saatlik)' },
+              { id: '2S', label: '2S (2 Saatlik)' },
+              { id: '4S', label: '4S (4 Saatlik)' },
               { id: '1G', label: '1G (Günlük)' },
               { id: '1H', label: '1H (Haftalık)' },
               { id: '1A', label: '1A (Aylık)' },
               { id: '2A', label: '2A (2 Aylık)' },
-              { id: '3A', label: '3A (3 Aylık / Çeyreklik)' },
-              { id: '4S', label: '4S (4 Saatlik)' },
-              { id: '2S', label: '2S (2 Saatlik)' },
-              { id: '1S', label: '1S (1 Saatlik)' }
+              { id: '3A', label: '3A (3 Aylık / Çeyreklik)' }
             ].map(tf => (
               <button
                 key={tf.id}
@@ -2203,23 +2308,46 @@ export default function NativeProChart({
             🎯 Destek/Direnç
           </button>
 
-          {/* Dinamik Otomatik Fibonacci Toggle */}
-          <button
-            type="button"
-            onClick={() => toggleIndicator('autoFib')}
-            className={`chip-btn ${indicators.autoFib ? 'active' : ''}`}
-            style={{ 
-              fontSize: 9.5, 
-              padding: '2px 7px', 
-              color: indicators.autoFib ? '#38bdf8' : 'inherit', 
-              borderColor: indicators.autoFib ? '#38bdf8' : 'rgba(255,255,255,0.1)',
-              background: indicators.autoFib ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-              fontWeight: indicators.autoFib ? 700 : 500
-            }}
-            title="Otomatik Dinamik Fibonacci Geri Çekilme (0.618 Altın Oran Dahil)"
-          >
-            📐 Dinamik Fib
-          </button>
+          {/* Dinamik Otomatik Fibonacci Toggle & Hızlı Ayar Rozeti */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(0,0,0,0.6)', borderRadius: 5, padding: '1px 2px', border: `1px solid ${indicators.autoFib ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255,255,255,0.1)'}` }}>
+            <button
+              type="button"
+              onClick={() => toggleIndicator('autoFib')}
+              className={`chip-btn ${indicators.autoFib ? 'active' : ''}`}
+              style={{ 
+                fontSize: 9.5, 
+                padding: '2px 7px', 
+                color: indicators.autoFib ? '#38bdf8' : 'inherit', 
+                border: 'none',
+                background: indicators.autoFib ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                fontWeight: indicators.autoFib ? 700 : 500
+              }}
+              title="Otomatik Dinamik Fibonacci Geri Çekilme & Hedef Seviyelerini Aç/Kapat"
+            >
+              📐 Dinamik Fib
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsTab('fib');
+                setShowSettingsModal(true);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: indicators.autoFib ? '#38bdf8' : 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '2px 5px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderLeft: '1px solid rgba(255,255,255,0.1)'
+              }}
+              title="Fibonacci Seviyelerini, Renklerini ve Kalınlıklarını Ayarla"
+            >
+              <Sliders size={11} />
+            </button>
+          </div>
 
           {holdingInfo && (
             <button
@@ -2236,7 +2364,10 @@ export default function NativeProChart({
           {/* ⚙️ İndikatör Ayarları Butonu */}
           <button
             type="button"
-            onClick={() => setShowSettingsModal(true)}
+            onClick={() => {
+              setSettingsTab('general');
+              setShowSettingsModal(true);
+            }}
             className="chip-btn"
             style={{ 
               fontSize: 9.5, 
@@ -2990,16 +3121,21 @@ export default function NativeProChart({
               background: '#090d1a',
               border: '1px solid rgba(56, 189, 248, 0.35)',
               borderRadius: 12,
-              padding: '20px 24px',
-              width: 440,
-              maxWidth: '92vw',
+              padding: '18px 22px',
+              width: settingsTab === 'fib' ? 570 : 460,
+              maxWidth: '94vw',
+              maxHeight: '90vh',
               boxShadow: '0 25px 60px rgba(0,0,0,0.95)',
-              color: '#f8fafc'
+              color: '#f8fafc',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              transition: 'width 0.2s ease'
             }}
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Başlık */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10, flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Sliders size={18} style={{ color: 'var(--cyan)' }} />
                 <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f8fafc' }}>
@@ -3015,197 +3151,420 @@ export default function NativeProChart({
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 13, fontSize: 12 }}>
-              {/* RSI Periyodu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(236, 72, 153, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#ec4899' }}>RSI Periyodu</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Varsayılan 14 • Uzun vade ve trend için 24 idealdir</div>
-                </div>
-                <input
-                  type="number"
-                  min={2}
-                  max={100}
-                  value={indicatorSettings.rsiPeriod}
-                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, rsiPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(236, 72, 153, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              </div>
+            {/* Modal Sekme Seçici (Genel vs Dinamik Fib) */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: 'rgba(0,0,0,0.4)', padding: 3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setSettingsTab('general')}
+                style={{
+                  flex: 1,
+                  padding: '6px 12px',
+                  fontSize: 11,
+                  fontWeight: settingsTab === 'general' ? 700 : 500,
+                  borderRadius: 6,
+                  border: 'none',
+                  background: settingsTab === 'general' ? 'rgba(0, 229, 255, 0.15)' : 'transparent',
+                  color: settingsTab === 'general' ? 'var(--cyan)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Activity size={13} />
+                <span>Genel İndikatörler</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettingsTab('fib')}
+                style={{
+                  flex: 1,
+                  padding: '6px 12px',
+                  fontSize: 11,
+                  fontWeight: settingsTab === 'fib' ? 700 : 500,
+                  borderRadius: 6,
+                  border: 'none',
+                  background: settingsTab === 'fib' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                  color: settingsTab === 'fib' ? '#38bdf8' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Sliders size={13} />
+                <span>📐 Oto Fibonacci (-0.618 & 1.618)</span>
+              </button>
+            </div>
 
-              {/* RSI MA Periyodu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(250, 204, 21, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#facc15' }}>RSI MA (Hareketli Ortalama) Periyodu</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>RSI için yumuşatılmış SMA eğrisi (Varsayılan: 14)</div>
-                </div>
-                <input
-                  type="number"
-                  min={2}
-                  max={100}
-                  value={indicatorSettings.rsiMaPeriod || 14}
-                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, rsiMaPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(250, 204, 21, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              </div>
+            {/* Modal İçerik Gövdesi (Scrollable) */}
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {settingsTab === 'general' ? (
+                <>
+                  {/* RSI Periyodu */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(236, 72, 153, 0.05)', borderRadius: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#ec4899' }}>RSI Periyodu</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Varsayılan 14 • Uzun vade ve trend için 24 idealdir</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={2}
+                      max={100}
+                      value={indicatorSettings.rsiPeriod}
+                      onChange={e => updateIndicatorSettings(prev => ({ ...prev, rsiPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
+                      style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(236, 72, 153, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    />
+                  </div>
 
-              {/* EMA 1 Periyodu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#ef4444' }}>EMA 1 (Hızlı - Kırmızı)</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Kısa vadeli momentum (Varsayılan: 20)</div>
-                </div>
-                <input
-                  type="number"
-                  min={2}
-                  max={500}
-                  value={indicatorSettings.ema1Period}
-                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema1Period: Math.max(2, parseInt(e.target.value) || 20) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              </div>
+                  {/* RSI MA Periyodu */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(250, 204, 21, 0.05)', borderRadius: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#facc15' }}>RSI MA (Hareketli Ortalama) Periyodu</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>RSI için yumuşatılmış SMA eğrisi (Varsayılan: 14)</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={2}
+                      max={100}
+                      value={indicatorSettings.rsiMaPeriod || 14}
+                      onChange={e => updateIndicatorSettings(prev => ({ ...prev, rsiMaPeriod: Math.max(2, parseInt(e.target.value) || 14) }))}
+                      style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(250, 204, 21, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    />
+                  </div>
 
-              {/* EMA 2 Periyodu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#3b82f6' }}>EMA 2 (Orta Vade)</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Trend omurgası (Varsayılan: 50)</div>
-                </div>
-                <input
-                  type="number"
-                  min={2}
-                  max={500}
-                  value={indicatorSettings.ema2Period}
-                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema2Period: Math.max(2, parseInt(e.target.value) || 50) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(59, 130, 246, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              </div>
+                  {/* EMA 1 Periyodu */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#ef4444' }}>EMA 1 (Hızlı - Kırmızı)</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Kısa vadeli momentum (Varsayılan: 20)</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={2}
+                      max={500}
+                      value={indicatorSettings.ema1Period}
+                      onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema1Period: Math.max(2, parseInt(e.target.value) || 20) }))}
+                      style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(239, 68, 68, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    />
+                  </div>
 
-              {/* EMA 3 Periyodu */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(245, 158, 11, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#f59e0b' }}>EMA 3 (Ana Trend)</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Boğa/Ayı sınırı (Varsayılan: 200)</div>
-                </div>
-                <input
-                  type="number"
-                  min={2}
-                  max={500}
-                  value={indicatorSettings.ema3Period}
-                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema3Period: Math.max(2, parseInt(e.target.value) || 200) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              </div>
+                  {/* EMA 2 Periyodu */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#3b82f6' }}>EMA 2 (Orta Vade)</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Trend omurgası (Varsayılan: 50)</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={2}
+                      max={500}
+                      value={indicatorSettings.ema2Period}
+                      onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema2Period: Math.max(2, parseInt(e.target.value) || 50) }))}
+                      style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(59, 130, 246, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    />
+                  </div>
 
-              {/* Bollinger Ayarları */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(192, 132, 252, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#c084fc' }}>Bollinger Bantları</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Periyot & Sapma (Varsayılan: 20, 2σ)</div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input
-                    type="number"
-                    min={5}
-                    max={100}
-                    value={indicatorSettings.bollingerPeriod}
-                    onChange={e => updateIndicatorSettings(prev => ({ ...prev, bollingerPeriod: Math.max(5, parseInt(e.target.value) || 20) }))}
-                    style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                    title="Periyot"
-                  />
-                  <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    step={0.5}
-                    value={indicatorSettings.bollingerStdDev}
-                    onChange={e => updateIndicatorSettings(prev => ({ ...prev, bollingerStdDev: Math.max(1, parseFloat(e.target.value) || 2) }))}
-                    style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                    title="Sapma Çarpanı (StdDev)"
-                  />
-                </div>
-              </div>
+                  {/* EMA 3 Periyodu */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(245, 158, 11, 0.05)', borderRadius: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#f59e0b' }}>EMA 3 (Ana Trend)</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Boğa/Ayı sınırı (Varsayılan: 200)</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={2}
+                      max={500}
+                      value={indicatorSettings.ema3Period}
+                      onChange={e => updateIndicatorSettings(prev => ({ ...prev, ema3Period: Math.max(2, parseInt(e.target.value) || 200) }))}
+                      style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(245, 158, 11, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    />
+                  </div>
 
-              {/* Otomatik Fibonacci Lookback */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(56, 189, 248, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#38bdf8' }}>Dinamik Fibonacci Lookback</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Makro döngü tepe/dip aralığı (Varsayılan: 180 bar ~9 ay)</div>
-                </div>
-                <input
-                  type="number"
-                  min={20}
-                  max={1000}
-                  value={indicatorSettings.fibLookback}
-                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, fibLookback: Math.max(20, parseInt(e.target.value) || 180) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              </div>
+                  {/* Bollinger Ayarları */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(192, 132, 252, 0.05)', borderRadius: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#c084fc' }}>Bollinger Bantları</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Periyot & Sapma (Varsayılan: 20, 2σ)</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        type="number"
+                        min={5}
+                        max={100}
+                        value={indicatorSettings.bollingerPeriod}
+                        onChange={e => updateIndicatorSettings(prev => ({ ...prev, bollingerPeriod: Math.max(5, parseInt(e.target.value) || 20) }))}
+                        style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                        title="Periyot"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        max={5}
+                        step={0.5}
+                        value={indicatorSettings.bollingerStdDev}
+                        onChange={e => updateIndicatorSettings(prev => ({ ...prev, bollingerStdDev: Math.max(1, parseFloat(e.target.value) || 2) }))}
+                        style={{ width: 45, padding: '4px 6px', background: '#03050c', border: '1px solid rgba(192, 132, 252, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                        title="Sapma Çarpanı (StdDev)"
+                      />
+                    </div>
+                  </div>
 
-              {/* Otomatik Destek-Direnç Hassasiyeti */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#10b981' }}>Destek / Direnç Lookback</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Majör pivot aralığı (Varsayılan: 90 bar ~4.5 ay)</div>
-                </div>
-                <input
-                  type="number"
-                  min={20}
-                  max={500}
-                  value={indicatorSettings.srLookback}
-                  onChange={e => updateIndicatorSettings(prev => ({ ...prev, srLookback: Math.max(20, parseInt(e.target.value) || 90) }))}
-                  style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(16, 185, 129, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
-                />
-              </div>
+                  {/* Otomatik Destek-Direnç Hassasiyeti */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 6 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#10b981' }}>Destek / Direnç Lookback</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Majör pivot aralığı (Varsayılan: 90 bar ~4.5 ay)</div>
+                    </div>
+                    <input
+                      type="number"
+                      min={20}
+                      max={500}
+                      value={indicatorSettings.srLookback}
+                      onChange={e => updateIndicatorSettings(prev => ({ ...prev, srLookback: Math.max(20, parseInt(e.target.value) || 90) }))}
+                      style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(16, 185, 129, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                    />
+                  </div>
+                </>
+              ) : (
+                /* 📐 DİNAMİK FIBONACCI AYARLARI */
+                <>
+                  {/* Fib Üst Kontrol Kutusu */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 12px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#38bdf8', fontSize: 12.5 }}>Dinamik Fibonacci Lookback</div>
+                        <div style={{ fontSize: 10, color: '#94a3b8' }}>Tepe ve dip pivotlarını tespit etmek için taranan mum sayısı</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                          type="number"
+                          min={20}
+                          max={1000}
+                          value={indicatorSettings.fibLookback || 180}
+                          onChange={e => updateIndicatorSettings(prev => ({ ...prev, fibLookback: Math.max(20, parseInt(e.target.value) || 180) }))}
+                          style={{ width: 65, padding: '4px 8px', background: '#03050c', border: '1px solid rgba(56, 189, 248, 0.5)', borderRadius: 6, color: '#fff', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}
+                        />
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>bar</span>
+                      </div>
+                    </div>
 
-              {/* Grafik İçi Seviye Metinleri (Sadelik Ayarı) */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#f8fafc' }}>Çizgi Üstü Metin Etiketleri</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>Kapalıyken mumları kapatmaz, seviyeler sağ eksende görünür</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => updateIndicatorSettings(prev => ({ ...prev, showLevelTitles: !prev.showLevelTitles }))}
-                  className="chip-btn"
-                  style={{
-                    fontSize: 10,
-                    padding: '3px 10px',
-                    fontWeight: 700,
-                    color: indicatorSettings.showLevelTitles ? '#38bdf8' : '#10b981',
-                    borderColor: indicatorSettings.showLevelTitles ? '#38bdf8' : '#10b981',
-                    background: indicatorSettings.showLevelTitles ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.15)'
-                  }}
-                >
-                  {indicatorSettings.showLevelTitles ? 'Yazılar Açık' : '✓ Sade / Minimal'}
-                </button>
-              </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, color: '#cbd5e1' }}>Çizgi Metinleri:</span>
+                        <button
+                          type="button"
+                          onClick={() => updateIndicatorSettings(prev => ({ ...prev, showLevelTitles: !prev.showLevelTitles }))}
+                          className="chip-btn"
+                          style={{
+                            fontSize: 10,
+                            padding: '2px 8px',
+                            fontWeight: 700,
+                            color: indicatorSettings.showLevelTitles ? '#38bdf8' : '#10b981',
+                            borderColor: indicatorSettings.showLevelTitles ? '#38bdf8' : '#10b981',
+                            background: indicatorSettings.showLevelTitles ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.15)'
+                          }}
+                        >
+                          {indicatorSettings.showLevelTitles ? 'Yazılar Açık' : '✓ Sade / Minimal'}
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setAllFibLevels(true)}
+                          className="chip-btn"
+                          style={{ fontSize: 9.5, padding: '2px 7px', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
+                          title="Tüm Fibonacci seviyelerini aç"
+                        >
+                          Tümünü Aç
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAllFibLevels(false)}
+                          className="chip-btn"
+                          style={{ fontSize: 9.5, padding: '2px 7px', color: '#94a3b8', borderColor: 'rgba(255, 255, 255, 0.15)' }}
+                          title="Tüm seviyeleri kapat"
+                        >
+                          Tümünü Kapat
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seviye Listesi Tablosu */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 8px', fontSize: 10, color: '#64748b', fontWeight: 600 }}>
+                      <span>SEVİYE & AÇIKLAMA</span>
+                      <span>RENK • KALINLIK • ÇİZGİ TİPİ</span>
+                    </div>
+
+                    {mergeFibLevels(indicatorSettings.fibLevels).map((lvl, idx) => (
+                      <div
+                        key={lvl.label}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '7px 10px',
+                          background: lvl.enabled ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.01)',
+                          borderRadius: 8,
+                          border: `1px solid ${lvl.enabled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.03)'}`,
+                          opacity: lvl.enabled ? 1 : 0.45,
+                          transition: 'all 0.15s ease',
+                          gap: 10
+                        }}
+                      >
+                        {/* Sol: Checkbox + Seviye Etiketi + Açıklama */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 160 }}>
+                          <input
+                            type="checkbox"
+                            checked={lvl.enabled}
+                            onChange={e => updateFibLevel(idx, 'enabled', e.target.checked)}
+                            style={{ cursor: 'pointer', accentColor: lvl.color || 'var(--cyan)', width: 16, height: 16 }}
+                            id={`fib-chk-${lvl.label}`}
+                          />
+                          <label
+                            htmlFor={`fib-chk-${lvl.label}`}
+                            style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{
+                                fontFamily: 'monospace',
+                                fontWeight: 800,
+                                fontSize: 12.5,
+                                color: lvl.enabled ? (lvl.color || '#fff') : '#64748b'
+                              }}>
+                                {lvl.label}
+                              </span>
+                              {(lvl.ratio === -0.618 || lvl.ratio === 0.618 || lvl.ratio === 1.618 || lvl.ratio === 0.5) && (
+                                <span style={{
+                                  fontSize: 8.5,
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  background: lvl.ratio === -0.618 ? 'rgba(6, 182, 212, 0.18)' : lvl.ratio === 0.618 ? 'rgba(249, 115, 22, 0.2)' : lvl.ratio === 1.618 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.18)',
+                                  color: lvl.ratio === -0.618 ? '#06b6d4' : lvl.ratio === 0.618 ? '#f97316' : lvl.ratio === 1.618 ? '#10b981' : '#ef4444',
+                                  fontWeight: 700
+                                }}>
+                                  {lvl.ratio === -0.618 ? 'Hedef -0.618' : lvl.ratio === 0.618 ? 'Altın Oran' : lvl.ratio === 1.618 ? 'Genişleme 1.618' : '%50 Denge'}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ fontSize: 9.5, color: '#64748b' }}>{lvl.desc}</span>
+                          </label>
+                        </div>
+
+                        {/* Sağ: Renk Seçici + Kalınlık + Çizgi Stili */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {/* Renk Seçici */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              type="color"
+                              value={lvl.color.startsWith('#') ? lvl.color : '#94a3b8'}
+                              onChange={e => updateFibLevel(idx, 'color', e.target.value)}
+                              disabled={!lvl.enabled}
+                              style={{
+                                width: 26,
+                                height: 24,
+                                padding: 0,
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: 4,
+                                background: 'transparent',
+                                cursor: lvl.enabled ? 'pointer' : 'not-allowed'
+                              }}
+                              title="Çizgi Rengini Değiştir"
+                            />
+                            <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#94a3b8', width: 50 }}>
+                              {lvl.color}
+                            </span>
+                          </div>
+
+                          {/* Kalınlık (1px, 2px, 3px) */}
+                          <select
+                            value={lvl.lineWidth || 1}
+                            onChange={e => updateFibLevel(idx, 'lineWidth', parseInt(e.target.value))}
+                            disabled={!lvl.enabled}
+                            style={{
+                              background: '#03050c',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              borderRadius: 5,
+                              color: '#f8fafc',
+                              padding: '3px 6px',
+                              fontSize: 10.5,
+                              cursor: lvl.enabled ? 'pointer' : 'not-allowed'
+                            }}
+                            title="Çizgi Kalınlığı"
+                          >
+                            <option value={1}>1 px</option>
+                            <option value={2}>2 px</option>
+                            <option value={3}>3 px</option>
+                          </select>
+
+                          {/* Çizgi Stili (Düz, Kesikli, Noktalı) */}
+                          <select
+                            value={lvl.lineStyle || 'solid'}
+                            onChange={e => updateFibLevel(idx, 'lineStyle', e.target.value)}
+                            disabled={!lvl.enabled}
+                            style={{
+                              background: '#03050c',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              borderRadius: 5,
+                              color: '#f8fafc',
+                              padding: '3px 6px',
+                              fontSize: 10.5,
+                              cursor: lvl.enabled ? 'pointer' : 'not-allowed'
+                            }}
+                            title="Çizgi Tipi"
+                          >
+                            <option value="solid">Düz ──</option>
+                            <option value="dashed">Kesikli - -</option>
+                            <option value="dotted">Noktalı ···</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Modal Alt Butonları */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
               <button
                 type="button"
-                onClick={() => updateIndicatorSettings({
-                  rsiPeriod: 24,
-                  ema1Period: 20,
-                  ema2Period: 50,
-                  ema3Period: 200,
-                  bollingerPeriod: 20,
-                  bollingerStdDev: 2,
-                  fibLookback: 180,
-                  srLookback: 90,
-                  showLevelTitles: false
-                })}
+                onClick={() => {
+                  if (settingsTab === 'fib') {
+                    resetFibLevelsToDefault();
+                  } else {
+                    updateIndicatorSettings({
+                      rsiPeriod: 24,
+                      rsiMaPeriod: 14,
+                      ema1Period: 20,
+                      ema2Period: 50,
+                      ema3Period: 200,
+                      bollingerPeriod: 20,
+                      bollingerStdDev: 2,
+                      fibLookback: 180,
+                      srLookback: 90,
+                      showLevelTitles: false,
+                      fibLevels: DEFAULT_FIB_LEVELS
+                    });
+                  }
+                }}
                 className="chip-btn"
                 style={{ fontSize: 11, padding: '5px 12px', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}
               >
-                Varsayılana Sıfırla
+                {settingsTab === 'fib' ? 'Fib Seviyelerini Sıfırla' : 'Varsayılana Sıfırla'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowSettingsModal(false)}
                 className="chip-btn"
-                style={{ fontSize: 11, padding: '5px 16px', background: 'var(--cyan)', color: '#000', fontWeight: 700, border: 'none' }}
+                style={{ fontSize: 11, padding: '5px 18px', background: 'var(--cyan)', color: '#000', fontWeight: 700, border: 'none' }}
               >
                 Uygula & Kapat
               </button>
