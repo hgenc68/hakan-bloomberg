@@ -346,7 +346,11 @@ export const AppProvider = ({ children }) => {
   // 1. Subscribe to Firestore Collections & Real-Time Sync
   useEffect(() => {
     const unsubHoldings = onSnapshot(collection(db, 'holdings'), (snap) => {
-      const list = snap.docs.map(d => {
+      const seenIds = new Set();
+      const list = [];
+      snap.docs.forEach(d => {
+        if (seenIds.has(d.id)) return;
+        seenIds.add(d.id);
         const item = d.data();
         const sym = (item.ticker || '').toUpperCase();
         const clean = sym.replace('.IS', '').replace('-USD', '');
@@ -360,12 +364,13 @@ export const AppProvider = ({ children }) => {
             } catch (err) {}
           }
         }
-        return { ...item, type, id: d.id };
+        list.push({ ...item, type, id: d.id });
       });
       setHoldings(list);
       setLoading(false);
       try {
         localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(list));
+        syncSharedPortfolioBridge(list);
       } catch (e) {}
     });
 
@@ -682,7 +687,18 @@ export const AppProvider = ({ children }) => {
     let dayPLTRYTotal = 0;
 
     // A) Holdings Calculation with currency normalization
-    const enrichedHoldings = holdings.map(h => {
+    // Strict Deduplication to guarantee no double rows or mathematical double-counting
+    const uniqueHoldingsMap = new Map();
+    holdings.forEach(h => {
+      const rawUpper = (h.ticker || '').toUpperCase();
+      const cleanUpper = (h.clean_ticker || '').toUpperCase();
+      const key = (h.id || cleanUpper || rawUpper).replace(/[/\.]/g, '_');
+      if (!uniqueHoldingsMap.has(key)) {
+        uniqueHoldingsMap.set(key, h);
+      }
+    });
+    const uniqueHoldings = Array.from(uniqueHoldingsMap.values());
+    const enrichedHoldings = uniqueHoldings.map(h => {
       const rawUpper = (h.ticker || '').toUpperCase();
       const cleanUpper = (h.clean_ticker || '').toUpperCase();
       let sym = cleanUpper || TICKER_MAP[rawUpper];
@@ -966,8 +982,8 @@ export const AppProvider = ({ children }) => {
         return_pct: Number(h.returnPct || 0)
       }));
 
-      // Add Gram Gold position
-      if (portfolioSummary.totalGrams > 0) {
+      // Add Gram Gold position only if not already in list
+      if (portfolioSummary.totalGrams > 0 && !exportList.some(item => item.id === 'bloomberg_gram_altin' || item.ticker === 'GRAM_ALTIN')) {
         exportList.push({
           id: 'bloomberg_gram_altin',
           ticker: 'GRAM_ALTIN',
@@ -991,6 +1007,7 @@ export const AppProvider = ({ children }) => {
         });
       }
 
+      // Dual-Sync: 1. Local Shared Bridge File
       fetch('/api/sync-portfolio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1013,6 +1030,27 @@ export const AppProvider = ({ children }) => {
           lastUpdated: new Date().toISOString()
         })
       }).catch(() => {});
+
+      // Dual-Sync: 2. Cloud Firestore Realtime Sync
+      try {
+        setDoc(doc(db, 'h2b_terminal_sync', 'portfolio_summary'), {
+          summary: {
+            total_val_try: portfolioSummary.totalValTRY,
+            total_val_usd: portfolioSummary.totalValUSD,
+            total_cost_try: portfolioSummary.totalCostTRY,
+            total_cost_usd: portfolioSummary.totalCostUSD,
+            unrealized_profit_try: portfolioSummary.unrealizedProfitTRY,
+            unrealized_profit_usd: portfolioSummary.unrealizedProfitUSD,
+            realized_profit_try: portfolioSummary.realizedProfitTRY,
+            realized_profit_usd: portfolioSummary.realizedProfitUSD,
+            consolidated_profit_try: portfolioSummary.consolidatedProfitTRY,
+            consolidated_profit_usd: portfolioSummary.consolidatedProfitUSD,
+            day_pl_try: portfolioSummary.dayPLTRY,
+            day_pl_usd: portfolioSummary.dayPLUSD
+          },
+          lastUpdated: new Date().toISOString()
+        }, { merge: true }).catch(() => {});
+      } catch (e) {}
     }, 1000);
 
     return () => clearTimeout(timeout);
@@ -1094,9 +1132,21 @@ export const AppProvider = ({ children }) => {
         };
         await setDoc(doc(db, 'holdings', docId), newHoldingObj);
 
-        // Optimistic UI state & cache update
+        // Optimistic UI state & cache update with strict deduplication
         setHoldings(prev => {
-          const updated = [...prev, newHoldingObj];
+          const alreadyExists = prev.some(h => 
+            h.id === docId || 
+            (h.ticker || '').toUpperCase() === inputTicker ||
+            (h.clean_ticker || '').toUpperCase() === (newHoldingObj.clean_ticker || '').toUpperCase()
+          );
+          let updated;
+          if (alreadyExists) {
+            updated = prev.map(h => 
+              (h.id === docId || (h.ticker || '').toUpperCase() === inputTicker) ? { ...h, ...newHoldingObj } : h
+            );
+          } else {
+            updated = [...prev, newHoldingObj];
+          }
           try {
             localStorage.setItem('bloomberg_cached_holdings', JSON.stringify(updated));
             syncSharedPortfolioBridge(updated);

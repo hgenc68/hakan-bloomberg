@@ -84,6 +84,7 @@ export function AddHoldingModal({ initialTicker, onClose }) {
   const [avgCost, setAvgCost] = useState('');
   const [currency, setCurrency] = useState('TRY');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Kurumsal Portföy Tavan ve Sektörel Uygunluk Analizi
   const constraintInfo = useMemo(() => {
@@ -156,18 +157,25 @@ export function AddHoldingModal({ initialTicker, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!ticker || !shares || !avgCost) return;
-    await addHolding({
-      ticker: ticker.toUpperCase(),
-      clean_ticker: ticker.includes('.') ? ticker : (type === 'Hisse' && currency === 'TRY' ? `${ticker}.IS` : ticker),
-      name: name || existingHolding?.name || ticker,
-      type,
-      shares: parseFloat(String(shares).replace(',', '.')),
-      avg_cost: parseFloat(String(avgCost).replace(',', '.')),
-      currency,
-      cost_rate: currency === 'USD' ? (usdtry || 49.03) : 1.0
-    });
-    onClose();
+    if (isSubmitting || !ticker || !shares || !avgCost) return;
+    setIsSubmitting(true);
+    try {
+      await addHolding({
+        ticker: ticker.toUpperCase(),
+        clean_ticker: ticker.includes('.') ? ticker : (type === 'Hisse' && currency === 'TRY' ? `${ticker}.IS` : ticker),
+        name: name || existingHolding?.name || ticker,
+        type,
+        shares: parseFloat(String(shares).replace(',', '.')),
+        avg_cost: parseFloat(String(avgCost).replace(',', '.')),
+        currency,
+        cost_rate: currency === 'USD' ? (usdtry || 49.03) : 1.0
+      });
+      onClose();
+    } catch (err) {
+      console.error('AddHolding handleSubmit error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const modalTitle = existingHolding
@@ -398,9 +406,14 @@ export function AddHoldingModal({ initialTicker, onClose }) {
         )}
 
         <div className="modal-actions">
-          <button type="button" className="btn-secondary" onClick={onClose}>İptal</button>
-          <button type="submit" className="btn-primary" style={existingHolding ? { background: 'linear-gradient(135deg, #0284c7, #0369a1)', border: 'none' } : {}}>
-            {existingHolding ? `${existingHolding.ticker} Pozisyonuna Ekle` : 'Pozisyonu Kaydet'}
+          <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting}>İptal</button>
+          <button 
+            type="submit" 
+            className="btn-primary" 
+            disabled={isSubmitting}
+            style={existingHolding ? { background: 'linear-gradient(135deg, #0284c7, #0369a1)', border: 'none' } : {}}
+          >
+            {isSubmitting ? 'İşleniyor...' : (existingHolding ? `${existingHolding.ticker} Pozisyonuna Ekle` : 'Pozisyonu Kaydet')}
           </button>
         </div>
       </form>
@@ -807,16 +820,22 @@ export function AddGoldModal({ onClose }) {
   const [grams, setGrams] = useState('');
   const [price, setPrice] = useState(gramGoldPrice ? String(Math.round(gramGoldPrice)) : '6600');
   const [note, setNote] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!grams || !price) return;
-    await addGoldPurchase(
-      parseFloat(grams.replace(',', '.')),
-      parseFloat(price.replace(',', '.')),
-      note
-    );
-    onClose();
+    if (!grams || !price || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await addGoldPurchase(
+        parseFloat(grams.replace(',', '.')),
+        parseFloat(price.replace(',', '.')),
+        note
+      );
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -860,7 +879,9 @@ export function AddGoldModal({ onClose }) {
 
         <div className="modal-actions">
           <button type="button" className="btn-secondary" onClick={onClose}>İptal</button>
-          <button type="submit" className="btn-primary">Altın Alımını Kaydet</button>
+          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? 'Kaydediliyor...' : 'Altın Alımını Kaydet'}
+          </button>
         </div>
       </form>
     </ModalWrapper>
