@@ -615,6 +615,49 @@ export default function NativeProChart({
   const chartContainerRef = useRef(null);
   const rsiContainerRef = useRef(null);
 
+  // Persistent RSI pane height (TradingView-style resizable panel)
+  const [rsiHeight, setRsiHeight] = useState(() => {
+    try {
+      const saved = localStorage.getItem('terminal_rsi_height');
+      if (saved) return Math.max(90, Math.min(500, parseInt(saved) || 165));
+    } catch (e) {}
+    return 165; // Ferah ve okunaklı 165px varsayılan
+  });
+  const rsiHeightRef = useRef(rsiHeight);
+  rsiHeightRef.current = rsiHeight;
+
+  const isDraggingSplitterRef = useRef(false);
+  const splitterStartYRef = useRef(0);
+  const splitterStartHeightRef = useRef(165);
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+
+  const handleSplitterPointerDown = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    isDraggingSplitterRef.current = true;
+    setIsDraggingSplitter(true);
+    splitterStartYRef.current = e.clientY;
+    splitterStartHeightRef.current = rsiHeightRef.current;
+  }, []);
+
+  const handleSplitterPointerMove = useCallback((e) => {
+    if (!isDraggingSplitterRef.current) return;
+    const deltaY = splitterStartYRef.current - e.clientY;
+    const newHeight = Math.max(90, Math.min(480, splitterStartHeightRef.current + deltaY));
+    setRsiHeight(newHeight);
+    try {
+      localStorage.setItem('terminal_rsi_height', String(newHeight));
+    } catch (err) {}
+  }, []);
+
+  const handleSplitterPointerUp = useCallback((e) => {
+    if (!isDraggingSplitterRef.current) return;
+    isDraggingSplitterRef.current = false;
+    setIsDraggingSplitter(false);
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (err) {}
+  }, []);
+
   const chartInstanceRef = useRef(null);
   const rsiChartInstanceRef = useRef(null);
   const candlestickSeriesRef = useRef(null);
@@ -1485,12 +1528,12 @@ export default function NativeProChart({
       bbLowerSeriesRef.current = null;
     }
 
-    // 2. Create RSI Sub-Chart (if active, height: 95px, tight against main chart)
+    // 2. Create RSI Sub-Chart (if active, dynamic resizable height, tight against main chart)
     if (indicators.rsi && rsiContainerRef.current) {
       const rsiContainer = rsiContainerRef.current;
       const rsiChart = createChart(rsiContainer, {
         width,
-        height: 95,
+        height: rsiHeightRef.current,
         layout: {
           background: { type: 'solid', color: '#03050c' },
           textColor: '#64748b',
@@ -1502,7 +1545,7 @@ export default function NativeProChart({
         },
         rightPriceScale: {
           borderColor: 'rgba(255, 255, 255, 0.08)',
-          scaleMargins: { top: 0.10, bottom: 0.10 },
+          scaleMargins: { top: 0.08, bottom: 0.14 },
           autoScale: true
         },
         timeScale: {
@@ -1582,11 +1625,11 @@ export default function NativeProChart({
         title: '30'
       });
 
-      // 0 (Taban) Seviyesi
+      // 0 (Taban) Seviyesi - Belirgin, Net Açık Gümüş Gri & 1.5px Solid
       rsiSeries.createPriceLine({
         price: 0,
-        color: 'rgba(148, 163, 184, 0.45)',
-        lineWidth: 1,
+        color: '#94a3b8',
+        lineWidth: 1.5,
         lineStyle: LineStyle.Solid,
         axisLabelVisible: true,
         title: '0'
@@ -1661,7 +1704,7 @@ export default function NativeProChart({
       if (newWidth > 0 && newHeight > 0) {
         chartInstanceRef.current.resize(newWidth, newHeight);
         if (rsiChartInstanceRef.current && rsiContainerRef.current) {
-          rsiChartInstanceRef.current.resize(newWidth, 95);
+          rsiChartInstanceRef.current.resize(newWidth, rsiHeightRef.current);
         }
         recalcSvgLines();
       }
@@ -1684,6 +1727,24 @@ export default function NativeProChart({
       }
     };
   }, [indicators, indicatorSettings.rsiPeriod, indicatorSettings.rsiMaPeriod, chartInterval, recalcSvgLines]);
+
+  // Dynamic resize of RSI and main chart when rsiHeight changes
+  useEffect(() => {
+    if (rsiChartInstanceRef.current && rsiContainerRef.current) {
+      const w = rsiContainerRef.current.clientWidth;
+      if (w > 0) {
+        rsiChartInstanceRef.current.resize(w, rsiHeight);
+      }
+    }
+    if (chartInstanceRef.current && chartContainerRef.current) {
+      const w = chartContainerRef.current.clientWidth;
+      const h = chartContainerRef.current.clientHeight;
+      if (w > 0 && h > 0) {
+        chartInstanceRef.current.resize(w, h);
+      }
+    }
+    recalcSvgLines();
+  }, [rsiHeight, recalcSvgLines]);
 
   // Push candle data & indicators to series whenever candles update
   useEffect(() => {
@@ -3029,95 +3090,180 @@ export default function NativeProChart({
         </svg>
       </div>
 
-      {/* 📉 RSI SUB-CHART (Height 95px, tight against the main chart time scale) */}
+      {/* 📉 RSI SUB-CHART (TradingView Tarzı Yeniden Boyutlandırılabilir) */}
       {indicators.rsi && (
-        <div 
-          style={{ 
-            height: 95, 
-            width: '100%', 
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)', 
-            background: '#03050c',
-            position: 'relative',
-            flexShrink: 0
-          }}
-        >
-          <div 
-            style={{ 
-              position: 'absolute', 
-              top: 3, 
-              left: 10, 
-              fontSize: 9, 
-              color: '#ec4899', 
-              fontWeight: 700, 
-              zIndex: 5,
+        <>
+          {/* ↕️ TradingView Tarzı İnteraktif Sürükle-Bırak Yükseklik Ayıracı (Splitter) */}
+          <div
+            onPointerDown={handleSplitterPointerDown}
+            onPointerMove={handleSplitterPointerMove}
+            onPointerUp={handleSplitterPointerUp}
+            onDoubleClick={() => {
+              const nextHeight = rsiHeight >= 220 ? 130 : 230;
+              setRsiHeight(nextHeight);
+              try { localStorage.setItem('terminal_rsi_height', String(nextHeight)); } catch (e) {}
+            }}
+            style={{
+              height: 7,
+              width: '100%',
+              cursor: 'row-resize',
+              background: isDraggingSplitter ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+              borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.6)',
+              transition: isDraggingSplitter ? 'none' : 'background 0.15s ease',
               display: 'flex',
               alignItems: 'center',
-              gap: 8
+              justifyContent: 'center',
+              position: 'relative',
+              zIndex: 20,
+              userSelect: 'none',
+              touchAction: 'none'
+            }}
+            title="TradingView Tarzı Yükseklik Ayarı: Yukarı/Aşağı sürükleyin (Çift tıklama: Genişlet/Daralt)"
+          >
+            <div style={{
+              width: 44,
+              height: 3,
+              borderRadius: 3,
+              background: isDraggingSplitter ? '#38bdf8' : 'rgba(255, 255, 255, 0.4)',
+              boxShadow: isDraggingSplitter ? '0 0 8px rgba(56, 189, 248, 0.8)' : 'none'
+            }} />
+          </div>
+
+          <div 
+            style={{ 
+              height: rsiHeight, 
+              width: '100%', 
+              background: '#03050c',
+              position: 'relative',
+              flexShrink: 0
             }}
           >
-            <span>RSI ({indicatorSettings.rsiPeriod || 14})</span>
-            {indicators.rsiMa && (
-              <span style={{ color: '#facc15' }}>• MA ({indicatorSettings.rsiMaPeriod || 14})</span>
-            )}
-            <span style={{ color: '#64748b' }}>• 70/30</span>
-
-            {/* Quick in-panel toggles */}
-            <button
-              type="button"
-              onClick={() => toggleIndicator('rsiMa')}
-              style={{
-                background: indicators.rsiMa ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                color: indicators.rsiMa ? '#facc15' : '#94a3b8',
-                border: `1px solid ${indicators.rsiMa ? 'rgba(250, 204, 21, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-                borderRadius: 4,
-                padding: '1px 5px',
-                fontSize: 8.5,
-                cursor: 'pointer',
-                fontWeight: 600
+            <div 
+              style={{ 
+                position: 'absolute', 
+                top: 4, 
+                left: 10, 
+                fontSize: 9, 
+                color: '#ec4899', 
+                fontWeight: 700, 
+                zIndex: 5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
               }}
-              title="RSI Hareketli Ortalamasını Aç/Kapat"
             >
-              🟡 MA
-            </button>
+              <span>RSI ({indicatorSettings.rsiPeriod || 14})</span>
+              {indicators.rsiMa && (
+                <span style={{ color: '#facc15' }}>• MA ({indicatorSettings.rsiMaPeriod || 14})</span>
+              )}
+              <span style={{ color: '#64748b' }}>• [0 - 100]</span>
 
-            <button
-              type="button"
-              onClick={() => toggleIndicator('rsiDivergence')}
-              style={{
-                background: indicators.rsiDivergence ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                color: indicators.rsiDivergence ? '#38bdf8' : '#94a3b8',
-                border: `1px solid ${indicators.rsiDivergence ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-                borderRadius: 4,
-                padding: '1px 5px',
-                fontSize: 8.5,
-                cursor: 'pointer',
-                fontWeight: 600
-              }}
-              title="RSI Uyumsuzluklarını Aç/Kapat"
-            >
-              ⚡ Uyumsuzluk
-            </button>
-
-            {/* Son Uyumsuzluk Rozeti */}
-            {indicators.rsiDivergence && latestDivergence && (
-              <span
+              {/* Quick in-panel toggles */}
+              <button
+                type="button"
+                onClick={() => toggleIndicator('rsiMa')}
                 style={{
-                  padding: '1px 6px',
+                  background: indicators.rsiMa ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  color: indicators.rsiMa ? '#facc15' : '#94a3b8',
+                  border: `1px solid ${indicators.rsiMa ? 'rgba(250, 204, 21, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
                   borderRadius: 4,
+                  padding: '1px 5px',
                   fontSize: 8.5,
-                  fontWeight: 700,
-                  backgroundColor: latestDivergence.type === 'PU' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                  color: latestDivergence.type === 'PU' ? '#10b981' : '#ef4444',
-                  border: `1px solid ${latestDivergence.type === 'PU' ? '#10b981' : '#ef4444'}`
+                  cursor: 'pointer',
+                  fontWeight: 600
                 }}
-                title={`Son Sinyal: ${latestDivergence.title} (${latestDivergence.time})`}
+                title="RSI Hareketli Ortalamasını Aç/Kapat"
               >
-                {latestDivergence.type === 'PU' ? '🟢 Son: PU' : '🔴 Son: NU'}
-              </span>
-            )}
+                🟡 MA
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleIndicator('rsiDivergence')}
+                style={{
+                  background: indicators.rsiDivergence ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  color: indicators.rsiDivergence ? '#38bdf8' : '#94a3b8',
+                  border: `1px solid ${indicators.rsiDivergence ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                  borderRadius: 4,
+                  padding: '1px 5px',
+                  fontSize: 8.5,
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+                title="RSI Uyumsuzluklarını Aç/Kapat"
+              >
+                ⚡ Uyumsuzluk
+              </button>
+
+              {/* Son Uyumsuzluk Rozeti */}
+              {indicators.rsiDivergence && latestDivergence && (
+                <span
+                  style={{
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    fontSize: 8.5,
+                    fontWeight: 700,
+                    backgroundColor: latestDivergence.type === 'PU' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    color: latestDivergence.type === 'PU' ? '#10b981' : '#ef4444',
+                    border: `1px solid ${latestDivergence.type === 'PU' ? '#10b981' : '#ef4444'}`
+                  }}
+                  title={`Son Sinyal: ${latestDivergence.title} (${latestDivergence.time})`}
+                >
+                  {latestDivergence.type === 'PU' ? '🟢 Son: PU' : '🔴 Son: NU'}
+                </span>
+              )}
+            </div>
+
+            {/* Sağ Üst Hızlı Yükseklik Seçici Presets */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 4,
+                right: 75,
+                zIndex: 5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3
+              }}
+            >
+              <span style={{ fontSize: 8.5, color: '#64748b', marginRight: 2 }}>Boyut:</span>
+              {[
+                { label: 'S', h: 120, title: 'Kompakt (120px)' },
+                { label: 'M', h: 165, title: 'Standart (165px)' },
+                { label: 'L', h: 230, title: 'Geniş (230px)' },
+                { label: 'XL', h: 320, title: 'Çok Geniş (320px)' }
+              ].map(p => {
+                const isActive = Math.abs(rsiHeight - p.h) < 25;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setRsiHeight(p.h);
+                      try { localStorage.setItem('terminal_rsi_height', String(p.h)); } catch (e) {}
+                    }}
+                    style={{
+                      background: isActive ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                      color: isActive ? '#38bdf8' : '#94a3b8',
+                      border: `1px solid ${isActive ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.08)'}`,
+                      borderRadius: 3,
+                      padding: '1px 5px',
+                      fontSize: 8.5,
+                      cursor: 'pointer',
+                      fontWeight: isActive ? 700 : 500
+                    }}
+                    title={p.title}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
-          <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
-        </div>
+        </>
       )}
 
       {/* ℹ️ FOOTER HINT BAR */}
