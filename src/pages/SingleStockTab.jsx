@@ -576,11 +576,17 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const [activeScenario, setActiveScenario] = useState('base'); // 'conservative', 'base', 'bull'
   const [rightChartMode, setRightChartMode] = useState('qualtrim'); // 'qualtrim' | 'solvency' | 'buyback' | 'koyfin'
 
-  const cleanTickerUpper = currentTicker.toUpperCase().trim();
-  const liveStock = liveFundamentals[cleanTickerUpper] || liveFundamentals[`${cleanTickerUpper}.IS`];
-  const potStock = potentialData?.stocks?.find(s => s.ticker === currentTicker);
+  let rawClean = currentTicker.toUpperCase().trim();
+  if (rawClean === 'ORACL') rawClean = 'ORCL';
+  if (rawClean === 'BRK.B' || rawClean === 'BRKB') rawClean = 'BRK-B';
+  const cleanTickerUpper = rawClean;
+  const baseTicker = cleanTickerUpper.replace('.IS', '');
+  const bistSymCandidate = `${baseTicker}.IS`;
 
-  const staticStock = stocksData[currentTicker] || (potStock ? synthesizePotentialStock(potStock) : synthesizeGenericStock(currentTicker, marketQuotes));
+  const liveStock = liveFundamentals[cleanTickerUpper] || liveFundamentals[baseTicker] || liveFundamentals[bistSymCandidate];
+  const potStock = potentialData?.stocks?.find(s => s.ticker === currentTicker || s.ticker === cleanTickerUpper || s.ticker === baseTicker);
+
+  const staticStock = stocksData[cleanTickerUpper] || stocksData[baseTicker] || stocksData[currentTicker] || (potStock ? synthesizePotentialStock(potStock) : synthesizeGenericStock(cleanTickerUpper, marketQuotes));
   const activeStock = liveStock ? {
     ...staticStock,
     ...liveStock,
@@ -2412,7 +2418,14 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     };
   }, [buybackData]);
 
-  const quickChips = ['NVDA', 'GOOGL', 'MSFT', 'AAPL', 'AMZN', 'ORCL', 'VRT', 'TSM', 'SOFI', 'THYAO', 'TUPRS', 'FROTO', 'AGHOL'];
+  const quickChips = [
+    // MAG7
+    'NVDA', 'MSFT', 'AAPL', 'AMZN', 'GOOGL', 'META', 'TSLA',
+    // Global & US Giants
+    'AMD', 'ORCL', 'LLY', 'AVGO', 'TSM', 'ASML', 'XOM', 'CVX', 'BRK-B', 'JPM', 'QCOM', 'CSCO',
+    // BIST 30 Leaders
+    'THYAO', 'ASELS', 'BIMAS', 'KCHOL', 'TUPRS', 'FROTO', 'SISE', 'SAHOL', 'AKBNK', 'GARAN', 'ISCTR', 'EREGL', 'AGHOL', 'PGSUS'
+  ];
 
   const originInfo = useMemo(() => {
     if (!lastNavigatedFrom) return null;
