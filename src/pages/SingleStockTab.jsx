@@ -579,6 +579,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   let rawClean = currentTicker.toUpperCase().trim();
   if (rawClean === 'ORACL') rawClean = 'ORCL';
   if (rawClean === 'BRK.B' || rawClean === 'BRKB') rawClean = 'BRK-B';
+  if (rawClean === 'INTEL') rawClean = 'INTC';
   const cleanTickerUpper = rawClean;
   const baseTicker = cleanTickerUpper.replace('.IS', '');
   const bistSymCandidate = `${baseTicker}.IS`;
@@ -586,8 +587,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const liveStock = liveFundamentals[cleanTickerUpper] || liveFundamentals[baseTicker] || liveFundamentals[bistSymCandidate];
   const potStock = potentialData?.stocks?.find(s => s.ticker === currentTicker || s.ticker === cleanTickerUpper || s.ticker === baseTicker);
 
-  const isVerifiedStock = !!(stocksData[cleanTickerUpper] || stocksData[baseTicker] || stocksData[currentTicker] || staticStock?.is_verified_official);
   const staticStock = stocksData[cleanTickerUpper] || stocksData[baseTicker] || stocksData[currentTicker] || (potStock ? synthesizePotentialStock(potStock) : synthesizeGenericStock(cleanTickerUpper, marketQuotes));
+  const isVerifiedStock = !!(stocksData[cleanTickerUpper] || stocksData[baseTicker] || stocksData[currentTicker] || staticStock?.is_verified_official);
   const activeStock = liveStock ? {
     ...staticStock,
     ...liveStock,
