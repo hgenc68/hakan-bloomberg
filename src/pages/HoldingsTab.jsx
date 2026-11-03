@@ -787,12 +787,146 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
       solvencyScore: 65,
       debtToEquity: 145.0,
       diagnosis: 'Gıda ve perakende restoran genişlemesini işletme sermayesi ve kredi kaldıracıyla sürdüren büyüme şirketi.'
+    },
+    ALAB: {
+      ring: 2,
+      ringLabel: '2. Halka: Kritik AI Altyapısı',
+      ringBadge: 'amber',
+      netBuybackYield: -1.20,
+      dividendYield: 0.00,
+      totalShareholderYield: -1.20,
+      solvencyScore: 88,
+      debtToEquity: 8.2,
+      diagnosis: 'AI PCIe & Retimer bağlantı tekel adayı; borçsuz bilanço ve yüksek nakit rezerviyle güçlü büyüme.'
+    },
+    CAMT: {
+      ring: 2,
+      ringLabel: '2. Halka: İleri Paketleme & Muayene',
+      ringBadge: 'amber',
+      netBuybackYield: 0.80,
+      dividendYield: 1.10,
+      totalShareholderYield: 1.90,
+      solvencyScore: 94,
+      debtToEquity: 2.4,
+      diagnosis: 'Yüksek bant genişlikli bellek (HBM) ve gelişmiş çip paketleme muayenesi; net nakit zengini, borçsuz bilanço.'
+    },
+    XOM: {
+      ring: 1,
+      ringLabel: '1. Halka: Nakit & Temettü Kalesi',
+      ringBadge: 'emerald',
+      netBuybackYield: 2.90,
+      dividendYield: 3.40,
+      totalShareholderYield: 6.30,
+      solvencyScore: 94,
+      debtToEquity: 18.2,
+      diagnosis: 'Küresel petrol ve rafinaj devi; rekor serbest nakit akışı, güçlü temettü ve dev hisse geri alımı.'
+    },
+    BTC: {
+      ring: 1,
+      ringLabel: '1. Halka: Dijital Rezerv Varlık',
+      ringBadge: 'emerald',
+      netBuybackYield: 0.00,
+      dividendYield: 0.00,
+      totalShareholderYield: 0.00,
+      solvencyScore: 98,
+      debtToEquity: 0.0,
+      diagnosis: 'Sıfır karşı taraf riski ve 21M sabit arz; borçsuz, küresel likidite ve enflasyon kalkanı.'
+    },
+    ETH: {
+      ring: 1,
+      ringLabel: '1. Halka: Akıllı Sözleşme Rezervi',
+      ringBadge: 'emerald',
+      netBuybackYield: 0.50,
+      dividendYield: 3.20,
+      totalShareholderYield: 3.70,
+      solvencyScore: 95,
+      debtToEquity: 0.0,
+      diagnosis: 'Proof-of-Stake staking getirisi ve yakım mekanizmasıyla deflasyonist dijital sermaye kalkanı.'
+    },
+    XAUT: {
+      ring: 1,
+      ringLabel: '1. Halka: İsviçre Kasası Altın Zırhı',
+      ringBadge: 'emerald',
+      netBuybackYield: 0.00,
+      dividendYield: 0.00,
+      totalShareholderYield: 0.00,
+      solvencyScore: 99,
+      debtToEquity: 0.0,
+      diagnosis: 'İsviçre kasalarında saklanan 1:1 fiziksel külçe altın teminatlı, sıfır borçlu dokunulmaz kriz kalkanı.'
+    },
+    GRAM_ALTIN: {
+      ring: 1,
+      ringLabel: '1. Halka: Dokunulmaz Kur Kalkanı',
+      ringBadge: 'emerald',
+      netBuybackYield: 0.00,
+      dividendYield: 0.00,
+      totalShareholderYield: 0.00,
+      solvencyScore: 100,
+      debtToEquity: 0.0,
+      diagnosis: 'Fiziki / Banka gram altın; sıfır borç riski ve Türk Lirası değer kaybına karşı tam korumalı güvenli liman.'
+    },
+    ARKM: {
+      ring: 3,
+      ringLabel: '3. Halka: On-Chain İstihbarat',
+      ringBadge: 'red',
+      netBuybackYield: -4.50,
+      dividendYield: 0.00,
+      totalShareholderYield: -4.50,
+      solvencyScore: 62,
+      debtToEquity: 0.0,
+      diagnosis: 'Blokzincir analitiği ve istihbarat platformu; token kilit açılımları nedeniyle seyrelme riski taşır.'
+    },
+    BIO: {
+      ring: 3,
+      ringLabel: '3. Halka: DeSci Biyoteknoloji',
+      ringBadge: 'red',
+      netBuybackYield: -5.00,
+      dividendYield: 0.00,
+      totalShareholderYield: -5.00,
+      solvencyScore: 58,
+      debtToEquity: 0.0,
+      diagnosis: 'Merkeziyetsiz bilim (DeSci) biyofarma hızlandırıcısı; erken aşama Ar-Ge token ekonomisi.'
+    },
+    DOGE: {
+      ring: 3,
+      ringLabel: '3. Halka: Topluluk & Likidite',
+      ringBadge: 'red',
+      netBuybackYield: -3.80,
+      dividendYield: 0.00,
+      totalShareholderYield: -3.80,
+      solvencyScore: 50,
+      debtToEquity: 0.0,
+      diagnosis: 'Yıllık 5 milyar yeni coin arzı ile sürekli enflasyonist seyrelme yapısına sahip topluluk varlığı.'
+    },
+    OP: {
+      ring: 3,
+      ringLabel: '3. Halka: Katman-2 Altyapı',
+      ringBadge: 'red',
+      netBuybackYield: -4.00,
+      dividendYield: 0.00,
+      totalShareholderYield: -4.00,
+      solvencyScore: 68,
+      debtToEquity: 0.0,
+      diagnosis: 'Optimism rollup altyapısı; token teşvikleri ve kilit açılışları nedeniyle arz artışı izlenmelidir.'
+    },
+    SUI: {
+      ring: 3,
+      ringLabel: '3. Halka: Katman-1 Büyüme',
+      ringBadge: 'red',
+      netBuybackYield: -6.50,
+      dividendYield: 0.00,
+      totalShareholderYield: -6.50,
+      solvencyScore: 66,
+      debtToEquity: 0.0,
+      diagnosis: 'Yeni nesil yüksek TPS blokzincir; erken dönem token ihraçları ve ekosistem sübvansiyonları yüksektir.'
     }
   };
 
   const getFinvestHoldingData = (ticker, holding, sData, potData) => {
-    const clean = (ticker || '').toUpperCase().replace('.IS', '').replace('-USD', '');
-    if (FINVEST_PROFILES[clean]) return { ...FINVEST_PROFILES[clean], clean };
+    const rawClean = (ticker || '').toUpperCase().trim();
+    const clean = rawClean.replace('.IS', '').replace('-USD', '').replace('USDT', '');
+    if (FINVEST_PROFILES[clean]) return { ...FINVEST_PROFILES[clean], clean, isVerified: true };
+    if (FINVEST_PROFILES[rawClean]) return { ...FINVEST_PROFILES[rawClean], clean: rawClean, isVerified: true };
 
     const fundScore = sData?.analysis?.pillars?.fundamental?.score ?? 78;
     const dToE = Number(sData?.analysis?.pillars?.fundamental?.debt_to_equity) || 55;

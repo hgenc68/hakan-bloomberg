@@ -45,8 +45,11 @@ export default function ModelPortfolioTab({ onSelectStock }) {
               <Briefcase size={20} className="text-cyan" />
               <span>AYLIK QUANT MODEL PORTFÖYÜ</span>
             </h2>
-            <span className="nav-badge emerald" style={{ fontSize: 11, padding: '3px 10px' }}>
-              📅 {modelData.period_name || 'Ekim 2026'}
+            <span className="nav-badge emerald" style={{ fontSize: 10, padding: '3px 8px' }}>
+              🟢 Canlı Fiyatlar & Anlık K/Z
+            </span>
+            <span className="nav-badge cyan" style={{ fontSize: 10, padding: '3px 8px' }}>
+              📅 Model Portföy Komitesi: {modelData.period_name || 'Ekim 2026'}
             </span>
           </div>
           <p className="workspace-subtitle" style={{ marginTop: 4 }}>

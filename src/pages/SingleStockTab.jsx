@@ -586,6 +586,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   const liveStock = liveFundamentals[cleanTickerUpper] || liveFundamentals[baseTicker] || liveFundamentals[bistSymCandidate];
   const potStock = potentialData?.stocks?.find(s => s.ticker === currentTicker || s.ticker === cleanTickerUpper || s.ticker === baseTicker);
 
+  const isVerifiedStock = !!(stocksData[cleanTickerUpper] || stocksData[baseTicker] || stocksData[currentTicker] || staticStock?.is_verified_official);
   const staticStock = stocksData[cleanTickerUpper] || stocksData[baseTicker] || stocksData[currentTicker] || (potStock ? synthesizePotentialStock(potStock) : synthesizeGenericStock(cleanTickerUpper, marketQuotes));
   const activeStock = liveStock ? {
     ...staticStock,
@@ -1609,6 +1610,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
     if (curated) {
       const isCuratedOracle = ticker === 'ORCL';
+      const isCurated = true;
       const equitySeries = quarters.map((_, i) => {
         const factor = isCuratedOracle ? (0.7 + 0.3 * (i / Math.max(1, qLen - 1))) : (0.6 + 0.4 * (i / Math.max(1, qLen - 1)));
         return Math.round(curated.totalEquity * factor);
@@ -1634,6 +1636,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
       return {
         ...curated,
+        isCurated: true,
         quarters,
         equitySeries,
         debtSeries,
@@ -1681,6 +1684,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       ringLabel,
       ringBadge,
       ringDesc,
+      isCurated: false,
+      isHeuristic: true,
       totalDebt: estDebt,
       totalEquity: estEquity,
       cashBuffer: estCash,
@@ -2058,6 +2063,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
     return {
       ticker,
+      isCurated: false,
+      isHeuristic: true,
       currencySym: currSym,
       sharesYears: ['2022', '2023', '2024', '2025', '2026 (LTM)'],
       sharesValues: [s2022, s2023, s2024, s2025, s2026],
@@ -2267,7 +2274,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     };
 
     if (profiles[ticker]) {
-      return { ...profiles[ticker], ticker };
+      return { ...profiles[ticker], ticker, isCurated: true };
     }
 
     // Generic / Synthetic Insider fallback
@@ -2294,10 +2301,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       institutionalOwnership: isTrLocal ? 38.5 : 58.4,
       institutionalTrend: isFriendly ? '+1.2% (Net Giriş)' : '-0.8% (Hafif Çıkış)',
       topInstitutions: isTrLocal ? ['İş Portföy (%4.5)', 'Yapı Kredi Portföy (%3.8)', 'Ak Portföy (%3.1)'] : ['Vanguard Group (%7.5)', 'BlackRock (%6.2)', 'State Street (%3.6)'],
-      recentTrades: [
-        { date: '15 Eki 2026', name: 'Şirket İcra Başkanı (CEO)', title: 'CEO', action: isFriendly ? '10b5-1 Planlı Satış' : 'Açık Piyasa Satış', actionType: isFriendly ? 'routine' : 'sell', shares: '15.000 Lot', price: `${currSym}${p.toFixed(2)}`, totalValue: `${currSym}${((15000 * p) / 1000000).toFixed(2)}M`, remaining: 'Pozisyon Korundu' },
-        { date: '04 Eki 2026', name: 'Mali İşler Direktörü (CFO)', title: 'CFO', action: '10b5-1 Planlı Satış', actionType: 'routine', shares: '8.000 Lot', price: `${currSym}${(p * 0.98).toFixed(2)}`, totalValue: `${currSym}${((8000 * p) / 1000000).toFixed(2)}M`, remaining: 'Rutin Bildirim' }
-      ]
+      isCurated: false,
+      recentTrades: []
     };
   }, [cleanTickerUpper, isBist, activeStock, curPrice, buybackData]);
 
@@ -3622,21 +3627,48 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         {/* Right Column: Qualtrim 4-Metric Historical Balance Sheet OR Finvest Solvency Radar OR Koyfin Relative Performance */}
         <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {rightChartMode === 'qualtrim' ? (
                 <>
                   <BarChart3 size={16} className="text-emerald" />
                   <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>4-METRİK TARİHSEL BİLANÇO GRAFİĞİ</span>
+                  {isVerifiedStock ? (
+                    <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                      ✓ Doğrulanmış Resmi Bilanço (SEC/KAP)
+                    </span>
+                  ) : (
+                    <span className="nav-badge red" style={{ fontSize: 9.5, padding: '2px 8px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#fca5a5' }}>
+                      ⚠️ SİMÜLASYON / TAHMİNİ BİLANÇO
+                    </span>
+                  )}
                 </>
               ) : rightChartMode === 'solvency' ? (
                 <>
                   <ShieldCheck size={16} className="text-cyan" />
                   <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>BİLANÇO & BORÇLULUK RADARI (SOLVENCY X-RAY)</span>
+                  {solvencyData.isCurated ? (
+                    <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                      ✓ Doğrulanmış 10-Q/KAP
+                    </span>
+                  ) : (
+                    <span className="nav-badge amber" style={{ fontSize: 9.5, padding: '2px 8px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b', color: '#fcd34d' }}>
+                      ⚡ TAHMİNİ SOLVENCY MODELİ
+                    </span>
+                  )}
                 </>
               ) : rightChartMode === 'buyback' ? (
                 <>
                   <Repeat size={16} className="text-emerald" />
                   <span style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0' }}>HİSSE GERİ ALIM & DOLAŞIM RADARI (BUYBACK YIELD)</span>
+                  {buybackData.isCurated ? (
+                    <span className="nav-badge emerald" style={{ fontSize: 9.5, padding: '2px 8px' }}>
+                      ✓ Doğrulanmış Dolaşım
+                    </span>
+                  ) : (
+                    <span className="nav-badge amber" style={{ fontSize: 9.5, padding: '2px 8px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b', color: '#fcd34d' }}>
+                      ⚠️ SİMÜLE EDİLMİŞ DOLAŞIM
+                    </span>
+                  )}
                 </>
               ) : (
                 <>
@@ -4498,6 +4530,7 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
               </div>
 
               <div style={{ overflowX: 'auto' }}>
+                {insiderData.recentTrades && insiderData.recentTrades.length > 0 ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-muted)', fontSize: 9.5 }}>
@@ -4558,6 +4591,16 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                     })}
                   </tbody>
                 </table>
+                ) : (
+                  <div style={{ padding: '16px 14px', textAlign: 'center', background: 'rgba(255,255,255,0.01)' }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: '#94a3b8', marginBottom: 4 }}>
+                      ℹ️ Doğrulanmış Yönetici Bildirimi Bulunamadı
+                    </div>
+                    <div style={{ fontSize: 10, color: '#64748b', maxWidth: 440, margin: '0 auto', lineHeight: 1.45 }}>
+                      Bu şirket için terminal veritabanında son 90 güne ait resmi SEC Form 4 veya KAP yönetici alım/satım işlemi kayıtlı değildir. Yatırım güvenliği standardı gereği yapay işlem üretilmemektedir.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

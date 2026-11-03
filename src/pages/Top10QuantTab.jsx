@@ -195,8 +195,11 @@ export default function Top10QuantTab({ onSelectStock }) {
           <h2 className="workspace-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Trophy size={20} className="text-emerald" />
             <span>EN GÜÇLÜ HİSSELER & QUANT FIRSAT RADARI</span>
-            <span className="nav-badge emerald" style={{ fontSize: 11, padding: '3px 8px' }}>
-              5-Faktörlü Quant Modeli
+            <span className="nav-badge emerald" style={{ fontSize: 10, padding: '3px 8px' }}>
+              🟢 Canlı Seans Fiyatları
+            </span>
+            <span className="nav-badge cyan" style={{ fontSize: 10, padding: '3px 8px' }}>
+              📅 27 Eylül 2026 5-Faktörlü Model Taraması
             </span>
           </h2>
           <p className="workspace-subtitle">

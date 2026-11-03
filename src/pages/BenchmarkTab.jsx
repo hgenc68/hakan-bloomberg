@@ -850,9 +850,12 @@ export default function BenchmarkTab() {
             Çekirdek hisse/ETF, BYDNR hariç sepet, son alımlar veya özel seçtiğiniz varlıklar bazında S&P 500, Nasdaq ve BIST 100 karşılaştırması ve Alfa analizi
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span className="nav-badge cyan" style={{ padding: '5px 12px', fontSize: 11 }}>
             SEÇİLİ BAZ: {isTRY ? 'TRY NORMALIZE (%40 Rf)' : 'USD NORMALIZE (%4.25 Rf)'}
+          </span>
+          <span className="nav-badge amber" style={{ padding: '5px 12px', fontSize: 11, background: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b', color: '#fcd34d' }}>
+            ⚡ HİBRİT MODEL (1 Ekim 2026 Baz Serisi + Canlı Seans)
           </span>
         </div>
       </div>

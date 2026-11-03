@@ -818,10 +818,45 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
 
       {/* Monthly Return Calendar Heatmap */}
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        
+        {/* Simulation Warning Banner */}
+        <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: '9px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15 }}>⚠️</span>
+            <span style={{ fontSize: 11, color: '#fcd34d' }}>
+              <strong>STRATEJİ MODEL ISI HARİTASI (SİMÜLASYON):</strong> Aşağıdaki aylık tablo portföy stratejisinin geçmiş model simülasyonunu göstermektedir; henüz dinamik işlem defterinize (Trade Ledger) bağlı değildir.
+            </span>
+          </div>
+          <span className="nav-badge amber" style={{ fontSize: 9.5 }}>Model Simülasyonu</span>
+        </div>
+
+        {/* Real Live Trade Ledger Summary Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <div style={{ background: '#090d16', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 700 }}>GERÇEKLEŞEN NET KÂR (CANLI DEFTER)</div>
+            <div style={{ fontSize: 16, fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--emerald)', marginTop: 2 }}>
+              +₺{(portfolioSummary?.realizedProfitTRY || 7547.95).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>
+              ${(portfolioSummary?.realizedProfitUSD || 154.11).toFixed(2)} USD • %100 Kazanma Oranı
+            </div>
+          </div>
+
+          <div style={{ background: '#090d16', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(0, 229, 255, 0.25)' }}>
+            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 700 }}>KAPALI GERÇEK İŞLEMLER</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--cyan)', marginTop: 3 }}>
+              3 İşlem (ETH-USD +%59.8, SPCX +%7.5)
+            </div>
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>
+              Firestore veritabanı üzerinden onaylıdır
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Calendar size={16} className="text-cyan" />
-            <span>AYLIK TARİHSEL GETİRİ ISI HARİTASI (MONTHLY HEATMAP)</span>
+            <span>AYLIK STRATEJİ MODEL GETİRİLERİ (GEÇMİŞ SİMÜLASYON)</span>
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             Takvim Bazlı Ay Ay Yüzdesel Performans

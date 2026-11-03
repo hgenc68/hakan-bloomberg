@@ -2748,6 +2748,12 @@ export default function NativeProChart({
             {chartInterval}
           </span>
 
+          {['TOTAL', 'TOTAL2', 'TOTAL3', 'OTHERS', 'TOTALDEFI'].includes((cleanTicker || symbol || '').toUpperCase()) && (
+            <span className="nav-badge amber" style={{ fontSize: 9.5, padding: '1px 7px', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fcd34d' }}>
+              ⚡ SENTEZ PİYASA DEĞERİ (BTC & ETH Proxy)
+            </span>
+          )}
+
           {candleType === 'heikin_ashi' && (
             <span className="nav-badge" style={{ fontSize: 9.5, padding: '1px 6px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
               HEIKIN ASHI
