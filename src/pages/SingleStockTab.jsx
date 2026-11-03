@@ -3861,20 +3861,20 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>REV CAGR</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.revCagr >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {qualtrimStats.revCagr >= 0 ? '+' : ''}{qualtrimStats.revCagr.toFixed(1)}%
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: typeof qualtrimStats.revCagr === 'number' ? (qualtrimStats.revCagr >= 0 ? 'var(--emerald)' : 'var(--red)') : '#64748b' }}>
+                      {typeof qualtrimStats.revCagr === 'number' ? `${qualtrimStats.revCagr >= 0 ? '+' : ''}${qualtrimStats.revCagr.toFixed(1)}%` : '-'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>REV TOTAL</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.revTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {qualtrimStats.revTotal >= 0 ? '+' : ''}{qualtrimStats.revTotal.toFixed(1)}%
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: typeof qualtrimStats.revTotal === 'number' ? (qualtrimStats.revTotal >= 0 ? 'var(--emerald)' : 'var(--red)') : '#64748b' }}>
+                      {typeof qualtrimStats.revTotal === 'number' ? `${qualtrimStats.revTotal >= 0 ? '+' : ''}${qualtrimStats.revTotal.toFixed(1)}%` : '-'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>PRICE TOTAL</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.priceTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {qualtrimStats.priceTotal >= 0 ? '+' : ''}{qualtrimStats.priceTotal.toFixed(1)}%
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: typeof qualtrimStats.priceTotal === 'number' ? (qualtrimStats.priceTotal >= 0 ? 'var(--emerald)' : 'var(--red)') : '#64748b' }}>
+                      {typeof qualtrimStats.priceTotal === 'number' ? `${qualtrimStats.priceTotal >= 0 ? '+' : ''}${qualtrimStats.priceTotal.toFixed(1)}%` : '-'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
@@ -3885,20 +3885,20 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>FCF TOTAL</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.fcfTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {qualtrimStats.fcfTotal >= 0 ? '+' : ''}{qualtrimStats.fcfTotal.toFixed(1)}%
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: typeof qualtrimStats.fcfTotal === 'number' ? (qualtrimStats.fcfTotal >= 0 ? 'var(--emerald)' : 'var(--red)') : '#64748b' }}>
+                      {typeof qualtrimStats.fcfTotal === 'number' ? `${qualtrimStats.fcfTotal >= 0 ? '+' : ''}${qualtrimStats.fcfTotal.toFixed(1)}%` : '-'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>NET INC CAGR</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.netIncCagr >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {qualtrimStats.netIncCagr >= 0 ? '+' : ''}{qualtrimStats.netIncCagr.toFixed(1)}%
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: typeof qualtrimStats.netIncCagr === 'number' ? (qualtrimStats.netIncCagr >= 0 ? 'var(--emerald)' : 'var(--red)') : '#64748b' }}>
+                      {typeof qualtrimStats.netIncCagr === 'number' ? `${qualtrimStats.netIncCagr >= 0 ? '+' : ''}${qualtrimStats.netIncCagr.toFixed(1)}%` : '-'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>NET INC TOTAL</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.netIncTotal >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {qualtrimStats.netIncTotal >= 0 ? '+' : ''}{qualtrimStats.netIncTotal.toFixed(1)}%
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: typeof qualtrimStats.netIncTotal === 'number' ? (qualtrimStats.netIncTotal >= 0 ? 'var(--emerald)' : 'var(--red)') : '#64748b' }}>
+                      {typeof qualtrimStats.netIncTotal === 'number' ? `${qualtrimStats.netIncTotal >= 0 ? '+' : ''}${qualtrimStats.netIncTotal.toFixed(1)}%` : '-'}
                     </div>
                   </div>
                 </div>
