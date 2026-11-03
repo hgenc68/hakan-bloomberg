@@ -982,9 +982,9 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
 
   // Qualtrim Institutional Growth Stats (REV CAGR, REV TOTAL, PRICE TOTAL, FCF CAGR/TOTAL, NET INC CAGR/TOTAL)
   const qualtrimStats = useMemo(() => {
-    const validRev = revenue.filter(v => v !== null && v > 0);
-    const validNet = netIncome.filter(v => v !== null && v > 0);
-    const validFcf = fcf.filter(v => v !== null && v > 0);
+    const validRev = revenue.filter(v => v !== null && v !== undefined && !isNaN(v));
+    const validNet = netIncome.filter(v => v !== null && v !== undefined && !isNaN(v));
+    const validFcf = fcf.filter(v => v !== null && v !== undefined && !isNaN(v));
 
     let firstPrice = curPrice * 0.7;
     let lastPrice = curPrice;
@@ -1000,11 +1000,13 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     const years = Math.max(0.5, (qCount - 1) / 4);
 
     const calcGrowth = (arr) => {
-      if (!arr || arr.length < 2) return { total: 0, cagr: 0 };
-      const first = arr[0];
-      const last = arr[arr.length - 1];
-      const total = first > 0 ? ((last - first) / first) * 100 : 0;
-      const cagr = (first > 0 && last > 0 && years > 0) ? (Math.pow(last / first, 1 / years) - 1) * 100 : 0;
+      if (!arr || arr.length < 2) return { total: 0, cagr: null };
+      const nonNull = arr.filter(v => v !== null && v !== undefined && !isNaN(v));
+      if (nonNull.length < 2) return { total: 0, cagr: null };
+      const first = nonNull[0];
+      const last = nonNull[nonNull.length - 1];
+      const total = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
+      const cagr = (first > 0 && last > 0 && years > 0) ? (Math.pow(last / first, 1 / years) - 1) * 100 : null;
       return { total, cagr };
     };
 
@@ -1077,6 +1079,29 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     ]
   };
 
+  // Dynamic Zero-Line Alignment between Left Axis (Financials) and Right Axis (Stock Price)
+  const { minFinVal, maxFinVal, minPriceVal, maxPriceVal } = useMemo(() => {
+    const allFin = [...revenue, ...netIncome, ...fcf].filter(v => v !== null && v !== undefined && !isNaN(v));
+    const minF = allFin.length > 0 ? Math.min(0, ...allFin) : 0;
+    const maxF = allFin.length > 0 ? Math.max(1, ...allFin) : 100;
+
+    const allPrices = (activeWeeklyPoints || []).map(p => p.y).filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
+    const maxP = allPrices.length > 0 ? Math.max(...allPrices) * 1.15 : curPrice * 1.25;
+
+    let minP = 0;
+    if (minF < 0 && maxF > 0) {
+      const negRatio = Math.abs(minF) / (maxF * 1.08);
+      minP = -(maxP * negRatio);
+    }
+
+    return {
+      minFinVal: minF < 0 ? minF * 1.05 : 0,
+      maxFinVal: maxF * 1.08,
+      minPriceVal: minP,
+      maxPriceVal: maxP
+    };
+  }, [revenue, netIncome, fcf, activeWeeklyPoints, curPrice]);
+
   const qualtrimChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -1136,17 +1161,23 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       yFinancials: {
         type: 'linear',
         position: 'left',
-        beginAtZero: true,
+        min: minFinVal,
+        max: maxFinVal,
         grid: { color: 'rgba(255,255,255,0.05)' },
         ticks: {
           color: '#94a3b8',
           font: { size: 9.5 },
           callback: (v) => {
             if (v === 0) return `${currencySym}0`;
+            const isNeg = v < 0;
+            const absV = Math.abs(v);
+            const sign = isNeg ? '-' : '';
             if (unitSuffix === ' (M)') {
-              return v >= 1000 ? `${currencySym}${(v / 1000).toFixed(1)}b` : `${currencySym}${v.toFixed(0)}m`;
+              return absV >= 1000 
+                ? `${sign}${currencySym}${(absV / 1000).toFixed(1)}b` 
+                : `${sign}${currencySym}${absV.toFixed(0)}m`;
             }
-            return `${currencySym}${v.toLocaleString('tr-TR')}`;
+            return `${sign}${currencySym}${absV.toLocaleString('tr-TR')}`;
           }
         },
         title: {
@@ -1159,13 +1190,19 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       yPrice: {
         type: 'linear',
         position: 'right',
-        beginAtZero: true,
-        grace: '12%',
+        min: minPriceVal,
+        max: maxPriceVal,
         grid: { drawOnChartArea: false },
         ticks: {
           color: '#94a3b8',
           font: { size: 9.5 },
-          callback: (v) => `${currencySym}${typeof v === 'number' ? Number(v).toLocaleString('tr-TR', { maximumFractionDigits: v < 10 ? 2 : 1 }) : v}`
+          callback: (v) => {
+            if (v === 0) return `${currencySym}0`;
+            const isNeg = v < 0;
+            const absV = Math.abs(v);
+            const sign = isNeg ? '-' : '';
+            return `${sign}${currencySym}${typeof absV === 'number' ? Number(absV).toLocaleString('tr-TR', { maximumFractionDigits: absV < 10 ? 2 : 1 }) : absV}`;
+          }
         },
         title: {
           display: true,
@@ -3796,8 +3833,8 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 8, color: '#64748b', fontWeight: 700, letterSpacing: '0.4px' }}>FCF CAGR</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: qualtrimStats.fcfCagr >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {qualtrimStats.fcfCagr >= 0 ? '+' : ''}{qualtrimStats.fcfCagr.toFixed(1)}%
+                    <div style={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)', color: typeof qualtrimStats.fcfCagr === 'number' ? (qualtrimStats.fcfCagr >= 0 ? 'var(--emerald)' : 'var(--red)') : '#64748b' }}>
+                      {typeof qualtrimStats.fcfCagr === 'number' ? `${qualtrimStats.fcfCagr >= 0 ? '+' : ''}${qualtrimStats.fcfCagr.toFixed(1)}%` : '-'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
