@@ -423,6 +423,25 @@ export default function Top10QuantTab({ onSelectStock, onSelectStockForChart }) 
     }
   };
 
+  const handleOpenProChart = (ticker) => {
+    const clean = (ticker || '').replace('.IS', '');
+    try {
+      localStorage.setItem('selected_chart_symbol', clean);
+      localStorage.setItem('pro_chart_active_symbol', clean);
+    } catch {}
+    if (setLastNavigatedFrom) {
+      setLastNavigatedFrom({
+        tab: 'top10',
+        label: 'En Güçlü 10'
+      });
+    }
+    if (onSelectStockForChart) {
+      onSelectStockForChart(clean);
+    } else {
+      setActiveTab('pro_chart');
+    }
+  };
+
   const formattedScanTime = useMemo(() => {
     if (!screenerData.scanned_at) return 'Canlı Bağlantı Bekleniyor...';
     try {
