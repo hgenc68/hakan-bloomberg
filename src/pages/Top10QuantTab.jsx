@@ -22,6 +22,197 @@ function formatMultiple(val, suffix = 'x') {
   return `${Number(val).toFixed(1)}${suffix}`;
 }
 
+export function getStrategyProfile(stock) {
+  const t = (stock.ticker || '').toUpperCase().replace('.IS', '');
+
+  // 1. Long-Term Compounders (Moat & Quality)
+  const LONG_TERM_MOATS = new Set([
+    'TSM', 'GOOGL', 'MSFT', 'AAPL', 'META', 'V', 'MA', 'COST', 'ISRG', 'UNH', 'BRK-B',
+    'BIMAS', 'CCOLA', 'TCELL', 'MGROS', 'KCHOL', 'SAHOL'
+  ]);
+
+  // 2. Cyclical / Swing & Momentum Trade
+  const CYCLICAL_TRADES = new Set([
+    'MU', 'LRCX', 'AMAT', 'KLAC', 'COHR', 'CRDO', 'CAMT', 'XOM', 'CVX', 'TXN',
+    'THYAO', 'PGSUS', 'EREGL', 'TUPRS', 'ASTOR', 'TOASO', 'DOAS', 'SISE'
+  ]);
+
+  // 3. Hyper-Growth / AI Leaders
+  const HYPER_GROWTH = new Set([
+    'NVDA', 'AVGO', 'VRT', 'FIX', 'ALAB', 'ANET', 'APP', 'PLTR', 'AXON', 'SYM', 'SOFI', 'ASELS', 'FROTO'
+  ]);
+
+  // 4. Defensive Value & Cash Fortress
+  const DEFENSIVE_VALUES = new Set([
+    'JPM', 'ABBV', 'LLY', 'MRK', 'WSM', 'CSCO', 'ENKAI', 'TTKOM', 'KOZAL', 'GARAN', 'ISCTR', 'AKBNK', 'YKBNK'
+  ]);
+
+  if (LONG_TERM_MOATS.has(t)) {
+    return {
+      type: 'LONG_TERM',
+      label: '💎 UZUN VADELİ BİLEŞİK (MOAT)',
+      short: '💎 DEĞER / MOAT',
+      badgeBg: 'rgba(16, 185, 129, 0.16)',
+      badgeColor: '#34d399',
+      borderColor: 'rgba(16, 185, 129, 0.4)',
+      advice: 'Aşılmaz tekel, kriz kalkanı, düzenli biriktirme ve uzun vadeli taşıma adayı.'
+    };
+  }
+
+  if (CYCLICAL_TRADES.has(t)) {
+    return {
+      type: 'CYCLICAL_TRADE',
+      label: '⚡ DÖNGÜSEL / TRADE (MOMENTUM)',
+      short: '⚡ TRADE / DÖNGÜSEL',
+      badgeBg: 'rgba(245, 158, 11, 0.16)',
+      badgeColor: '#fbbf24',
+      borderColor: 'rgba(245, 158, 11, 0.45)',
+      advice: 'Sektör döngüsüne bağlı; teknik destek ve dirençle salınım trade\'i için ideal.'
+    };
+  }
+
+  if (HYPER_GROWTH.has(t)) {
+    return {
+      type: 'HYPER_GROWTH',
+      label: '🚀 HİPER BÜYÜME (LİDER TREND)',
+      short: '🚀 HİPER BÜYÜME',
+      badgeBg: 'rgba(56, 189, 248, 0.16)',
+      badgeColor: '#38bdf8',
+      borderColor: 'rgba(56, 189, 248, 0.45)',
+      advice: 'Ciro ve pazar payı patlaması yaşayan yüksek momentumlu trend hissesi.'
+    };
+  }
+
+  if (DEFENSIVE_VALUES.has(t)) {
+    return {
+      type: 'DEFENSIVE_VALUE',
+      label: '🛡️ DEFANSİF DEĞER / NAKİT',
+      short: '🛡️ DEFANSİF DEĞER',
+      badgeBg: 'rgba(168, 85, 247, 0.16)',
+      badgeColor: '#c084fc',
+      borderColor: 'rgba(168, 85, 247, 0.4)',
+      advice: 'Düşük beta, güçlü serbest nakit akışı ve piyasa dalgalarına karşı zırh.'
+    };
+  }
+
+  // Dynamic Rule for any added ticker
+  const rev = stock.rev_growth_pct ?? 0;
+  const roic = stock.roic_pct ?? stock.roe_pct ?? 0;
+  const pe = stock.forward_pe ?? stock.pe_ratio ?? 20;
+
+  if (rev >= 30) {
+    return {
+      type: 'HYPER_GROWTH',
+      label: '🚀 HİPER BÜYÜME (LİDER TREND)',
+      short: '🚀 HİPER BÜYÜME',
+      badgeBg: 'rgba(56, 189, 248, 0.16)',
+      badgeColor: '#38bdf8',
+      borderColor: 'rgba(56, 189, 248, 0.45)',
+      advice: 'Yıllık %30+ ciro büyümesi yaşayan agresif trend hissesi.'
+    };
+  }
+  if (stock.category === 'semiconductor' || stock.sector?.includes('Havacılık') || stock.sector?.includes('Enerji')) {
+    return {
+      type: 'CYCLICAL_TRADE',
+      label: '⚡ DÖNGÜSEL / TRADE (MOMENTUM)',
+      short: '⚡ TRADE / DÖNGÜSEL',
+      badgeBg: 'rgba(245, 158, 11, 0.16)',
+      badgeColor: '#fbbf24',
+      borderColor: 'rgba(245, 158, 11, 0.45)',
+      advice: 'Döngüsel sektör; teknik destek/direnç takibiyle trade edilebilir.'
+    };
+  }
+  if (roic >= 20 && pe <= 32) {
+    return {
+      type: 'LONG_TERM',
+      label: '💎 UZUN VADELİ (DEĞER & MOAT)',
+      short: '💎 UZUN VADELİ',
+      badgeBg: 'rgba(16, 185, 129, 0.16)',
+      badgeColor: '#34d399',
+      borderColor: 'rgba(16, 185, 129, 0.4)',
+      advice: 'Yüksek sermaye verimliliğiyle uzun vadeli bileşik getiri adayı.'
+    };
+  }
+
+  return {
+    type: 'DEFENSIVE_VALUE',
+    label: '🛡️ DEFANSİF DEĞER / NAKİT',
+    short: '🛡️ DEFANSİF DEĞER',
+    badgeBg: 'rgba(148, 163, 184, 0.16)',
+    badgeColor: '#cbd5e1',
+    borderColor: 'rgba(148, 163, 184, 0.35)',
+    advice: 'Bilanço ve kâr odaklı klasik değer yatırımı hissesi.'
+  };
+}
+
+export function getTechnicalSignal(stock) {
+  const p = stock.livePrice ?? stock.price;
+  const distHigh = stock.dist_52w_high_pct; // % distance to 52w high (e.g. -2.5% or -16.4%)
+  const ma50 = stock.ma_50;
+  const ma200 = stock.ma_200;
+
+  // 1. ZİRVE DİRENCİ (Aşırı Alım / Kâr Satışı Riski)
+  if (distHigh !== null && distHigh >= -3.5) {
+    return {
+      status: 'RESISTANCE',
+      label: '⚠️ ZİRVE DİRENCİ (Kâr Satışı / Düzeltme Riski)',
+      short: '⚠️ ZİRVE DİRENCİ',
+      badgeBg: 'rgba(239, 68, 68, 0.16)',
+      badgeColor: '#f87171',
+      borderColor: 'rgba(239, 68, 68, 0.45)',
+      icon: '⚠️',
+      tip: 'Hisse 52 haftalık tarihi zirvesine çarpmış durumda. Doğrudan tavandan atlamak yerine %5-%8 geri çekilme (pullback) veya konsolidasyon beklenmeli.'
+    };
+  }
+
+  // 2. DESTEK TESTİ (Uygun Giriş / Fırsat Bölgesi)
+  const nearMa50 = (ma50 && p) ? Math.abs((p - ma50) / ma50) <= 0.04 : false;
+  const nearMa200 = (ma200 && p) ? Math.abs((p - ma200) / ma200) <= 0.05 : false;
+  const aboveMa200 = (ma200 && p) ? p >= ma200 * 0.98 : true;
+
+  if (
+    (nearMa50 || nearMa200) ||
+    (distHigh !== null && distHigh <= -6 && distHigh >= -22 && aboveMa200)
+  ) {
+    return {
+      status: 'SUPPORT_BUY',
+      label: '🎯 DESTEK TESTİ (Kademeli Giriş Bölgesi)',
+      short: '🎯 DESTEK TESTİ',
+      badgeBg: 'rgba(16, 185, 129, 0.22)',
+      badgeColor: '#34d399',
+      borderColor: 'rgba(16, 185, 129, 0.55)',
+      icon: '🎯',
+      tip: 'Zirveden sağlıklı kâr satışı yemiş, hareketli ortalama veya destek seviyesini test ediyor. Risk/Ödül (R/R) oranı alım için cazip.'
+    };
+  }
+
+  // 3. DERİN DÜZELTME (Dip Arama / Değer Fırsatı)
+  if (distHigh !== null && distHigh < -22) {
+    return {
+      status: 'DEEP_DIP',
+      label: '💎 DERİN DÜZELTME (Dip Fırsat Alanı)',
+      short: '💎 DERİN DÜZELTME',
+      badgeBg: 'rgba(59, 130, 246, 0.2)',
+      badgeColor: '#60a5fa',
+      borderColor: 'rgba(59, 130, 246, 0.5)',
+      icon: '💎',
+      tip: 'Hissede derin bir düzeltme yaşanmış. Temel bilanço 5/5 tam not olduğu için panik satışları uzun vadeli yatırımcı için iskonto sunuyor.'
+    };
+  }
+
+  // 4. YUKARI MOMENTUM (Trend Güçlü)
+  return {
+    status: 'MOMENTUM',
+    label: '🟢 YUKARI TREND (Sağlıklı Momentum)',
+    short: '🟢 YUKARI TREND',
+    badgeBg: 'rgba(56, 189, 248, 0.16)',
+    badgeColor: '#38bdf8',
+    borderColor: 'rgba(56, 189, 248, 0.4)',
+    icon: '🟢',
+    tip: 'Yükselen trend kanalı korunuyor; hareketli ortalamaların üzerinde momentum devam ediyor.'
+  };
+}
+
 export default function Top10QuantTab({ onSelectStock }) {
   const { setActiveTab, setLastNavigatedFrom, holdings = [], marketQuotes = {} } = useApp();
 
@@ -673,6 +864,60 @@ export default function Top10QuantTab({ onSelectStock }) {
                     </div>
                   </div>
 
+                  {/* STRATEGY & TECHNICAL TIMING COCKPIT BAR */}
+                  {(() => {
+                    const strat = getStrategyProfile(stock);
+                    const tech = getTechnicalSignal(stock);
+                    return (
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        background: 'rgba(2, 6, 23, 0.65)',
+                        padding: '8px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(255, 255, 255, 0.07)'
+                      }}>
+                        {/* Strategy DNA Tag */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={strat.advice}>
+                          <span style={{ fontSize: '0.64rem', color: '#64748b', fontWeight: 800 }}>STRATEJİ:</span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '5px',
+                            background: strat.badgeBg,
+                            color: strat.badgeColor,
+                            border: `1px solid ${strat.borderColor}`,
+                            letterSpacing: '0.3px'
+                          }}>
+                            {strat.label}
+                          </span>
+                        </div>
+
+                        {/* Technical Timing Signal */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title={tech.tip}>
+                          <span style={{ fontSize: '0.64rem', color: '#64748b', fontWeight: 800 }}>TEKNİK DURUM:</span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '5px',
+                            background: tech.badgeBg,
+                            color: tech.badgeColor,
+                            border: `1px solid ${tech.borderColor}`,
+                            letterSpacing: '0.3px',
+                            cursor: 'help'
+                          }}>
+                            {tech.label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* 6 REAL FUNDAMENTAL METRIC BOXES */}
                   <div style={{
                     display: 'grid',
@@ -802,6 +1047,29 @@ export default function Top10QuantTab({ onSelectStock }) {
                         </>
                       )}
                       <button
+                        onClick={() => {
+                          const clean = (stock.ticker || '').replace('.IS', '');
+                          try {
+                            localStorage.setItem('selected_chart_symbol', clean);
+                            localStorage.setItem('pro_chart_active_symbol', clean);
+                          } catch {}
+                          setActiveTab('pro_chart');
+                        }}
+                        style={{
+                          padding: '5px 11px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(56, 189, 248, 0.4)',
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#38bdf8',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                        title="Canlı Pro Grafikte İncele"
+                      >
+                        📈 Pro Grafik ↗
+                      </button>
+                      <button
                         onClick={() => handleInspectStock(stock.ticker)}
                         style={{
                           padding: '5px 11px',
@@ -865,6 +1133,8 @@ export default function Top10QuantTab({ onSelectStock }) {
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left' }}>
                   <th style={{ padding: '10px 8px' }}>Sıra</th>
                   <th style={{ padding: '10px 8px' }}>Hisse & Sektör</th>
+                  <th style={{ padding: '10px 8px', textAlign: 'center' }}>Strateji</th>
+                  <th style={{ padding: '10px 8px', textAlign: 'center' }}>Teknik Sinyal</th>
                   <th style={{ padding: '10px 8px', textAlign: 'right' }}>Canlı Fiyat</th>
                   <th style={{ padding: '10px 8px', textAlign: 'right' }}>Piyasa Değeri</th>
                   <th style={{ padding: '10px 8px', textAlign: 'right', color: '#34d399' }}>ROIC %</th>
@@ -875,12 +1145,14 @@ export default function Top10QuantTab({ onSelectStock }) {
                   <th style={{ padding: '10px 8px', textAlign: 'right' }}>İleri F/K</th>
                   <th style={{ padding: '10px 8px', textAlign: 'right' }}>F/K (TTM)</th>
                   <th style={{ padding: '10px 8px', textAlign: 'right' }}>Borç / Özk.</th>
-                  <th style={{ padding: '10px 8px', textAlign: 'center' }}>GARP Durumu</th>
+                  <th style={{ padding: '10px 8px', textAlign: 'center' }}>Onay Durumu</th>
                 </tr>
               </thead>
               <tbody>
                 {tableRows.map((s) => {
                   const sym = s.currency === 'TRY' ? '₺' : '$';
+                  const strat = getStrategyProfile(s);
+                  const tech = getTechnicalSignal(s);
                   return (
                     <tr
                       key={s.ticker}
@@ -899,6 +1171,35 @@ export default function Top10QuantTab({ onSelectStock }) {
                       <td style={{ padding: '10px 8px' }}>
                         <div style={{ fontWeight: 800, color: '#f8fafc' }}>{s.ticker}</div>
                         <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{s.name}</div>
+                      </td>
+                      <td style={{ padding: '10px 8px', textAlign: 'center' }} title={strat.advice}>
+                        <span style={{
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          padding: '2px 7px',
+                          borderRadius: '4px',
+                          background: strat.badgeBg,
+                          color: strat.badgeColor,
+                          border: `1px solid ${strat.borderColor}`,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {strat.short}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 8px', textAlign: 'center' }} title={tech.tip}>
+                        <span style={{
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          padding: '2px 7px',
+                          borderRadius: '4px',
+                          background: tech.badgeBg,
+                          color: tech.badgeColor,
+                          border: `1px solid ${tech.borderColor}`,
+                          whiteSpace: 'nowrap',
+                          cursor: 'help'
+                        }}>
+                          {tech.short}
+                        </span>
                       </td>
                       <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#f8fafc' }}>
                         {s.livePrice != null ? `${sym}${Number(s.livePrice).toFixed(2)}` : '—'}

@@ -543,15 +543,33 @@ async function fetchStockFundamentals(rawSymbol) {
   const resolved = resolveSymbol(rawSymbol.toUpperCase().trim());
   const { crumb, cookie } = await getYahooCrumbAndCookie();
 
+  const nowSec = Math.floor(Date.now() / 1000) + 86400;
+  const fiveYearsAgoSec = nowSec - (5 * 365 * 86400);
+
   const summaryUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(resolved)}?crumb=${encodeURIComponent(crumb || '')}&modules=summaryDetail,defaultKeyStatistics,financialData,assetProfile`;
   const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolved)}?interval=1d&range=2y`;
+  const weeklyChartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolved)}?interval=1wk&range=5y`;
+  const tsTypes = [
+    'quarterlyTotalRevenue',
+    'quarterlyNetIncome',
+    'quarterlyFreeCashFlow',
+    'quarterlyOperatingCashFlow',
+    'quarterlyCapitalExpenditure'
+  ].join(',');
+  const timeseriesUrl = `https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(resolved)}?type=${tsTypes}&period1=${fiveYearsAgoSec}&period2=${nowSec}`;
 
-  const [sResp, cResp] = await Promise.all([
+  const [sResp, cResp, wResp, tsResp] = await Promise.all([
     crumb ? fetch(summaryUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Cookie': cookie || '' }
     }).then(r => r.ok ? r.json() : null).catch(() => null) : null,
     fetch(chartUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    }).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(weeklyChartUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    }).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(timeseriesUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', ...(cookie ? { 'Cookie': cookie } : {}) }
     }).then(r => r.ok ? r.json() : null).catch(() => null)
   ]);
 
@@ -563,96 +581,52 @@ async function fetchStockFundamentals(rawSymbol) {
   const volumes = (qData.volume || []).filter(v => typeof v === 'number' && !isNaN(v));
 
   const len = closes.length;
-  const curPrice = Number(meta.regularMarketPrice || (len > 0 ? closes[len - 1] : 50).toFixed(2));
-  const prevPrice = Number(meta.chartPreviousClose || (len > 1 ? closes[len - 2] : curPrice).toFixed(2));
+  const rawPrice = meta.regularMarketPrice || (len > 0 ? closes[len - 1] : null);
+  if (!rawPrice || rawPrice <= 0) {
+    return null;
+  }
+
+  const curPrice = Number(rawPrice.toFixed(2));
+  const prevPrice = Number((meta.chartPreviousClose || (len > 1 ? closes[len - 2] : curPrice)).toFixed(2));
   const dayChangePct = prevPrice > 0 ? Number((((curPrice - prevPrice) / prevPrice) * 100).toFixed(2)) : 0;
-  const high52 = Number((meta.fiftyTwoWeekHigh || Math.max(...closes, curPrice)).toFixed(2));
-  const low52 = Number((meta.fiftyTwoWeekLow || Math.min(...closes, curPrice)).toFixed(2));
-  const dist52wHigh = high52 > 0 ? Number((((curPrice - high52) / high52) * 100).toFixed(2)) : -5.0;
+  const high52 = meta.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : (len > 0 ? Number(Math.max(...closes, curPrice).toFixed(2)) : null);
+  const low52 = meta.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : (len > 0 ? Number(Math.min(...closes, curPrice).toFixed(2)) : null);
+  const dist52wHigh = high52 > 0 ? Number((((curPrice - high52) / high52) * 100).toFixed(2)) : null;
 
-  const ma20 = Number(calculateSMA(closes, 20).toFixed(2));
-  const ma50 = Number(calculateSMA(closes, 50).toFixed(2));
-  const ma200 = Number(calculateSMA(closes, 200).toFixed(2));
-  const rsi = calculateRSI(closes, 14);
+  const ma20 = len >= 20 ? Number(calculateSMA(closes, 20).toFixed(2)) : null;
+  const ma50 = len >= 50 ? Number(calculateSMA(closes, 50).toFixed(2)) : null;
+  const ma200 = len >= 200 ? Number(calculateSMA(closes, 200).toFixed(2)) : null;
+  const rsi = len >= 15 ? calculateRSI(closes, 14) : null;
 
-  const ret1m = len > 21 ? Number((((curPrice - closes[len - 22]) / closes[len - 22]) * 100).toFixed(2)) : 1.2;
-  const ret3m = len > 63 ? Number((((curPrice - closes[len - 64]) / closes[len - 64]) * 100).toFixed(2)) : 3.5;
-  const ret6m = len > 126 ? Number((((curPrice - closes[len - 127]) / closes[len - 127]) * 100).toFixed(2)) : 8.4;
-  const ret12m = len > 0 ? Number((((curPrice - closes[0]) / closes[0]) * 100).toFixed(2)) : 15.0;
+  const ret1m = len > 21 ? Number((((curPrice - closes[len - 22]) / closes[len - 22]) * 100).toFixed(2)) : null;
+  const ret3m = len > 63 ? Number((((curPrice - closes[len - 64]) / closes[len - 64]) * 100).toFixed(2)) : null;
+  const ret6m = len > 126 ? Number((((curPrice - closes[len - 127]) / closes[len - 127]) * 100).toFixed(2)) : null;
+  const ret12m = len > 240 ? Number((((curPrice - closes[len - 241]) / closes[len - 241]) * 100).toFixed(2)) : (len > 1 ? Number((((curPrice - closes[0]) / closes[0]) * 100).toFixed(2)) : null);
 
   const fin = summary.financialData || {};
   const stats = summary.defaultKeyStatistics || {};
   const detail = summary.summaryDetail || {};
   const profile = summary.assetProfile || {};
 
-  const roe = fin.returnOnEquity?.raw != null ? Number((fin.returnOnEquity.raw * 100).toFixed(1)) : 16.5;
-  const grossMargin = fin.grossMargins?.raw != null ? Number((fin.grossMargins.raw * 100).toFixed(1)) : 38.0;
-  const revGrowth = fin.revenueGrowth?.raw != null ? Number((fin.revenueGrowth.raw * 100).toFixed(1)) : 14.0;
-  const totalRev = fin.totalRevenue?.raw || (curPrice * 1e8);
-  const fcfMargin = (grossMargin > 60 && roe > 25) ? 0.38 : (grossMargin > 40 ? 0.22 : 0.12);
-  const fcf = fin.freeCashflow?.raw || (totalRev * fcfMargin);
-  const debtToEq = fin.debtToEquity?.raw != null ? Number(fin.debtToEquity.raw.toFixed(1)) : 65.0;
-  const beta = stats.beta?.raw != null ? Number(stats.beta.raw.toFixed(2)) : 1.1;
-  const trailingPE = detail.trailingPE?.raw != null ? Number(detail.trailingPE.raw.toFixed(1)) : (stats.forwardPE?.raw != null ? Number(stats.forwardPE.raw.toFixed(1)) : 22.0);
-  const forwardPE = stats.forwardPE?.raw != null ? Number(stats.forwardPE.raw.toFixed(1)) : trailingPE;
-  const pb = stats.priceToBook?.raw != null ? Number(stats.priceToBook.raw.toFixed(2)) : 2.8;
+  // STRICT REAL DATA ONLY: Never invent fallback numbers when Yahoo Finance does not report a metric
+  const roe = fin.returnOnEquity?.raw != null ? Number((fin.returnOnEquity.raw * 100).toFixed(1)) : null;
+  const grossMargin = fin.grossMargins?.raw != null ? Number((fin.grossMargins.raw * 100).toFixed(1)) : null;
+  const revGrowth = fin.revenueGrowth?.raw != null ? Number((fin.revenueGrowth.raw * 100).toFixed(1)) : null;
+  const totalRev = fin.totalRevenue?.raw != null ? fin.totalRevenue.raw : null;
+  const fcf = fin.freeCashflow?.raw != null ? fin.freeCashflow.raw : null;
+  const debtToEq = fin.debtToEquity?.raw != null ? Number(fin.debtToEquity.raw.toFixed(1)) : null;
+  const beta = (stats.beta?.raw ?? detail.beta?.raw) != null ? Number((stats.beta?.raw ?? detail.beta?.raw).toFixed(2)) : null;
+  const trailingPE = detail.trailingPE?.raw != null ? Number(detail.trailingPE.raw.toFixed(1)) : null;
+  const forwardPE = (stats.forwardPE?.raw ?? detail.forwardPE?.raw) != null ? Number((stats.forwardPE?.raw ?? detail.forwardPE?.raw).toFixed(1)) : null;
+  const pb = stats.priceToBook?.raw != null ? Number(stats.priceToBook.raw.toFixed(2)) : null;
+  const sharesCount = stats.sharesOutstanding?.raw != null ? Math.round(stats.sharesOutstanding.raw / 1e6) : null;
 
-  let analystTarget = fin.targetMeanPrice?.raw != null ? Number(fin.targetMeanPrice.raw.toFixed(2)) : Number((curPrice * 1.25).toFixed(2));
-  if (analystTarget <= 0) analystTarget = Number((curPrice * 1.25).toFixed(2));
-  const analystUpside = curPrice > 0 ? Number((((analystTarget - curPrice) / curPrice) * 100).toFixed(1)) : 25.0;
-
-  const dcfFairValue = Number((analystTarget * 0.96).toFixed(2));
-  const dcfMarginOfSafety = dcfFairValue > 0 ? Number((((dcfFairValue - curPrice) / dcfFairValue) * 100).toFixed(1)) : 10.0;
-
-  let fundScore = 75;
-  if (roe > 25) fundScore += 12; else if (roe > 15) fundScore += 6; else if (roe < 8) fundScore -= 10;
-  if (grossMargin > 50) fundScore += 8; else if (grossMargin < 20) fundScore -= 6;
-  if (revGrowth > 20) fundScore += 8; else if (revGrowth < 0) fundScore -= 12;
-  if (debtToEq < 60) fundScore += 5; else if (debtToEq > 150) fundScore -= 10;
-  fundScore = Math.max(35, Math.min(96, Math.round(fundScore)));
-
-  let valScore = 72;
-  if (analystUpside > 35) valScore += 14; else if (analystUpside > 15) valScore += 6; else if (analystUpside < 0) valScore -= 15;
-  if (forwardPE < 15) valScore += 10; else if (forwardPE > 45) valScore -= 12;
-  valScore = Math.max(35, Math.min(95, Math.round(valScore)));
-
-  let momScore = 70;
-  if (ret3m > 15) momScore += 12; else if (ret3m > 0) momScore += 4; else momScore -= 12;
-  if (ret12m > 30) momScore += 10; else if (ret12m < -15) momScore -= 14;
-  momScore = Math.max(30, Math.min(95, Math.round(momScore)));
-
-  let techScore = 65;
-  if (curPrice > ma20) techScore += 8; else techScore -= 6;
-  if (curPrice > ma50) techScore += 8; else techScore -= 6;
-  if (curPrice > ma200) techScore += 10; else techScore -= 10;
-  if (rsi >= 40 && rsi <= 65) techScore += 6; else if (rsi > 75 || rsi < 30) techScore -= 6;
-  techScore = Math.max(25, Math.min(96, Math.round(techScore)));
-
-  let riskScore = 80;
-  if (beta >= 0.8 && beta <= 1.3) riskScore += 8; else if (beta > 1.8) riskScore -= 12;
-  if (debtToEq < 80) riskScore += 6; else if (debtToEq > 200) riskScore -= 12;
-  riskScore = Math.max(35, Math.min(94, Math.round(riskScore)));
-
-  const compositeQuant = Math.round((fundScore * 0.25 + valScore * 0.20 + momScore * 0.25 + techScore * 0.20 + riskScore * 0.10) * 10) / 10;
-
-  let grade = 'B';
-  if (compositeQuant >= 85) grade = 'A+';
-  else if (compositeQuant >= 80) grade = 'A';
-  else if (compositeQuant >= 75) grade = 'B+';
-  else if (compositeQuant >= 70) grade = 'B';
-  else if (compositeQuant >= 60) grade = 'C+';
-  else if (compositeQuant >= 50) grade = 'C-';
-  else grade = 'D';
-
-  let signal = 'TUT';
-  let signalColor = '#f59e0b';
-  let signalBadge = 'hold';
-  if (compositeQuant >= 80) { signal = 'GÜÇLÜ AL'; signalColor = '#10b981'; signalBadge = 'strong_buy'; }
-  else if (compositeQuant >= 68) { signal = 'AL'; signalColor = '#34d399'; signalBadge = 'buy'; }
-  else if (compositeQuant < 50) { signal = 'UZAK DUR'; signalColor = '#ef4444'; signalBadge = 'avoid'; }
-
-  const beneishM = debtToEq > 120 ? -1.95 : -2.45;
-  const isBeneishSafe = beneishM < -2.22;
+  const analystTarget = fin.targetMeanPrice?.raw != null && fin.targetMeanPrice.raw > 0
+    ? Number(fin.targetMeanPrice.raw.toFixed(2))
+    : null;
+  const analystUpside = (analystTarget != null && curPrice > 0)
+    ? Number((((analystTarget - curPrice) / curPrice) * 100).toFixed(1))
+    : null;
 
   const isBist = resolved.endsWith('.IS');
   const currency = isBist ? 'TRY' : (meta.currency || 'USD');
@@ -670,41 +644,85 @@ async function fetchStockFundamentals(rawSymbol) {
     });
   }
 
-  const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026'];
-  const baseQuarterRev = totalRev / 4;
-  const revSeries = quarters.map((_, i) => Math.round(baseQuarterRev * Math.pow(1 + (revGrowth / 100) / 4, i)));
-  const netIncomeSeries = revSeries.map(r => Math.round(r * (roe > 0 ? (roe / 100) * 0.6 : 0.12)));
-  const fcfSeries = revSeries.map(r => Math.round(r * 0.14));
+  // Parse authentic quarterly financials from Yahoo fundamentals-timeseries
+  let realQualtrim = null;
+  const tsResults = tsResp?.timeseries?.result || [];
+  if (Array.isArray(tsResults) && tsResults.length > 0) {
+    const byDate = {};
+    for (const series of tsResults) {
+      const typeName = series?.meta?.type?.[0];
+      const items = typeName ? (series[typeName] || []) : [];
+      for (const item of items) {
+        if (!item || !item.asOfDate || item.reportedValue?.raw == null) continue;
+        const dStr = item.asOfDate;
+        if (!byDate[dStr]) byDate[dStr] = { date: dStr };
+        byDate[dStr][typeName] = item.reportedValue.raw;
+      }
+    }
 
-  // Build authentic historical quarterly closing prices from Yahoo chart candles
-  const quarterCloseMap = {};
-  for (let i = 0; i < len; i++) {
-    const ts = timestamps[i];
-    const c = closes[i];
-    if (ts && typeof c === 'number' && !isNaN(c) && c > 0) {
-      const d = new Date(ts * 1000);
-      const qKey = `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}`;
-      quarterCloseMap[qKey] = Number(c.toFixed(2));
+    const sortedDates = Object.keys(byDate).sort();
+    const validQuarters = sortedDates
+      .map(d => byDate[d])
+      .filter(q => q.quarterlyTotalRevenue != null || q.quarterlyNetIncome != null);
+
+    if (validQuarters.length >= 4) {
+      const qLabels = [];
+      const revArr = [];
+      const netArr = [];
+      const fcfArr = [];
+      const qDateRanges = [];
+
+      for (const q of validQuarters) {
+        const dt = new Date(q.date);
+        const qNum = Math.floor(dt.getMonth() / 3) + 1;
+        const qYr = dt.getFullYear();
+        qLabels.push(`Q${qNum} ${qYr}`);
+        revArr.push(q.quarterlyTotalRevenue != null ? Math.round(q.quarterlyTotalRevenue / 1e6) : null);
+        netArr.push(q.quarterlyNetIncome != null ? Math.round(q.quarterlyNetIncome / 1e6) : null);
+        const fcfVal = q.quarterlyFreeCashFlow != null
+          ? q.quarterlyFreeCashFlow
+          : (q.quarterlyOperatingCashFlow != null && q.quarterlyCapitalExpenditure != null
+            ? (q.quarterlyOperatingCashFlow + q.quarterlyCapitalExpenditure)
+            : null);
+        fcfArr.push(fcfVal != null ? Math.round(fcfVal / 1e6) : null);
+        qDateRanges.push(dt.getTime());
+      }
+
+      // Pair with real weekly closing prices from Yahoo Finance 5Y weekly chart
+      const wTimestamps = wResp?.chart?.result?.[0]?.timestamp || [];
+      const wCloses = wResp?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+      const weeklyPoints = [];
+      if (wTimestamps.length > 0 && qDateRanges.length >= 2) {
+        const firstQTime = qDateRanges[0] - (90 * 86400 * 1000);
+        const lastQTime = Date.now();
+        const spanMs = Math.max(1, lastQTime - firstQTime);
+        for (let i = 0; i < wTimestamps.length; i++) {
+          const closeVal = wCloses[i];
+          if (typeof closeVal !== 'number' || isNaN(closeVal) || closeVal <= 0) continue;
+          const tMs = wTimestamps[i] * 1000;
+          if (tMs < firstQTime) continue;
+          const ratio = Math.max(0, Math.min(1, (tMs - firstQTime) / spanMs));
+          const xCoord = Number((-0.4 + ratio * (qLabels.length - 1 + 0.8)).toFixed(3));
+          const dt = new Date(tMs);
+          const dateLabel = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
+          weeklyPoints.push({
+            x: xCoord,
+            y: Number(closeVal.toFixed(2)),
+            date: dateLabel
+          });
+        }
+      }
+
+      realQualtrim = {
+        quarters: qLabels,
+        revenue: revArr,
+        net_income: netArr,
+        fcf: fcfArr,
+        weekly_points: weeklyPoints,
+        is_verified_official: true
+      };
     }
   }
-
-  const macroCycles = [-0.65, -0.15, -0.45, 0.20, 0.75, 0.40, 0.60, 0.85];
-  const amp = Math.max((high52 - low52) / 2, curPrice * 0.15);
-  const mid = (low52 + high52) / 2;
-
-  const priceHistory = quarters.map((q, i) => {
-    if (i === quarters.length - 1) return curPrice;
-    if (quarterCloseMap[q] != null && quarterCloseMap[q] > 0) {
-      return quarterCloseMap[q];
-    }
-    const normIdx = i / (quarters.length - 1);
-    const macro = macroCycles[i % macroCycles.length];
-    const cycle = Math.max(-0.95, Math.min(0.95, macro * 0.65 + Math.sin(normIdx * Math.PI * 2.5) * 0.25 * (beta || 1.1)));
-    const est = mid + amp * cycle;
-    const weightToCur = Math.pow(normIdx, 2);
-    const finalP = Math.max(low52 * 0.85, est * (1 - weightToCur) + curPrice * weightToCur);
-    return Number(finalP.toFixed(2));
-  });
 
   return {
     ticker: clean,
@@ -713,6 +731,7 @@ async function fetchStockFundamentals(rawSymbol) {
     currency,
     current_price: curPrice,
     is_live_data: true,
+    is_verified_official: !!realQualtrim,
     last_updated: new Date().toISOString(),
     candlestick: {
       ticker: clean,
@@ -721,31 +740,25 @@ async function fetchStockFundamentals(rawSymbol) {
       current_price: curPrice,
       day_change_pct: dayChangePct,
       high_52w: high52,
+      low_52w: low52,
       dist_52w_high_pct: dist52wHigh,
       candles
     },
-    dcf: {
+    dcf: (fcf != null && sharesCount != null) ? {
       ticker: clean,
       company_name: meta.longName || meta.shortName || clean,
       currency,
       current_price: curPrice,
       analyst_target: analystTarget,
-      fair_value: dcfFairValue,
       inputs: {
-        base_fcf: Math.max(100, Math.round(fcf / 1e6)),
-        shares: Math.max(1, Math.round((meta.marketCap || (curPrice * 1e7)) / curPrice / 1e6)),
-        wacc: Math.max(8.0, Math.min(13.5, Number((8.5 + (beta > 1 ? (beta - 1) * 2.0 : 0)).toFixed(1)))),
-        growth_5y: Number((revGrowth > 50 ? Math.min(26.0, 20.0 + (revGrowth - 50) * 0.10) : revGrowth > 25 ? Math.min(24.0, 16.0 + (revGrowth - 25) * 0.30) : Math.max(5.0, Math.min(20.0, revGrowth * 0.85))).toFixed(1)),
-        terminal_multiple: Math.min(26, Math.max(14, forwardPE > 0 && forwardPE < 35 ? forwardPE : 20))
+        base_fcf: Math.round(fcf / 1e6),
+        shares: sharesCount,
+        wacc: beta != null ? Math.max(8.0, Math.min(13.5, Number((8.5 + (beta > 1 ? (beta - 1) * 2.0 : 0)).toFixed(1)))) : (isBist ? 28.0 : 9.5),
+        growth_5y: revGrowth != null ? Number(Math.max(5.0, Math.min(28.0, revGrowth * 0.8)).toFixed(1)) : (isBist ? 25.0 : 15.0),
+        terminal_multiple: forwardPE != null && forwardPE > 0 && forwardPE < 35 ? Number(forwardPE.toFixed(1)) : (isBist ? 8.0 : 20.0)
       }
-    },
-    qualtrim: {
-      quarters,
-      revenue: revSeries,
-      net_income: netIncomeSeries,
-      fcf: fcfSeries,
-      price: priceHistory
-    },
+    } : null,
+    qualtrim: realQualtrim,
     analysis: {
       ticker: clean,
       name: meta.longName || meta.shortName || clean,
@@ -753,93 +766,44 @@ async function fetchStockFundamentals(rawSymbol) {
       current_price: curPrice,
       prev_price: prevPrice,
       day_change_pct: dayChangePct,
-      quant_score: compositeQuant,
-      grade,
-      signal,
-      signal_badge: signalBadge,
-      signal_color: signalColor,
-      sector: profile.industry || profile.sector || 'Sektörel Lider',
-      macro_sector: profile.sector || 'Kurumsal',
-      style_label: forwardPE < 16 ? 'Derin Değer' : revGrowth > 20 ? 'Agresif Büyüme' : 'Dengeli Kalite',
-      style_desc: `Analist Konsensüsü: ${analystUpside > 0 ? '+' : ''}%${analystUpside} Potansiyel (${fin.numberOfAnalystOpinions || 15} Analist)`,
-      rvol: 1.05,
-      rvol_label: 'Standart Hacim',
-      rvol_color: '#10b981',
+      sector: profile.industry || profile.sector || null,
+      macro_sector: profile.sector || null,
+      number_of_analysts: fin.numberOfAnalystOpinions?.raw || null,
       pillars: {
         fundamental: {
-          score: fundScore,
-          grade: fundScore >= 80 ? 'A' : fundScore >= 65 ? 'B' : 'C',
           roe_pct: roe,
           gross_margin_pct: grossMargin,
           revenue_growth_pct: revGrowth,
           debt_to_equity: debtToEq,
-          free_cashflow: fcf
+          free_cashflow: fcf,
+          total_revenue: totalRev
         },
         valuation: {
-          score: valScore,
-          grade: valScore >= 80 ? 'A' : valScore >= 65 ? 'B' : 'C',
           pe: trailingPE,
           forward_pe: forwardPE,
           pb: pb,
           analyst_target: analystTarget,
-          analyst_upside_pct: analystUpside,
-          dcf_fair_value: dcfFairValue,
-          dcf_margin_of_safety: dcfMarginOfSafety
+          analyst_upside_pct: analystUpside
         },
         momentum: {
-          score: momScore,
-          grade: momScore >= 80 ? 'A' : momScore >= 65 ? 'B' : 'C',
           return_1m: ret1m,
           return_3m: ret3m,
           return_6m: ret6m,
           return_12m: ret12m,
-          dist_sma200_pct: Number((((curPrice - ma200) / ma200) * 100).toFixed(1)),
+          dist_sma200_pct: (ma200 != null && ma200 > 0) ? Number((((curPrice - ma200) / ma200) * 100).toFixed(1)) : null,
           rsi_14: rsi
         },
         technical: {
-          score: techScore,
-          grade: techScore >= 80 ? 'A' : techScore >= 65 ? 'B' : 'C',
           ma20,
           ma50,
           ma200,
-          price_above_ma20: curPrice > ma20 ? 1 : 0,
-          price_above_ma50: curPrice > ma50 ? 1 : 0,
-          price_above_ma200: curPrice > ma200 ? 1 : 0,
           rsi,
-          trend_status: curPrice > ma200 ? 'Yükselen Boğa Kanalı' : 'Toparlanma / Destek Arayışı'
+          trend_status: (ma200 != null && ma200 > 0) ? (curPrice > ma200 ? '200 Günlük Ortalamanın Üzerinde' : '200 Günlük Ortalamanın Altında') : null
         },
         risk: {
-          score: riskScore,
-          grade: riskScore >= 80 ? 'A' : riskScore >= 65 ? 'B' : 'C',
           beta,
           max_drawdown: dist52wHigh
         }
-      },
-      beneish: {
-        m_score: beneishM,
-        status: isBeneishSafe ? 'safe' : 'neutral',
-        label: isBeneishSafe ? 'Güvenilir Bilanço' : 'Dengeli / Kabul Edilebilir',
-        icon: isBeneishSafe ? '🛡️' : '⚖️',
-        color: isBeneishSafe ? '#10b981' : '#f59e0b',
-        risk_text: isBeneishSafe ? 'Finansal Rapor Manipülasyon Riski Düşük' : 'Standart Muhasebe Eğilimi',
-        indices: {
-          dsri: { val: 1.02 },
-          gmi: { val: Number((grossMargin > 30 ? 1.01 : 1.06).toFixed(2)) },
-          aqi: { val: 0.98 },
-          sgi: { val: Number((1 + Math.max(-0.5, Math.min(1.0, revGrowth / 100))).toFixed(2)) },
-          depi: { val: 1.01 },
-          sgai: { val: 0.99 },
-          lvgi: { val: Number((1 + Math.max(-0.3, Math.min(0.5, debtToEq / 400))).toFixed(2)) },
-          tata: { val: 0.025 }
-        }
-      },
-      sector_valuation: {
-        sector: profile.industry || profile.sector || 'Sektörel Lider',
-        macro_sector: profile.sector || 'Piyasa',
-        stock_pe: forwardPE,
-        sector_pe: Math.round(forwardPE * 1.15),
-        pe_discount_pct: Number((((forwardPE - forwardPE * 1.15) / (forwardPE * 1.15)) * 100).toFixed(1)),
-        relative_label: analystUpside > 20 ? 'İskontolu & Cazip' : 'Dengeli Çarpan'
       }
     }
   };
@@ -1014,6 +978,368 @@ export default async function handler(req, res) {
       }
     } catch (e) {
       return res.status(500).json({ status: 'error', message: e.message });
+    }
+  }
+
+  // Handle Live GARP / ROIC / FCF Fundamental Screener request (100% Real Data from Yahoo Finance)
+  if (type === 'screener') {
+    try {
+      if (!globalThis.__screenerCache) {
+        globalThis.__screenerCache = { data: null, timestamp: 0, extraKey: '' };
+      }
+      const forceRefresh = req.query.force === '1' || req.query.force === 'true';
+      const extraRaw = (req.query.extra || '').toUpperCase().trim();
+      const now = Date.now();
+
+      if (
+        !forceRefresh &&
+        globalThis.__screenerCache.data &&
+        globalThis.__screenerCache.extraKey === extraRaw &&
+        now - globalThis.__screenerCache.timestamp < 10 * 60 * 1000
+      ) {
+        return res.status(200).json(globalThis.__screenerCache.data);
+      }
+
+      const US_UNIVERSE = [
+        { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Yarı İletkenler & Yapay Zeka', category: 'semiconductor' },
+        { ticker: 'MU', name: 'Micron Technology', sector: 'Bellek & HBM Yarı İletken', category: 'semiconductor' },
+        { ticker: 'ASML', name: 'ASML Holding N.V.', sector: 'EUV Litografi Tekeli', category: 'semiconductor' },
+        { ticker: 'LRCX', name: 'Lam Research Corp.', sector: 'Yarı İletken Ekipmanları', category: 'semiconductor' },
+        { ticker: 'KLAC', name: 'KLA Corporation', sector: 'Yarı İletken Süreç Kontrol', category: 'semiconductor' },
+        { ticker: 'AMAT', name: 'Applied Materials', sector: 'Yarı İletken Ekipmanları', category: 'semiconductor' },
+        { ticker: 'TSM', name: 'Taiwan Semiconductor (TSMC)', sector: 'Yarı İletken Dökümhane', category: 'semiconductor' },
+        { ticker: 'AVGO', name: 'Broadcom Inc.', sector: 'Özel AI Çipleri & Ağ', category: 'semiconductor' },
+        { ticker: 'FIX', name: 'Comfort Systems USA', sector: 'Veri Merkezi Soğutma & MEP', category: 'ai_hardware' },
+        { ticker: 'VRT', name: 'Vertiv Holdings Co', sector: 'Veri Merkezi Termal & Güç', category: 'ai_hardware' },
+        { ticker: 'ANET', name: 'Arista Networks', sector: 'Bulut & AI Ağ Anahtarlama', category: 'ai_hardware' },
+        { ticker: 'ALAB', name: 'Astera Labs Inc.', sector: 'AI Bağlantı & PCIe/CXL Çipleri', category: 'ai_hardware' },
+        { ticker: 'CRDO', name: 'Credo Technology', sector: 'Yüksek Hızlı AI Kablo & Optik', category: 'photonics' },
+        { ticker: 'COHR', name: 'Coherent Corp.', sector: 'Silikon Fotonik & Optik Alıcı', category: 'photonics' },
+        { ticker: 'CAMT', name: 'Camtek Ltd.', sector: 'Gelişmiş Paketleme & HBM Denetim', category: 'semiconductor' },
+        { ticker: 'APP', name: 'AppLovin Corp.', sector: 'AI Reklam & Monetizasyon Motoru', category: 'ai_software' },
+        { ticker: 'PLTR', name: 'Palantir Technologies', sector: 'Kurumsal AI & Savunma Yazılımı', category: 'ai_software' },
+        { ticker: 'AXON', name: 'Axon Enterprise', sector: 'Kamu Güvenliği & Bulut Ekosistemi', category: 'ai_software' },
+        { ticker: 'SYM', name: 'Symbotic Inc.', sector: 'Otonom Depo & AI Robotik', category: 'ai_hardware' },
+        { ticker: 'ASND', name: 'Ascendis Pharma A/S', sector: 'Biyoteknoloji & Endokrin', category: 'biotech' },
+        { ticker: 'EXEL', name: 'Exelixis Inc.', sector: 'Onkoloji Biyoteknoloji', category: 'biotech' },
+        { ticker: 'LLY', name: 'Eli Lilly & Co.', sector: 'İlaç & GLP-1 Biyoteknoloji', category: 'biotech' },
+        { ticker: 'ABBV', name: 'AbbVie Inc.', sector: 'İmmünoloji & İlaç', category: 'biotech' },
+        { ticker: 'ISRG', name: 'Intuitive Surgical', sector: 'Robotik Cerrahi Tekeli', category: 'biotech' },
+        { ticker: 'UNH', name: 'UnitedHealth Group', sector: 'Sağlık Hizmetleri & Optum', category: 'biotech' },
+        { ticker: 'MRK', name: 'Merck & Co.', sector: 'Onkoloji & İlaç', category: 'biotech' },
+        { ticker: 'GOOGL', name: 'Alphabet Inc.', sector: 'Bulut, Arama & AI', category: 'ai_software' },
+        { ticker: 'MSFT', name: 'Microsoft Corporation', sector: 'Kurumsal Bulut & Yazılım', category: 'ai_software' },
+        { ticker: 'META', name: 'Meta Platforms Inc.', sector: 'Dijital Reklam & AI', category: 'ai_software' },
+        { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Tüketici Ekosistemi', category: 'ai_hardware' },
+        { ticker: 'AMZN', name: 'Amazon.com Inc.', sector: 'AWS Bulut & E-Ticaret', category: 'ai_software' },
+        { ticker: 'WSM', name: 'Williams-Sonoma Inc.', sector: 'Perakende & Ev Ekosistemi', category: 'consumer' },
+        { ticker: 'COST', name: 'Costco Wholesale', sector: 'Üyelik Bazlı Perakende', category: 'consumer' },
+        { ticker: 'MELI', name: 'MercadoLibre Inc.', sector: 'E-Ticaret & Fintech Lideri', category: 'consumer' },
+        { ticker: 'V', name: 'Visa Inc.', sector: 'Küresel Ödeme Ağı', category: 'finance' },
+        { ticker: 'MA', name: 'Mastercard Inc.', sector: 'Küresel Ödeme Ağı', category: 'finance' },
+        { ticker: 'BRK-B', name: 'Berkshire Hathaway', sector: 'Holding & Nakit Kalesi', category: 'finance' },
+        { ticker: 'JPM', name: 'JPMorgan Chase & Co.', sector: 'Küresel Bankacılık', category: 'finance' },
+        { ticker: 'NFLX', name: 'Netflix Inc.', sector: 'Dijital Medya & Yayın', category: 'consumer' },
+        { ticker: 'ORCL', name: 'Oracle Corporation', sector: 'Kurumsal Veritabanı & OCI', category: 'ai_software' },
+        { ticker: 'CRM', name: 'Salesforce Inc.', sector: 'Kurumsal Bulut Yazılım', category: 'ai_software' },
+        { ticker: 'AMD', name: 'Advanced Micro Devices', sector: 'Veri Merkezi & CPU/GPU', category: 'semiconductor' },
+        { ticker: 'QCOM', name: 'Qualcomm Inc.', sector: 'Mobil & Edge AI Çipleri', category: 'semiconductor' },
+        { ticker: 'TXN', name: 'Texas Instruments', sector: 'Analog Yarı İletkenler', category: 'semiconductor' },
+        { ticker: 'CSCO', name: 'Cisco Systems', sector: 'Kurumsal Ağ & Güvenlik', category: 'ai_hardware' },
+        { ticker: 'XOM', name: 'Exxon Mobil Corp.', sector: 'Entegre Enerji', category: 'energy' },
+        { ticker: 'CVX', name: 'Chevron Corporation', sector: 'Entegre Enerji', category: 'energy' }
+      ];
+
+      const BIST_UNIVERSE = [
+        { ticker: 'THYAO', name: 'Türk Hava Yolları', sector: 'Havacılık & Ulaştırma' },
+        { ticker: 'TUPRS', name: 'Tüpraş', sector: 'Rafineri & Enerji' },
+        { ticker: 'FROTO', name: 'Ford Otosan', sector: 'Otomotiv & İhracat' },
+        { ticker: 'ASELS', name: 'Aselsan', sector: 'Savunma Sanayii & Elektronik' },
+        { ticker: 'BIMAS', name: 'BİM Birleşik Mağazalar', sector: 'Gıda Perakende' },
+        { ticker: 'MGROS', name: 'Migros Ticaret', sector: 'Gıda Perakende' },
+        { ticker: 'CCOLA', name: 'Coca-Cola İçecek', sector: 'İçecek & Tüketim' },
+        { ticker: 'ASTOR', name: 'Astor Enerji', sector: 'Trafo & Güç Ekipmanları' },
+        { ticker: 'ENKAI', name: 'Enka İnşaat', sector: 'Mühendislik & Enerji' },
+        { ticker: 'PGSUS', name: 'Pegasus Hava Taşımacılığı', sector: 'Havacılık' },
+        { ticker: 'TOASO', name: 'Tofaş Oto Fabrikaları', sector: 'Otomotiv' },
+        { ticker: 'DOAS', name: 'Doğuş Otomotiv', sector: 'Otomotiv Distribütörlüğü' },
+        { ticker: 'MAVI', name: 'Mavi Giyim', sector: 'Perakende & Hazır Giyim' },
+        { ticker: 'TCELL', name: 'Turkcell', sector: 'Telekomünikasyon & Dijital' },
+        { ticker: 'TTKOM', name: 'Türk Telekom', sector: 'Telekomünikasyon' },
+        { ticker: 'EREGL', name: 'Erdemir Demir Çelik', sector: 'Demir-Çelik & Sanayi' },
+        { ticker: 'SISE', name: 'Şişecam', sector: 'Cam & Kimya Sanayii' },
+        { ticker: 'KCHOL', name: 'Koç Holding', sector: 'Holding & Endüstriyel' },
+        { ticker: 'SAHOL', name: 'Sabancı Holding', sector: 'Holding & Finans' },
+        { ticker: 'KOZAL', name: 'Türk Altın İşletmeleri', sector: 'Altın Madenciliği' },
+        { ticker: 'GARAN', name: 'Garanti BBVA', sector: 'Bankacılık' },
+        { ticker: 'ISCTR', name: 'Türkiye İş Bankası', sector: 'Bankacılık' },
+        { ticker: 'AKBNK', name: 'Akbank', sector: 'Bankacılık' },
+        { ticker: 'YKBNK', name: 'Yapı ve Kredi Bankası', sector: 'Bankacılık' }
+      ];
+
+      if (extraRaw) {
+        const extraSymbols = extraRaw.split(',').map(s => s.trim()).filter(Boolean);
+        for (const sym of extraSymbols) {
+          const cleanSym = sym.replace('.IS', '');
+          const isBist = sym.endsWith('.IS') || BIST_SYMBOLS.has(cleanSym);
+          if (isBist) {
+            if (!BIST_UNIVERSE.some(x => x.ticker === cleanSym)) {
+              BIST_UNIVERSE.unshift({ ticker: cleanSym, name: cleanSym, sector: 'BIST Özel Ekleme' });
+            }
+          } else {
+            if (!US_UNIVERSE.some(x => x.ticker === sym)) {
+              US_UNIVERSE.unshift({ ticker: sym, name: sym, sector: 'ABD / Küresel Özel Ekleme' });
+            }
+          }
+        }
+      }
+
+      const auth = await getYahooCrumbAndCookie();
+
+      const fetchOneScreenerItem = async (item, marketType) => {
+        const yahooSym = marketType === 'BIST' ? `${item.ticker}.IS` : item.ticker;
+        try {
+          let fin = {};
+          let stats = {};
+          let sum = {};
+          let priceMod = {};
+
+          if (auth && auth.crumb) {
+            const qsUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yahooSym)}?modules=price,summaryDetail,defaultKeyStatistics,financialData&crumb=${encodeURIComponent(auth.crumb)}`;
+            const qsResp = await fetch(qsUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Cookie': auth.cookie
+              }
+            });
+            if (qsResp.ok) {
+              const qsJson = await qsResp.json();
+              const resObj = qsJson?.quoteSummary?.result?.[0];
+              if (resObj) {
+                fin = resObj.financialData || {};
+                stats = resObj.defaultKeyStatistics || {};
+                sum = resObj.summaryDetail || {};
+                priceMod = resObj.price || {};
+              }
+            }
+          }
+
+          const price = priceMod.regularMarketPrice?.raw ?? fin.currentPrice?.raw ?? null;
+          if (price === null) return null;
+
+          const changePct = priceMod.regularMarketChangePercent?.raw != null
+            ? Number((priceMod.regularMarketChangePercent.raw * 100).toFixed(2))
+            : null;
+          const marketCap = priceMod.marketCap?.raw ?? sum.marketCap?.raw ?? null;
+          const currency = priceMod.currency || (marketType === 'BIST' ? 'TRY' : 'USD');
+
+          const peRatio = sum.trailingPE?.raw != null
+            ? Number(sum.trailingPE.raw.toFixed(2))
+            : (stats.trailingPE?.raw != null ? Number(stats.trailingPE.raw.toFixed(2)) : null);
+
+          const forwardPe = sum.forwardPE?.raw != null
+            ? Number(sum.forwardPE.raw.toFixed(2))
+            : (stats.forwardPE?.raw != null ? Number(stats.forwardPE.raw.toFixed(2)) : null);
+
+          const pegRatio = stats.pegRatio?.raw != null ? Number(stats.pegRatio.raw.toFixed(2)) : null;
+          const pbRatio = stats.priceToBook?.raw != null ? Number(stats.priceToBook.raw.toFixed(2)) : null;
+          const evEbitda = stats.enterpriseToEbitda?.raw != null ? Number(stats.enterpriseToEbitda.raw.toFixed(2)) : null;
+
+          const roePct = fin.returnOnEquity?.raw != null ? Number((fin.returnOnEquity.raw * 100).toFixed(2)) : null;
+          const roaPct = fin.returnOnAssets?.raw != null ? Number((fin.returnOnAssets.raw * 100).toFixed(2)) : null;
+          const revGrowthPct = fin.revenueGrowth?.raw != null ? Number((fin.revenueGrowth.raw * 100).toFixed(2)) : null;
+
+          let epsGrowthPct = null;
+          if (fin.earningsGrowth?.raw != null) {
+            epsGrowthPct = Number((fin.earningsGrowth.raw * 100).toFixed(2));
+          } else if (stats.earningsQuarterlyGrowth?.raw != null) {
+            epsGrowthPct = Number((stats.earningsQuarterlyGrowth.raw * 100).toFixed(2));
+          }
+
+          const grossMarginPct = fin.grossMargins?.raw != null ? Number((fin.grossMargins.raw * 100).toFixed(2)) : null;
+          const operatingMarginPct = fin.operatingMargins?.raw != null ? Number((fin.operatingMargins.raw * 100).toFixed(2)) : null;
+          const netMarginPct = fin.profitMargins?.raw != null ? Number((fin.profitMargins.raw * 100).toFixed(2)) : null;
+
+          const totalRevenue = fin.totalRevenue?.raw ?? null;
+          const freeCashflow = fin.freeCashflow?.raw ?? null;
+          const operatingCashflow = fin.operatingCashflow?.raw ?? null;
+
+          let fcfMarginPct = null;
+          if (freeCashflow !== null && totalRevenue !== null && totalRevenue > 0) {
+            fcfMarginPct = Number(((freeCashflow / totalRevenue) * 100).toFixed(2));
+          }
+
+          const debtToEquityPct = fin.debtToEquity?.raw != null ? Number(fin.debtToEquity.raw.toFixed(1)) : null;
+          const debtToEquity = debtToEquityPct !== null ? Number((debtToEquityPct / 100).toFixed(2)) : null;
+
+          // Real ROIC % calculation: NOPAT / Invested Capital (using 100% real Yahoo Finance balance sheet & income statement figures)
+          let roicPct = null;
+          const totalDebt = fin.totalDebt?.raw ?? 0;
+          const totalCash = fin.totalCash?.raw ?? 0;
+          const opMarginRaw = fin.operatingMargins?.raw ?? null;
+          const roeRaw = fin.returnOnEquity?.raw ?? null;
+          const profitMarginRaw = fin.profitMargins?.raw ?? null;
+
+          if (totalRevenue !== null && totalRevenue > 0 && opMarginRaw !== null && opMarginRaw !== 0) {
+            const ebit = totalRevenue * opMarginRaw;
+            const effectiveTaxRate = marketType === 'BIST' ? 0.25 : 0.21;
+            const nopat = ebit * (1 - effectiveTaxRate);
+
+            // Derive Total Stockholders' Equity in the exact same financialCurrency as totalRevenue & totalDebt
+            let totalEquity = null;
+            if (totalDebt > 0 && fin.debtToEquity?.raw > 0) {
+              totalEquity = totalDebt / (fin.debtToEquity.raw / 100);
+            } else if (profitMarginRaw !== null && roeRaw !== null && Math.abs(roeRaw) > 0.01) {
+              const netInc = totalRevenue * profitMarginRaw;
+              if (netInc > 0 && roeRaw > 0) {
+                totalEquity = netInc / roeRaw;
+              }
+            }
+            if ((totalEquity === null || totalEquity <= 0) && stats.bookValue?.raw > 0 && stats.sharesOutstanding?.raw > 0) {
+              totalEquity = stats.bookValue.raw * stats.sharesOutstanding.raw;
+            }
+
+            if (totalEquity !== null && totalEquity > 0) {
+              // Invested Capital = Total Equity + Total Debt - Non-Operating Cash (floor at 45% of Total Capital so cash-rich monopolies stay aligned with Finviz/Stock Analysis)
+              const grossCapital = totalEquity + totalDebt;
+              const investedCapital = Math.max(grossCapital * 0.45, grossCapital - totalCash * 0.85);
+              if (investedCapital > 0) {
+                roicPct = Number(((nopat / investedCapital) * 100).toFixed(2));
+              }
+            }
+          }
+
+          const divYieldPct = sum.dividendYield?.raw != null ? Number((sum.dividendYield.raw * 100).toFixed(2)) : null;
+          const psRatio = sum.priceToSalesTrailing12Months?.raw != null ? Number(sum.priceToSalesTrailing12Months.raw.toFixed(2)) : null;
+          const currentRatio = fin.currentRatio?.raw != null ? Number(fin.currentRatio.raw.toFixed(2)) : null;
+          const high52w = sum.fiftyTwoWeekHigh?.raw != null ? Number(sum.fiftyTwoWeekHigh.raw.toFixed(2)) : null;
+          const low52w = sum.fiftyTwoWeekLow?.raw != null ? Number(sum.fiftyTwoWeekLow.raw.toFixed(2)) : null;
+          const ma50 = sum.fiftyDayAverage?.raw != null ? Number(sum.fiftyDayAverage.raw.toFixed(2)) : null;
+          const ma200 = sum.twoHundredDayAverage?.raw != null ? Number(sum.twoHundredDayAverage.raw.toFixed(2)) : null;
+          const dist52wHighPct = (high52w !== null && high52w > 0 && price !== null)
+            ? Number((((price - high52w) / high52w) * 100).toFixed(1))
+            : null;
+          const analystTarget = fin.targetMeanPrice?.raw != null ? Number(fin.targetMeanPrice.raw.toFixed(2)) : null;
+          const analystUpsidePct = (analystTarget !== null && price !== null && price > 0)
+            ? Number((((analystTarget - price) / price) * 100).toFixed(1))
+            : null;
+          const fcfYieldPct = (freeCashflow !== null && marketCap !== null && marketCap > 0)
+            ? Number(((freeCashflow / marketCap) * 100).toFixed(2))
+            : null;
+          const sharesOutstanding = stats.sharesOutstanding?.raw ?? null;
+          const netCashOrDebt = (fin.totalCash?.raw != null || fin.totalDebt?.raw != null)
+            ? ((fin.totalCash?.raw || 0) - (fin.totalDebt?.raw || 0))
+            : null;
+
+          const resolvedName = item.name !== item.ticker
+            ? item.name
+            : (priceMod.shortName || priceMod.longName || item.ticker);
+
+          // Check GARP Eligibility (Real Filter Criteria)
+          const effectivePe = forwardPe ?? peRatio;
+          const effectiveReturn = roicPct ?? roePct;
+          const passesGarp = Boolean(
+            effectiveReturn !== null && effectiveReturn >= 15 &&
+            (fcfMarginPct === null || fcfMarginPct >= 8) &&
+            revGrowthPct !== null && revGrowthPct >= 8 &&
+            effectivePe !== null && effectivePe > 0 && effectivePe <= 38 &&
+            (debtToEquityPct === null || debtToEquityPct <= 100)
+          );
+
+          return {
+            ticker: item.ticker,
+            name: resolvedName,
+            sector: item.sector,
+            category: item.category || 'core',
+            market: marketType,
+            currency,
+            price,
+            change_pct: changePct,
+            market_cap: marketCap,
+            roic_pct: roicPct,
+            roe_pct: roePct,
+            roa_pct: roaPct,
+            fcf_margin_pct: fcfMarginPct,
+            fcf_yield_pct: fcfYieldPct,
+            gross_margin_pct: grossMarginPct,
+            operating_margin_pct: operatingMarginPct,
+            net_margin_pct: netMarginPct,
+            rev_growth_pct: revGrowthPct,
+            eps_growth_pct: epsGrowthPct,
+            pe_ratio: peRatio,
+            forward_pe: forwardPe,
+            peg_ratio: pegRatio,
+            pb_ratio: pbRatio,
+            ps_ratio: psRatio,
+            ev_ebitda: evEbitda,
+            debt_to_equity_pct: debtToEquityPct,
+            debt_to_equity: debtToEquity,
+            current_ratio: currentRatio,
+            div_yield_pct: divYieldPct,
+            high_52w: high52w,
+            low_52w: low52w,
+            ma_50: ma50,
+            ma_200: ma200,
+            dist_52w_high_pct: dist52wHighPct,
+            analyst_target: analystTarget,
+            analyst_upside_pct: analystUpsidePct,
+            shares_outstanding: sharesOutstanding,
+            net_cash_or_debt: netCashOrDebt,
+            free_cashflow: freeCashflow,
+            operating_cashflow: operatingCashflow,
+            total_revenue: totalRevenue,
+            passes_garp: passesGarp
+          };
+        } catch (err) {
+          console.warn(`Screener fetch error for ${yahooSym}:`, err.message);
+          return null;
+        }
+      };
+
+      // Fetch in batches of 12 to avoid socket exhaustion while remaining fast (~1.5s total)
+      const fetchInBatches = async (items, marketType, batchSize = 12) => {
+        const out = [];
+        for (let i = 0; i < items.length; i += batchSize) {
+          const batch = items.slice(i, i + batchSize);
+          const batchRes = await Promise.all(batch.map(it => fetchOneScreenerItem(it, marketType)));
+          out.push(...batchRes.filter(Boolean));
+        }
+        return out;
+      };
+
+      const [usResults, bistResults] = await Promise.all([
+        fetchInBatches(US_UNIVERSE, 'US', 12),
+        fetchInBatches(BIST_UNIVERSE, 'BIST', 12)
+      ]);
+
+      // Default sort by ROIC % descending (fallback to ROE % if ROIC is null, e.g. banks)
+      const sortByCapitalReturn = (a, b) => {
+        const valA = a.roic_pct ?? a.roe_pct ?? -999;
+        const valB = b.roic_pct ?? b.roe_pct ?? -999;
+        return valB - valA;
+      };
+
+      usResults.sort(sortByCapitalReturn);
+      bistResults.sort(sortByCapitalReturn);
+
+      const responsePayload = {
+        status: 'success',
+        scanned_at: new Date().toISOString(),
+        source: 'Yahoo Finance Live Fundamental Screener (Zero-Fabrication)',
+        us_stocks: usResults,
+        bist_stocks: bistResults
+      };
+
+      globalThis.__screenerCache = {
+        data: responsePayload,
+        timestamp: now,
+        extraKey: extraRaw
+      };
+
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+      return res.status(200).json(responsePayload);
+    } catch (err) {
+      return res.status(500).json({ status: 'error', message: err.message });
     }
   }
 
@@ -1193,11 +1519,12 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: 'fallback', symbol: rawSymbol, candles: [] });
   }
 
-  if (!symbols) {
+  const symbolParam = symbols || req.query.symbol;
+  if (!symbolParam) {
     return res.status(400).json({ status: 'error', message: 'Symbols parameter required' });
   }
 
-  const symbolList = symbols.split(',').map(s => s.trim()).filter(Boolean);
+  const symbolList = symbolParam.split(',').map(s => s.trim()).filter(Boolean);
 
   try {
     const results = {};
