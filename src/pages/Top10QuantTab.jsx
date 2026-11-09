@@ -213,7 +213,7 @@ export function getTechnicalSignal(stock) {
   };
 }
 
-export default function Top10QuantTab({ onSelectStock }) {
+export default function Top10QuantTab({ onSelectStock, onSelectStockForChart }) {
   const { setActiveTab, setLastNavigatedFrom, holdings = [], marketQuotes = {} } = useApp();
 
   const [market, setMarket] = useState('US'); // 'US' | 'BIST'
@@ -1047,14 +1047,7 @@ export default function Top10QuantTab({ onSelectStock }) {
                         </>
                       )}
                       <button
-                        onClick={() => {
-                          const clean = (stock.ticker || '').replace('.IS', '');
-                          try {
-                            localStorage.setItem('selected_chart_symbol', clean);
-                            localStorage.setItem('pro_chart_active_symbol', clean);
-                          } catch {}
-                          setActiveTab('pro_chart');
-                        }}
+                        onClick={() => handleOpenProChart(stock.ticker)}
                         style={{
                           padding: '5px 11px',
                           borderRadius: '6px',

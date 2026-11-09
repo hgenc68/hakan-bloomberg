@@ -671,7 +671,12 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
   const [currentSymbol, setCurrentSymbol] = useState(() => {
     const t = selectedTicker;
     if (typeof t === 'object' && t !== null) return t.clean_ticker || t.ticker || 'SPCX';
-    return t || 'SPCX';
+    if (t) return t;
+    try {
+      const stored = localStorage.getItem('selected_chart_symbol') || localStorage.getItem('pro_chart_active_symbol');
+      if (stored) return stored;
+    } catch {}
+    return 'SPCX';
   });
 
   // Watchlist Active Category
@@ -983,8 +988,14 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
 
   // Sync when prop selectedTicker changes from outside
   useEffect(() => {
-    if (selectedTicker) {
-      const t = typeof selectedTicker === 'object' && selectedTicker !== null ? (selectedTicker.clean_ticker || selectedTicker.ticker) : selectedTicker;
+    let candidate = selectedTicker;
+    if (!candidate) {
+      try {
+        candidate = localStorage.getItem('selected_chart_symbol') || localStorage.getItem('pro_chart_active_symbol');
+      } catch {}
+    }
+    if (candidate) {
+      const t = typeof candidate === 'object' && candidate !== null ? (candidate.clean_ticker || candidate.ticker) : candidate;
       if (t && t !== currentSymbol) {
         setCurrentSymbol(t);
       }
@@ -1769,29 +1780,6 @@ export default function ProChartTab({ onOpenAddModal, onOpenSellModal, selectedT
             <span>📐 EMA 50 & Auto Fib</span>
           </button>
 
-          {/* 🌐 TradingView Web Site Link (Pine Editor) */}
-          <a
-            href={tvExternalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="chip-btn"
-            style={{ 
-              fontSize: 10, 
-              padding: '4px 9px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 4,
-              background: 'rgba(59, 130, 246, 0.12)',
-              borderColor: 'rgba(59, 130, 246, 0.45)',
-              color: '#93c5fd',
-              textDecoration: 'none',
-              fontWeight: 600
-            }}
-            title="Çizimlerinizi, trend çizgilerinizi ve grafik düzeninizi kalıcı olarak saklamak için resmi sitede açın (TradingView hesabınızda otomatik kaydedilir)"
-          >
-            <ExternalLink size={12} />
-            <span>TradingView'de Aç</span>
-          </a>
 
           {/* ⛶ Real True Fullscreen Button */}
           <button

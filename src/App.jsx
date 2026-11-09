@@ -262,6 +262,17 @@ function MainTerminal() {
                   setSelectedStockTicker(t);
                   setActiveTab('single_stock');
                 }}
+                onSelectStockForChart={(t) => {
+                  const ticker = typeof t === 'object' && t !== null ? (t.clean_ticker || t.ticker || '') : (t || '');
+                  if (setLastNavigatedFrom) {
+                    setLastNavigatedFrom({
+                      tab: 'top10',
+                      label: 'En Güçlü 10'
+                    });
+                  }
+                  setSelectedStockTicker(ticker);
+                  setActiveTab('pro_chart');
+                }}
               />
             )}
 
