@@ -19,11 +19,9 @@ export default function Navigation() {
   const researchTabs = [
     { id: 'pro_chart', label: 'Pro Grafik', icon: LineChart, badge: 'TV', badgeColor: 'cyan', highlight: false },
     { id: 'broadcast_studio', label: 'Yayın Stüdyosu', icon: Radio, badge: 'Prompter', badgeColor: 'rose', highlight: true },
-    { id: 'fund_xray', label: 'Fon & ETF Röntgeni', icon: Layers, badge: 'Look-Through', badgeColor: 'gold' },
     { id: 'market', label: 'Piyasa Nabzı', icon: Globe, badge: 'Canlı', badgeColor: 'cyan' },
-    { id: 'model', label: 'Model Portföy', icon: Briefcase, badge: 'Aylık', badgeColor: 'purple' },
-    { id: 'potential', label: 'Potansiyel', icon: Rocket, badge: '8 Fırsat', badgeColor: 'gold' },
-    { id: 'top10', label: 'En Güçlü 10', icon: Trophy, badge: 'Quant', badgeColor: 'emerald' },
+    { id: 'potential', label: 'Büyüme & Dip Radarı', icon: Rocket, badge: 'Canlı', badgeColor: 'gold' },
+    { id: 'top10', label: 'En Güçlü 10 (Elit Seçim)', icon: Trophy, badge: '5/5 Tam Not', badgeColor: 'emerald', highlight: true },
     { id: 'single_stock', label: 'Tekil Hisse', icon: Target, badge: 'DCF', badgeColor: 'cyan' }
   ];
 
