@@ -184,6 +184,8 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
   const [selectedScenarioIdx, setSelectedScenarioIdx] = useState(0);
   const [isSimulatingStress, setIsSimulatingStress] = useState(false);
 
+  const totalPortfolioTRY = portfolioSummary?.totalValTRY || 0;
+
   const stressScenarios = [
     {
       shortTitle: 'Faiz Şoku (+1000)',
@@ -191,8 +193,8 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
       title: 'TCMB / Küresel Faiz Şoku (+1000 bps)',
       badge: 'Faiz Riski',
       badgeColor: 'amber',
-      impactTRY: -14250,
       impactPct: -3.85,
+      impactTRY: Math.round(totalPortfolioTRY * (-0.0385)),
       desc: 'Merkez bankalarının politika faizini aniden 1000 baz puan artırması ve kredi musluklarının daralması senaryosu.',
       why: 'PPF nakit barutunun faiz getirisi artarken, hisse senetlerinde çarpan daralması yaşanır. Kalkan tamponu zararı sınırlar.',
       stressedAxes: [
@@ -211,10 +213,10 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
       title: 'Ani Kur Sıçraması (+%30 Devalüasyon)',
       badge: 'Döviz Şoku',
       badgeColor: 'emerald',
-      impactTRY: 48650,
       impactPct: 13.15,
+      impactTRY: Math.round(totalPortfolioTRY * 0.1315),
       desc: 'Dolar/TL kurunun kontrol aralığından çıkarak aniden %30 yukarı sıçraması ve döviz talebinin patlaması senaryosu.',
-      why: 'Doğal kur kalkanı (%82.4) sayesinde Gram Altın, ABD Hisseleri ve Kriptolar TL bazında güçlü kazanç yazdırır.',
+      why: 'Doğal kur kalkanı sayesinde Gram Altın, ABD Hisseleri ve Kriptolar TL bazında güçlü kazanç yazdırır.',
       stressedAxes: [
         { label: 'Getiri Gücü', score: 88 },
         { label: 'Düşüş Koruması', score: 85 },
@@ -231,8 +233,8 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
       title: 'Küresel Borsa Çöküşü (S&P %25 Düşüş)',
       badge: 'Sermaye Çöküşü',
       badgeColor: 'bad',
-      impactTRY: -28400,
       impactPct: -7.68,
+      impactTRY: Math.round(totalPortfolioTRY * (-0.0768)),
       desc: 'Wall Street ve küresel borsalarda resesyon endişeleriyle %25 oranında sert bir düzeltme dalgası yaşanması.',
       why: 'Hisse varlıkları gerilerken Gram Altın ve PPF nakit tamponu portföyü dengeler ve dipten maliyetlenme fırsatı sunar.',
       stressedAxes: [
@@ -251,8 +253,8 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
       title: 'Stagflasyon (Yüksek Enflasyon + Durgunluk)',
       badge: 'Stagflasyon',
       badgeColor: 'amber',
-      impactTRY: 8200,
       impactPct: 2.22,
+      impactTRY: Math.round(totalPortfolioTRY * 0.0222),
       desc: 'Ekonomik büyümenin sıfırlanırken enflasyonun yapışkan biçimde yüksek kalmaya devam ettiği zorlu makro ortam.',
       why: 'Emtia ve altın gibi reel kıymetler değer koruma özelliği sergileyerek portföyün satın alma gücünü muhafaza eder.',
       stressedAxes: [
@@ -271,8 +273,8 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
       title: 'Kripto Kışı (Bitcoin %50 Düzeltme)',
       badge: 'Kripto Volatilitesi',
       badgeColor: 'amber',
-      impactTRY: -11500,
       impactPct: -3.11,
+      impactTRY: Math.round(totalPortfolioTRY * (-0.0311)),
       desc: 'Kripto para piyasalarında regülasyon baskısıyla sert bir likidite geri çekilmesi yaşanması.',
       why: 'Kripto varlıkların toplam portföydeki payı kontrollü seviyede tutulduğu için genel servet üzerindeki etkisi sınırlı kalır.',
       stressedAxes: [
@@ -349,13 +351,6 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
       }
     }
   };
-
-  // Monthly Heatmap sample data
-  const heatmapYears = [
-    { year: 2026, months: [4.2, 2.1, 5.8, -1.2, 3.4, 6.1, 1.8, 4.5, 2.9, 1.8, 0, 0], total: 35.4 },
-    { year: 2025, months: [3.1, -2.4, 4.8, 6.2, 1.5, -0.8, 5.4, 3.2, -1.1, 4.0, 7.2, 2.8], total: 38.4 }
-  ];
-  const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
   return (
     <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
@@ -588,19 +583,21 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
           {/* Quick Metrics Banner */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
             <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
-              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Maksimum Kayıp (VaR %95)</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--red)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>-%2.84</div>
+              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Toplam Portföy Değeri</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                ₺{Number(portfolioSummary?.totalValTRY || 0).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+              </div>
             </div>
             <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
               <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Doğal Kur Kalkanı</div>
               <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                %{healthAnalysis.hedgeRatio ? healthAnalysis.hedgeRatio.toFixed(1) : '82.4'}
+                %{healthAnalysis.hedgeRatio ? healthAnalysis.hedgeRatio.toFixed(1) : '0.0'}
               </div>
             </div>
             <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
               <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>PPF Kuru Barut</div>
               <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
-                ₺{Number(portfolioSummary?.ppfBalanceTRY || 45000).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                ₺{Number(portfolioSummary?.ppfBalanceTRY || 0).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
               </div>
             </div>
             <div style={{ background: '#070a12', border: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', borderRadius: 6, textAlign: 'center' }}>
@@ -816,94 +813,36 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
         </div>
       </div>
 
-      {/* Monthly Return Calendar Heatmap */}
+      {/* Real Live Trade Ledger Summary Cards */}
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-        
-        {/* Simulation Warning Banner */}
-        <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 6, padding: '9px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 15 }}>⚠️</span>
-            <span style={{ fontSize: 11, color: '#fcd34d' }}>
-              <strong>STRATEJİ MODEL ISI HARİTASI (SİMÜLASYON):</strong> Aşağıdaki aylık tablo portföy stratejisinin geçmiş model simülasyonunu göstermektedir; henüz dinamik işlem defterinize (Trade Ledger) bağlı değildir.
-            </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Calendar size={16} className="text-emerald" />
+            <span>GERÇEKLEŞEN İŞLEM DEFTERİ ÖZETİ (%100 GERÇEK VERİ)</span>
           </div>
-          <span className="nav-badge amber" style={{ fontSize: 9.5 }}>Model Simülasyonu</span>
+          <span className="nav-badge emerald" style={{ fontSize: 9.5 }}>Canlı Firestore Defteri</span>
         </div>
 
-        {/* Real Live Trade Ledger Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
           <div style={{ background: '#090d16', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
             <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 700 }}>GERÇEKLEŞEN NET KÂR (CANLI DEFTER)</div>
             <div style={{ fontSize: 16, fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--emerald)', marginTop: 2 }}>
-              +₺{(portfolioSummary?.realizedProfitTRY || 7547.95).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              +₺{Number(portfolioSummary?.realizedProfitTRY || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>
-              ${(portfolioSummary?.realizedProfitUSD || 154.11).toFixed(2)} USD • %100 Kazanma Oranı
+              ${Number(portfolioSummary?.realizedProfitUSD || 0).toFixed(2)} USD • Onaylı Satışlar
             </div>
           </div>
 
           <div style={{ background: '#090d16', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(0, 229, 255, 0.25)' }}>
-            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 700 }}>KAPALI GERÇEK İŞLEMLER</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--cyan)', marginTop: 3 }}>
-              3 İşlem (ETH-USD +%59.8, SPCX +%7.5)
+            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 700 }}>KONSOLİDE NET PORTFÖY K/Z (AÇIK + KAPALI)</div>
+            <div style={{ fontSize: 16, fontWeight: 900, fontFamily: 'var(--font-mono)', color: (portfolioSummary?.consolidatedProfitTRY || 0) >= 0 ? 'var(--emerald)' : 'var(--red)', marginTop: 2 }}>
+              {(portfolioSummary?.consolidatedProfitTRY || 0) >= 0 ? '+' : ''}₺{Number(portfolioSummary?.consolidatedProfitTRY || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>
-              Firestore veritabanı üzerinden onaylıdır
+              Firestore veritabanı üzerinden %100 gerçek işlemlerle hesaplanmıştır
             </div>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Calendar size={16} className="text-cyan" />
-            <span>AYLIK STRATEJİ MODEL GETİRİLERİ (GEÇMİŞ SİMÜLASYON)</span>
-          </div>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            Takvim Bazlı Ay Ay Yüzdesel Performans
-          </span>
-        </div>
-
-        <div className="table-responsive">
-          <table className="terminal-table" style={{ fontSize: 11, textAlign: 'center' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', width: 60 }}>Yıl</th>
-                {monthNames.map(m => (
-                  <th key={m} style={{ textAlign: 'center' }}>{m}</th>
-                ))}
-                <th style={{ textAlign: 'right', width: 80 }}>Yıllık</th>
-              </tr>
-            </thead>
-            <tbody>
-              {heatmapYears.map(yr => (
-                <tr key={yr.year} className="table-row">
-                  <td style={{ textAlign: 'left', fontWeight: 800, color: '#fff' }}>{yr.year}</td>
-                  {yr.months.map((val, idx) => {
-                    if (val === 0 && yr.year === 2026 && idx >= 10) {
-                      return <td key={idx} style={{ color: 'var(--text-muted)' }}>--</td>;
-                    }
-                    const isPositive = val >= 0;
-                    return (
-                      <td
-                        key={idx}
-                        className="mono"
-                        style={{
-                          color: isPositive ? '#10b981' : '#ef4444',
-                          background: isPositive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                          fontWeight: 700
-                        }}
-                      >
-                        {isPositive ? '+' : ''}{val.toFixed(1)}%
-                      </td>
-                    );
-                  })}
-                  <td className="mono text-right" style={{ fontWeight: 900, color: 'var(--emerald)' }}>
-                    +{yr.total.toFixed(1)}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
