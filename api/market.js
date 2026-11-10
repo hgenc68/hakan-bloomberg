@@ -238,6 +238,63 @@ const CAP_BENCHMARKS = {
   'TOTALDEFI': { price: 94100000000, changePct: 1.90, label: '$94.1B', currency: 'USD' }
 };
 
+function decodeHtmlEntities(str = '') {
+  return String(str)
+    .replace(/&amp;/g, '&')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractMarketTickers(text = '') {
+  const raw = String(text || '');
+  const upper = raw.toUpperCase();
+  const lower = raw.toLowerCase();
+  const found = [];
+  const add = (sym) => { if (!found.includes(sym) && found.length < 4) found.push(sym); };
+
+  const patterns = [
+    { re: /\b(NVDA|NVIDIA)\b/i, sym: 'NVDA' },
+    { re: /\b(PGSUS|PEGASUS)\b/i, sym: 'PGSUS' },
+    { re: /\b(THYAO|TÜRK HAVA YOLLARI|TURKISH AIRLINES)\b/i, sym: 'THYAO' },
+    { re: /\b(ASELS|ASELSAN)\b/i, sym: 'ASELS' },
+    { re: /\b(TUPRS|TÜPRAŞ|TUPRAS)\b/i, sym: 'TUPRS' },
+    { re: /\b(FROTO|FORD OTOSAN)\b/i, sym: 'FROTO' },
+    { re: /\b(KCHOL|KOÇ HOLDİNG|KOC HOLDING)\b/i, sym: 'KCHOL' },
+    { re: /\b(AKBNK|AKBANK)\b/i, sym: 'AKBNK' },
+    { re: /\b(YKBNK|YAPI KREDİ|YAPI KREDI)\b/i, sym: 'YKBNK' },
+    { re: /\b(ISCTR|İŞ BANKASI|IS BANKASI)\b/i, sym: 'ISCTR' },
+    { re: /\b(EREGL|EREĞLİ|ERDEMİR)\b/i, sym: 'EREGL' },
+    { re: /\b(BIMAS|BİM)\b/i, sym: 'BIMAS' },
+    { re: /\b(SAHOL|SABANCI)\b/i, sym: 'SAHOL' },
+    { re: /\b(TCELL|TURKCELL)\b/i, sym: 'TCELL' },
+    { re: /\b(AAPL|APPLE)\b/i, sym: 'AAPL' },
+    { re: /\b(MSFT|MICROSOFT)\b/i, sym: 'MSFT' },
+    { re: /\b(GOOGL|GOOGLE|ALPHABET)\b/i, sym: 'GOOGL' },
+    { re: /\b(AMZN|AMAZON)\b/i, sym: 'AMZN' },
+    { re: /\b(META|FACEBOOK)\b/i, sym: 'META' },
+    { re: /\b(TSLA|TESLA)\b/i, sym: 'TSLA' },
+    { re: /\b(AVGO|BROADCOM)\b/i, sym: 'AVGO' },
+    { re: /\b(TSM|TSMC)\b/i, sym: 'TSM' },
+    { re: /\b(AMD)\b/i, sym: 'AMD' },
+    { re: /\b(MU|MICRON)\b/i, sym: 'MU' },
+    { re: /\b(PLTR|PALANTIR)\b/i, sym: 'PLTR' },
+    { re: /\b(BTC|BITCOIN)\b/i, sym: 'BTC' },
+    { re: /\b(BIST\s*100|BIST\s*30|BORSA İSTANBUL|BORSA ISTANBUL)\b/i, sym: 'BIST100' },
+    { re: /\b(TCMB|MERKEZ BANKASI|PPK)\b/i, sym: 'TCMB' },
+    { re: /\b(FED|FOMC|POWELL)\b/i, sym: 'FED' }
+  ];
+
+  for (const p of patterns) {
+    if (p.re.test(raw)) add(p.sym);
+  }
+  return found;
+}
+
 // In-memory cache for news translations to avoid repeated API calls
 const newsTranslationCache = new Map();
 
@@ -247,8 +304,10 @@ async function translateToTurkish(text) {
   if (!clean || clean.length < 5) return clean;
   if (newsTranslationCache.has(clean)) return newsTranslationCache.get(clean);
 
+  // Check if text already has Turkish diacritics
+  const hasTurkishChars = /[çğıöşüÇĞİÖŞÜ]/.test(clean);
   // Check if text contains typical English words
-  const isLikelyEnglish = /\b(the|and|in|on|at|to|for|with|as|by|from|after|before|amid|surges|drops|falls|climbs|record|high|low|quarter|shares|stock|market|earnings|revenue|growth|ceo|fed|rate|rates|inflation|report|ahead|plans|deals|soars|slumps|beats|misses|warning|cuts|hikes|steady|unveils|plunges|losses|gains|rally|selloff|analysts|target|investors|wall street|yields|treasury|crypto|bitcoin|etf|sec)\b/i.test(clean);
+  const isLikelyEnglish = !hasTurkishChars && /\b(the|and|in|on|at|to|for|with|as|by|from|after|before|amid|surges|drops|falls|climbs|record|high|low|quarter|shares|stock|stocks|market|markets|earnings|revenue|growth|ceo|fed|rate|rates|inflation|report|ahead|plans|deals|soars|slumps|beats|misses|warning|cuts|hikes|steady|unveils|plunges|losses|gains|rally|selloff|sell-off|analysts|target|investors|wall street|yields|treasury|crypto|bitcoin|etf|sec|trump|election|midterm|midterms|tariffs|tariff|congress|white house|spending|capex|chip|chips|nvidia|apple|microsoft|tesla|google|amazon|billion|trillion)\b/i.test(clean);
 
   if (!isLikelyEnglish) {
     newsTranslationCache.set(clean, clean);
@@ -256,12 +315,16 @@ async function translateToTurkish(text) {
   }
 
   try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 3500);
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(clean)}`;
     const res = await fetch(url, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       }
     });
+    clearTimeout(tid);
     if (res.ok) {
       const json = await res.json();
       if (Array.isArray(json) && json[0]) {
@@ -277,75 +340,249 @@ async function translateToTurkish(text) {
   return clean;
 }
 
-async function fetchMarketNews() {
+async function fetchMarketNews(forceRefresh = false) {
   try {
-    // 1. Domestic BIST, TCMB, TÜİK news in Turkish
-    const trPromise = fetch('https://news.google.com/rss/search?q=(BIST+OR+TCMB+OR+borsa+OR+enflasyon+OR+faiz)+when:3d&hl=tr&gl=TR&ceid=TR:tr', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    }).then(r => r.text()).catch(() => '');
+    const nowMs = Date.now();
+    if (!forceRefresh && globalThis.__newsFeedCache && (nowMs - globalThis.__newsFeedCache.timestamp) < 90000) {
+      return globalThis.__newsFeedCache.items;
+    }
 
-    // 2. Global Wall St, Fed, Tech news from Turkish financial media (BloombergHT, Foreks, Dünya, Ekonomim)
-    const trGlobalPromise = fetch('https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+Wall+Street+OR+Bitcoin+OR+Nasdaq+OR+hisse+OR+alt%C4%B1n)+when:3d&hl=tr&gl=TR&ceid=TR:tr', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    }).then(r => r.text()).catch(() => '');
+    const fetchXml = (rssUrl) => {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 6500);
+      return fetch(rssUrl, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      })
+        .then(r => { clearTimeout(tid); return r.ok ? r.text() : ''; })
+        .catch(() => { clearTimeout(tid); return ''; });
+    };
 
-    // 3. International Global news (Reuters, Bloomberg, CNBC) to be auto-translated to Turkish
-    const globalPromise = fetch('https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+stocks+OR+crypto)+when:2d&hl=en-US&gl=US&ceid=US:en', {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    }).then(r => r.text()).catch(() => '');
+    // 1. BIST 30 & Turkish Corporate Earnings / KAP Surprises (specific Turkish market terms, avoid loose 'hisse')
+    const trBist30Promise = fetchXml(
+      'https://news.google.com/rss/search?q=(BIST30+OR+%22BIST+100%22+OR+%22Borsa+%C4%B0stanbul%22+OR+Pegasus+OR+PGSUS+OR+THYAO+OR+ASELS+OR+T%C3%BCpra%C5%9F+OR+TUPRS+OR+FROTO+OR+AKBNK+OR+KCHOL+OR+EREGL+OR+BIMAS+OR+SAHOL+OR+%22%C3%A7eyrek+bilan%C3%A7o%22)+when:4d&hl=tr&gl=TR&ceid=TR:tr'
+    );
 
-    const [trXml, trGlobalXml, globalXml] = await Promise.all([trPromise, trGlobalPromise, globalPromise]);
+    // 2. Turkish Politics, TCMB, Fiscal Policy, SPK, Türkiye Enflasyon & Macro
+    const trPoliticsMacroPromise = fetchXml(
+      'https://news.google.com/rss/search?q=(TCMB+OR+%22Merkez+Bankas%C4%B1%22+OR+%22Mehmet+%C5%9Eim%C5%9Fek%22+OR+T%C3%9C%C4%B0K+OR+%22T%C3%BCrkiye+enflasyon%22+OR+%22Borsa+%C4%B0stanbul%22+OR+%22Hazine+ve+Maliye%22+OR+SPK+OR+TBMM+ekonomi)+when:4d&hl=tr&gl=TR&ceid=TR:tr'
+    );
 
-    function parseXmlItems(xml, defaultCategory) {
+    // 3. Turkish financial media coverage on Global Markets, Wall St, Fed, Gold & Bitcoin
+    const trGlobalPromise = fetchXml(
+      'https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+%22Wall+Street%22+OR+Nasdaq+OR+%22S%26P+500%22+OR+Bitcoin+OR+%22ons+alt%C4%B1n%22+OR+%22yapay+zeka+hisse%22)+when:4d&hl=tr&gl=TR&ceid=TR:tr'
+    );
+
+    // 4. US & Global Politics, Elections, Tariffs, Fed, Macro & Geopolitics (to be auto-translated)
+    const usPoliticsGlobalPromise = fetchXml(
+      'https://news.google.com/rss/search?q=(Fed+OR+FOMC+OR+Trump+OR+tariffs+OR+%22US+election%22+OR+midterm+OR+Congress+OR+%22White+House%22+OR+%22Treasury+yields%22+OR+%22US+inflation%22+OR+geopolitical)+when:4d&hl=en-US&gl=US&ceid=US:en'
+    );
+
+    // 5. Wall St Single-Stock / Executive / AI Capex Catalysts (to be auto-translated)
+    const usStocksShocksPromise = fetchXml(
+      'https://news.google.com/rss/search?q=(Nvidia+OR+NVDA+OR+Apple+OR+Microsoft+OR+Tesla+OR+Amazon+OR+Google+OR+Broadcom+OR+TSMC)+AND+(stock+OR+shares+OR+CEO+OR+AI+OR+earnings+OR+plunges+OR+surges+OR+drops+OR+soars)+when:3d&hl=en-US&gl=US&ceid=US:en'
+    );
+
+    const [trBistXml, trPoliticsXml, trGlobalXml, usPoliticsXml, usStocksXml] = await Promise.all([
+      trBist30Promise,
+      trPoliticsMacroPromise,
+      trGlobalPromise,
+      usPoliticsGlobalPromise,
+      usStocksShocksPromise
+    ]);
+
+    const NON_MARKET_NOISE_RE = /(uyuşturucu|narkotik|cezaevi|gözaltı|cinayet|trafik kazası|süper lig|fenerbahçe|galatasaray|beşiktaş|trabzonspor|şampiyonlar ligi|magazin|burçlar|survıvor|survivor)/i;
+
+    function classifyNewsItem(title, source, feedHint) {
+      const lower = (title + ' ' + (source || '')).toLowerCase();
+
+      const isExplicitForeignMacro = /(\babd\b|\bus\b|\bu\.s\.\b|fed|fomc|powell|waller|warsh|trump|biden|midterm|ara seçim|ara dönem|cumhuriyetçi|demokrat|temsilciler meclisi|kongre|senato|beyaz saray|tarife|tariff|avrupa|ecb|çin|china|japonya|yen|coinbase|cftc|sec\b|wall street|nasdaq|s&p|huang|nvidia|nvda|apple|tesla|microsoft|google|amazon|tsmc|reuters|npr|cnn|bbc|bloomberg\.com|cnbc)/i.test(lower);
+      const isExplicitTurkishContext = /(türkiye|turkey|tcmb|merkez bankası|şimşek|tüik|spk|bist|borsa istanbul|tl\b|lira|ankara|tbmm|hazine ve maliye|kap\b|kap\s*\*)/i.test(lower);
+
+      const isBistCompany = /(bist|borsa istanbul|pgsus|pegasus|thyao|türk hava|asels|aselsan|tuprs|tüpraş|froto|ford otosan|kchol|koç holding|akbnk|akbank|ykbnk|yapı kredi|eregl|ereğli|bimas|sahol|sabancı|isctr|iş bankası|tcell|turkcell|katılımevim|3ç26|3\. çeyrek)/i.test(lower);
+      const isTrMacroPolitics = (/(tcmb|tüik|şimşek|spk|tbmm|türkiye ekonom|swap|kredi notu|dolar\/tl|tl mevduat|borsa istanbul)/i.test(lower)) || (isExplicitTurkishContext && !isExplicitForeignMacro && /(enflasyon|vergi|bütçe|hazine|faiz|ekonomi|siyaset|cumhurbaşkan)/i.test(lower));
+      const isUsPolitics = /(trump|biden|harris|election|midterm|ara seçim|ara dönem|congress|kongre|temsilciler meclisi|cumhuriyetçiler|senato|senate|white house|beyaz saray|tariff|tarife|gümrük vergisi|fed|fomc|powell|waller|warsh|treasury|tahvil getirisi|abd enflasyon|us inflation|jeopolitik|savaş|hürmüz|orta doğu|çin ticaret|çin.*yaptırım)/i.test(lower);
+      const isTechAiStock = /(nvidia|nvda|huang|\bai\b|yapay zeka|chip|çip|yarı iletken|semiconductor|tsmc|tsm|apple|aapl|microsoft|msft|tesla|tsla|amazon|amzn|google|googl|meta|broadcom|avgo|capex|datacenter|veri merkezi|ceo)/i.test(lower);
+      const isCryptoCommod = /(bitcoin|btc|kripto|crypto|coinbase|ethereum|ons altın|gram altın|gold|gümüş|silver|petrol|brent|wti|emtia|opec)/i.test(lower);
+
+      // Determine true region first (prevent foreign politics/stocks from entering TR buckets)
+      let region = feedHint.region;
+      if (isExplicitForeignMacro && !isBistCompany && !isTrMacroPolitics) {
+        region = 'GLOBAL';
+      } else if (isBistCompany || isTrMacroPolitics) {
+        region = 'TR';
+      } else if (isExplicitTurkishContext && !isUsPolitics && !isTechAiStock) {
+        region = 'TR';
+      } else if (feedHint.region === 'GLOBAL') {
+        region = 'GLOBAL';
+      }
+
+      // Broadcast studio structured bucket & region
+      let broadcastBucket = feedHint.defaultBucket;
+      let bucketLabel = feedHint.defaultBucketLabel;
+
+      if (region === 'TR') {
+        if (isBistCompany) {
+          broadcastBucket = 'bist30';
+          bucketLabel = '🇹🇷 BIST 30 & Şirketler';
+        } else {
+          broadcastBucket = 'tr_macro';
+          bucketLabel = '🏛️ TR Siyaset & Ekonomi';
+        }
+      } else {
+        if (isUsPolitics) {
+          broadcastBucket = 'us_politics';
+          bucketLabel = '🇺🇸 ABD Politika & Makro';
+        } else {
+          broadcastBucket = 'global_stocks';
+          bucketLabel = isCryptoCommod && !isTechAiStock ? '🪙 Emtia & Kripto' : '💻 Global Hisse & AI';
+        }
+      }
+
+      // Compatibility tag for MarketPulseTab filters
+      let tag = 'Fed, Wall St & Politika';
+      if (broadcastBucket === 'bist30') tag = 'BIST & KAP';
+      else if (broadcastBucket === 'tr_macro') tag = 'TCMB, Politika & Makro';
+      else if (isTechAiStock) tag = 'Teknoloji & AI';
+      else if (isCryptoCommod && !isUsPolitics) tag = 'Kripto & Emtia';
+      else tag = 'Fed, Wall St & Politika';
+
+      const bearishWords = [
+        'düştü', 'düşüyor', 'düşüş', 'geriledi', 'geriliyor', 'kayıp', 'kayıpla', 'baskı', 'satıcılı', 'satış', 'kâr satışı', 'eksiye', 'ekside', 'negatife', 'risk', 'endişe', 'korku', 'çöktü', 'çakıldı', 'çakılıyor', 'alarm', 'şok', 'skandal', 'skandalı', 'soruşturma', 'dava', 'kısıtlama', 'yaptırım', 'tarife', 'savaş', 'zarar', 'vurdu', 'yenilgi', 'faiz artırım', 'şahin',
+        'slump', 'falls', 'fell', 'tumbles', 'drop', 'drops', 'warning', 'down', 'losses', 'plunge', 'plunges', 'selloff', 'sell-off', 'crash', 'concern', 'fears', 'fear', 'probe', 'lawsuit', 'miss', 'cut', 'weak', 'retreat', 'decline', 'scandal', 'rate hike', 'hawkish'
+      ];
+      const bullishWords = [
+        'yükseldi', 'yükseliyor', 'yükseliş', 'fırladı', 'fırlattı', 'uçurdu', 'sıçradı', 'rekor', 'ralli', 'prim', 'artış', 'aştı', 'güçlü kâr', 'kâr artışı', 'tavan', 'büyüme', 'onay çıktı', 'not artışı', 'alıcılı', 'pozitif', 'kazandırdı', 'destekledi', 'faiz indirim',
+        'rally', 'surge', 'surges', 'soars', 'soar', 'jumps', 'jump', 'beats', 'beat', 'record', 'upgrade', 'climbs', 'gains', 'boost', 'strong', 'tops', 'outperform', 'rate cut'
+      ];
+
+      let bearScore = 0;
+      let bullScore = 0;
+      for (const w of bearishWords) if (lower.includes(w)) bearScore++;
+      for (const w of bullishWords) if (lower.includes(w)) bullScore++;
+
+      let sentiment = 'neutral';
+      if (bearScore > bullScore) sentiment = 'bear';
+      else if (bullScore > bearScore) sentiment = 'bull';
+      else if (bearScore > 0 && bullScore > 0) sentiment = 'neutral';
+
+      const bull = sentiment !== 'bear';
+
+      const highImpactWords = [
+        'rekor', 'fırladı', 'fırlattı', 'yükseliyor', 'düşüyor', 'çakıldı', 'çöktü', 'sert', 'şok', 'skandal', 'bilanço', 'kâr', 'faiz', 'seçim', 'ara dönem', 'tarife', 'ceo', 'yatırım', 'endişe', 'soruşturma', 'ayrışma', 'vurdu',
+        'plunge', 'surge', 'soar', 'tumble', 'crash', 'earnings', 'rate', 'election', 'midterm', 'tariff', 'guidance', 'beat', 'miss', 'billion', 'milyar', 'trilyon', 'trillion'
+      ];
+      let impactScore = (bearScore + bullScore) * 1.8;
+      for (const hw of highImpactWords) {
+        if (lower.includes(hw)) impactScore += 1.5;
+      }
+      if (isBistCompany && /(pgsus|pegasus|thyao|asels|tuprs|froto|kchol|akbnk|eregl|bimas|bist100|bist30)/i.test(lower)) {
+        impactScore += 2.0;
+      }
+      // Demote boilerplate mutual fund KAP spam
+      if (/serbest fon|özel durum açıklaması \(genel\)/i.test(lower)) {
+        impactScore = Math.max(0, impactScore - 2.5);
+      }
+
+      return {
+        tag,
+        region,
+        broadcastBucket,
+        bucketLabel,
+        sentiment,
+        bull,
+        impactScore
+      };
+    }
+
+    function parseXmlItems(xml, feedHint) {
       if (!xml) return [];
       const itemMatches = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
       return itemMatches.slice(0, 10).map((item, idx) => {
-        let title = (item.match(/<title>(.*?)<\/title>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+        let title = decodeHtmlEntities((item.match(/<title>(.*?)<\/title>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1'));
         const link = (item.match(/<link>(.*?)<\/link>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
         const pubDate = (item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '').trim();
-        let source = (item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+        let source = decodeHtmlEntities((item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1'));
 
+        if (!title || title.length <= 8 || NON_MARKET_NOISE_RE.test(title)) return null;
+
+        // Strip trailing source/site tagline cleanly
+        title = title.replace(/\s*-\s*Finans haberlerinin doğru adresi.*$/i, '').trim();
         const dashIdx = title.lastIndexOf(' - ');
-        if (dashIdx > 0) {
+        if (dashIdx > 15) {
           if (!source) source = title.substring(dashIdx + 3).trim();
           title = title.substring(0, dashIdx).trim();
         }
 
-        const lower = (title + ' ' + (source || '')).toLowerCase();
-        let tag = defaultCategory;
-        if (lower.includes('bist') || lower.includes('borsa') || lower.includes('thyao') || lower.includes('eregl') || lower.includes('asels') || lower.includes('kap')) {
-          tag = 'BIST & KAP';
-        } else if (lower.includes('tcmb') || lower.includes('merkez bank') || lower.includes('faiz') || lower.includes('enflasyon') || lower.includes('şimşek') || lower.includes('tüik')) {
-          tag = 'TCMB & Makro';
-        } else if (lower.includes('nvidia') || lower.includes('chip') || lower.includes('çip') || lower.includes('ai') || lower.includes('yapay zeka') || lower.includes('tsmc') || lower.includes('semiconductor') || lower.includes('apple') || lower.includes('microsoft')) {
-          tag = 'Teknoloji & AI';
-        } else if (lower.includes('bitcoin') || lower.includes('kripto') || lower.includes('crypto') || lower.includes('altın') || lower.includes('gold') || lower.includes('petrol') || lower.includes('emtia')) {
-          tag = 'Kripto & Emtia';
-        } else if (lower.includes('fed') || lower.includes('fomc') || lower.includes('powell') || lower.includes('warsh') || lower.includes('wall st') || lower.includes('s&p') || lower.includes('nasdaq')) {
-          tag = 'Fed & Wall St';
-        }
+        const timeMs = pubDate ? new Date(pubDate).getTime() : 0;
+        const ageHours = timeMs > 0 ? Math.max(0, (Date.now() - timeMs) / 3600000) : 72;
+        const recencyBoost = ageHours < 6 ? 3 : ageHours < 24 ? 2 : ageHours < 48 ? 1 : 0;
 
-        const bearishWords = ['düştü', 'geriledi', 'kayıp', 'baskı', 'satıcılı', 'risk', 'çöktü', 'alarm', 'slump', 'falls', 'tumbles', 'drop', 'warning', 'down', 'losses', 'plunge'];
-        const bull = !bearishWords.some(w => lower.includes(w));
+        const cls = classifyNewsItem(title, source, feedHint);
+        const totalImpact = Math.round((cls.impactScore + recencyBoost) * 10) / 10;
+        const impactLevel = totalImpact >= 6 ? 'KRİTİK' : totalImpact >= 3.5 ? 'YÜKSEK' : 'GÜNDEM';
+        const tickers = extractMarketTickers(`${title} ${source}`);
 
         return {
-          id: `${defaultCategory.replace(/\s+/g, '')}-${idx}-${Date.now()}`,
+          id: `${feedHint.defaultBucket}-${idx}-${Date.now()}`,
           title,
           link,
           source: source || 'Piyasa',
           pubDate,
-          tag,
-          bull
+          timeMs,
+          tag: cls.tag,
+          region: cls.region,
+          broadcastBucket: cls.broadcastBucket,
+          bucketLabel: cls.bucketLabel,
+          sentiment: cls.sentiment,
+          bull: cls.bull,
+          impactScore: totalImpact,
+          impactLevel,
+          tickers
         };
-      }).filter(n => n.title.length > 5);
+      }).filter(Boolean);
     }
 
-    const trItems = parseXmlItems(trXml, 'BIST & KAP');
-    const trGlobalItems = parseXmlItems(trGlobalXml, 'Fed & Wall St');
-    const globalItems = parseXmlItems(globalXml, 'Fed & Wall St');
+    const trBistItems = parseXmlItems(trBistXml, {
+      region: 'TR',
+      defaultTag: 'BIST & KAP',
+      defaultBucket: 'bist30',
+      defaultBucketLabel: '🇹🇷 BIST 30 & Şirketler'
+    });
+    const trPoliticsItems = parseXmlItems(trPoliticsXml, {
+      region: 'TR',
+      defaultTag: 'TCMB, Politika & Makro',
+      defaultBucket: 'tr_macro',
+      defaultBucketLabel: '🏛️ TR Siyaset & Ekonomi'
+    });
+    const trGlobalItems = parseXmlItems(trGlobalXml, {
+      region: 'GLOBAL',
+      defaultTag: 'Fed, Wall St & Politika',
+      defaultBucket: 'global_stocks',
+      defaultBucketLabel: '💻 Global Hisse & AI'
+    });
+    const usPoliticsItems = parseXmlItems(usPoliticsXml, {
+      region: 'GLOBAL',
+      defaultTag: 'Fed, Wall St & Politika',
+      defaultBucket: 'us_politics',
+      defaultBucketLabel: '🇺🇸 ABD Politika & Makro'
+    });
+    const usStocksItems = parseXmlItems(usStocksXml, {
+      region: 'GLOBAL',
+      defaultTag: 'Teknoloji & AI',
+      defaultBucket: 'global_stocks',
+      defaultBucketLabel: '💻 Global Hisse & AI'
+    });
 
-    // Combine all feeds and deduplicate by link/title
-    const rawAll = [...trItems, ...trGlobalItems, ...globalItems];
+    // Combine all feeds in interleaved balanced order, then deduplicate
+    const rawAll = [];
+    const streams = [trBistItems, trPoliticsItems, usPoliticsItems, usStocksItems, trGlobalItems];
+    for (let i = 0; i < 10; i++) {
+      for (const s of streams) {
+        if (s[i]) rawAll.push(s[i]);
+      }
+    }
+
     const seenLinks = new Set();
     const seenTitles = new Set();
     const combined = [];
@@ -359,29 +596,59 @@ async function fetchMarketNews() {
       combined.push(item);
     }
 
-    // Sort chronologically descending: newest first (yeniden eskiye doğru)
-    combined.sort((a, b) => {
-      const timeA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-      const timeB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-      return timeB - timeA;
-    });
+    // Ensure every bucket gets represented even if one stream posted faster in the last hour
+    const bucketCounts = {};
+    const balanced = [];
+    for (const item of combined) {
+      const b = item.broadcastBucket;
+      bucketCounts[b] = (bucketCounts[b] || 0) + 1;
+      if (bucketCounts[b] <= 12) balanced.push(item);
+    }
 
-    // Auto-translate any English headlines into fluent Turkish
+    // Sort chronologically descending: newest first (yeniden eskiye doğru)
+    balanced.sort((a, b) => (b.timeMs || 0) - (a.timeMs || 0));
+
+    const limited = balanced.slice(0, 42);
+
     await Promise.all(
-      combined.map(async (item) => {
+      limited.map(async (item) => {
         try {
           const original = item.title;
           const translated = await translateToTurkish(original);
           if (translated && translated !== original) {
-            item.title = translated;
+            item.title = decodeHtmlEntities(translated);
             item.original_title = original;
             item.translated = true;
+            // Re-run classification & ticker detection using both original and translated text
+            const reCls = classifyNewsItem(`${item.title} ${original}`, item.source, {
+              region: item.region,
+              defaultTag: item.tag,
+              defaultBucket: item.broadcastBucket,
+              defaultBucketLabel: item.bucketLabel
+            });
+            item.region = reCls.region;
+            item.sentiment = reCls.sentiment;
+            item.bull = reCls.bull;
+            item.bucketLabel = reCls.bucketLabel;
+            item.broadcastBucket = reCls.broadcastBucket;
+            item.tag = reCls.tag;
+            const ageHours = item.timeMs > 0 ? Math.max(0, (Date.now() - item.timeMs) / 3600000) : 72;
+            const recencyBoost = ageHours < 6 ? 3 : ageHours < 24 ? 2 : ageHours < 48 ? 1 : 0;
+            item.impactScore = Math.round((reCls.impactScore + recencyBoost) * 10) / 10;
+            item.impactLevel = item.impactScore >= 6 ? 'KRİTİK' : item.impactScore >= 3.5 ? 'YÜKSEK' : 'GÜNDEM';
+            const moreTickers = extractMarketTickers(`${item.title} ${original}`);
+            item.tickers = Array.from(new Set([...(item.tickers || []), ...moreTickers])).slice(0, 4);
           }
         } catch (e) {}
       })
     );
 
-    return combined;
+    globalThis.__newsFeedCache = {
+      items: limited,
+      timestamp: Date.now()
+    };
+
+    return limited;
   } catch (err) {
     return [];
   }
@@ -1346,7 +1613,9 @@ export default async function handler(req, res) {
   // Handle dedicated news request
   if (type === 'news') {
     try {
-      const news = await fetchMarketNews();
+      const force = req.query?.force === '1' || req.query?.force === 'true';
+      const news = await fetchMarketNews(force);
+      res.setHeader('Cache-Control', force ? 'no-cache' : 's-maxage=90, stale-while-revalidate=180');
       return res.status(200).json({
         status: 'success',
         news,

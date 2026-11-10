@@ -113,7 +113,8 @@ export const generateDailyScript = (
   todayFullStr = '',
   slotTitle = '',
   customAgenda = null,
-  tone = 'analytical'
+  tone = 'analytical',
+  pinnedNews = []
 ) => {
   const safeQuotes = quotes && typeof quotes === 'object' ? quotes : {};
   const {
@@ -169,7 +170,7 @@ ${marketMood} Yurt içinde ise ${bistMood} Masamızda bugün 3 ana manşetimiz v
 
 Ons altın $${fmt(gold.price, 0)} ile zirveleri test ederken, Kapalıçarşı'da gram altın ${fmt(gramAltinTL, 0)} lirada tarihi koruma kalkanını sürdürüyor. Dolar/TL ise ${fmt(currentUsdTry, 2)} seviyesinde dengeli. 
 
-Şimdi kemerleri bağlayın; 9 slaytlık brifingimizle enerjiden teknolojiye, Wall Street'ten Borsa İstanbul'a kadar paranın rotasını adım adım takip ediyoruz!`;
+Şimdi kemerleri bağlayın; 10 slaytlık brifingimizle sıcak haberlerden enerjiden teknolojiye, Wall Street'ten Borsa İstanbul'a kadar paranın rotasını adım adım takip ediyoruz!`;
       }
 
       if (tone === 'defensive') {
@@ -177,114 +178,189 @@ Ons altın $${fmt(gold.price, 0)} ile zirveleri test ederken, Kapalıçarşı'da
 
 Canlı göstergelerimize baktığımızda; ABD 10 yıllık tahvil getirisi yüzde ${fmt(us10y.price, 2)} seviyesinde ve Dolar Endeksi DXY ${fmt(dxy.price, 2)} bandında. ${marketMood} ${bistMood}
 
-Bugünkü yayınımızda "${t1}" başlığı altında yatırımcıların sermaye koruma stratejilerini, altın ve likit nakit tamponunu nasıl konumlandırması gerektiğini 9 slaytlık brifingimizle ayrıntılı olarak inceleyeceğiz.`;
+Bugünkü yayınımızda "${t1}" başlığı altında piyasayı hareketlendiren son haberleri, yatırımcıların sermaye koruma stratejilerini ve altın-nakit dengesini 10 slaytlık brifingimizle ayrıntılı olarak inceleyeceğiz.`;
       }
 
       // Default: Analytical (Bloomberg style)
-      return `İyi seanslar değerli izleyiciler, ${slotTitle} bültenimize hoş geldiniz. Bugün ${todayFullStr}. Küresel ve yerel piyasalarda sermaye akışlarını, faiz patikasını ve günün manşetlerini masaya yatırıyoruz.
+      return `İyi seanslar değerli izleyiciler, ${slotTitle} bültenimize hoş geldiniz. Bugün ${todayFullStr}. Küresel ve yerel piyasalarda sermaye akışlarını, günün sıcak haber katalizörlerini ve faiz patikasını masaya yatırıyoruz.
 
 Günün açılış göstergelerinde ${marketMood} BIST 100 endeksi ise ${fmt(bist100.price, 0)} puanda işlem görüyor. Dolar endeksi DXY ${fmt(dxy.price, 2)} seviyesinde gücünü korurken, ons altın $${fmt(gold.price, 0)} bandında, gram altın ise ${fmt(gramAltinTL, 0)} lirada alıcı buluyor.
 
-Gündemimizin ilk sırasında "${t1}", ardından "${t2}" ve şirket bilançoları var. 9 slaytlık profesyonel brifingimizle canlı piyasa turumuza başlıyoruz.`;
+Gündemimizin ilk sırasında "${t1}", ardından "${t2}" ve şirket haberleri var. 10 slaytlık profesyonel brifingimizle canlı piyasa turumuza başlıyoruz.`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 2: JEOPOLİTİK RİSKLER & ENERJİ KORİDORLARI
+    // SLIDE 2: GÜNCEL HABERLER & PİYASA KATALİZÖRLERİ (BIST 30, SİYASET & GLOBAL)
     // -------------------------------------------------------------------------
     case 2: {
-      const oilTrend = isBrentGreen
-        ? `Brent petrolün varili bugün yüzde ${fmt(brent.change, 2)} artışla $${fmt(brent.price, 2)} seviyesine tırmandı.`
-        : `Brent petrol bugün yüzde ${fmt(Math.abs(brent.change), 2)} geri çekilmeyle $${fmt(brent.price, 2)} bandında dengeleniyor.`;
+      const safePinned = Array.isArray(pinnedNews) ? pinnedNews : [];
+      const trNews = safePinned.filter(n => n.region === 'TR');
+      const globalNews = safePinned.filter(n => n.region !== 'TR');
 
-      return `İkinci slaytımızda küresel jeopolitik tansiyon ve enerji koridorlarına odaklanıyoruz. ${oilTrend}
+      const speakNewsItem = (item) => {
+        const cleanTitle = (item.title || '').trim().replace(/\.+$/, '');
+        const tickerPart = Array.isArray(item.tickers) && item.tickers.length > 0
+          ? ` (${item.tickers.slice(0, 2).join(', ')} odağında)`
+          : '';
+        const sourcePart = item.source ? `${item.source} kaynaklı gelişmede ` : '';
+        const effectPhrase = item.sentiment === 'bear'
+          ? 'hisse ve endeks fiyatlamalarında temkinli duruşa ve satış baskısına yol açıyor.'
+          : item.sentiment === 'bull'
+            ? 'piyasada alıcılı beklentiyi ve pozitif ayrışmayı destekliyor.'
+            : 'piyasa aktörleri tarafından yön belirleyici olarak yakından izleniyor.';
+        const notePart = item.impactNote && item.impactNote.trim()
+          ? ` ${item.impactNote.trim()}${item.impactNote.trim().endsWith('.') ? '' : '.'}`
+          : '';
+        return `• ${sourcePart}"${cleanTitle}"${tickerPart} — bu başlık ${effectPhrase}${notePart}`;
+      };
 
-Hürmüz Boğazı ve Kızıldeniz lojistiğindeki gerginlikler deniz taşımacılığı navlun maliyetlerini yukarıda tutuyor. Enerji fiyatlarındaki bu dalgalanma manşet enflasyonun yapışkan kalmasına neden olarak küresel merkez bankalarının faiz indirim adımlarını temkinli atmasına yol açıyor.
+      const trBlock = trNews.length > 0
+        ? `Yurt içi cephede BIST 30 ve ekonomi gündemine baktığımızda:\n${trNews.slice(0, 3).map(speakNewsItem).join('\n')}`
+        : `Yurt içi tarafta BIST 100 (${fmt(bist100.price, 0)} puan) üzerinde "${t3}" başlığı ve bilanço dönemi ayrışmaları yakından izleniyor.`;
 
-Bu ortamda rafineri marjları ve enerji hisseleri yakından izlenirken, akıllı sermaye enflasyona karşı doğal bir kalkan vazifesi gören emtialara ve nakit akışı güçlü şirketlere park etmeyi sürdürüyor.`;
+      const globalBlock = globalNews.length > 0
+        ? `ABD ve küresel piyasalara yön veren sıcak başlıklarda ise:\n${globalNews.slice(0, 3).map(speakNewsItem).join('\n')}`
+        : `Küresel cephede Wall Street ve teknoloji devleri tarafında "${t1}" ile siyasi/makro başlıklar risk iştahını şekillendiriyor.`;
+
+      if (tone === 'youtube') {
+        return `Ve şimdi ekran başına biraz daha yaklaşın dostlar! İkinci slaytımızda bugün piyasalarda sert hareketlere ve ayrışmalara neden olan güncel haber masamızı açıyoruz.
+
+${trBlock}
+
+${globalBlock}
+
+Dostlar unutmayın; bu haberler kısa vadeli oynaklık yaratabilir ancak bizim pusulamız haberin şirketin bilançosuna ve nakit akışına kalıcı etkisi olup olmadığıdır. Paylaştığımız tüm başlıklar bilgi ve farkındalık amaçlıdır, kesinlikle yatırım tavsiyesi değildir.`;
+      }
+
+      if (tone === 'defensive') {
+        return `İkinci slaytımızda günün yüksek etkili haber akışını sermaye koruma ve risk yönetimi süzgecinden geçiriyoruz.
+
+${trBlock}
+
+${globalBlock}
+
+Yatırımcıların bu tip ani haber şoklarında panik kararlar yerine hacim, teknik destek seviyeleri ve bilanço gerçekliğini beklemeleri hayati önem taşır. Anlatılan gelişmeler genel piyasa değerlendirmesidir, yatırım tavsiyesi niteliği taşımaz (YTD).`;
+      }
+
+      return `İkinci slaytımızda Borsa İstanbul'dan Wall Street'e, ekonomi yönetiminden şirket spesifik şoklara kadar piyasaları bugün hareketlendiren canlı haber katalizörlerini değerlendiriyoruz.
+
+${trBlock}
+
+${globalBlock}
+
+Özetle fiyatlamalar yalnızca endeks ortalamalarından değil, bu şirket ve politika bazlı ayrışmalardan besleniyor. Değerlendirmelerimiz bilgilendirme kapsamındadır (YTD).`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 3: MERKEZ BANKALARI, ENFLASYON & REEL FAİZ KALKANI
+    // SLIDE 3: JEOPOLİTİK RİSKLER & ENERJİ KORİDORLARI
     // -------------------------------------------------------------------------
     case 3: {
-      const netRealYield = ((Number(tcmbRate) || 36) - (Number(turkeyCPI) || 29.73)).toFixed(2);
-      return `Üçüncü masamızda küresel merkez bankaları ve Türkiye'nin faiz kalkanını kıyaslıyoruz.
+      const oilTrend = isBrentGreen
+        ? `Brent petrolün varili bugün yüzde ${fmt(brent.change, 2)} artışla $${fmt(brent.price, 2)} seviyesine tırmanırken, ABD tipi WTI ham petrol $${fmt(wti.price, 2)} seviyesinde işlem görüyor.`
+        : `Brent petrol bugün yüzde ${fmt(Math.abs(brent.change), 2)} değişimle $${fmt(brent.price, 2)} bandında, ABD tipi WTI ham petrol ise $${fmt(wti.price, 2)} seviyesinde dengeleniyor.`;
 
-Fed tarafında politika faizi yüzde ${fedRate} bandında korunurken, vadeli piyasalarda 28 Ekim FOMC toplantısında faizin sabit tutulması (pas geçilmesi), Aralık toplantısı için ise enflasyon seyrine bağlı 25 baz puanlık faiz artışı veya şahin duruş ihtimali masada tutuluyor. Türkiye'de ise TCMB'nin yüzde ${tcmbRate} politika faizi, yüzde ${turkeyCPI} enflasyon oranıyla birlikte artı ${netRealYield} puanlık güçlü bir pozitif reel getiri kalkanı sunmaya devam ediyor.
+      const oilSpread = Math.abs((brent.price || 0) - (wti.price || 0));
 
-Bu pozitif reel faiz tamponu, Dolar/TL'nin ${fmt(currentUsdTry, 2)} lira civarında spekülatif ataklardan uzak kalmasını sağlıyor. Para piyasası fonları (PPF) ve nakit tamponları, piyasa dalgalanmalarında portföyler için emniyet kemeri işlevi görüyor.`;
+      return `Üçüncü slaytımızda küresel jeopolitik tansiyon ve enerji koridorlarına odaklanıyoruz. ${oilTrend} Brent-WTI makası varil başına $${fmt(oilSpread, 2)} seviyesinde seyrediyor.
+
+Hürmüz Boğazı ve Kızıldeniz lojistiğindeki gelişmeler deniz taşımacılığı navlun maliyetlerini belirlerken, enerji fiyatlarındaki bu seyir manşet enflasyon ve merkez bankalarının faiz patikası açısından yakından izleniyor.
+
+Bu ortamda rafineri marjları ve enerji hisseleri takip edilirken, kurumsal sermaye enflasyona karşı doğal bir kalkan vazifesi gören emtialara ve serbest nakit akışı güçlü şirketlere odaklanmayı sürdürüyor.`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 4: WALL STREET, BİLANÇO DÖNEMİ & YAPAY ZEKA
+    // SLIDE 4: MERKEZ BANKALARI, ENFLASYON & REEL FAİZ KALKANI
     // -------------------------------------------------------------------------
     case 4: {
-      const spMove = isSPGreen
-        ? `S&P 500 endeksi ${fmt(sp500.price, 0)} puanda zirveye yakın seyrederken Nasdaq ${fmt(nasdaq.price, 0)} puanda teknoloji devleriyle ralliye katılıyor.`
-        : `S&P 500 ${fmt(sp500.price, 0)} puanda ve teknoloji ağırlıklı Nasdaq ${fmt(nasdaq.price, 0)} puanda kâr realizasyonlarını karşılıyor.`;
+      const netRealYield = ((Number(tcmbRate) || 36) - (Number(turkeyCPI) || 29.73)).toFixed(2);
+      const fedMeetingLbl = customAgenda?.fedRate?.meetingDate || 'Aralık FOMC';
+      const fedDomLbl = customAgenda?.fedRate?.dominant || 'Faizi Sabit Tutma (Pas)';
+      const fedProbVal = customAgenda?.fedRate?.prob ?? 76;
+      return `Dördüncü masamızda küresel merkez bankaları ve Türkiye'nin faiz kalkanını kıyaslıyoruz.
 
-      return `Dördüncü durağımızda Wall Street ve yapay zeka ekosistemindeki devasa sermaye döngüsünü masaya yatırıyoruz. ${spMove}
+Fed tarafında politika faizi yüzde ${fedRate} bandında korunurken, vadeli piyasalarda ${fedMeetingLbl} toplantısında yüzde ${fedProbVal} olasılıkla "${fedDomLbl}" senaryosu fiyatlanıyor. Türkiye'de ise TCMB'nin yüzde ${fmt(tcmbRate, 2)} politika faizi, yüzde ${fmt(turkeyCPI, 2)} yıllık enflasyon oranıyla birlikte artı ${netRealYield} puanlık güçlü bir pozitif reel getiri kalkanı sunmaya devam ediyor.
 
-Büyük teknoloji devlerinin yıllık 200 milyar doları aşan AI Capex sermaye harcamaları çip ve veri merkezi üreticilerine can suyu olmaya devam ediyor. Takvimimizde Vertiv'in açıkladığı güçlü sonuçların ardından Amazon, Alphabet, Microsoft, Apple ve ardından Nvidia'nın üçüncü çeyrek bilançoları öne çıkıyor. 
-
-Piyasada genel endeks yükselişinden ziyade serbest nakit akışı (FCF) üretebilen ve değerlemesi makul kalan şirketlerin pozitif ayrışacağı seçici bir döneme giriyoruz.`;
+Bu pozitif reel faiz tamponu, Dolar/TL'nin ${fmt(currentUsdTry, 2)} lira seviyesinde dengeli kalmasını destekliyor. Para piyasası fonları (PPF) ve likit nakit tamponları, piyasa dalgalanmalarında portföyler için emniyet kemeri işlevi görüyor.`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 5: KIYMETLİ MADENLER: ONS ALTIN & GÜMÜŞ
+    // SLIDE 5: WALL STREET, BİLANÇO DÖNEMİ & YAPAY ZEKA
     // -------------------------------------------------------------------------
     case 5: {
-      const goldComment = isGoldGreen
-        ? `Ons altın bugün yüzde ${fmt(gold.change, 2)} primle $${fmt(gold.price, 0)} seviyesinde tarihi gücünü kanıtlıyor.`
-        : `Ons altın $${fmt(gold.price, 0)} seviyesinde güçlü kurumsal tabanını koruyor.`;
+      const spMove = isSPGreen
+        ? `S&P 500 endeksi ${fmt(sp500.price, 0)} puanda (günlük +%${fmt(sp500.change, 2)}) seyrederken Nasdaq 100 ${fmt(nasdaq.price, 0)} puanda (günlük ${nasdaq.change >= 0 ? '+' : ''}%${fmt(nasdaq.change, 2)}) işlem görüyor.`
+        : `S&P 500 ${fmt(sp500.price, 0)} puanda (%${fmt(sp500.change, 2)}) ve teknoloji ağırlıklı Nasdaq 100 ${fmt(nasdaq.price, 0)} puanda (%${fmt(nasdaq.change, 2)}) kâr realizasyonlarını karşılıyor.`;
 
-      return `Ve bugünkü analizimizin kalbine geldik: Altın ve gümüş masası! ${goldComment} Ons gümüş ise $${fmt(silver.price, 2)} seviyesinde endüstriyel taleple destekleniyor.
+      return `Beşinci durağımızda Wall Street ve yapay zeka ekosistemindeki sermaye döngüsünü masaya yatırıyoruz. ${spMove}
 
-Altın/gümüş rasyosu ${(gold.price / (silver.price || 60)).toFixed(1)}x civarında dengelenirken, merkez bankalarının kesintisiz fiziki külçe alımları altındaki geri çekilmeleri anında kurumsal alımla karşılıyor.
+Büyük teknoloji devlerinin yıllık 200 milyar doları aşan AI Capex sermaye harcamaları çip, optik ağ ve veri merkezi üreticilerine güçlü nakit akışı sağlamaya devam ediyor.
 
-Yurt içi yatırımcı için Kapalıçarşı gram altının ${fmt(gramAltinTL, 0)} TL seviyesinde sunduğu çifte kalkan (hem ons hem dolar primi) devalüasyon riskine karşı en sağlam sigortadır. Portföylerde gram altın ve kıymetli maden dengesini korumak kritik bir strateji olmaya devam ediyor.`;
+Piyasada genel endeks yükselişinden ziyade yatırdığı sermayeden yüksek getiri (ROIC) ve serbest nakit akışı (FCF) üretebilen, değerlemesi makul kalan şirketlerin pozitif ayrıştığı seçici bir dönemdeyiz.`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 6: DXY & TAHVİL VERİM EĞRİSİ
+    // SLIDE 6: KIYMETLİ MADENLER: ONS ALTIN & GÜMÜŞ
     // -------------------------------------------------------------------------
     case 6: {
-      return `Altıncı slaytımızda paranın nabzını tutan tahvil ve döviz piyasasına bakıyoruz. Dolar endeksi DXY ${fmt(dxy.price, 2)} seviyesinde küresel rezerv para gücünü yansıtıyor.
+      const goldSupport = Math.round((gold.price * 0.975) / 10) * 10;
+      const goldRes = Math.round((gold.price * 1.025) / 10) * 10;
+      const goldComment = isGoldGreen
+        ? `Ons altın bugün yüzde ${fmt(gold.change, 2)} primle $${fmt(gold.price, 0)} seviyesinde gücünü kanıtlıyor.`
+        : `Ons altın $${fmt(gold.price, 0)} seviyesinde ($${fmt(goldSupport, 0)} ana destek ve $${fmt(goldRes, 0)} direnç koridorunda) kurumsal tabanını koruyor.`;
 
-ABD 10 yıllık tahvil faizi yüzde ${fmt(us10y.price, 2)} ve 2 yıllık faiz yüzde ${fmt(us2y.price, 2)} seviyesinde. Getiri eğrisindeki pozitif eğim piyasanın resesyon korkusunu geride bıraktığını gösteriyor. 
+      return `Altıncı slaytımızda emtia ve güvenli liman masasına, altın ve gümüşe geçiyoruz! ${goldComment} Ons gümüş ise $${fmt(silver.price, 2)} seviyesinde endüstriyel taleple destekleniyor.
 
-Dolar/TL'nin ${fmt(currentUsdTry, 2)} liradaki kontrollü seyrinde ise TL bazlı faiz getirisi döviz kuru artış hızının üzerinde kalmaya devam ediyor.`;
+Altın/gümüş rasyosu ${(gold.price / (silver.price || 60)).toFixed(1)}x seviyesinde dengelenirken, merkez bankalarının kesintisiz fiziki külçe alımları altındaki geri çekilmeleri kurumsal alımla karşılıyor.
+
+Yurt içi yatırımcı için Kapalıçarşı gram altının ${fmt(gramAltinTL, 0)} TL seviyesinde sunduğu çifte kalkan (hem ons hem dolar çarpanı) enflasyon riskine karşı önemli bir denge unsuru olmaya devam ediyor.`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 7: KRİPTO & SPOT ETF LİKİDİTESİ
+    // SLIDE 7: DXY & TAHVİL VERİM EĞRİSİ
     // -------------------------------------------------------------------------
     case 7: {
-      const btcMove = (btc.change ?? 0) >= 0 ? `+ yüzde ${fmt(btc.change, 2)}` : `- yüzde ${fmt(Math.abs(btc.change), 2)}`;
-      return `Yedinci slaytımızda dijital varlıklar ve kripto likiditesi masada. Bitcoin $${fmt(btc.price, 0)} seviyesinde ${btcMove} değişimle işlem görürken, kurumsal spot ETF girişleri hacim tabanını sağlamlaştırıyor.
+      const spreadBp = Math.round(((us10y.price || 0) - (us2y.price || 0)) * 100);
+      const spreadStr = `${spreadBp >= 0 ? '+' : ''}${spreadBp} baz puan`;
+      return `Yedinci slaytımızda paranın nabzını tutan tahvil ve döviz piyasasına bakıyoruz. Dolar endeksi DXY ${fmt(dxy.price, 3)} seviyesinde küresel rezerv para gücünü yansıtıyor.
 
-Ethereum $${fmt(eth.price, 0)} bandında seyrederken piyasada sermayenin seçici olarak lider kripto varlıklarda toplandığını görüyoruz. Borsa rezervlerinin son yılların en düşük seviyelerinde kalması olası talep şoklarında yukarı yönlü esnekliği diri tutuyor.`;
+ABD 10 yıllık tahvil faizi yüzde ${fmt(us10y.price, 3)} ve 2 yıllık faiz yüzde ${fmt(us2y.price, 3)} seviyesinde; 2Y/10Y getiri eğrisi farkı ${spreadStr} olarak ölçülüyor.
+
+Dolar/TL'nin ${fmt(currentUsdTry, 2)} liradaki kontrollü seyrinde ise yüzde ${fmt(tcmbRate, 2)} seviyesindeki politika faizi ve pozitif reel getiri dengesi belirleyici olmaya devam ediyor.`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 8: BORSA İSTANBUL & BIST 100 DİNAMİKLERİ
+    // SLIDE 8: KRİPTO & SPOT ETF LİKİDİTESİ
     // -------------------------------------------------------------------------
     case 8: {
-      const bistMove = isBistGreen
-        ? `Endeks bugün yüzde ${fmt(bist100.change, 2)} primle ${fmt(bist100.price, 0)} puan seviyesine yükselerek kurumsal tabanını güçlendirdi.`
-        : `Endeks bugün ${fmt(bist100.price, 0)} puanda yüzde ${fmt(Math.abs(bist100.change), 2)} geri çekilmeyle destek testini sürdürüyor.`;
+      const btcMove = (btc.change ?? 0) >= 0 ? `+ yüzde ${fmt(btc.change, 2)}` : `- yüzde ${fmt(Math.abs(btc.change), 2)}`;
+      const btcSup = Math.floor((btc.price * 0.96) / 500) * 500;
+      const btcRes = Math.ceil((btc.price * 1.025) / 500) * 500;
+      return `Sekizinci slaytımızda dijital varlıklar ve kripto likiditesi masada. Bitcoin $${fmt(btc.price, 0)} seviyesinde (${btcMove}) işlem görürken, teknik olarak $${fmt(btcSup, 0)} destek tabanı ile $${fmt(btcRes, 0)} direnç koridoru takip ediliyor.
 
-      return `Kendi evimize, Borsa İstanbul'a dönüyoruz. ${bistMove}
-
-BIST 100 endeksi gelişmekte olan piyasalara kıyasla çarpan bazında cazip iskonto taşımaya devam ediyor. Bankacılık sektörü güçlü sermaye yapısıyla destek sağlarken, döviz kazancı olan ihracatçı sanayi şirketleri kur şoklarına karşı doğal kalkan sunuyor.
-
-Bilanço sezonunun başlamasıyla birlikte şirket bazlı kâr ayrışmaları hızlanacaktır; endeksin geneli yerine nakit üreten hisselerde kalmak kritik önemdedir.`;
+Ethereum $${fmt(eth.price, 0)} bandında (ETH/BTC: ${(eth.price / (btc.price || 86000)).toFixed(4)}) seyrederken, TOTAL3 altcoin piyasa büyüklüğü $${fmt(total3.price, 1)} milyar dolar seviyesinde bulunuyor.`;
     }
 
     // -------------------------------------------------------------------------
-    // SLIDE 9: YATIRIMCI PUSULASI & PORTFÖY STRATEJİSİ
+    // SLIDE 9: BORSA İSTANBUL & BIST 100 DİNAMİKLERİ
     // -------------------------------------------------------------------------
     case 9: {
+      const bistSup = Math.floor((bist100.price * 0.97) / 100) * 100;
+      const bistRes = Math.ceil((bist100.price * 1.03) / 100) * 100;
+      const bistMove = isBistGreen
+        ? `Endeks bugün yüzde ${fmt(bist100.change, 2)} primle ${fmt(bist100.price, 0)} puan seviyesinde işlem görüyor.`
+        : `Endeks bugün ${fmt(bist100.price, 0)} puanda yüzde ${fmt(Math.abs(bist100.change), 2)} değişimle ${fmt(bistSup, 0)} destek ve ${fmt(bistRes, 0)} direnç bandında dengeleniyor.`;
+
+      return `Dokuzuncu slaytımızda kendi evimize, Borsa İstanbul'a dönüyoruz. ${bistMove}
+
+BIST 100 endeksi dolar bazında $${fmt(bist100.price / (currentUsdTry || 49), 0)} seviyesinde işlem görürken, gelişmekte olan piyasalara kıyasla çarpan bazında iskonto taşımaya devam ediyor.
+
+Bilanço döneminde şirket bazlı kâr ve serbest nakit akışı ayrışmaları hızlanırken, döviz geliri olan ve özsermaye kârlılığı yüksek şirketler ön plana çıkıyor.`;
+    }
+
+    // -------------------------------------------------------------------------
+    // SLIDE 10: YATIRIMCI PUSULASI & PORTFÖY STRATEJİSİ
+    // -------------------------------------------------------------------------
+    case 10: {
       const portText = `Piyasa dalgalanmalarında disiplini korumak adına varlık dağılımında likit nakit ve emtia tamponunun (Para Piyasası Fonu, kısa vadeli getiri araçları ve altın rezervi) dengeli tutulması, olası geri çekilmelerde kurumsal fırsatları değerlendirebilmek açısından izlenen temel savunma yaklaşımlarındandır.`;
 
       if (tone === 'youtube') {
@@ -302,7 +378,7 @@ Piyasa dalgalanmalarında ve belirsizlik dönemlerinde anaparayı koruma refleks
       }
 
       // Default: Analytical
-      return `Günün 9 slaytlık piyasa brifingini tamamlarken stratejik çerçeveyi özetliyoruz: ${portText}
+      return `Günün 10 slaytlık piyasa brifingini tamamlarken stratejik çerçeveyi özetliyoruz: ${portText}
 
 Önümüzdeki günlerde açıklanacak bilançolar ve küresel merkez bankaları kararları yakından izlenecektir. Piyasa aktörleri açısından portföy disiplinini, çeşitlendirmeyi ve kurumsal nakit yönetimini gözetmek bu süreçte öne çıkan başlıklar arasında yer almaktadır. Yayındaki değerlendirmeler genel bilgilendirme niteliğinde olup yatırım danışmanlığı kapsamında değildir.
 
