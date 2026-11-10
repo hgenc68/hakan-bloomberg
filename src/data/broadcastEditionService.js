@@ -199,18 +199,29 @@ Gündemimizin ilk sırasında "${t1}", ardından "${t2}" ve şirket haberleri va
 
       const speakNewsItem = (item) => {
         const cleanTitle = (item.title || '').trim().replace(/\.+$/, '');
+        const cleanSummary = (item.summary || '').trim();
+        const isQ = Boolean(item.isQuestionTitle) || /\?\s*$|\b(neden düşüyor|neden düştü|niye yükseliyor|niye çıktı|neden geriledi|ne oldu|hakkında bildiklerimiz)\b/i.test(cleanTitle);
         const tickerPart = Array.isArray(item.tickers) && item.tickers.length > 0
-          ? ` (${item.tickers.slice(0, 2).join(', ')} odağında)`
+          ? ` (${item.tickers.slice(0, 2).join(', ')})`
           : '';
-        const sourcePart = item.source ? `${item.source} kaynaklı gelişmede ` : '';
+        const sourcePart = item.source ? `${item.source} aktardığı üzere ` : '';
         const effectPhrase = item.sentiment === 'bear'
           ? 'hisse ve endeks fiyatlamalarında temkinli duruşa ve satış baskısına yol açıyor.'
           : item.sentiment === 'bull'
             ? 'piyasada alıcılı beklentiyi ve pozitif ayrışmayı destekliyor.'
             : 'piyasa aktörleri tarafından yön belirleyici olarak yakından izleniyor.';
-        const notePart = item.impactNote && item.impactNote.trim()
-          ? ` ${item.impactNote.trim()}${item.impactNote.trim().endsWith('.') ? '' : '.'}`
+        const noteRaw = (item.impactNote || '').trim();
+        const notePart = noteRaw
+          ? ` ${noteRaw}${/[.!?]$/.test(noteRaw) ? '' : '.'}`
           : '';
+
+        if (cleanSummary) {
+          const summaryEnd = /[.!?]$/.test(cleanSummary) ? cleanSummary : `${cleanSummary}.`;
+          if (isQ) {
+            return `• ${sourcePart}${tickerPart ? `${tickerPart.trim()} odağında ` : ''}${summaryEnd}${notePart}`;
+          }
+          return `• "${cleanTitle}"${tickerPart} — ${summaryEnd}${notePart}`;
+        }
         return `• ${sourcePart}"${cleanTitle}"${tickerPart} — bu başlık ${effectPhrase}${notePart}`;
       };
 

@@ -239,13 +239,92 @@ const CAP_BENCHMARKS = {
 };
 
 function decodeHtmlEntities(str = '') {
-  return String(str)
-    .replace(/&amp;/g, '&')
-    .replace(/&apos;/g, "'")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+  const namedMap = {
+    '&amp;': '&',
+    '&apos;': "'",
+    '&quot;': '"',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&nbsp;': ' ',
+    '&rsquo;': "'",
+    '&lsquo;': "'",
+    '&ldquo;': '"',
+    '&rdquo;': '"',
+    '&sbquo;': ',',
+    '&bdquo;': '"',
+    '&mdash;': '—',
+    '&ndash;': '–',
+    '&hellip;': '...',
+    '&bull;': '•',
+    '&laquo;': '«',
+    '&raquo;': '»',
+    '&uuml;': 'ü',
+    '&Uuml;': 'Ü',
+    '&ouml;': 'ö',
+    '&Ouml;': 'Ö',
+    '&ccedil;': 'ç',
+    '&Ccedil;': 'Ç',
+    '&scedil;': 'ş',
+    '&Scedil;': 'Ş',
+    '&gbreve;': 'ğ',
+    '&Gbreve;': 'Ğ',
+    '&idot;': 'İ',
+    '&inodot;': 'ı',
+    '&acirc;': 'â',
+    '&Acirc;': 'Â',
+    '&icirc;': 'î',
+    '&Icirc;': 'Î',
+    '&ucirc;': 'û',
+    '&Ucirc;': 'Û',
+    '&agrave;': 'à',
+    '&aacute;': 'á',
+    '&egrave;': 'è',
+    '&eacute;': 'é',
+    '&ecirc;': 'ê',
+    '&igrave;': 'ì',
+    '&iacute;': 'í',
+    '&ograve;': 'ò',
+    '&oacute;': 'ó',
+    '&ugrave;': 'ù',
+    '&uacute;': 'ú',
+    '&szlig;': 'ß',
+    '&euro;': '€',
+    '&pound;': '£',
+    '&yen;': '¥',
+    '&deg;': '°',
+    '&plusmn;': '±',
+    '&times;': '×',
+    '&copy;': '©',
+    '&reg;': '®',
+    '&trade;': '™'
+  };
+  const namedExact = {};
+  const namedLower = {};
+  for (const [k, v] of Object.entries(namedMap)) {
+    namedExact[k] = v;
+    namedLower[k.toLowerCase()] = v;
+  }
+  const decodeOnce = (input) =>
+    String(input)
+      .replace(/&[a-zA-Z0-9#]+;/g, (m) => {
+        if (namedExact[m] !== undefined) return namedExact[m];
+        const low = m.toLowerCase();
+        if (namedLower[low] !== undefined) return namedLower[low];
+        const hex = m.match(/^&#x([0-9a-f]+);$/i);
+        if (hex) {
+          const cp = parseInt(hex[1], 16);
+          return Number.isFinite(cp) && cp > 0 && cp <= 0x10FFFF ? String.fromCodePoint(cp) : m;
+        }
+        const dec = m.match(/^&#(\d+);$/);
+        if (dec) {
+          const cp = parseInt(dec[1], 10);
+          return Number.isFinite(cp) && cp > 0 && cp <= 0x10FFFF ? String.fromCodePoint(cp) : m;
+        }
+        return m;
+      });
+  // Two passes handle double-escaped RSS entities like &amp;uuml; cleanly
+  return decodeOnce(decodeOnce(str))
+    .replace(/\u00A0/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -307,7 +386,7 @@ async function translateToTurkish(text) {
   // Check if text already has Turkish diacritics
   const hasTurkishChars = /[çğıöşüÇĞİÖŞÜ]/.test(clean);
   // Check if text contains typical English words
-  const isLikelyEnglish = !hasTurkishChars && /\b(the|and|in|on|at|to|for|with|as|by|from|after|before|amid|surges|drops|falls|climbs|record|high|low|quarter|shares|stock|stocks|market|markets|earnings|revenue|growth|ceo|fed|rate|rates|inflation|report|ahead|plans|deals|soars|slumps|beats|misses|warning|cuts|hikes|steady|unveils|plunges|losses|gains|rally|selloff|sell-off|analysts|target|investors|wall street|yields|treasury|crypto|bitcoin|etf|sec|trump|election|midterm|midterms|tariffs|tariff|congress|white house|spending|capex|chip|chips|nvidia|apple|microsoft|tesla|google|amazon|billion|trillion)\b/i.test(clean);
+  const isLikelyEnglish = !hasTurkishChars && /\b(the|and|in|on|at|to|for|with|as|by|from|after|before|amid|that|said|says|was|were|has|have|would|could|more|than|while|which|according|company|expected|percent|surges|drops|falls|climbs|record|high|low|quarter|shares|stock|stocks|market|markets|earnings|revenue|growth|ceo|fed|rate|rates|inflation|report|ahead|plans|deals|soars|slumps|beats|misses|warning|cuts|hikes|steady|unveils|plunges|losses|gains|rally|selloff|sell-off|analysts|target|investors|wall street|yields|treasury|crypto|bitcoin|etf|sec|trump|election|midterm|midterms|tariffs|tariff|congress|white house|spending|capex|chip|chips|nvidia|apple|microsoft|tesla|google|amazon|billion|trillion)\b/i.test(clean);
 
   if (!isLikelyEnglish) {
     newsTranslationCache.set(clean, clean);
@@ -340,6 +419,145 @@ async function translateToTurkish(text) {
   return clean;
 }
 
+const QUESTION_HEADLINE_RE = /\?\s*$|\b(neden düşüyor|neden düştü|niye yükseliyor|niye çıktı|neden geriledi|neden yükseldi|ne oldu|açıklandı mı|ne zaman açıklanacak|hakkında bildiklerimiz)\b/i;
+
+function isQuestionHeadline(title = '') {
+  return QUESTION_HEADLINE_RE.test(String(title || '').trim());
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 3000) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
+async function resolveGoogleNewsUrl(gUrl) {
+  if (!gUrl || !gUrl.includes('news.google.com/')) return gUrl;
+  try {
+    const uaHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    };
+    const r = await fetchWithTimeout(gUrl, { headers: uaHeaders }, 2500);
+    if (!r.ok) return null;
+    if (r.url && !r.url.includes('news.google.com/')) return r.url;
+    const html = await r.text();
+    const sg = html.match(/data-n-a-sg="([^"]+)"/)?.[1];
+    const ts = html.match(/data-n-a-ts="([^"]+)"/)?.[1];
+    const artId = gUrl.match(/articles\/([^?]+)/)?.[1] || gUrl.match(/read\/([^?]+)/)?.[1];
+    if (!sg || !ts || !artId) return null;
+
+    const payload = JSON.stringify([[['Fbv4je', JSON.stringify(['garturlreq', [['X', 'X', ['X', 'X'], null, null, 1, 1, 'US:en', null, 1, null, null, null, null, null, 0, 1], 'X', 'X', 1, [1, 1, 1], 1, 1, null, 0, 0, null, 0], artId, Number(ts), sg]), null, 'generic']]]);
+    const br = await fetchWithTimeout('https://news.google.com/_/DotsSplashUi/data/batchexecute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', ...uaHeaders },
+      body: 'f.req=' + encodeURIComponent(payload)
+    }, 2500);
+    if (!br.ok) return null;
+    const bt = await br.text();
+
+    for (const line of bt.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('[[')) continue;
+      try {
+        const outer = JSON.parse(trimmed);
+        for (const entry of outer) {
+          if (Array.isArray(entry) && entry[0] === 'wrb.fr' && typeof entry[2] === 'string') {
+            const inner = JSON.parse(entry[2]);
+            if (Array.isArray(inner) && typeof inner[1] === 'string' && /^https?:\/\//i.test(inner[1])) {
+              return inner[1];
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    const matches = [...bt.matchAll(/(?:\\"|")(https?:\/\/[^"\\]+)(?:\\"|")/g)].map(m => m[1]);
+    return matches.find(u => !/google\.com|gstatic\.com|w3\.org/i.test(u)) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isNearDuplicateText(a = '', b = '') {
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9çğıöşü]+/gi, ' ').trim();
+  const wa = new Set(norm(a).split(/\s+/).filter(w => w.length > 2));
+  const wb = norm(b).split(/\s+/).filter(w => w.length > 2);
+  if (wa.size === 0 || wb.length === 0) return false;
+  let overlap = 0;
+  for (const w of wb) if (wa.has(w)) overlap++;
+  return (overlap / Math.min(wa.size, wb.length)) >= 0.58;
+}
+
+function isBoilerplateArticleLine(p = '') {
+  if (!p || p.length < 48 || p.length > 620) return true;
+  if (/çerez|cookie|abone ol|gizlilik|privacy|all rights reserved|hakları saklıdır|devamını oku|giriş yap|sign in|subscribe|reklam|yazar:|son güncelleme|haber giriş|bize ulaşın|yasal uyarı|yatırım danışmanlığı|yükleniyor|bizi takip edin|bultenimize|veri bilgisi|15 dakika gecik|piyasa verileri yaklaşık|son veri zamanı|piyasa kapalıyken|burada yer alan yatırım bilgi/i.test(p)) return true;
+  const pctMatches = p.match(/\(%[-+]?\d/g);
+  if (pctMatches && pctMatches.length >= 2) return true;
+  if ((p.match(/[A-ZÇĞIÖŞÜ]{2,}\s+\d+[.,]\d+/g) || []).length >= 3) return true;
+  return false;
+}
+
+function cleanTrimNewsSummary(text = '', maxLen = 340) {
+  let clean = String(text || '')
+    .replace(/^\d{1,2}\s+\w+\s+\d{4}\s+tarihi itibarıyla günün öne çıkan haberlerini senin için derledik\.?\s*/i, '')
+    .replace(/\s*VERİ BİLGİSİ\b[\s\S]*$/i, '')
+    .replace(/[●•▪︎]+\s*/g, '')
+    .replace(/\s+([.,!?;:])/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean || clean.length <= maxLen) return clean;
+  const slice = clean.slice(0, maxLen);
+  const regex = /[.!?](?=\s|$)/g;
+  let lastValidEnd = -1;
+  let m;
+  while ((m = regex.exec(slice)) !== null) {
+    const idx = m.index;
+    const before = slice.slice(Math.max(0, idx - 5), idx + 1);
+    if (!/\b(?:U\.S\.|U\.K\.|Dr\.|Mr\.|Ms\.|vs\.|vb\.|örn\.|Inc\.|Ltd\.|A\.Ş\.)$/i.test(before) && idx > 95) {
+      lastValidEnd = idx + 1;
+    }
+  }
+  if (lastValidEnd > 0) return slice.slice(0, lastValidEnd).trim();
+  const lastSpace = slice.lastIndexOf(' ');
+  return (lastSpace > 110 ? slice.slice(0, lastSpace) : slice).trim() + '...';
+}
+
+function extractArticleSummary(html, title = '') {
+  if (!html || typeof html !== 'string') return '';
+  const og = decodeHtmlEntities(
+    html.match(/<meta[^>]+property=["']og:description["'][^>]*content=["']([^"']+)["']/i)?.[1] ||
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:description["']/i)?.[1] ||
+    html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']+)["']/i)?.[1] ||
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*name=["']description["']/i)?.[1] ||
+    ''
+  );
+
+  const stripped = html
+    .replace(/<(script|style|nav|header|footer|aside|noscript|svg)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+  const paras = [...stripped.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map(m => decodeHtmlEntities(m[1].replace(/<[^>]+>/g, ' ')))
+    .filter(p => !isBoilerplateArticleLine(p) && !isNearDuplicateText(p, title));
+
+  let combined = (!isBoilerplateArticleLine(og) && !isNearDuplicateText(og, title)) ? og : '';
+  for (const p of paras) {
+    if (!combined) {
+      combined = p;
+      continue;
+    }
+    if (!isNearDuplicateText(combined, p) && combined.length + p.length <= 360) {
+      combined += (/[.!?]$/.test(combined) ? ' ' : '. ') + p;
+    }
+    if (combined.length >= 250) break;
+  }
+
+  return cleanTrimNewsSummary(combined, 340);
+}
+
 async function fetchMarketNews(forceRefresh = false) {
   try {
     const nowMs = Date.now();
@@ -347,65 +565,67 @@ async function fetchMarketNews(forceRefresh = false) {
       return globalThis.__newsFeedCache.items;
     }
 
-    const fetchXml = (rssUrl) => {
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 6500);
-      return fetch(rssUrl, {
-        signal: controller.signal,
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      })
-        .then(r => { clearTimeout(tid); return r.ok ? r.text() : ''; })
-        .catch(() => { clearTimeout(tid); return ''; });
-    };
+    const fetchXml = (rssUrl) => fetchWithTimeout(rssUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } }, 4500)
+      .then(r => (r.ok ? r.text() : ''))
+      .catch(() => '');
 
-    // 1. BIST 30 & Turkish Corporate Earnings / KAP Surprises (specific Turkish market terms, avoid loose 'hisse')
-    const trBist30Promise = fetchXml(
-      'https://news.google.com/rss/search?q=(BIST30+OR+%22BIST+100%22+OR+%22Borsa+%C4%B0stanbul%22+OR+Pegasus+OR+PGSUS+OR+THYAO+OR+ASELS+OR+T%C3%BCpra%C5%9F+OR+TUPRS+OR+FROTO+OR+AKBNK+OR+KCHOL+OR+EREGL+OR+BIMAS+OR+SAHOL+OR+%22%C3%A7eyrek+bilan%C3%A7o%22)+when:4d&hl=tr&gl=TR&ceid=TR:tr'
-    );
+    // 1-5: Targeted Google News RSS Streams + 6-9: Direct Publisher RSS with Native Descriptions
+    const feedDefs = [
+      {
+        promise: fetchXml('https://news.google.com/rss/search?q=(BIST30+OR+%22BIST+100%22+OR+%22Borsa+%C4%B0stanbul%22+OR+Pegasus+OR+PGSUS+OR+THYAO+OR+ASELS+OR+T%C3%BCpra%C5%9F+OR+TUPRS+OR+FROTO+OR+AKBNK+OR+KCHOL+OR+EREGL+OR+BIMAS+OR+SAHOL+OR+%22%C3%A7eyrek+bilan%C3%A7o%22)+when:4d&hl=tr&gl=TR&ceid=TR:tr'),
+        hint: { region: 'TR', defaultTag: 'BIST & KAP', defaultBucket: 'bist30', defaultBucketLabel: '🇹🇷 BIST 30 & Şirketler' }
+      },
+      {
+        promise: fetchXml('https://news.google.com/rss/search?q=(TCMB+OR+%22Merkez+Bankas%C4%B1%22+OR+%22Mehmet+%C5%9Eim%C5%9Fek%22+OR+T%C3%9C%C4%B0K+OR+%22T%C3%BCrkiye+enflasyon%22+OR+%22Borsa+%C4%B0stanbul%22+OR+%22Hazine+ve+Maliye%22+OR+SPK+OR+TBMM+ekonomi)+when:4d&hl=tr&gl=TR&ceid=TR:tr'),
+        hint: { region: 'TR', defaultTag: 'TCMB, Politika & Makro', defaultBucket: 'tr_macro', defaultBucketLabel: '🏛️ TR Siyaset & Ekonomi' }
+      },
+      {
+        promise: fetchXml('https://news.google.com/rss/search?q=(Fed+OR+FOMC+OR+Trump+OR+tariffs+OR+%22US+election%22+OR+midterm+OR+Congress+OR+%22White+House%22+OR+%22Treasury+yields%22+OR+%22US+inflation%22+OR+geopolitical)+when:4d&hl=en-US&gl=US&ceid=US:en'),
+        hint: { region: 'GLOBAL', defaultTag: 'Fed, Wall St & Politika', defaultBucket: 'us_politics', defaultBucketLabel: '🇺🇸 ABD Politika & Makro' }
+      },
+      {
+        promise: fetchXml('https://news.google.com/rss/search?q=(Nvidia+OR+NVDA+OR+Apple+OR+Microsoft+OR+Tesla+OR+Amazon+OR+Google+OR+Broadcom+OR+TSMC)+AND+(stock+OR+shares+OR+CEO+OR+AI+OR+earnings+OR+plunges+OR+surges+OR+drops+OR+soars)+when:3d&hl=en-US&gl=US&ceid=US:en'),
+        hint: { region: 'GLOBAL', defaultTag: 'Teknoloji & AI', defaultBucket: 'global_stocks', defaultBucketLabel: '💻 Global Hisse & AI' }
+      },
+      {
+        promise: fetchXml('https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+%22Wall+Street%22+OR+Nasdaq+OR+%22S%26P+500%22+OR+Bitcoin+OR+%22ons+alt%C4%B1n%22+OR+%22yapay+zeka+hisse%22)+when:4d&hl=tr&gl=TR&ceid=TR:tr'),
+        hint: { region: 'GLOBAL', defaultTag: 'Fed, Wall St & Politika', defaultBucket: 'global_stocks', defaultBucketLabel: '💻 Global Hisse & AI' }
+      },
+      {
+        promise: fetchXml('https://www.bloomberght.com/rss'),
+        hint: { region: 'TR', defaultTag: 'TCMB, Politika & Makro', defaultBucket: 'tr_macro', defaultBucketLabel: '🏛️ TR Siyaset & Ekonomi', defaultSource: 'Bloomberg HT', requireMarketRelevance: true }
+      },
+      {
+        promise: fetchXml('https://www.dunya.com/rss'),
+        hint: { region: 'TR', defaultTag: 'TCMB, Politika & Makro', defaultBucket: 'tr_macro', defaultBucketLabel: '🏛️ TR Siyaset & Ekonomi', defaultSource: 'Dünya Gazetesi', requireMarketRelevance: true }
+      },
+      {
+        promise: fetchXml('https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114'),
+        hint: { region: 'GLOBAL', defaultTag: 'Fed, Wall St & Politika', defaultBucket: 'us_politics', defaultBucketLabel: '🇺🇸 ABD Politika & Makro', defaultSource: 'CNBC' }
+      },
+      {
+        promise: fetchXml('https://feeds.finance.yahoo.com/rss/2.0/headline?s=NVDA,AAPL,MSFT,GOOGL,AMZN,META,TSLA,PGSUS.IS,THYAO.IS,KCHOL.IS,TUPRS.IS&region=US&lang=en-US'),
+        hint: { region: 'GLOBAL', defaultTag: 'Teknoloji & AI', defaultBucket: 'global_stocks', defaultBucketLabel: '💻 Global Hisse & AI', defaultSource: 'Yahoo Finance' }
+      }
+    ];
 
-    // 2. Turkish Politics, TCMB, Fiscal Policy, SPK, Türkiye Enflasyon & Macro
-    const trPoliticsMacroPromise = fetchXml(
-      'https://news.google.com/rss/search?q=(TCMB+OR+%22Merkez+Bankas%C4%B1%22+OR+%22Mehmet+%C5%9Eim%C5%9Fek%22+OR+T%C3%9C%C4%B0K+OR+%22T%C3%BCrkiye+enflasyon%22+OR+%22Borsa+%C4%B0stanbul%22+OR+%22Hazine+ve+Maliye%22+OR+SPK+OR+TBMM+ekonomi)+when:4d&hl=tr&gl=TR&ceid=TR:tr'
-    );
+    const xmlResults = await Promise.all(feedDefs.map(d => d.promise));
 
-    // 3. Turkish financial media coverage on Global Markets, Wall St, Fed, Gold & Bitcoin
-    const trGlobalPromise = fetchXml(
-      'https://news.google.com/rss/search?q=(Fed+OR+Nvidia+OR+%22Wall+Street%22+OR+Nasdaq+OR+%22S%26P+500%22+OR+Bitcoin+OR+%22ons+alt%C4%B1n%22+OR+%22yapay+zeka+hisse%22)+when:4d&hl=tr&gl=TR&ceid=TR:tr'
-    );
+    const NON_MARKET_NOISE_RE = /(uyuşturucu|narkotik|cezaevi|gözaltı|cinayet|trafik kazası|süper lig|fenerbahçe|galatasaray|beşiktaş|trabzonspor|şampiyonlar ligi|magazin|burçlar|survıvor|survivor|burs sonuçları|burs başvuruları|yks\b|tyt\b|ayt\b|lgs\b|hava durumu|akaryakıt tabelasından sonra|a message to our company)/i;
+    const MARKET_RELEVANCE_RE = /(ekonomi|borsa|bist|hisse|faiz|enflasyon|tcmb|dolar|altın|petrol|ihracat|sanayi|üretim|bütçe|vergi|fed|piyasa|yatırım|kredi|bilanço|holding|şirket|tüik|şimşek|imf|merkez bankası|vix|nasdaq|s&p|kâr|zarar|endeks|tahvil|rezerv)/i;
 
-    // 4. US & Global Politics, Elections, Tariffs, Fed, Macro & Geopolitics (to be auto-translated)
-    const usPoliticsGlobalPromise = fetchXml(
-      'https://news.google.com/rss/search?q=(Fed+OR+FOMC+OR+Trump+OR+tariffs+OR+%22US+election%22+OR+midterm+OR+Congress+OR+%22White+House%22+OR+%22Treasury+yields%22+OR+%22US+inflation%22+OR+geopolitical)+when:4d&hl=en-US&gl=US&ceid=US:en'
-    );
-
-    // 5. Wall St Single-Stock / Executive / AI Capex Catalysts (to be auto-translated)
-    const usStocksShocksPromise = fetchXml(
-      'https://news.google.com/rss/search?q=(Nvidia+OR+NVDA+OR+Apple+OR+Microsoft+OR+Tesla+OR+Amazon+OR+Google+OR+Broadcom+OR+TSMC)+AND+(stock+OR+shares+OR+CEO+OR+AI+OR+earnings+OR+plunges+OR+surges+OR+drops+OR+soars)+when:3d&hl=en-US&gl=US&ceid=US:en'
-    );
-
-    const [trBistXml, trPoliticsXml, trGlobalXml, usPoliticsXml, usStocksXml] = await Promise.all([
-      trBist30Promise,
-      trPoliticsMacroPromise,
-      trGlobalPromise,
-      usPoliticsGlobalPromise,
-      usStocksShocksPromise
-    ]);
-
-    const NON_MARKET_NOISE_RE = /(uyuşturucu|narkotik|cezaevi|gözaltı|cinayet|trafik kazası|süper lig|fenerbahçe|galatasaray|beşiktaş|trabzonspor|şampiyonlar ligi|magazin|burçlar|survıvor|survivor)/i;
-
-    function classifyNewsItem(title, source, feedHint) {
-      const lower = (title + ' ' + (source || '')).toLowerCase();
+    function classifyNewsItem(textBlob, source, feedHint) {
+      const lower = (textBlob + ' ' + (source || '')).toLowerCase();
 
       const isExplicitForeignMacro = /(\babd\b|\bus\b|\bu\.s\.\b|fed|fomc|powell|waller|warsh|trump|biden|midterm|ara seçim|ara dönem|cumhuriyetçi|demokrat|temsilciler meclisi|kongre|senato|beyaz saray|tarife|tariff|avrupa|ecb|çin|china|japonya|yen|coinbase|cftc|sec\b|wall street|nasdaq|s&p|huang|nvidia|nvda|apple|tesla|microsoft|google|amazon|tsmc|reuters|npr|cnn|bbc|bloomberg\.com|cnbc)/i.test(lower);
       const isExplicitTurkishContext = /(türkiye|turkey|tcmb|merkez bankası|şimşek|tüik|spk|bist|borsa istanbul|tl\b|lira|ankara|tbmm|hazine ve maliye|kap\b|kap\s*\*)/i.test(lower);
 
-      const isBistCompany = /(bist|borsa istanbul|pgsus|pegasus|thyao|türk hava|asels|aselsan|tuprs|tüpraş|froto|ford otosan|kchol|koç holding|akbnk|akbank|ykbnk|yapı kredi|eregl|ereğli|bimas|sahol|sabancı|isctr|iş bankası|tcell|turkcell|katılımevim|3ç26|3\. çeyrek)/i.test(lower);
-      const isTrMacroPolitics = (/(tcmb|tüik|şimşek|spk|tbmm|türkiye ekonom|swap|kredi notu|dolar\/tl|tl mevduat|borsa istanbul)/i.test(lower)) || (isExplicitTurkishContext && !isExplicitForeignMacro && /(enflasyon|vergi|bütçe|hazine|faiz|ekonomi|siyaset|cumhurbaşkan)/i.test(lower));
+      const isBistCompany = /(bist|borsa istanbul|pgsus|pegasus|thyao|türk hava|turk hava|asels|aselsan|tuprs|tüpraş|tupras|froto|ford otosan|kchol|koç holding|koc holding|akbnk|akbank|ykbnk|yapı kredi|eregl|ereğli|bimas|sahol|sabancı|isctr|iş bankası|tcell|turkcell|katılımevim|3ç26|3\. çeyrek)/i.test(lower);
+      const isTrMacroPolitics = (/(tcmb|tüik|şimşek|spk|tbmm|türkiye ekonom|swap|kredi notu|dolar\/tl|tl mevduat|borsa istanbul)/i.test(lower)) || (isExplicitTurkishContext && !isExplicitForeignMacro && /(enflasyon|vergi|bütçe|hazine|faiz|ekonomi|siyaset|cumhurbaşkan|sanayi üretim)/i.test(lower));
       const isUsPolitics = /(trump|biden|harris|election|midterm|ara seçim|ara dönem|congress|kongre|temsilciler meclisi|cumhuriyetçiler|senato|senate|white house|beyaz saray|tariff|tarife|gümrük vergisi|fed|fomc|powell|waller|warsh|treasury|tahvil getirisi|abd enflasyon|us inflation|jeopolitik|savaş|hürmüz|orta doğu|çin ticaret|çin.*yaptırım)/i.test(lower);
       const isTechAiStock = /(nvidia|nvda|huang|\bai\b|yapay zeka|chip|çip|yarı iletken|semiconductor|tsmc|tsm|apple|aapl|microsoft|msft|tesla|tsla|amazon|amzn|google|googl|meta|broadcom|avgo|capex|datacenter|veri merkezi|ceo)/i.test(lower);
       const isCryptoCommod = /(bitcoin|btc|kripto|crypto|coinbase|ethereum|ons altın|gram altın|gold|gümüş|silver|petrol|brent|wti|emtia|opec)/i.test(lower);
 
-      // Determine true region first (prevent foreign politics/stocks from entering TR buckets)
       let region = feedHint.region;
       if (isExplicitForeignMacro && !isBistCompany && !isTrMacroPolitics) {
         region = 'GLOBAL';
@@ -417,7 +637,6 @@ async function fetchMarketNews(forceRefresh = false) {
         region = 'GLOBAL';
       }
 
-      // Broadcast studio structured bucket & region
       let broadcastBucket = feedHint.defaultBucket;
       let bucketLabel = feedHint.defaultBucketLabel;
 
@@ -439,7 +658,6 @@ async function fetchMarketNews(forceRefresh = false) {
         }
       }
 
-      // Compatibility tag for MarketPulseTab filters
       let tag = 'Fed, Wall St & Politika';
       if (broadcastBucket === 'bist30') tag = 'BIST & KAP';
       else if (broadcastBucket === 'tr_macro') tag = 'TCMB, Politika & Makro';
@@ -472,14 +690,13 @@ async function fetchMarketNews(forceRefresh = false) {
         'rekor', 'fırladı', 'fırlattı', 'yükseliyor', 'düşüyor', 'çakıldı', 'çöktü', 'sert', 'şok', 'skandal', 'bilanço', 'kâr', 'faiz', 'seçim', 'ara dönem', 'tarife', 'ceo', 'yatırım', 'endişe', 'soruşturma', 'ayrışma', 'vurdu',
         'plunge', 'surge', 'soar', 'tumble', 'crash', 'earnings', 'rate', 'election', 'midterm', 'tariff', 'guidance', 'beat', 'miss', 'billion', 'milyar', 'trilyon', 'trillion'
       ];
-      let impactScore = (bearScore + bullScore) * 1.8;
+      let impactScore = (bearScore + bullScore) * 1.6;
       for (const hw of highImpactWords) {
-        if (lower.includes(hw)) impactScore += 1.5;
+        if (lower.includes(hw)) impactScore += 1.4;
       }
       if (isBistCompany && /(pgsus|pegasus|thyao|asels|tuprs|froto|kchol|akbnk|eregl|bimas|bist100|bist30)/i.test(lower)) {
         impactScore += 2.0;
       }
-      // Demote boilerplate mutual fund KAP spam
       if (/serbest fon|özel durum açıklaması \(genel\)/i.test(lower)) {
         impactScore = Math.max(0, impactScore - 2.5);
       }
@@ -499,33 +716,45 @@ async function fetchMarketNews(forceRefresh = false) {
       if (!xml) return [];
       const itemMatches = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
       return itemMatches.slice(0, 10).map((item, idx) => {
-        let title = decodeHtmlEntities((item.match(/<title>(.*?)<\/title>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1'));
-        const link = (item.match(/<link>(.*?)<\/link>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-        const pubDate = (item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '').trim();
-        let source = decodeHtmlEntities((item.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1'));
+        let title = decodeHtmlEntities((item.match(/<title>([\s\S]*?)<\/title>/)?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
+        const link = (item.match(/<link>([\s\S]*?)<\/link>/)?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
+        const pubDate = (item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] || '').trim();
+        let source = decodeHtmlEntities((item.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
+
+        const rawDescDecoded = decodeHtmlEntities((item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1'));
+        const isGoogleStub = link.includes('news.google.com/') && /<a\s+href=/i.test(rawDescDecoded);
+        let summary = '';
+        if (!isGoogleStub && rawDescDecoded) {
+          const strippedDesc = decodeHtmlEntities(rawDescDecoded.replace(/<[^>]+>/g, ' '));
+          if (!isBoilerplateArticleLine(strippedDesc) && !isNearDuplicateText(strippedDesc, title)) {
+            summary = cleanTrimNewsSummary(strippedDesc, 340);
+          }
+        }
 
         if (!title || title.length <= 8 || NON_MARKET_NOISE_RE.test(title)) return null;
+        if (feedHint.requireMarketRelevance && !MARKET_RELEVANCE_RE.test(`${title} ${summary}`)) return null;
 
-        // Strip trailing source/site tagline cleanly
         title = title.replace(/\s*-\s*Finans haberlerinin doğru adresi.*$/i, '').trim();
         const dashIdx = title.lastIndexOf(' - ');
         if (dashIdx > 15) {
           if (!source) source = title.substring(dashIdx + 3).trim();
           title = title.substring(0, dashIdx).trim();
         }
+        if (!source && feedHint.defaultSource) source = feedHint.defaultSource;
 
         const timeMs = pubDate ? new Date(pubDate).getTime() : 0;
         const ageHours = timeMs > 0 ? Math.max(0, (Date.now() - timeMs) / 3600000) : 72;
         const recencyBoost = ageHours < 6 ? 3 : ageHours < 24 ? 2 : ageHours < 48 ? 1 : 0;
 
-        const cls = classifyNewsItem(title, source, feedHint);
+        const cls = classifyNewsItem(`${title} ${summary}`, source, feedHint);
         const totalImpact = Math.round((cls.impactScore + recencyBoost) * 10) / 10;
         const impactLevel = totalImpact >= 6 ? 'KRİTİK' : totalImpact >= 3.5 ? 'YÜKSEK' : 'GÜNDEM';
-        const tickers = extractMarketTickers(`${title} ${source}`);
+        const tickers = extractMarketTickers(`${title} ${summary} ${source}`);
 
         return {
-          id: `${feedHint.defaultBucket}-${idx}-${Date.now()}`,
+          id: `${feedHint.defaultBucket}-${idx}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           title,
+          summary,
           link,
           source: source || 'Piyasa',
           pubDate,
@@ -538,47 +767,17 @@ async function fetchMarketNews(forceRefresh = false) {
           bull: cls.bull,
           impactScore: totalImpact,
           impactLevel,
-          tickers
+          tickers,
+          isQuestionTitle: isQuestionHeadline(title)
         };
       }).filter(Boolean);
     }
 
-    const trBistItems = parseXmlItems(trBistXml, {
-      region: 'TR',
-      defaultTag: 'BIST & KAP',
-      defaultBucket: 'bist30',
-      defaultBucketLabel: '🇹🇷 BIST 30 & Şirketler'
-    });
-    const trPoliticsItems = parseXmlItems(trPoliticsXml, {
-      region: 'TR',
-      defaultTag: 'TCMB, Politika & Makro',
-      defaultBucket: 'tr_macro',
-      defaultBucketLabel: '🏛️ TR Siyaset & Ekonomi'
-    });
-    const trGlobalItems = parseXmlItems(trGlobalXml, {
-      region: 'GLOBAL',
-      defaultTag: 'Fed, Wall St & Politika',
-      defaultBucket: 'global_stocks',
-      defaultBucketLabel: '💻 Global Hisse & AI'
-    });
-    const usPoliticsItems = parseXmlItems(usPoliticsXml, {
-      region: 'GLOBAL',
-      defaultTag: 'Fed, Wall St & Politika',
-      defaultBucket: 'us_politics',
-      defaultBucketLabel: '🇺🇸 ABD Politika & Makro'
-    });
-    const usStocksItems = parseXmlItems(usStocksXml, {
-      region: 'GLOBAL',
-      defaultTag: 'Teknoloji & AI',
-      defaultBucket: 'global_stocks',
-      defaultBucketLabel: '💻 Global Hisse & AI'
-    });
+    const parsedStreams = xmlResults.map((xml, idx) => parseXmlItems(xml, feedDefs[idx].hint));
 
-    // Combine all feeds in interleaved balanced order, then deduplicate
     const rawAll = [];
-    const streams = [trBistItems, trPoliticsItems, usPoliticsItems, usStocksItems, trGlobalItems];
     for (let i = 0; i < 10; i++) {
-      for (const s of streams) {
+      for (const s of parsedStreams) {
         if (s[i]) rawAll.push(s[i]);
       }
     }
@@ -596,7 +795,6 @@ async function fetchMarketNews(forceRefresh = false) {
       combined.push(item);
     }
 
-    // Ensure every bucket gets represented even if one stream posted faster in the last hour
     const bucketCounts = {};
     const balanced = [];
     for (const item of combined) {
@@ -605,40 +803,93 @@ async function fetchMarketNews(forceRefresh = false) {
       if (bucketCounts[b] <= 12) balanced.push(item);
     }
 
-    // Sort chronologically descending: newest first (yeniden eskiye doğru)
+    // Sort chronologically descending: newest first
     balanced.sort((a, b) => (b.timeMs || 0) - (a.timeMs || 0));
 
     const limited = balanced.slice(0, 42);
 
+    // Enrich top priority items lacking substantive summaries from real article HTML (balanced TR + Global, capped at 16)
+    const needScrapePool = limited
+      .filter(it => !it.summary || it.summary.length < 125)
+      .sort((a, b) => {
+        const qa = (a.isQuestionTitle ? 3 : 0) + (a.impactScore || 0);
+        const qb = (b.isQuestionTitle ? 3 : 0) + (b.impactScore || 0);
+        return qb - qa;
+      });
+    const trScrape = needScrapePool.filter(it => it.region === 'TR').slice(0, 8);
+    const globalScrape = needScrapePool.filter(it => it.region !== 'TR').slice(0, 8);
+    const scrapeCandidates = [...trScrape, ...globalScrape];
+
+    await Promise.all(
+      scrapeCandidates.map(async (item) => {
+        try {
+          const realUrl = item.link?.includes('news.google.com/')
+            ? await resolveGoogleNewsUrl(item.link)
+            : item.link;
+          if (!realUrl) return;
+          const ar = await fetchWithTimeout(realUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+            }
+          }, 2600);
+          if (ar.ok) {
+            const html = await ar.text();
+            const extracted = extractArticleSummary(html, item.title);
+            if (extracted && extracted.length >= (item.summary?.length || 0)) {
+              item.summary = extracted;
+              item.realLink = realUrl;
+            }
+          }
+        } catch (e) {}
+      })
+    );
+
+    // Auto-translate English headlines and English summaries to clean Turkish in parallel
     await Promise.all(
       limited.map(async (item) => {
         try {
-          const original = item.title;
-          const translated = await translateToTurkish(original);
-          if (translated && translated !== original) {
-            item.title = decodeHtmlEntities(translated);
-            item.original_title = original;
+          const origTitle = item.title;
+          const origSummary = item.summary;
+          const [trTitle, trSummary] = await Promise.all([
+            translateToTurkish(origTitle),
+            origSummary ? translateToTurkish(origSummary) : Promise.resolve('')
+          ]);
+
+          if (trTitle && trTitle !== origTitle) {
+            item.title = decodeHtmlEntities(trTitle);
+            item.original_title = origTitle;
             item.translated = true;
-            // Re-run classification & ticker detection using both original and translated text
-            const reCls = classifyNewsItem(`${item.title} ${original}`, item.source, {
-              region: item.region,
-              defaultTag: item.tag,
-              defaultBucket: item.broadcastBucket,
-              defaultBucketLabel: item.bucketLabel
-            });
-            item.region = reCls.region;
-            item.sentiment = reCls.sentiment;
-            item.bull = reCls.bull;
-            item.bucketLabel = reCls.bucketLabel;
-            item.broadcastBucket = reCls.broadcastBucket;
-            item.tag = reCls.tag;
-            const ageHours = item.timeMs > 0 ? Math.max(0, (Date.now() - item.timeMs) / 3600000) : 72;
-            const recencyBoost = ageHours < 6 ? 3 : ageHours < 24 ? 2 : ageHours < 48 ? 1 : 0;
-            item.impactScore = Math.round((reCls.impactScore + recencyBoost) * 10) / 10;
-            item.impactLevel = item.impactScore >= 6 ? 'KRİTİK' : item.impactScore >= 3.5 ? 'YÜKSEK' : 'GÜNDEM';
-            const moreTickers = extractMarketTickers(`${item.title} ${original}`);
-            item.tickers = Array.from(new Set([...(item.tickers || []), ...moreTickers])).slice(0, 4);
           }
+          if (trSummary && trSummary !== origSummary) {
+            item.summary = cleanTrimNewsSummary(decodeHtmlEntities(trSummary), 360);
+            item.translated = true;
+          }
+
+          // Re-run classification & scoring using rich translated/summary context
+          const richBlob = `${item.title} ${origTitle} ${item.summary || ''}`;
+          const reCls = classifyNewsItem(richBlob, item.source, {
+            region: item.region,
+            defaultTag: item.tag,
+            defaultBucket: item.broadcastBucket,
+            defaultBucketLabel: item.bucketLabel
+          });
+          item.region = reCls.region;
+          item.sentiment = reCls.sentiment;
+          item.bull = reCls.bull;
+          item.bucketLabel = reCls.bucketLabel;
+          item.broadcastBucket = reCls.broadcastBucket;
+          item.tag = reCls.tag;
+          item.isQuestionTitle = isQuestionHeadline(item.title);
+
+          const ageHours = item.timeMs > 0 ? Math.max(0, (Date.now() - item.timeMs) / 3600000) : 72;
+          const recencyBoost = ageHours < 6 ? 3 : ageHours < 24 ? 2 : ageHours < 48 ? 1 : 0;
+          const summaryBonus = item.summary && item.summary.length >= 55 ? 1.8 : 0;
+          const unresolvedQuestionPenalty = item.isQuestionTitle && (!item.summary || item.summary.length < 40) ? -2.2 : 0;
+
+          item.impactScore = Math.max(0, Math.round((reCls.impactScore + recencyBoost + summaryBonus + unresolvedQuestionPenalty) * 10) / 10);
+          item.impactLevel = item.impactScore >= 6 ? 'KRİTİK' : item.impactScore >= 3.5 ? 'YÜKSEK' : 'GÜNDEM';
+          const moreTickers = extractMarketTickers(richBlob);
+          item.tickers = Array.from(new Set([...(item.tickers || []), ...moreTickers])).slice(0, 4);
         } catch (e) {}
       })
     );

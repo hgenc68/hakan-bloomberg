@@ -47,7 +47,8 @@ import {
   Search,
   Trash2,
   Eye,
-  EyeOff
+  EyeOff,
+  BookOpen
 } from 'lucide-react';
 import macroPulseData from '../data/macroPulse.json';
 import latestQuotesData from '../data/latestQuotes.json';
@@ -99,12 +100,29 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [customNewsForm, setCustomNewsForm] = useState({
     title: '',
+    summary: '',
     impactNote: '',
     bucket: 'bist30',
     sentiment: 'bull',
     tickers: ''
   });
   const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
+
+  // Prompter-free slide explanation notes ('auto' = shown in slides_only, 'on' = always, 'off' = hidden)
+  const [slideNotesPref, setSlideNotesPref] = useState(() => {
+    try {
+      const saved = localStorage.getItem('broadcast_studio_slide_notes_v1');
+      if (saved === 'on' || saved === 'off' || saved === 'auto') return saved;
+    } catch {}
+    return 'auto';
+  });
+
+  const handleSetSlideNotesPref = (nextPref) => {
+    setSlideNotesPref(nextPref);
+    try {
+      localStorage.setItem('broadcast_studio_slide_notes_v1', nextPref);
+    } catch {}
+  };
 
   const [showBreakingTicker, setShowBreakingTicker] = useState(() => {
     try {
@@ -121,7 +139,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   const [pinnedNews, setPinnedNews] = useState(() => {
     try {
-      const raw = localStorage.getItem('broadcast_studio_pinned_news_v1');
+      try { localStorage.removeItem('broadcast_studio_pinned_news_v1'); } catch {}
+      const raw = localStorage.getItem('broadcast_studio_pinned_news_v2');
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.date === todayDateISO && Array.isArray(parsed.items)) {
@@ -134,7 +153,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   const [hasManualPinOverride, setHasManualPinOverride] = useState(() => {
     try {
-      const raw = localStorage.getItem('broadcast_studio_pinned_news_v1');
+      const raw = localStorage.getItem('broadcast_studio_pinned_news_v2');
       if (raw) {
         const parsed = JSON.parse(raw);
         return Boolean(parsed && parsed.date === todayDateISO && parsed.manual);
@@ -147,7 +166,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     setPinnedNews(items);
     setHasManualPinOverride(manualFlag);
     try {
-      localStorage.setItem('broadcast_studio_pinned_news_v1', JSON.stringify({
+      localStorage.setItem('broadcast_studio_pinned_news_v2', JSON.stringify({
         date: todayDateISO,
         manual: manualFlag,
         items,
@@ -188,6 +207,47 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     return `${diffDays} gün önce`;
   };
 
+  const isClickbaitQuestion = (title = '') => {
+    const t = String(title || '').trim();
+    if (!t) return false;
+    if (/\?\s*$/.test(t) || t.includes('?')) return true;
+    return /\b(neden|niye|niçin)\s+(düşüyor|düştü|yükseliyor|yükseldi|geriledi|çakıldı|uçtu|ralli|değer\s+kaybetti|kazanıyor)\b/i.test(t) ||
+      /^(why|how)\s+/i.test(t);
+  };
+
+  const splitFactualSentences = (text = '') => {
+    const clean = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!clean) return [];
+    return clean.split(/(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9"“])/).map(s => s.trim()).filter(Boolean);
+  };
+
+  const getDisplayNewsCopy = (item) => {
+    if (!item) return { headline: '', body: '', wasQuestionReplaced: false, rawQuestionTitle: '' };
+    const rawTitle = (item.title || '').trim();
+    const rawSummary = (item.summary || '').trim();
+    const isQ = Boolean(item.isQuestionTitle) || isClickbaitQuestion(rawTitle);
+
+    if (isQ && rawSummary.length >= 25) {
+      const parts = splitFactualSentences(rawSummary);
+      const headline = parts[0] || rawSummary;
+      const body = parts.slice(1).join(' ');
+      return {
+        headline,
+        body: body || (headline !== rawSummary ? rawSummary : ''),
+        wasQuestionReplaced: true,
+        rawQuestionTitle: rawTitle
+      };
+    }
+
+    const cleanBody = (rawSummary && rawSummary.toLowerCase() !== rawTitle.toLowerCase()) ? rawSummary : '';
+    return {
+      headline: rawTitle,
+      body: cleanBody,
+      wasQuestionReplaced: false,
+      rawQuestionTitle: ''
+    };
+  };
+
   const getSentimentMeta = (sentiment = 'neutral') => {
     if (sentiment === 'bull') {
       return { label: '▲ POZİTİF', color: '#34d399', bg: 'rgba(16, 185, 129, 0.16)', border: 'rgba(16, 185, 129, 0.38)' };
@@ -200,7 +260,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
 
   const autoCuratePinnedNews = (newsArray = []) => {
     if (!Array.isArray(newsArray) || newsArray.length === 0) return [];
-    const byImpactDesc = [...newsArray].sort((a, b) => ((b.impactScore || 0) - (a.impactScore || 0)) || ((b.timeMs || 0) - (a.timeMs || 0)));
+    const scoreItem = (item) => ((item.summary && item.summary.length >= 40 ? 20 : 0) + (item.impactScore || 0));
+    const byImpactDesc = [...newsArray].sort((a, b) => (scoreItem(b) - scoreItem(a)) || ((b.timeMs || 0) - (a.timeMs || 0)));
 
     const picked = [];
     const seen = new Set();
@@ -302,7 +363,8 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         const data = await res.json();
         if (data?.status === 'success' && Array.isArray(data.news) && data.news.length > 0) {
           setLiveNewsList(data.news);
-          if (!hasManualPinOverride || pinnedNews.length === 0) {
+          const needsSummaryUpgrade = !hasManualPinOverride && pinnedNews.some(p => !p.isCustom && (!p.summary || p.summary.length < 30));
+          if (!hasManualPinOverride || pinnedNews.length === 0 || needsSummaryUpgrade) {
             const curated = autoCuratePinnedNews(data.news);
             if (curated.length > 0) {
               persistPinnedNews(curated, false);
@@ -339,9 +401,13 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     }
   };
 
-  const updatePinnedImpactNote = (id, note) => {
-    const next = pinnedNews.map(p => (p.id === id ? { ...p, impactNote: note } : p));
+  const updatePinnedNewsField = (id, patch) => {
+    const next = pinnedNews.map(p => (p.id === id ? { ...p, ...patch } : p));
     persistPinnedNews(next, true);
+  };
+
+  const updatePinnedImpactNote = (id, note) => {
+    updatePinnedNewsField(id, { impactNote: note });
   };
 
   const movePinnedItem = (idx, dir) => {
@@ -382,6 +448,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     const newItem = {
       id: `custom-${Date.now()}`,
       title: cleanTitle,
+      summary: (customNewsForm.summary || '').trim(),
       impactNote: (customNewsForm.impactNote || '').trim(),
       source: 'Stüdyo Özel Notu',
       pubDate: new Date().toUTCString(),
@@ -399,7 +466,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     };
 
     persistPinnedNews([newItem, ...pinnedNews].slice(0, 8), true);
-    setCustomNewsForm({ title: '', impactNote: '', bucket: customNewsForm.bucket, sentiment: customNewsForm.sentiment, tickers: '' });
+    setCustomNewsForm({ title: '', summary: '', impactNote: '', bucket: customNewsForm.bucket, sentiment: customNewsForm.sentiment, tickers: '' });
   };
 
   const updateAgenda = (newAgenda) => {
@@ -421,21 +488,24 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     const n1 = sourceList[0];
     const n2 = sourceList[1] || sourceList[0];
     const n3 = sourceList[2] || sourceList[0];
+    const d1 = getDisplayNewsCopy(n1);
+    const d2 = getDisplayNewsCopy(n2);
+    const d3 = getDisplayNewsCopy(n3);
     setAgendaForm(prev => ({
       ...prev,
       topic1: {
-        title: cleanStr(n1.title) || prev.topic1.title,
-        desc: n1.impactNote || (n1.source ? `Kaynak: ${n1.source}` : prev.topic1.desc),
+        title: cleanStr(d1.headline) || prev.topic1.title,
+        desc: n1.impactNote || d1.body || (n1.source ? `Kaynak: ${n1.source}` : prev.topic1.desc),
         tag: n1.bucketLabel || n1.tag || 'Sıcak Gündem'
       },
       topic2: {
-        title: cleanStr(n2.title) || prev.topic2.title,
-        desc: n2.impactNote || (n2.source ? `Kaynak: ${n2.source}` : prev.topic2.desc),
+        title: cleanStr(d2.headline) || prev.topic2.title,
+        desc: n2.impactNote || d2.body || (n2.source ? `Kaynak: ${n2.source}` : prev.topic2.desc),
         tag: n2.bucketLabel || n2.tag || 'Makro & Global'
       },
       topic3: {
-        title: cleanStr(n3.title) || prev.topic3.title,
-        desc: n3.impactNote || (n3.source ? `Kaynak: ${n3.source}` : prev.topic3.desc),
+        title: cleanStr(d3.headline) || prev.topic3.title,
+        desc: n3.impactNote || d3.body || (n3.source ? `Kaynak: ${n3.source}` : prev.topic3.desc),
         tag: n3.bucketLabel || n3.tag || 'Hisse & Sektör'
       }
     }));
@@ -457,22 +527,25 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       const n1 = activeSet[0];
       const n2 = activeSet[1] || activeSet[0];
       const n3 = activeSet[2] || activeSet[0];
+      const d1 = getDisplayNewsCopy(n1);
+      const d2 = getDisplayNewsCopy(n2);
+      const d3 = getDisplayNewsCopy(n3);
 
       const newAgenda = {
         ...customAgenda,
         topic1: {
-          title: cleanStr(n1.title) || customAgenda.topic1.title,
-          desc: n1.impactNote || (n1.source ? `Kaynak: ${n1.source}` : customAgenda.topic1.desc),
+          title: cleanStr(d1.headline) || customAgenda.topic1.title,
+          desc: n1.impactNote || d1.body || (n1.source ? `Kaynak: ${n1.source}` : customAgenda.topic1.desc),
           tag: n1.bucketLabel || n1.tag || 'Sıcak Gündem'
         },
         topic2: {
-          title: cleanStr(n2.title) || customAgenda.topic2.title,
-          desc: n2.impactNote || (n2.source ? `Kaynak: ${n2.source}` : customAgenda.topic2.desc),
+          title: cleanStr(d2.headline) || customAgenda.topic2.title,
+          desc: n2.impactNote || d2.body || (n2.source ? `Kaynak: ${n2.source}` : customAgenda.topic2.desc),
           tag: n2.bucketLabel || n2.tag || 'Makro & Global'
         },
         topic3: {
-          title: cleanStr(n3.title) || customAgenda.topic3.title,
-          desc: n3.impactNote || (n3.source ? `Kaynak: ${n3.source}` : customAgenda.topic3.desc),
+          title: cleanStr(d3.headline) || customAgenda.topic3.title,
+          desc: n3.impactNote || d3.body || (n3.source ? `Kaynak: ${n3.source}` : customAgenda.topic3.desc),
           tag: n3.bucketLabel || n3.tag || 'Hisse & Sektör'
         }
       };
@@ -588,7 +661,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           setCustomAgenda(JSON.parse(e.newValue));
         } catch (e) {}
       }
-      if (e.key === 'broadcast_studio_pinned_news_v1' && e.newValue) {
+      if (e.key === 'broadcast_studio_pinned_news_v2' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (parsed && Array.isArray(parsed.items)) setPinnedNews(parsed.items);
@@ -625,7 +698,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
           if (toneRaw) setBroadcastTone(prev => (prev !== toneRaw ? toneRaw : prev));
           const tickerRaw = localStorage.getItem('broadcast_studio_breaking_ticker_v1');
           if (tickerRaw !== null) setShowBreakingTicker(prev => (prev !== (tickerRaw === '1') ? (tickerRaw === '1') : prev));
-          const pinnedRaw = localStorage.getItem('broadcast_studio_pinned_news_v1');
+          const pinnedRaw = localStorage.getItem('broadcast_studio_pinned_news_v2');
           if (pinnedRaw) {
             const parsedPin = JSON.parse(pinnedRaw);
             if (parsedPin && Array.isArray(parsedPin.items)) {
@@ -1342,7 +1415,11 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       out += `YAYINA SEÇİLEN SICAK PİYASA HABERLERİ:\n`;
       pinnedNews.forEach((n, idx) => {
         const dir = n.sentiment === 'bull' ? '[POZİTİF]' : (n.sentiment === 'bear' ? '[BASKI]' : '[İZLEME]');
-        out += `${idx + 1}. ${dir} (${n.bucketLabel || n.region}) ${n.title}${n.impactNote ? ` — Not: ${n.impactNote}` : ''}\n`;
+        const copy = getDisplayNewsCopy(n);
+        out += `${idx + 1}. ${dir} (${n.bucketLabel || n.region}) ${copy.headline}`;
+        if (copy.body) out += `\n   Açıklama: ${copy.body}`;
+        if (n.impactNote) out += `\n   Piyasa Etkisi: ${n.impactNote}`;
+        out += `\n`;
       });
       out += `\n`;
     }
@@ -1390,14 +1467,17 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
         <h3>YAYINA SEÇİLEN SICAK HABERLER & PİYASA KATALİZÖRLERİ</h3>
         <table class="table-box">
           <tr><th>Bölge / Kategori</th><th>Manşet & Etki Notu</th><th>Hisse / Sembol</th><th>Yön & Kaynak</th></tr>
-          ${pinnedNews.map(n => `
+          ${pinnedNews.map(n => {
+            const copy = getDisplayNewsCopy(n);
+            return `
             <tr>
               <td><b>${n.bucketLabel || n.region}</b></td>
-              <td><b>${n.title}</b>${n.impactNote ? `<br/><span style="color:#4a5568;font-size:9.5pt;">Not: ${n.impactNote}</span>` : ''}</td>
+              <td><b>${copy.headline}</b>${copy.body ? `<br/><span style="color:#2d3748;font-size:9.5pt;">${copy.body}</span>` : ''}${n.impactNote ? `<br/><span style="color:#4a5568;font-size:9.5pt;">Piyasa Etkisi: ${n.impactNote}</span>` : ''}</td>
               <td>${(n.tickers || []).join(', ') || 'Genel'}</td>
               <td>${n.sentiment === 'bull' ? 'Pozitif Etki' : (n.sentiment === 'bear' ? 'Negatif Baskı' : 'İzleme')} (${n.source || 'Piyasa'})</td>
             </tr>
-          `).join('')}
+          `;
+          }).join('')}
         </table>` : '';
 
     let htmlContent = `
@@ -1511,6 +1591,22 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     }
   };
 
+  // One-click Prompter-Free Fullscreen Presentation (activates Sadece Slayt + On-Slide Notes + Fullscreen)
+  const enterPrompterFreeFullscreen = () => {
+    setViewMode('slides_only');
+    if (slideNotesPref === 'off') {
+      handleSetSlideNotesPref('on');
+    }
+    if (!presentationContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      presentationContainerRef.current.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(err => {
+        console.warn('Prompter-free fullscreen request failed:', err);
+      });
+    }
+  };
+
   useEffect(() => {
     const handleFsChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -1524,6 +1620,26 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
     return pinnedNews[tickerCursor % pinnedNews.length] || pinnedNews[0];
   }, [pinnedNews, tickerCursor]);
 
+  const activeTickerCopy = useMemo(() => getDisplayNewsCopy(activeTickerItem), [activeTickerItem]);
+
+  const showSlideNotesStrip =
+    !isObsPopout &&
+    viewMode !== 'prompter_only' &&
+    (slideNotesPref === 'on' || (slideNotesPref === 'auto' && viewMode === 'slides_only'));
+
+  const slideNotesParagraphs = useMemo(() => {
+    const raw = (activeScript || '').trim();
+    if (!raw) return [];
+    const blocks = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (blocks.length > 1) return blocks;
+    const sentences = raw.split(/(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9"“])/).map(s => s.trim()).filter(Boolean);
+    const grouped = [];
+    for (let i = 0; i < sentences.length; i += 2) {
+      grouped.push(sentences.slice(i, i + 2).join(' '));
+    }
+    return grouped.length > 0 ? grouped : [raw];
+  }, [activeScript]);
+
   const filteredNewsPool = useMemo(() => {
     const q = (newsSearchQuery || '').trim().toLowerCase();
     return (liveNewsList || []).filter((item) => {
@@ -1535,6 +1651,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
       if (!q) return true;
       const haystack = [
         item.title,
+        item.summary,
         item.source,
         item.bucketLabel,
         item.tag,
@@ -1569,41 +1686,109 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {!isPopout && (
-                  <div 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 2, 
-                      background: 'rgba(255, 255, 255, 0.06)', 
-                      borderRadius: 5, 
-                      padding: '2px 5px', 
-                      border: '1px solid rgba(255, 255, 255, 0.1)' 
-                    }}
-                    title="Slayt yazı ve kart boyutunu büyüt / küçült"
-                  >
-                    <span style={{ fontSize: 10, color: '#94a3b8', marginRight: 3, fontWeight: 600 }}>Slayt Boyutu:</span>
+                  <>
                     <button
                       type="button"
-                      onClick={() => handleSetSlideZoom(slideZoom - 0.06)}
-                      style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '1px 5px', fontSize: 11, fontWeight: 800, lineHeight: 1 }}
-                      title="Slayt yazılarını küçült"
+                      onClick={() => handleSetSlideNotesPref(showSlideNotesStrip ? 'off' : 'on')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: showSlideNotesStrip ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                        border: `1px solid ${showSlideNotesStrip ? 'rgba(56, 189, 248, 0.5)' : 'rgba(255, 255, 255, 0.14)'}`,
+                        color: showSlideNotesStrip ? '#7dd3fc' : '#cbd5e1',
+                        borderRadius: 5,
+                        padding: '3px 8px',
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                      title="Slayt altında promptersız sunum açıklamasını aç/kapat (OBS penceresinde asla görünmez)"
                     >
-                      A-
+                      <BookOpen size={12} />
+                      <span>Anlatım: {showSlideNotesStrip ? 'Açık' : 'Kapalı'}</span>
                     </button>
-                    <span style={{ fontSize: 10.5, color: 'var(--cyan)', fontWeight: 800, minWidth: 34, textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
-                      %{Math.round(slideZoom * 100)}
-                    </span>
+
                     <button
                       type="button"
-                      onClick={() => handleSetSlideZoom(slideZoom + 0.06)}
-                      style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '1px 5px', fontSize: 11, fontWeight: 800, lineHeight: 1 }}
-                      title="Slayt yazılarını büyüt"
+                      onClick={() => setViewMode(prev => (prev === 'slides_only' ? 'split' : 'slides_only'))}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: viewMode === 'slides_only' ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.06)',
+                        border: `1px solid ${viewMode === 'slides_only' ? 'rgba(16, 185, 129, 0.45)' : 'rgba(255, 255, 255, 0.14)'}`,
+                        color: viewMode === 'slides_only' ? '#6ee7b7' : '#cbd5e1',
+                        borderRadius: 5,
+                        padding: '3px 8px',
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                      title="Tam slayt ve bölünmüş prompter görünümü arasında hızlı geçiş"
                     >
-                      A+
+                      <Layers size={11} />
+                      <span>{viewMode === 'slides_only' ? 'Bölünmüş Mod' : 'Tam Slayt'}</span>
                     </button>
-                  </div>
+
+                    <button
+                      type="button"
+                      onClick={togglePresentationFullscreen}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: isFullscreen ? 'rgba(244, 63, 94, 0.18)' : 'rgba(255, 255, 255, 0.06)',
+                        border: `1px solid ${isFullscreen ? 'rgba(244, 63, 94, 0.45)' : 'rgba(255, 255, 255, 0.14)'}`,
+                        color: isFullscreen ? '#fda4af' : '#e2e8f0',
+                        borderRadius: 5,
+                        padding: '3px 8px',
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                      title={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekranda sunuma başla'}
+                    >
+                      {isFullscreen ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+                      <span>{isFullscreen ? 'Küçült' : 'Tam Ekran'}</span>
+                    </button>
+
+                    <div 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 2, 
+                        background: 'rgba(255, 255, 255, 0.06)', 
+                        borderRadius: 5, 
+                        padding: '2px 5px', 
+                        border: '1px solid rgba(255, 255, 255, 0.1)' 
+                      }}
+                      title="Slayt yazı ve kart boyutunu büyüt / küçült"
+                    >
+                      <span style={{ fontSize: 10, color: '#94a3b8', marginRight: 3, fontWeight: 600 }}>Slayt Boyutu:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSetSlideZoom(slideZoom - 0.06)}
+                        style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '1px 5px', fontSize: 11, fontWeight: 800, lineHeight: 1 }}
+                        title="Slayt yazılarını küçült"
+                      >
+                        A-
+                      </button>
+                      <span style={{ fontSize: 10.5, color: 'var(--cyan)', fontWeight: 800, minWidth: 34, textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+                        %{Math.round(slideZoom * 100)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleSetSlideZoom(slideZoom + 0.06)}
+                        style={{ background: 'transparent', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '1px 5px', fontSize: 11, fontWeight: 800, lineHeight: 1 }}
+                        title="Slayt yazılarını büyüt"
+                      >
+                        A+
+                      </button>
+                    </div>
+                  </>
                 )}
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                   ⏱️ {activeSlide.durationEst}
@@ -2293,17 +2478,26 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                                   <span style={{ fontSize: 10, color: '#94a3b8' }}>{liveNewsList.length} Akış</span>
                                 </div>
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {(pinnedNews.length > 0 ? pinnedNews : liveNewsList).slice(0, 3).map((n, idx) => {
                                   const sm = getSentimentMeta(n.sentiment);
+                                  const display = getDisplayNewsCopy(n);
+                                  const leadSnippet = display.body || n.impactNote || '';
                                   return (
-                                    <div key={n.id || idx} style={{ fontSize: 11.5, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.35 }}>
-                                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: sm.color, flexShrink: 0 }} />
-                                      <span style={{ fontSize: 9.5, fontWeight: 800, color: sm.color, background: sm.bg, padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>
-                                        {n.region === 'TR' ? 'TR' : 'GLOBAL'}
-                                      </span>
-                                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>{n.title}</span>
-                                      {n.source && <span style={{ color: '#94a3b8', fontSize: 10, flexShrink: 0 }}>({n.source})</span>}
+                                    <div key={n.id || idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                      <div style={{ fontSize: 11.5, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.35 }}>
+                                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: sm.color, flexShrink: 0 }} />
+                                        <span style={{ fontSize: 9.5, fontWeight: 800, color: sm.color, background: sm.bg, padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>
+                                          {n.region === 'TR' ? 'TR' : 'GLOBAL'}
+                                        </span>
+                                        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 700 }} title={display.headline}>{display.headline}</span>
+                                        {n.source && <span style={{ color: '#94a3b8', fontSize: 10, flexShrink: 0 }}>({n.source})</span>}
+                                      </div>
+                                      {leadSnippet && (
+                                        <div style={{ fontSize: 10.5, color: '#94a3b8', paddingLeft: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3 }} title={leadSnippet}>
+                                          {leadSnippet}
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
@@ -2337,6 +2531,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             {pinnedTR.slice(0, 3).map((n, idx) => {
                               const sm = getSentimentMeta(n.sentiment);
                               const isCritical = (n.impactScore || 0) >= 5.5 || n.impactLevel === 'KRİTİK';
+                              const display = getDisplayNewsCopy(n);
                               return (
                                 <div
                                   key={n.id || idx}
@@ -2372,9 +2567,25 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                                     </span>
                                   </div>
 
-                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', lineHeight: 1.38 }}>
-                                    {n.title}
+                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', lineHeight: 1.35 }}>
+                                    {display.headline}
                                   </div>
+
+                                  {display.body && (
+                                    <div
+                                      style={{
+                                        fontSize: 11.5,
+                                        color: '#cbd5e1',
+                                        lineHeight: 1.46,
+                                        background: 'rgba(15, 23, 42, 0.55)',
+                                        borderRadius: 4,
+                                        padding: '5px 8px'
+                                      }}
+                                      title={display.body}
+                                    >
+                                      {display.body}
+                                    </div>
+                                  )}
 
                                   {n.impactNote && (
                                     <div style={{ fontSize: 11.5, color: '#e2e8f0', background: 'rgba(56, 189, 248, 0.08)', borderLeft: '2px solid #38bdf8', padding: '4px 8px', borderRadius: '0 4px 4px 0', lineHeight: 1.35 }}>
@@ -2428,6 +2639,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             {pinnedGlobal.slice(0, 3).map((n, idx) => {
                               const sm = getSentimentMeta(n.sentiment);
                               const isCritical = (n.impactScore || 0) >= 5.5 || n.impactLevel === 'KRİTİK';
+                              const display = getDisplayNewsCopy(n);
                               return (
                                 <div
                                   key={n.id || idx}
@@ -2463,9 +2675,25 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                                     </span>
                                   </div>
 
-                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', lineHeight: 1.38 }}>
-                                    {n.title}
+                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', lineHeight: 1.35 }}>
+                                    {display.headline}
                                   </div>
+
+                                  {display.body && (
+                                    <div
+                                      style={{
+                                        fontSize: 11.5,
+                                        color: '#cbd5e1',
+                                        lineHeight: 1.46,
+                                        background: 'rgba(15, 23, 42, 0.55)',
+                                        borderRadius: 4,
+                                        padding: '5px 8px'
+                                      }}
+                                      title={display.body}
+                                    >
+                                      {display.body}
+                                    </div>
+                                  )}
 
                                   {n.impactNote && (
                                     <div style={{ fontSize: 11.5, color: '#e2e8f0', background: 'rgba(244, 63, 94, 0.08)', borderLeft: '2px solid #f43f5e', padding: '4px 8px', borderRadius: '0 4px 4px 0', lineHeight: 1.35 }}>
@@ -3832,6 +4060,77 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                 )}
               </div>
 
+              {/* 📖 Prompter-Free On-Slide Narration Notes Strip (Hidden in OBS Pop-out & Prompter-Only) */}
+              {!isPopout && showSlideNotesStrip && slideNotesParagraphs.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: '10px 14px',
+                    borderRadius: 7,
+                    background: 'linear-gradient(135deg, rgba(8, 15, 32, 0.96), rgba(15, 23, 42, 0.94))',
+                    border: '1px solid rgba(56, 189, 248, 0.38)',
+                    borderLeft: '3px solid #38bdf8',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    flexShrink: 0
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <BookOpen size={13} style={{ color: '#38bdf8' }} />
+                      <span style={{ fontSize: 10.5, fontWeight: 900, color: '#7dd3fc', letterSpacing: '0.04em' }}>
+                        SLAYT {activeSlide.id} ANLATIM AÇIKLAMASI
+                      </span>
+                      <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600 }}>
+                        (Promptersız Tam Ekran Sunum Notu • OBS Penceresinde Gizli)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSetSlideNotesPref('off')}
+                      style={{
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.14)',
+                        color: '#cbd5e1',
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Gizle
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      maxHeight: isFullscreen ? '24vh' : 165,
+                      overflowY: 'auto',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      paddingRight: 4
+                    }}
+                  >
+                    {slideNotesParagraphs.map((para, pIdx) => (
+                      <p
+                        key={pIdx}
+                        style={{
+                          margin: 0,
+                          fontSize: 12.5,
+                          color: '#f1f5f9',
+                          lineHeight: 1.55,
+                          fontWeight: 500
+                        }}
+                      >
+                        {para}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* 🔴 Toggleable TV Breaking-News Lower-Third Strip (Synced to OBS) */}
               {showBreakingTicker && activeTickerItem && (
                 <div
@@ -3885,11 +4184,13 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                         textOverflow: 'ellipsis',
                         flex: 1
                       }}
-                      title={activeTickerItem.title}
+                      title={activeTickerCopy.body ? `${activeTickerCopy.headline} — ${activeTickerCopy.body}` : activeTickerCopy.headline}
                     >
-                      {activeTickerItem.title}
-                      {activeTickerItem.impactNote ? (
-                        <span style={{ color: '#fda4af', fontWeight: 700 }}> — {activeTickerItem.impactNote}</span>
+                      {activeTickerCopy.headline}
+                      {(activeTickerItem.impactNote || activeTickerCopy.body) ? (
+                        <span style={{ color: activeTickerItem.impactNote ? '#fda4af' : '#cbd5e1', fontWeight: activeTickerItem.impactNote ? 700 : 500 }}>
+                          {' '}— {activeTickerItem.impactNote || activeTickerCopy.body}
+                        </span>
                       ) : null}
                     </span>
                   </div>
@@ -4272,13 +4573,58 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
             <span>Word İndir (.doc)</span>
           </button>
 
+          {/* On-Slide Prompter-Free Notes Toggle */}
+          <button
+            type="button"
+            onClick={() => handleSetSlideNotesPref(showSlideNotesStrip ? 'off' : 'on')}
+            className="chip-btn"
+            style={{
+              fontSize: 10,
+              padding: '5px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              borderColor: showSlideNotesStrip ? '#38bdf8' : 'rgba(255,255,255,0.2)',
+              color: showSlideNotesStrip ? '#7dd3fc' : '#94a3b8',
+              fontWeight: 800,
+              background: showSlideNotesStrip ? 'rgba(56, 189, 248, 0.14)' : 'rgba(0,0,0,0.25)'
+            }}
+            title="Slayt altında promptersız okuma açıklamasını açıp kapatır (OBS temiz pencerede görünmez)"
+          >
+            <BookOpen size={12} />
+            <span>📖 Slayt Anlatımı: {showSlideNotesStrip ? 'Açık' : 'Kapalı'}</span>
+          </button>
+
+          {/* 1-Click Prompter-Free Fullscreen Presentation */}
+          <button
+            type="button"
+            onClick={enterPrompterFreeFullscreen}
+            className="chip-btn"
+            style={{
+              fontSize: 10.5,
+              padding: '6px 11px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              borderColor: '#38bdf8',
+              color: '#e0f2fe',
+              background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.28), rgba(37, 99, 235, 0.25))',
+              fontWeight: 800,
+              boxShadow: '0 2px 8px rgba(14, 165, 233, 0.2)'
+            }}
+            title="Prompter panelini kapatıp slaytları alt anlatım açıklamasıyla doğrudan tam ekranda sunar"
+          >
+            <Maximize2 size={12} />
+            <span>📺 Tam Ekran Sunum</span>
+          </button>
+
           {/* Fullscreen Button */}
           <button
             type="button"
             onClick={togglePresentationFullscreen}
             className="chip-btn"
             style={{ fontSize: 10, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4, borderColor: 'var(--cyan)', color: 'var(--cyan)', fontWeight: 700 }}
-            title="Slaytları 16:9 tam ekran sunum moduna al"
+            title="Mevcut görünümü tam ekrana al"
           >
             {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
             <span>{isFullscreen ? 'Küçült' : '⛶ Tam Ekran'}</span>
@@ -4740,34 +5086,49 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                             </div>
 
                             <div style={{ fontSize: 11.5, fontWeight: 700, color: '#ffffff', lineHeight: 1.35 }}>
-                              {n.title}
+                              {getDisplayNewsCopy(n).headline}
                             </div>
 
+                            {getDisplayNewsCopy(n).body && !isEditingThis && (
+                              <div style={{ fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.4, background: 'rgba(15, 23, 42, 0.55)', padding: '4px 7px', borderRadius: 4 }}>
+                                {getDisplayNewsCopy(n).body}
+                              </div>
+                            )}
+
                             {isEditingThis ? (
-                              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                                <input
-                                  type="text"
-                                  value={n.impactNote || ''}
-                                  onChange={(e) => updatePinnedImpactNote(n.id, e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === 'Escape') setEditingNoteId(null);
-                                  }}
-                                  placeholder="Sunucu / piyasa etkisi notu yazın (Enter ile kaydet)..."
-                                  autoFocus
-                                  style={{ flex: 1, background: 'rgba(0,0,0,0.6)', border: '1px solid #38bdf8', color: '#f8fafc', fontSize: 10.5, padding: '4px 8px', borderRadius: 4 }}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                <textarea
+                                  rows={2}
+                                  value={n.summary || ''}
+                                  onChange={(e) => updatePinnedNewsField(n.id, { summary: e.target.value })}
+                                  placeholder="Slayt üzerinde görünecek 1-2 cümlelik net açıklama / gerekçe..."
+                                  style={{ width: '100%', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(56, 189, 248, 0.5)', color: '#f8fafc', fontSize: 10.5, padding: '4px 8px', borderRadius: 4, resize: 'vertical', lineHeight: 1.4 }}
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingNoteId(null)}
-                                  style={{ background: '#0284c7', border: 'none', color: '#fff', fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 4, cursor: 'pointer' }}
-                                >
-                                  Tamam
-                                </button>
+                                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                                  <input
+                                    type="text"
+                                    value={n.impactNote || ''}
+                                    onChange={(e) => updatePinnedImpactNote(n.id, e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === 'Escape') setEditingNoteId(null);
+                                    }}
+                                    placeholder="Sunucu / piyasa etkisi notu (opsiyonel)..."
+                                    autoFocus
+                                    style={{ flex: 1, background: 'rgba(0,0,0,0.6)', border: '1px solid #38bdf8', color: '#f8fafc', fontSize: 10.5, padding: '4px 8px', borderRadius: 4 }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingNoteId(null)}
+                                    style={{ background: '#0284c7', border: 'none', color: '#fff', fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 4, cursor: 'pointer' }}
+                                  >
+                                    Tamam
+                                  </button>
+                                </div>
                               </div>
                             ) : (
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: 10, color: n.impactNote ? '#7dd3fc' : '#64748b', fontStyle: n.impactNote ? 'normal' : 'italic' }}>
-                                  {n.impactNote ? `💬 Piyasa Etkisi: ${n.impactNote}` : 'Piyasa etkisi notu yok (isteğe bağlı)'}
+                                  {n.impactNote ? `💬 Piyasa Etkisi: ${n.impactNote}` : (n.summary ? 'Açıklama slaytta aktif (etki notu isteğe bağlı)' : 'Açıklama veya piyasa etkisi notu ekleyin')}
                                 </span>
                                 <button
                                   type="button"
@@ -4775,7 +5136,7 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                                   style={{ background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.25)', color: '#7dd3fc', fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}
                                 >
                                   <Edit3 size={10} />
-                                  <span>{n.impactNote ? 'Notu Düzenle' : '+ Etki Notu'}</span>
+                                  <span>{(n.summary || n.impactNote) ? 'Açıklama / Not Düzenle' : '+ Açıklama / Not'}</span>
                                 </button>
                               </div>
                             )}
@@ -4801,8 +5162,16 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                   type="text"
                   value={customNewsForm.title}
                   onChange={(e) => setCustomNewsForm(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Manşet (Örn: Pegasus beklenti üstü bilançoyla %6 yükseldi / NVDA haberi...)"
+                  placeholder="Manşet (Örn: Pegasus beklenti üstü 3Ç26 kârıyla %6 yükseldi / NVDA CEO haberi...)"
                   style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '6px 9px', borderRadius: 5, width: '100%' }}
+                />
+
+                <textarea
+                  rows={2}
+                  value={customNewsForm.summary}
+                  onChange={(e) => setCustomNewsForm(prev => ({ ...prev, summary: e.target.value }))}
+                  placeholder="Haber Açıklaması / Özeti (Slayt üzerinde doğrudan okunacak net 1-2 cümlelik neden-sonuç bilgisi)"
+                  style={{ background: 'rgba(0,0,0,0.38)', border: '1px solid rgba(255,255,255,0.1)', color: '#e2e8f0', fontSize: 10.5, padding: '5px 9px', borderRadius: 5, width: '100%', resize: 'vertical', lineHeight: 1.4 }}
                 />
 
                 <input
@@ -4973,13 +5342,33 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
                           </div>
 
                           <div style={{ fontSize: 11.5, fontWeight: 700, color: '#f8fafc', lineHeight: 1.35 }}>
-                            {n.title}
+                            {getDisplayNewsCopy(n).headline}
                           </div>
+
+                          {getDisplayNewsCopy(n).body && (
+                            <div
+                              style={{
+                                fontSize: 10.5,
+                                color: '#94a3b8',
+                                lineHeight: 1.38,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}
+                              title={getDisplayNewsCopy(n).body}
+                            >
+                              {getDisplayNewsCopy(n).body}
+                            </div>
+                          )}
 
                           <div style={{ fontSize: 9.5, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span>{n.source || 'Google Finans'}</span>
                             <span>•</span>
                             <span style={{ fontFamily: 'var(--font-mono)' }}>{formatRelativeTimeTr(n.timeMs || n.pubDate)}</span>
+                            {n.summary && (
+                              <span style={{ color: '#34d399', fontWeight: 700, marginLeft: 4 }}>✓ Açıklamalı</span>
+                            )}
                           </div>
                         </div>
 
@@ -5060,10 +5449,10 @@ export default function BroadcastStudioTab({ isObsPopout = false }) {
               overflow: 'hidden',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
               position: viewMode === 'split' ? 'sticky' : 'relative',
-              top: isFullscreen ? 16 : 8,
-              height: viewMode === 'split' ? '100%' : 'auto',
-              maxHeight: viewMode === 'split' ? '100%' : 'none',
-              minHeight: isFullscreen ? 'calc(100vh - 32px)' : (viewMode === 'split' ? 0 : 640)
+              top: isFullscreen ? 0 : 8,
+              height: (isFullscreen || viewMode === 'split') ? '100%' : 'auto',
+              maxHeight: (isFullscreen || viewMode === 'split') ? '100%' : 'none',
+              minHeight: isFullscreen ? 0 : (viewMode === 'split' ? 0 : 640)
             }}
           >
             {renderSlideContent(false)}
