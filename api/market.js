@@ -1277,53 +1277,137 @@ async function fetchStockFundamentals(rawSymbol) {
       }
     } : null,
     qualtrim: realQualtrim,
-    analysis: {
-      ticker: clean,
-      name: meta.longName || meta.shortName || clean,
-      currency,
-      current_price: curPrice,
-      prev_price: prevPrice,
-      day_change_pct: dayChangePct,
-      sector: profile.industry || profile.sector || null,
-      macro_sector: profile.sector || null,
-      number_of_analysts: fin.numberOfAnalystOpinions?.raw || null,
-      pillars: {
-        fundamental: {
-          roe_pct: roe,
-          gross_margin_pct: grossMargin,
-          revenue_growth_pct: revGrowth,
-          debt_to_equity: debtToEq,
-          free_cashflow: fcf,
-          total_revenue: totalRev
-        },
-        valuation: {
-          pe: trailingPE,
-          forward_pe: forwardPE,
-          pb: pb,
-          analyst_target: analystTarget,
-          analyst_upside_pct: analystUpside
-        },
-        momentum: {
-          return_1m: ret1m,
-          return_3m: ret3m,
-          return_6m: ret6m,
-          return_12m: ret12m,
-          dist_sma200_pct: (ma200 != null && ma200 > 0) ? Number((((curPrice - ma200) / ma200) * 100).toFixed(1)) : null,
-          rsi_14: rsi
-        },
-        technical: {
-          ma20,
-          ma50,
-          ma200,
-          rsi,
-          trend_status: (ma200 != null && ma200 > 0) ? (curPrice > ma200 ? '200 Günlük Ortalamanın Üzerinde' : '200 Günlük Ortalamanın Altında') : null
-        },
-        risk: {
-          beta,
-          max_drawdown: dist52wHigh
-        }
+    analysis: (() => {
+      // Calculate normalized 0-100 pillar scores and composite quant score
+      let fScore = 65;
+      let fSum = 0, fCount = 0;
+      if (roe != null) { fSum += Math.min(100, Math.max(0, (roe / 25) * 100)); fCount++; }
+      if (grossMargin != null) { fSum += Math.min(100, Math.max(0, (grossMargin / 60) * 100)); fCount++; }
+      if (revGrowth != null) { fSum += Math.min(100, Math.max(0, 50 + revGrowth * 1.5)); fCount++; }
+      if (debtToEq != null) { fSum += debtToEq <= 35 ? 100 : debtToEq <= 75 ? 85 : debtToEq <= 120 ? 60 : 35; fCount++; }
+      if (fCount > 0) fScore = Math.round(fSum / fCount);
+
+      let vScore = 60;
+      let vSum = 0, vCount = 0;
+      const peVal = forwardPE ?? trailingPE;
+      if (peVal != null && peVal > 0) {
+        vSum += peVal <= 15 ? 100 : peVal <= 22 ? 88 : peVal <= 30 ? 72 : peVal <= 40 ? 50 : 25;
+        vCount++;
       }
-    }
+      if (pb != null && pb > 0) {
+        vSum += pb <= 2.5 ? 95 : pb <= 6.0 ? 75 : pb <= 12.0 ? 55 : 30;
+        vCount++;
+      }
+      if (analystUpside != null) {
+        vSum += analystUpside >= 30 ? 100 : analystUpside >= 15 ? 85 : analystUpside >= 0 ? 65 : 35;
+        vCount++;
+      }
+      if (vCount > 0) vScore = Math.round(vSum / vCount);
+
+      let mScore = 65;
+      let mSum = 0, mCount = 0;
+      if (rsi != null) {
+        mSum += (rsi >= 45 && rsi <= 65) ? 95 : (rsi >= 35 && rsi <= 72) ? 80 : 45;
+        mCount++;
+      }
+      if (ma200 != null && ma200 > 0) {
+        const d200 = ((curPrice - ma200) / ma200) * 100;
+        mSum += (d200 >= 0 && d200 <= 25) ? 95 : d200 > 25 ? 75 : d200 >= -10 ? 60 : 35;
+        mCount++;
+      }
+      if (ret3m != null) {
+        mSum += ret3m >= 15 ? 95 : ret3m >= 5 ? 80 : ret3m >= -5 ? 60 : 35;
+        mCount++;
+      }
+      if (mCount > 0) mScore = Math.round(mSum / mCount);
+
+      let tScore = 65;
+      let tSum = 0, tCount = 0;
+      if (ma200 != null && ma200 > 0) { tSum += curPrice >= ma200 ? 95 : 35; tCount++; }
+      if (ma50 != null && ma50 > 0) { tSum += curPrice >= ma50 ? 90 : 40; tCount++; }
+      if (rsi != null) { tSum += (rsi >= 40 && rsi <= 70) ? 90 : 45; tCount++; }
+      if (tCount > 0) tScore = Math.round(tSum / tCount);
+
+      let rScore = 65;
+      let rSum = 0, rCount = 0;
+      if (beta != null) {
+        rSum += (beta >= 0.7 && beta <= 1.25) ? 95 : (beta < 0.7 || beta <= 1.6) ? 75 : 45;
+        rCount++;
+      }
+      if (dist52wHigh != null) {
+        const dd = Math.abs(dist52wHigh);
+        rSum += dd <= 15 ? 95 : dd <= 30 ? 80 : dd <= 45 ? 60 : 35;
+        rCount++;
+      }
+      if (rCount > 0) rScore = Math.round(rSum / rCount);
+
+      const quantScore = Math.round(fScore * 0.25 + vScore * 0.25 + mScore * 0.20 + tScore * 0.15 + rScore * 0.15);
+      const quantGrade = quantScore >= 85 ? 'A+' : quantScore >= 75 ? 'A' : quantScore >= 65 ? 'B+' : quantScore >= 55 ? 'B' : quantScore >= 45 ? 'C' : 'D';
+      const quantSignal = quantScore >= 80 ? 'GÜÇLÜ AL' : quantScore >= 65 ? 'AL' : quantScore >= 50 ? 'TUT' : 'UZAK DUR';
+      const calcGrade = (sc) => sc >= 85 ? 'A+' : sc >= 75 ? 'A' : sc >= 65 ? 'B+' : sc >= 55 ? 'B' : sc >= 45 ? 'C' : 'D';
+
+      return {
+        ticker: clean,
+        name: meta.longName || meta.shortName || clean,
+        currency,
+        current_price: curPrice,
+        prev_price: prevPrice,
+        day_change_pct: dayChangePct,
+        sector: profile.industry || profile.sector || null,
+        macro_sector: profile.sector || null,
+        number_of_analysts: fin.numberOfAnalystOpinions?.raw || null,
+        quant_score: quantScore,
+        grade: quantGrade,
+        signal: quantSignal,
+        pillars: {
+          fundamental: {
+            score: fScore,
+            grade: calcGrade(fScore),
+            roe_pct: roe,
+            gross_margin_pct: grossMargin,
+            revenue_growth_pct: revGrowth,
+            debt_to_equity: debtToEq,
+            free_cashflow: fcf,
+            total_revenue: totalRev
+          },
+          valuation: {
+            score: vScore,
+            grade: calcGrade(vScore),
+            pe: trailingPE,
+            forward_pe: forwardPE,
+            pb: pb,
+            peg: stats.pegRatio?.raw || null,
+            analyst_target: analystTarget,
+            analyst_upside_pct: analystUpside
+          },
+          momentum: {
+            score: mScore,
+            grade: calcGrade(mScore),
+            return_1m: ret1m,
+            return_3m: ret3m,
+            return_6m: ret6m,
+            return_12m: ret12m,
+            dist_sma200_pct: (ma200 != null && ma200 > 0) ? Number((((curPrice - ma200) / ma200) * 100).toFixed(1)) : null,
+            rsi_14: rsi
+          },
+          technical: {
+            score: tScore,
+            grade: calcGrade(tScore),
+            ma20,
+            ma50,
+            ma200,
+            rsi,
+            trend_status: (ma200 != null && ma200 > 0) ? (curPrice > ma200 ? '200 Günlük Ortalamanın Üzerinde' : '200 Günlük Ortalamanın Altında') : null
+          },
+          risk: {
+            score: rScore,
+            grade: calcGrade(rScore),
+            beta,
+            max_drawdown: dist52wHigh
+          }
+        }
+      };
+    })()
   };
 }
 

@@ -478,6 +478,21 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
   });
   const [localQuotes, setLocalQuotes] = useState({});
   const [liveFundamentals, setLiveFundamentals] = useState({});
+  const [showRadar, setShowRadar] = useState(() => {
+    try {
+      const saved = localStorage.getItem('bb_show_snowflake_radar');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleRadar = (val) => {
+    setShowRadar(val);
+    try {
+      localStorage.setItem('bb_show_snowflake_radar', JSON.stringify(val));
+    } catch {}
+  };
   const [isLoadingFundamentals, setIsLoadingFundamentals] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -695,7 +710,136 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
     f_score: (fund.score != null ? (fund.score >= 80 ? 8 : fund.score >= 65 ? 7 : fund.score >= 50 ? 6 : 5) : 8)
   };
 
-  const quantScore = analysis?.quant_score != null ? Number(analysis.quant_score) : 85.4;
+  // Compute robust, verified 0-100 scores for the 5 pillars from real financial metrics
+  const effectivePillars = useMemo(() => {
+    // 1. Temel Bilanço (Fundamental 0-100)
+    let fScore = fund.score != null ? Number(fund.score) : null;
+    if (fScore == null || isNaN(fScore)) {
+      let sum = 0, count = 0;
+      if (fund.roe_pct != null) {
+        sum += Math.min(100, Math.max(0, (Number(fund.roe_pct) / 25) * 100));
+        count++;
+      }
+      if (fund.gross_margin_pct != null) {
+        sum += Math.min(100, Math.max(0, (Number(fund.gross_margin_pct) / 60) * 100));
+        count++;
+      }
+      if (fund.revenue_growth_pct != null) {
+        sum += Math.min(100, Math.max(0, 50 + Number(fund.revenue_growth_pct) * 1.5));
+        count++;
+      }
+      if (fund.debt_to_equity != null) {
+        const de = Number(fund.debt_to_equity);
+        sum += de <= 35 ? 100 : de <= 75 ? 85 : de <= 120 ? 60 : 35;
+        count++;
+      }
+      fScore = count > 0 ? Math.round(sum / count) : 65;
+    }
+
+    // 2. Değerleme (Valuation 0-100)
+    let vScore = valPillar.score != null ? Number(valPillar.score) : null;
+    if (vScore == null || isNaN(vScore)) {
+      let sum = 0, count = 0;
+      const pe = valPillar.forward_pe ?? valPillar.pe;
+      if (pe != null && pe > 0) {
+        sum += pe <= 15 ? 100 : pe <= 22 ? 88 : pe <= 30 ? 72 : pe <= 40 ? 50 : 25;
+        count++;
+      }
+      if (valPillar.pb != null && valPillar.pb > 0) {
+        const pb = Number(valPillar.pb);
+        sum += pb <= 2.5 ? 95 : pb <= 6.0 ? 75 : pb <= 12.0 ? 55 : 30;
+        count++;
+      }
+      if (valPillar.analyst_upside_pct != null) {
+        const up = Number(valPillar.analyst_upside_pct);
+        sum += up >= 35 ? 100 : up >= 20 ? 85 : up >= 10 ? 70 : up >= 0 ? 50 : 30;
+        count++;
+      }
+      vScore = count > 0 ? Math.round(sum / count) : 60;
+    }
+
+    // 3. Momentum (0-100)
+    let mScore = mom.score != null ? Number(mom.score) : null;
+    if (mScore == null || isNaN(mScore)) {
+      let sum = 0, count = 0;
+      if (mom.rsi_14 != null) {
+        const r = Number(mom.rsi_14);
+        sum += (r >= 45 && r <= 65) ? 95 : (r >= 35 && r <= 72) ? 80 : (r < 30 || r > 80) ? 40 : 60;
+        count++;
+      }
+      if (mom.dist_sma200_pct != null) {
+        const d = Number(mom.dist_sma200_pct);
+        sum += (d >= 0 && d <= 25) ? 95 : d > 25 ? 75 : d >= -10 ? 60 : 35;
+        count++;
+      }
+      if (mom.return_3m != null) {
+        const r3 = Number(mom.return_3m);
+        sum += r3 >= 20 ? 95 : r3 >= 5 ? 80 : r3 >= -5 ? 60 : 35;
+        count++;
+      }
+      mScore = count > 0 ? Math.round(sum / count) : 65;
+    }
+
+    // 4. Teknik Yapı (0-100)
+    let tScore = tech.score != null ? Number(tech.score) : null;
+    if (tScore == null || isNaN(tScore)) {
+      let sum = 0, count = 0;
+      const p = effectiveLivePrice;
+      if (tech.ma200 && p > 0) {
+        sum += p >= tech.ma200 ? 95 : 35;
+        count++;
+      }
+      if (tech.ma50 && p > 0) {
+        sum += p >= tech.ma50 ? 90 : 40;
+        count++;
+      }
+      if (tech.trend_status) {
+        sum += tech.trend_status.includes('Üzerinde') || tech.trend_status.includes('Yukarı') ? 90 : 40;
+        count++;
+      }
+      tScore = count > 0 ? Math.round(sum / count) : 65;
+    }
+
+    // 5. Risk Profil (0-100: Higher = Lower Risk)
+    let rScore = risk.score != null ? Number(risk.score) : null;
+    if (rScore == null || isNaN(rScore)) {
+      let sum = 0, count = 0;
+      if (risk.beta != null) {
+        const b = Number(risk.beta);
+        sum += (b >= 0.7 && b <= 1.25) ? 95 : (b < 0.7 || b <= 1.6) ? 75 : 45;
+        count++;
+      }
+      const ddRaw = risk.max_drawdown ?? risk.max_drawdown_1y_pct;
+      if (ddRaw != null) {
+        const dd = Math.abs(Number(ddRaw));
+        sum += dd <= 15 ? 95 : dd <= 30 ? 80 : dd <= 45 ? 60 : 35;
+        count++;
+      }
+      rScore = count > 0 ? Math.round(sum / count) : 65;
+    }
+
+    const comp = analysis?.quant_score != null
+      ? Number(analysis.quant_score)
+      : Math.round(fScore * 0.25 + vScore * 0.25 + mScore * 0.20 + tScore * 0.15 + rScore * 0.15);
+
+    const calcGrade = (sc) => sc >= 85 ? 'A+' : sc >= 75 ? 'A' : sc >= 65 ? 'B+' : sc >= 55 ? 'B' : sc >= 45 ? 'C' : 'D';
+
+    return {
+      fundScore: fScore,
+      fundGrade: fund.grade || calcGrade(fScore),
+      valScore: vScore,
+      valGrade: valPillar.grade || calcGrade(vScore),
+      momScore: mScore,
+      momGrade: mom.grade || calcGrade(mScore),
+      techScore: tScore,
+      techGrade: tech.grade || calcGrade(tScore),
+      riskScore: rScore,
+      riskGrade: risk.grade || calcGrade(rScore),
+      compositeScore: comp
+    };
+  }, [fund, valPillar, mom, tech, risk, analysis, effectiveLivePrice]);
+
+  const quantScore = analysis?.quant_score != null ? Number(analysis.quant_score) : effectivePillars.compositeScore;
   const stockTheme = getHealthColorTheme(quantScore);
   const quantGrade = analysis?.grade || (quantScore >= 85 ? 'A' : quantScore >= 70 ? 'B' : quantScore >= 50 ? 'C' : 'D');
   const activeSignal = (analysis?.signal || analysis?.verdict || (quantScore >= 80 ? 'GÜÇLÜ AL' : quantScore >= 65 ? 'AL' : quantScore >= 50 ? 'TUT' : 'UZAK DUR')).toUpperCase();
@@ -718,11 +862,11 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
       {
         label: `${currentTicker} Sağlık Profili`,
         data: [
-          fund.score != null ? Number(fund.score) : 85,
-          valPillar.score != null ? Number(valPillar.score) : 75,
-          mom.score != null ? Number(mom.score) : 80,
-          tech.score != null ? Number(tech.score) : 82,
-          risk.score != null ? Number(risk.score) : 75
+          effectivePillars.fundScore,
+          effectivePillars.valScore,
+          effectivePillars.momScore,
+          effectivePillars.techScore,
+          effectivePillars.riskScore
         ],
         backgroundColor: stockTheme.bgRgba,
         borderColor: stockTheme.color,
@@ -2970,140 +3114,194 @@ export default function SingleStockTab({ selectedTicker, onSelectTicker }) {
         </div>
 
         {/* Kar Tanesi & 5-Pillar Quant Scorecard Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 330px) 1fr', gap: 14, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: showRadar ? 'minmax(280px, 330px) 1fr' : '1fr', gap: 14, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
           {/* Kar Tanesi Radar (Simply Wall St Style) */}
-          <div style={{ background: '#090d16', padding: 14, borderRadius: 8, border: `1px solid ${stockTheme.color}40`, boxShadow: `0 0 16px ${stockTheme.color}15`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 12, color: '#e2e8f0' }}>
-                  <Snowflake size={15} style={{ color: stockTheme.color }} />
-                  <span>HİSSE KAR TANESİ RADARI</span>
+          {showRadar ? (
+            <div style={{ background: '#090d16', padding: 14, borderRadius: 8, border: `1px solid ${stockTheme.color}40`, boxShadow: `0 0 16px ${stockTheme.color}15`, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: 12, color: '#e2e8f0' }}>
+                    <Snowflake size={15} style={{ color: stockTheme.color }} />
+                    <span>HİSSE KAR TANESİ RADARI</span>
+                  </div>
+                  <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
+                    5-Faktörlü Kar Tanesi Modeli
+                  </div>
                 </div>
-                <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                  5-Faktörlü Kar Tanesi Modeli
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className={`nav-badge ${stockTheme.badgeClass}`} style={{ fontSize: 9.5, fontWeight: 800 }}>
+                    {stockTheme.icon} {Number(quantScore || 85.4).toFixed(1)}/100
+                  </span>
+                  <button 
+                    onClick={() => toggleRadar(false)} 
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.05)', 
+                      border: '1px solid rgba(255, 255, 255, 0.12)', 
+                      color: 'var(--text-muted)', 
+                      cursor: 'pointer', 
+                      fontSize: 10, 
+                      padding: '2px 7px', 
+                      borderRadius: 4, 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: 3,
+                      transition: 'all 0.2s ease'
+                    }} 
+                    title="Kar Tanesi Radarını Gizle"
+                  >
+                    <span>✕</span>
+                    <span>Gizle</span>
+                  </button>
                 </div>
               </div>
-              <span className={`nav-badge ${stockTheme.badgeClass}`} style={{ fontSize: 9.5, fontWeight: 800 }}>
-                {stockTheme.icon} {Number(quantScore || 85.4).toFixed(1)}/100
-              </span>
-            </div>
 
-            <div style={{ height: 210, width: '100%', position: 'relative', margin: '4px 0' }}>
-              <Radar data={stockRadarData} options={stockRadarOptions} />
-            </div>
+              <div style={{ height: 210, width: '100%', position: 'relative', margin: '4px 0' }}>
+                <Radar data={stockRadarData} options={stockRadarOptions} />
+              </div>
 
-            {/* 4-Tier Health Color Scale Legend Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, background: 'rgba(0,0,0,0.5)', padding: '5px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center' }}>
-              <div style={{ color: '#ef4444', fontWeight: stockTheme.status === 'critical' ? 900 : 500, background: stockTheme.status === 'critical' ? 'rgba(239,68,68,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                🔴 &lt;50 Sağlıksız
-              </div>
-              <div style={{ color: '#f59e0b', fontWeight: stockTheme.status === 'warning' ? 900 : 500, background: stockTheme.status === 'warning' ? 'rgba(245,158,11,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                🟡 50-69 Orta
-              </div>
-              <div style={{ color: '#00e5ff', fontWeight: stockTheme.status === 'healthy' ? 900 : 500, background: stockTheme.status === 'healthy' ? 'rgba(0,229,255,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                🔵 70-84 Sağlıklı
-              </div>
-              <div style={{ color: '#10b981', fontWeight: stockTheme.status === 'excellent' ? 900 : 500, background: stockTheme.status === 'excellent' ? 'rgba(16,185,129,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                🟢 ≥85 Mükemmel
+              {/* 4-Tier Health Color Scale Legend Bar */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, background: 'rgba(0,0,0,0.5)', padding: '5px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center' }}>
+                <div style={{ color: '#ef4444', fontWeight: stockTheme.status === 'critical' ? 900 : 500, background: stockTheme.status === 'critical' ? 'rgba(239,68,68,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🔴 &lt;50 Sağlıksız
+                </div>
+                <div style={{ color: '#f59e0b', fontWeight: stockTheme.status === 'warning' ? 900 : 500, background: stockTheme.status === 'warning' ? 'rgba(245,158,11,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🟡 50-69 Orta
+                </div>
+                <div style={{ color: '#00e5ff', fontWeight: stockTheme.status === 'healthy' ? 900 : 500, background: stockTheme.status === 'healthy' ? 'rgba(0,229,255,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🔵 70-84 Sağlıklı
+                </div>
+                <div style={{ color: '#10b981', fontWeight: stockTheme.status === 'excellent' ? 900 : 500, background: stockTheme.status === 'excellent' ? 'rgba(16,185,129,0.15)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
+                  🟢 ≥85 Mükemmel
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
 
           {/* 5-Pillar Quant Scorecard (Açıklamalı Sütunlar) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            {/* Pillar 1: Temel Bilanço */}
-            <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(59,130,246,0.25)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>🏛️ TEMEL SAĞLIK</span>
-                <span className="nav-badge blue" style={{ fontSize: 9, padding: '1px 5px' }}>{fund.grade || 'A'}</span>
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: '#3b82f6', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                {fund.score != null ? Number(fund.score).toFixed(1) : '88.5'}
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                <div>ROE: <strong style={{ color: '#fff' }}>%{fund.roe_pct != null ? Number(fund.roe_pct).toFixed(1) : '24.5'}</strong></div>
-                <div style={{ fontSize: 9, color: 'var(--cyan)' }}>{Number(fund.roe_pct || 25) > 20 ? '🌟 Süper Özkaynak Kârı' : '✅ Makul Kârlılık'}</div>
-                <div>Brüt Marj: <strong style={{ color: '#fff' }}>%{fund.gross_margin_pct != null ? Number(fund.gross_margin_pct).toFixed(1) : '48.2'}</strong></div>
-                <div style={{ fontSize: 9, color: '#94a3b8' }}>100₺ Satışın {Number(fund.gross_margin_pct || 48).toFixed(0)}₺'si Kâr</div>
-                <div>Büyüme: <strong style={{ color: 'var(--emerald)' }}>+%{fund.revenue_growth_pct != null ? Number(fund.revenue_growth_pct).toFixed(1) : '15.0'}</strong></div>
-              </div>
-            </div>
-
-            {/* Pillar 2: Değerleme */}
-            <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(16,185,129,0.25)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>💎 DEĞERLEME</span>
-                <span className="nav-badge emerald" style={{ fontSize: 9, padding: '1px 5px' }}>{valPillar.grade || 'B+'}</span>
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                {valPillar.score != null ? Number(valPillar.score).toFixed(1) : '76.0'}
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                <div>F/K (P/E): <strong style={{ color: '#fff' }}>{valPillar.pe != null ? Number(valPillar.pe).toFixed(1) : '22.4'}</strong></div>
-                <div style={{ fontSize: 9, color: Number(valPillar.pe || 22) < 20 ? 'var(--emerald)' : Number(valPillar.pe || 22) < 35 ? 'var(--amber)' : 'var(--red)' }}>
-                  {Number(valPillar.pe || 22) < 20 ? '🟢 Çok Cazip / Ucuz' : Number(valPillar.pe || 22) < 35 ? '🟡 Makul Seviye' : '🔴 Primli / Yüksek'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {!showRadar && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: 'rgba(15, 23, 42, 0.65)', border: '1px dashed rgba(255, 255, 255, 0.15)', borderRadius: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                  <Snowflake size={14} style={{ color: stockTheme.color }} />
+                  <span>Kar Tanesi Radarı gizlendi (5 Faktörlü Skor Kartları tam ekran aktif)</span>
                 </div>
-                <div>İleri F/K: <strong style={{ color: '#fff' }}>{valPillar.forward_pe != null ? Number(valPillar.forward_pe).toFixed(1) : '18.5'}</strong></div>
-                <div>PEG Oranı: <strong style={{ color: '#fff' }}>{valPillar.peg != null ? Number(valPillar.peg).toFixed(2) : '1.10'}</strong></div>
-                <div style={{ fontSize: 9, color: 'var(--emerald)' }}>{Number(valPillar.peg || 1.1) <= 1.2 ? '🟢 Büyümesine Göre Ucuz' : '🟡 Büyümeyle Dengeli'}</div>
+                <button 
+                  onClick={() => toggleRadar(true)} 
+                  style={{ 
+                    fontSize: 11, 
+                    padding: '3px 10px', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: 6, 
+                    cursor: 'pointer', 
+                    background: 'rgba(0, 229, 255, 0.12)', 
+                    color: 'var(--cyan)', 
+                    border: '1px solid rgba(0, 229, 255, 0.35)', 
+                    borderRadius: 4,
+                    fontWeight: 700 
+                  }}
+                >
+                  <Snowflake size={12} />
+                  <span>❄️ Kar Tanesi Radarını Aç</span>
+                </button>
               </div>
-            </div>
+            )}
 
-            {/* Pillar 3: Momentum */}
-            <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(168,85,247,0.25)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>🚀 MOMENTUM</span>
-                <span className="nav-badge purple" style={{ fontSize: 9, padding: '1px 5px' }}>{mom.grade || 'A'}</span>
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: '#a855f7', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                {mom.score != null ? Number(mom.score).toFixed(1) : '85.2'}
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                <div>RSI(14): <strong style={{ color: '#fff' }}>{mom.rsi_14 != null ? Number(mom.rsi_14).toFixed(1) : '58.2'}</strong></div>
-                <div style={{ fontSize: 9, color: Number(mom.rsi_14 || 58) < 35 ? 'var(--emerald)' : Number(mom.rsi_14 || 58) < 68 ? '#94a3b8' : 'var(--red)' }}>
-                  {Number(mom.rsi_14 || 58) < 35 ? '🟢 Dip / Aşırı Satım' : Number(mom.rsi_14 || 58) < 68 ? '⚪ Dengeli Güç' : '🔴 Aşırı Alım (Isınmış)'}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              {/* Pillar 1: Temel Bilanço */}
+              <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(59,130,246,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>🏛️ TEMEL SAĞLIK</span>
+                  <span className="nav-badge blue" style={{ fontSize: 9, padding: '1px 5px' }}>{effectivePillars.fundGrade || fund.grade || 'A'}</span>
                 </div>
-                <div>SMA200 Fark: <strong style={{ color: (mom.dist_sma200_pct ?? 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>{Number(mom.dist_sma200_pct ?? 12.4) >= 0 ? '+' : ''}%{Number(mom.dist_sma200_pct ?? 12.4).toFixed(1)}</strong></div>
-                <div style={{ fontSize: 9, color: 'var(--emerald)' }}>{Number(mom.dist_sma200_pct ?? 12) >= 0 ? '🟢 200 Günlük Boğa Trendi' : '🔴 Ayı Trendi'}</div>
-                <div>1Y Alfa: <strong style={{ color: 'var(--emerald)' }}>+%{Number(mom.alpha_1y_pct ?? 18.5).toFixed(1)}</strong></div>
-              </div>
-            </div>
-
-            {/* Pillar 4: Teknik Yapı */}
-            <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(6,182,212,0.25)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>📈 TEKNİK YAPI</span>
-                <span className="nav-badge cyan" style={{ fontSize: 9, padding: '1px 5px' }}>{tech.grade || 'A'}</span>
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                {tech.score != null ? Number(tech.score).toFixed(1) : '82.0'}
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                <div>Trend: <strong style={{ color: '#fff' }}>{tech.trend_status || 'Boğa Trendi'}</strong></div>
-                <div style={{ fontSize: 9, color: 'var(--emerald)' }}>Ana Yön: Yükseliş</div>
-                <div>MACD: <strong style={{ color: 'var(--emerald)' }}>{tech.macd_status || 'Pozitif Kesişim'}</strong></div>
-                <div>Bollinger: <strong style={{ color: '#fff' }}>{tech.bollinger_pos || 'Orta-Üst Bant'}</strong></div>
-                <div style={{ fontSize: 9, color: '#94a3b8' }}>Kanal İçi Sağlıklı Seyir</div>
-              </div>
-            </div>
-
-            {/* Pillar 5: Risk Profil */}
-            <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(234,179,8,0.25)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>🛡️ RİSK PROFİLİ</span>
-                <span className="nav-badge gold" style={{ fontSize: 9, padding: '1px 5px' }}>{risk.grade || 'B+'}</span>
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--gold)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
-                {risk.score != null ? Number(risk.score).toFixed(1) : '74.5'}
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                <div>Beta: <strong style={{ color: '#fff' }}>{risk.beta != null ? Number(risk.beta).toFixed(2) : '1.08'}</strong></div>
-                <div style={{ fontSize: 9, color: '#94a3b8' }}>
-                  {Number(risk.beta || 1) < 0.9 ? '🛡️ Düşük Risk / Defansif' : Number(risk.beta || 1) < 1.3 ? '⚖️ Endeksle Uyumlu' : '⚡ Çok Oynak'}
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#3b82f6', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                  {effectivePillars.fundScore.toFixed(1)}
                 </div>
-                <div>Maks Çekilme: <strong style={{ color: 'var(--red)' }}>-%{Math.abs(Number(risk.max_drawdown_1y_pct ?? 18.2)).toFixed(1)}</strong></div>
-                <div>VaR (%95): <strong style={{ color: 'var(--amber)' }}>-%{Math.abs(Number(risk.var_95 ?? 3.1)).toFixed(1)}</strong></div>
-                <div style={{ fontSize: 9, color: 'var(--amber)' }}>Maks Günlük Dalgalanma</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  <div>ROE: <strong style={{ color: '#fff' }}>%{fund.roe_pct != null ? Number(fund.roe_pct).toFixed(1) : '24.5'}</strong></div>
+                  <div style={{ fontSize: 9, color: 'var(--cyan)' }}>{Number(fund.roe_pct || 25) > 20 ? '🌟 Süper Özkaynak Kârı' : '✅ Makul Kârlılık'}</div>
+                  <div>Brüt Marj: <strong style={{ color: '#fff' }}>%{fund.gross_margin_pct != null ? Number(fund.gross_margin_pct).toFixed(1) : '48.2'}</strong></div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>100₺ Satışın {Number(fund.gross_margin_pct || 48).toFixed(0)}₺'si Kâr</div>
+                  <div>Büyüme: <strong style={{ color: 'var(--emerald)' }}>+%{fund.revenue_growth_pct != null ? Number(fund.revenue_growth_pct).toFixed(1) : '15.0'}</strong></div>
+                </div>
+              </div>
+
+              {/* Pillar 2: Değerleme */}
+              <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(16,185,129,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>💎 DEĞERLEME</span>
+                  <span className="nav-badge emerald" style={{ fontSize: 9, padding: '1px 5px' }}>{effectivePillars.valGrade || valPillar.grade || 'B+'}</span>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--emerald)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                  {effectivePillars.valScore.toFixed(1)}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  <div>F/K (P/E): <strong style={{ color: '#fff' }}>{valPillar.pe != null ? Number(valPillar.pe).toFixed(1) : '22.4'}</strong></div>
+                  <div style={{ fontSize: 9, color: Number(valPillar.pe || 22) < 20 ? 'var(--emerald)' : Number(valPillar.pe || 22) < 35 ? 'var(--amber)' : 'var(--red)' }}>
+                    {Number(valPillar.pe || 22) < 20 ? '🟢 Çok Cazip / Ucuz' : Number(valPillar.pe || 22) < 35 ? '🟡 Makul Seviye' : '🔴 Primli / Yüksek'}
+                  </div>
+                  <div>İleri F/K: <strong style={{ color: '#fff' }}>{valPillar.forward_pe != null ? Number(valPillar.forward_pe).toFixed(1) : '18.5'}</strong></div>
+                  <div>PEG Oranı: <strong style={{ color: '#fff' }}>{valPillar.peg != null ? Number(valPillar.peg).toFixed(2) : '1.10'}</strong></div>
+                  <div style={{ fontSize: 9, color: 'var(--emerald)' }}>{Number(valPillar.peg || 1.1) <= 1.2 ? '🟢 Büyümesine Göre Ucuz' : '🟡 Büyümeyle Dengeli'}</div>
+                </div>
+              </div>
+
+              {/* Pillar 3: Momentum */}
+              <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(168,85,247,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>🚀 MOMENTUM</span>
+                  <span className="nav-badge purple" style={{ fontSize: 9, padding: '1px 5px' }}>{effectivePillars.momGrade || mom.grade || 'A'}</span>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: '#a855f7', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                  {effectivePillars.momScore.toFixed(1)}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  <div>RSI(14): <strong style={{ color: '#fff' }}>{mom.rsi_14 != null ? Number(mom.rsi_14).toFixed(1) : '58.2'}</strong></div>
+                  <div style={{ fontSize: 9, color: Number(mom.rsi_14 || 58) < 35 ? 'var(--emerald)' : Number(mom.rsi_14 || 58) < 68 ? '#94a3b8' : 'var(--red)' }}>
+                    {Number(mom.rsi_14 || 58) < 35 ? '🟢 Dip / Aşırı Satım' : Number(mom.rsi_14 || 58) < 68 ? '⚪ Dengeli Güç' : '🔴 Aşırı Alım (Isınmış)'}
+                  </div>
+                  <div>SMA200 Fark: <strong style={{ color: (mom.dist_sma200_pct ?? 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>{Number(mom.dist_sma200_pct ?? 12.4) >= 0 ? '+' : ''}%{Number(mom.dist_sma200_pct ?? 12.4).toFixed(1)}</strong></div>
+                  <div style={{ fontSize: 9, color: 'var(--emerald)' }}>{Number(mom.dist_sma200_pct ?? 12) >= 0 ? '🟢 200 Günlük Boğa Trendi' : '🔴 Ayı Trendi'}</div>
+                  <div>1Y Alfa: <strong style={{ color: 'var(--emerald)' }}>+%{Number(mom.alpha_1y_pct ?? 18.5).toFixed(1)}</strong></div>
+                </div>
+              </div>
+
+              {/* Pillar 4: Teknik Yapı */}
+              <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(6,182,212,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>📈 TEKNİK YAPI</span>
+                  <span className="nav-badge cyan" style={{ fontSize: 9, padding: '1px 5px' }}>{effectivePillars.techGrade || tech.grade || 'A'}</span>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--cyan)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                  {effectivePillars.techScore.toFixed(1)}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  <div>Trend: <strong style={{ color: '#fff' }}>{tech.trend_status || 'Boğa Trendi'}</strong></div>
+                  <div style={{ fontSize: 9, color: 'var(--emerald)' }}>Ana Yön: Yükseliş</div>
+                  <div>MACD: <strong style={{ color: 'var(--emerald)' }}>{tech.macd_status || 'Pozitif Kesişim'}</strong></div>
+                  <div>Bollinger: <strong style={{ color: '#fff' }}>{tech.bollinger_pos || 'Orta-Üst Bant'}</strong></div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>Kanal İçi Sağlıklı Seyir</div>
+                </div>
+              </div>
+
+              {/* Pillar 5: Risk Profil */}
+              <div style={{ background: '#090d16', padding: 12, borderRadius: 6, border: '1px solid rgba(234,179,8,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>🛡️ RİSK PROFİLİ</span>
+                  <span className="nav-badge gold" style={{ fontSize: 9, padding: '1px 5px' }}>{effectivePillars.riskGrade || risk.grade || 'B+'}</span>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--gold)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+                  {effectivePillars.riskScore.toFixed(1)}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  <div>Beta: <strong style={{ color: '#fff' }}>{risk.beta != null ? Number(risk.beta).toFixed(2) : '1.08'}</strong></div>
+                  <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                    {Number(risk.beta || 1) < 0.9 ? '🛡️ Düşük Risk / Defansif' : Number(risk.beta || 1) < 1.3 ? '⚖️ Endeksle Uyumlu' : '⚡ Çok Oynak'}
+                  </div>
+                  <div>Maks Çekilme: <strong style={{ color: 'var(--red)' }}>-%{Math.abs(Number(risk.max_drawdown_1y_pct ?? 18.2)).toFixed(1)}</strong></div>
+                  <div>VaR (%95): <strong style={{ color: 'var(--amber)' }}>-%{Math.abs(Number(risk.var_95 ?? 3.1)).toFixed(1)}</strong></div>
+                  <div style={{ fontSize: 9, color: 'var(--amber)' }}>Maks Günlük Dalgalanma</div>
+                </div>
               </div>
             </div>
           </div>
