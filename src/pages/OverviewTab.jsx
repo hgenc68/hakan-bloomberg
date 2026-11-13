@@ -68,6 +68,42 @@ export default function OverviewTab() {
   const ppfPct = (ppfVal / totalAll) * 100;
   const freeCashPct = (freeCashVal / totalAll) * 100;
 
+  // Top 5 Holdings by Total Portfolio Weight
+  const topHoldings = useMemo(() => {
+    const list = holdings.map(h => {
+      const val = (isTRY ? h.valTRY : h.valUSD) || 0;
+      const pct = totalAll > 0 ? (val / totalAll) * 100 : 0;
+      const tickerUpper = (h.ticker || '').toUpperCase();
+      const cleanSym = tickerUpper.replace('-USD', '').replace('.IS', '');
+      const isGold = h.type === 'Altın' || h.type === 'Emtia' || tickerUpper.includes('XAUT') || tickerUpper.includes('GOLD');
+      const isCrypto = h.type === 'Kripto' || KNOWN_CRYPTO_SET.has(cleanSym);
+      const isUS = h.currency === 'USD' || h.isHoldingUSD || Number(h.cost_rate) > 1.5;
+
+      let category = h.type === 'ETF' ? 'Tematik ETF' : (isGold ? 'Kur Kalkanı' : (isCrypto ? 'Kripto' : (isUS ? 'ABD Hisse' : 'BIST 100')));
+      let capSoft = isGold ? 20.0 : (isCrypto ? 5.0 : 7.5);
+      let capHard = isGold ? 25.0 : (isCrypto ? 7.5 : 10.0);
+      let isBreached = !isGold && (pct > capHard);
+      let isWarning = !isGold && (pct > capSoft && !isBreached);
+
+      return {
+        ...h,
+        cleanSym,
+        val,
+        pct,
+        category,
+        isGold,
+        isCrypto,
+        capSoft,
+        capHard,
+        isBreached,
+        isWarning
+      };
+    });
+
+    list.sort((a, b) => b.pct - a.pct);
+    return list.slice(0, 5);
+  }, [holdings, totalAll, isTRY]);
+
   const pieLabels = [
     'BIST Hisseleri (🇹🇷)',
     'ABD Hisseleri (🇺🇸)',
@@ -532,6 +568,103 @@ export default function OverviewTab() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* 🎯 En Büyük 5 Varlık & Tekil Varlık Tavanı Radarı (Top-5 Holdings) */}
+      <div className="card" style={{ marginTop: 20, padding: 18, background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(9, 13, 22, 0.95))', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, letterSpacing: '0.4px' }}>
+              <Activity size={16} className="text-cyan" />
+              <span>💎 EN BÜYÜK 5 VARLIK & PORTFÖY PAYLARI (TOP HOLDINGS)</span>
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
+              Tekil hisse ve kripto konsantrasyonu (UCITS Kuralı: İdeal azami pay %7.5, Sert Üst Tavan %10.0)
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span className="nav-badge cyan" style={{ fontSize: 10, padding: '3px 8px', fontWeight: 800 }}>
+              Sert Tavan: %10
+            </span>
+            <button
+              type="button"
+              className="btn-action-sm"
+              onClick={() => setActiveTab('holdings')}
+              style={{ fontSize: 11, padding: '5px 12px', background: 'rgba(0, 229, 255, 0.12)', borderColor: 'rgba(0, 229, 255, 0.3)', color: 'var(--cyan)' }}
+            >
+              Varlıklarım Sekmesinde İncele ➔
+            </button>
+          </div>
+        </div>
+
+        {/* 5-Column Responsive Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
+          {topHoldings.map((item, idx) => {
+            const barColor = item.isGold ? '#eab308' : (item.isBreached ? '#ef4444' : (item.isWarning ? '#f59e0b' : '#06b6d4'));
+            return (
+              <div 
+                key={item.id || item.ticker} 
+                style={{ 
+                  background: 'rgba(0,0,0,0.4)', 
+                  border: `1px solid ${item.isBreached ? 'rgba(239, 68, 68, 0.4)' : (item.isWarning ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.06)')}`, 
+                  borderRadius: 8, 
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 800 }}>#{idx + 1}</span>
+                      <strong className="mono" style={{ fontSize: 13, color: '#fff' }}>{item.ticker}</strong>
+                    </div>
+                    <span className="badge-type hisse" style={{ fontSize: 8.5, padding: '1px 5px' }}>
+                      {item.category}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                    <span className="mono font-bold" style={{ fontSize: 18, color: barColor }}>
+                      %{item.pct.toFixed(1)}
+                    </span>
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {sym}{fmt(item.val, 0)}
+                    </span>
+                  </div>
+
+                  {/* Progress Bar vs. %10 Cap */}
+                  <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden', margin: '6px 0' }}>
+                    <div 
+                      style={{ 
+                        width: `${Math.min(100, (item.pct / (item.capHard || 10.0)) * 100)}%`, 
+                        height: '100%', 
+                        background: barColor, 
+                        borderRadius: 3, 
+                        transition: 'width 0.4s' 
+                      }} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, fontSize: 9.5, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Hedef: Max %{item.capSoft}</span>
+                  {item.isGold ? (
+                    <span style={{ color: '#fbbf24', fontWeight: 700 }}>🟡 Kur Kalkanı</span>
+                  ) : item.isBreached ? (
+                    <span style={{ color: '#ef4444', fontWeight: 800 }}>🚨 &gt;%{item.capHard} Sert Aşım</span>
+                  ) : item.isWarning ? (
+                    <span style={{ color: '#f59e0b', fontWeight: 800 }}>⚖️ Tavan Sınırında</span>
+                  ) : (
+                    <span style={{ color: '#10b981', fontWeight: 700 }}>🟢 Dengeli Pay</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

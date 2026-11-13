@@ -31,7 +31,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
   const [showRebalanceAssistant, setShowRebalanceAssistant] = useState(true);
   const [rebalancePeriod, setRebalancePeriod] = useState('monthly'); // 'monthly' or 'weekly'
   const [selectedSegment, setSelectedSegment] = useState('all'); // for 'all' mode: 'all', 'equity', 'shield', 'crypto'
-  const [tableSubMode, setTableSubMode] = useState('unified'); // 'unified' | 'financial' | 'rebalance' | 'finvest'
+  const [tableSubMode, setTableSubMode] = useState('financial'); // 100% real financial view
   const [expandedRebalanceId, setExpandedRebalanceId] = useState(null);
   const [showFinvestCard, setShowFinvestCard] = useState(true);
 
@@ -1310,6 +1310,90 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
     return { trimCount, trimTicker, trimWeight, accumCount, accumTicker, accumScore, holdCount };
   }, [rebalanceList]);
 
+  // 🎯 Tekil Enstrüman Konsantrasyon & Tavan Analiz Motoru (UCITS 5/10/40 Kuralı)
+  const concentrationAnalysis = useMemo(() => {
+    const totalVal = portfolioSummary?.totalValTRY || 1;
+
+    const list = holdings.map(h => {
+      const valTRY = Number(h.valTRY) || 0;
+      const weightPct = totalVal > 0 ? (valTRY / totalVal) * 100 : 0;
+      const sym = (h.ticker || '').toUpperCase();
+      const clean = sym.replace('.IS', '').replace('-USD', '');
+      const isGold = h.type === 'Altın' || h.type === 'Emtia' || clean === 'XAUT' || clean.includes('GOLD');
+      const isCrypto = h.type === 'Kripto' || KNOWN_CRYPTO_SET.has(clean);
+
+      let softCap = 7.5;
+      let hardCap = 10.0;
+      if (isGold) {
+        softCap = 20.0;
+        hardCap = 25.0;
+      } else if (isCrypto) {
+        softCap = 5.0;
+        hardCap = 7.5;
+      }
+
+      const isBreached = !isGold && (weightPct > hardCap);
+      const isWarning = !isGold && (weightPct > softCap && !isBreached);
+      const excessWeightPct = Math.max(0, weightPct - hardCap);
+      const excessTRY = (excessWeightPct / 100) * totalVal;
+
+      return {
+        ...h,
+        clean,
+        isGold,
+        isCrypto,
+        valTRY,
+        weightPct,
+        softCap,
+        hardCap,
+        isBreached,
+        isWarning,
+        excessWeightPct,
+        excessTRY
+      };
+    });
+
+    list.sort((a, b) => b.weightPct - a.weightPct);
+
+    const top1 = list[0] || null;
+    const top3 = list.slice(0, 3);
+    const top5 = list.slice(0, 5);
+
+    const top3Weight = top3.reduce((acc, x) => acc + x.weightPct, 0);
+    const top5Weight = top5.reduce((acc, x) => acc + x.weightPct, 0);
+
+    // Herfindahl-Hirschman Index (HHI)
+    const hhi = Math.round(list.reduce((acc, x) => acc + Math.pow(x.weightPct, 2), 0));
+    let hhiLabel = 'İyi Çeşitlendirilmiş';
+    let hhiColor = '#10b981';
+    if (hhi > 2500) {
+      hhiLabel = 'Aşırı Konsantrasyon (Yüksek Risk)';
+      hhiColor = '#ef4444';
+    } else if (hhi > 1500) {
+      hhiLabel = 'Orta Konsantrasyon (Tek Varlık Baskısı)';
+      hhiColor = '#f59e0b';
+    }
+
+    const breachedList = list.filter(x => x.isBreached);
+    const warningList = list.filter(x => x.isWarning);
+    const totalExcessTRY = breachedList.reduce((acc, x) => acc + x.excessTRY, 0);
+
+    return {
+      list,
+      top1,
+      top3,
+      top5,
+      top3Weight,
+      top5Weight,
+      hhi,
+      hhiLabel,
+      hhiColor,
+      breachedList,
+      warningList,
+      totalExcessTRY
+    };
+  }, [holdings, portfolioSummary]);
+
   // Sorted and Filtered Holdings based on active main tab
   const sortedHoldings = useMemo(() => {
     let list = [...holdings];
@@ -1537,51 +1621,12 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
       </div>
 
       {/* ========================================================================= */}
-      {/* 📈 GÖRÜNÜM 1: HİSSE & ETF PORTFÖYÜ (DÖNEMSEL GETİRİ, BENCHMARK, KAR TANESİ) */}
+      {/* 📈 GÖRÜNÜM 1: HİSSE & ETF PORTFÖYÜ (%100 GERÇEK PORTFÖY VERİLERİ)         */}
       {/* ========================================================================= */}
       {activeMainTab === 'equity' && (
         <div style={{ animation: 'fadeIn 0.2s ease' }}>
-          
-          {/* Header & Timeframe Selector Bar */}
-          <div className="card" style={{ padding: 14, background: '#080d1a', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 8, marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 900, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <TrendingUp size={17} className="text-cyan" />
-                  <span>ÇEKİRDEK HİSSE & ETF DÖNEMSEL GETİRİ & BENCHMARK ANALİZİ</span>
-                </h3>
-                <p style={{ margin: '3px 0 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
-                  Hisse senedi ve ETF sepetinizin S&P 500, Nasdaq 100, BIST 100 ve Altın ile karşılaştırmalı getiri grafiği ve ağırlıklı Kar Tanesi sağlık radarı.
-                </p>
-              </div>
-
-              {/* Timeframe Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.4)', padding: 3, borderRadius: 6, border: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, paddingLeft: 6 }}>Dönem:</span>
-                {[
-                  { id: '1W', label: '1H' },
-                  { id: '1M', label: '1A' },
-                  { id: '3M', label: '3A' },
-                  { id: '6M', label: '6A' },
-                  { id: 'YTD', label: 'YTD' },
-                  { id: '1Y', label: '1Y' }
-                ].map(tf => (
-                  <button
-                    key={tf.id}
-                    type="button"
-                    className={`chip-btn ${timeframe === tf.id ? 'active' : ''}`}
-                    onClick={() => setTimeframe(tf.id)}
-                    style={{ fontSize: 10.5, padding: '3px 9px', fontWeight: 800 }}
-                  >
-                    {tf.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* 4 Key Metric Summary Cards for Equity Basket */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10, marginBottom: 14 }}>
+          {/* 3 Key Metric Summary Cards for Equity Basket */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 14 }}>
             {/* Card 1: Market Value */}
             <div className="card" style={{ padding: 12, background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
@@ -1620,514 +1665,9 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                 Günlük %{fmt(segmentStats.equity.dayPLPct, 2)}
               </div>
             </div>
-
-            {/* Card 4: Selected Period Return vs S&P 500 Alpha */}
-            <div className="card" style={{ padding: 12, background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                🎯 {timeframe} SEPET GETİRİSİ & ALFA
-              </div>
-              <div className="mono font-bold text-gold" style={{ fontSize: 18, marginTop: 4 }}>
-                {benchmarkReturns.equity >= 0 ? '+' : ''}%{benchmarkReturns.equity}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: benchmarkReturns.alphaSP >= 0 ? 'var(--emerald)' : 'var(--amber)', marginTop: 2 }}>
-                S&P 500'e Karşı: {benchmarkReturns.alphaSP >= 0 ? `+${benchmarkReturns.alphaSP}% Alfa 🏆` : `${benchmarkReturns.alphaSP}%`}
-              </div>
-            </div>
           </div>
 
-          {/* 2-Column Visual Dashboards: Benchmark Comparison Bar Chart + Snowflake Radar */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 14, marginBottom: 16 }}>
-            
-            {/* Left Column: Horizontal Benchmark Comparison Bar Chart */}
-            <div className="card" style={{ padding: 16, background: '#090d16', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <BarChart3 size={16} className="text-cyan" />
-                    <span>BENCHMARK KIYASLAMA BARI ({timeframe})</span>
-                  </div>
-                  <span className="nav-badge cyan" style={{ fontSize: 9 }}>
-                    Hisse Sepeti vs Endeksler
-                  </span>
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 12 }}>
-                  Seçili zaman aralığında Hisse & ETF sepetinizin küresel ana piyasalara göre net getiri performansı.
-                </div>
-              </div>
-
-              {/* Bar Chart Container */}
-              <div style={{ height: 185, width: '100%', marginBottom: 8 }}>
-                <Bar data={benchmarkBarData} options={benchmarkBarOptions} />
-              </div>
-
-              {/* Alpha Badges Footer */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, background: 'rgba(0,0,0,0.5)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 9.5 }}>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ color: 'var(--text-muted)', display: 'block' }}>S&P 500 Alfa</span>
-                  <strong className="mono" style={{ color: benchmarkReturns.alphaSP >= 0 ? 'var(--emerald)' : 'var(--amber)' }}>
-                    {benchmarkReturns.alphaSP >= 0 ? '+' : ''}{benchmarkReturns.alphaSP}%
-                  </strong>
-                </div>
-                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
-                  <span style={{ color: 'var(--text-muted)', display: 'block' }}>Nasdaq 100 Alfa</span>
-                  <strong className="mono" style={{ color: benchmarkReturns.alphaNDX >= 0 ? 'var(--emerald)' : 'var(--amber)' }}>
-                    {benchmarkReturns.alphaNDX >= 0 ? '+' : ''}{benchmarkReturns.alphaNDX}%
-                  </strong>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{ color: 'var(--text-muted)', display: 'block' }}>BIST 100 Alfa</span>
-                  <strong className="mono" style={{ color: benchmarkReturns.alphaBIST >= 0 ? 'var(--emerald)' : 'var(--amber)' }}>
-                    {benchmarkReturns.alphaBIST >= 0 ? '+' : ''}{benchmarkReturns.alphaBIST}%
-                  </strong>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Weighted Portfolio Snowflake Radar */}
-            <div 
-              className="card" 
-              style={{ 
-                padding: 16, 
-                background: '#090d16', 
-                border: `1px solid ${snowflakeTheme.color}50`, 
-                boxShadow: `0 0 16px ${snowflakeTheme.color}18`, 
-                borderRadius: 8, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'space-between',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Snowflake size={16} style={{ color: snowflakeTheme.color }} />
-                    <span>HİSSE & ETF SEPETİ KAR TANESİ RADARI</span>
-                  </div>
-                  <span 
-                    className="nav-badge" 
-                    style={{ 
-                      fontSize: 9.5, 
-                      fontWeight: 800, 
-                      background: `${snowflakeTheme.color}22`, 
-                      color: snowflakeTheme.color, 
-                      border: `1px solid ${snowflakeTheme.color}66`,
-                      padding: '3px 8px'
-                    }}
-                  >
-                    {snowflakeTheme.icon} {weightedSnowflake.composite.toFixed(1)} / 100 Puan
-                  </span>
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 10 }}>
-                  Hisselerinizin ağırlıklı ortalama sağlık profili: <strong style={{ color: snowflakeTheme.color }}>{snowflakeTheme.label}</strong>
-                </div>
-              </div>
-
-              {/* Radar Chart Container */}
-              <div style={{ height: 185, width: '100%', position: 'relative', margin: '2px 0' }}>
-                <Radar data={snowflakeChartData} options={snowflakeChartOptions} />
-              </div>
-
-              {/* 5 Pillar Mini Scores Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, background: 'rgba(0,0,0,0.5)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center', marginBottom: 6 }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Temel</div>
-                  <strong className="mono" style={{ color: weightedSnowflake.fund >= 70 ? 'var(--cyan)' : 'var(--amber)' }}>{weightedSnowflake.fund}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Değerleme</div>
-                  <strong className="mono" style={{ color: weightedSnowflake.val >= 70 ? 'var(--emerald)' : 'var(--amber)' }}>{weightedSnowflake.val}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Momentum</div>
-                  <strong className="mono" style={{ color: weightedSnowflake.mom >= 70 ? 'var(--gold)' : 'var(--red)' }}>{weightedSnowflake.mom}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Teknik</div>
-                  <strong className="mono" style={{ color: weightedSnowflake.tech >= 70 ? 'var(--cyan)' : 'var(--red)' }}>{weightedSnowflake.tech}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Risk</div>
-                  <strong className="mono" style={{ color: weightedSnowflake.risk >= 70 ? '#a855f7' : 'var(--red)' }}>{weightedSnowflake.risk}</strong>
-                </div>
-              </div>
-
-              {/* 4-Tier Color Legend Bar */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, background: 'rgba(0,0,0,0.5)', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center' }}>
-                <div style={{ color: '#ef4444', fontWeight: snowflakeTheme.status === 'critical' ? 900 : 500, background: snowflakeTheme.status === 'critical' ? 'rgba(239,68,68,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🔴 &lt;50 Zayıf
-                </div>
-                <div style={{ color: '#f59e0b', fontWeight: snowflakeTheme.status === 'warning' ? 900 : 500, background: snowflakeTheme.status === 'warning' ? 'rgba(245,158,11,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🟡 50-69 Orta
-                </div>
-                <div style={{ color: '#00e5ff', fontWeight: snowflakeTheme.status === 'healthy' ? 900 : 500, background: snowflakeTheme.status === 'healthy' ? 'rgba(0,229,255,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🔵 70-84 Sağlıklı
-                </div>
-                <div style={{ color: '#10b981', fontWeight: snowflakeTheme.status === 'excellent' ? 900 : 500, background: snowflakeTheme.status === 'excellent' ? 'rgba(16,185,129,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🟢 ≥85 Mükemmel
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* ========================================================================= */}
-          {/* 🛡️ PORTFÖY SERMAYE KALKANI & SOLVENCY RÖNTGENİ                            */}
-          {/* ========================================================================= */}
-          <div 
-            className="card finvest-portfolio-card"
-            style={{
-              marginBottom: 14,
-              padding: '16px 18px',
-              background: 'radial-gradient(ellipse at top left, rgba(14, 28, 48, 0.75), rgba(7, 10, 20, 0.98))',
-              border: '1px solid rgba(0, 229, 255, 0.28)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 229, 255, 0.08)',
-              borderRadius: 8
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(16, 185, 129, 0.2))', border: '1px solid rgba(0, 229, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cyan)' }}>
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: 13.5, fontWeight: 900, color: '#f8fafc', letterSpacing: '0.4px' }}>
-                      PORTFÖY SERMAYE KALKANI & SOLVENCY RÖNTGENİ
-                    </h3>
-                    <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '2px 8px' }}>
-                      Sermaye Röntgeni
-                    </span>
-                    <span 
-                      className={`nav-badge ${portfolioFinvestAnalysis.ringSummaryBadge}`}
-                      style={{ fontSize: 9.5, padding: '2px 8px', fontWeight: 800 }}
-                    >
-                      🛡️ {portfolioFinvestAnalysis.ringSummaryTitle}
-                    </span>
-                  </div>
-                  <p style={{ margin: '3px 0 0 0', fontSize: 10.5, color: 'var(--text-muted)' }}>
-                    Kurumsal Bilanço Metodolojisi: Yapay Zeka Borç Balonuna Karşı 3-Halka Dağılımı, Konsolide Hissedar İadesi (Buyback + Temettü) ve Solvency Kalkanı
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>
-                  <strong style={{ color: '#38bdf8', letterSpacing: '0.8px' }}>BLOOMBERG TERMINAL • SOLVENCY RADAR</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowFinvestCard(prev => !prev)}
-                  className="chip-btn"
-                  style={{ fontSize: 10, padding: '3px 8px', background: 'rgba(255,255,255,0.04)' }}
-                >
-                  {showFinvestCard ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                  <span>{showFinvestCard ? 'Gizle' : 'Genişlet'}</span>
-                </button>
-              </div>
-            </div>
-
-            {showFinvestCard && (
-              <>
-                {/* 3-Halka Segmented Progress Bar */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, fontSize: 10.5 }}>
-                    <span style={{ fontWeight: 800, color: '#e2e8f0' }}>
-                      PORTFÖY 3-HALKA DAĞILIMI (BORÇ vs. NAKİT DENGESİ)
-                    </span>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      Hisse/ETF Sepeti Toplamı: <strong className="mono" style={{ color: 'var(--cyan)' }}>{sym}{fmt(portfolioFinvestAnalysis.totalEquityVal, 2)}</strong>
-                    </span>
-                  </div>
-
-                  {/* Multi-Colored Segmented Bar */}
-                  <div style={{ width: '100%', height: 12, background: '#050811', borderRadius: 6, overflow: 'hidden', display: 'flex', border: '1px solid rgba(255, 255, 255, 0.1)', position: 'relative' }}>
-                    <div 
-                      title={`1. Halka (Nakitle İnşa Edenler): %${portfolioFinvestAnalysis.ring1Weight.toFixed(1)} (${portfolioFinvestAnalysis.ring1Tickers.join(', ') || 'N/A'})`}
-                      style={{ width: `${Math.max(1, portfolioFinvestAnalysis.ring1Weight)}%`, background: 'linear-gradient(90deg, #059669, #10b981)', transition: 'all 0.4s ease' }} 
-                    />
-                    <div 
-                      title={`2. Halka (Kritik Altyapı & Tedarikçiler): %${portfolioFinvestAnalysis.ring2Weight.toFixed(1)} (${portfolioFinvestAnalysis.ring2Tickers.join(', ') || 'N/A'})`}
-                      style={{ width: `${Math.max(1, portfolioFinvestAnalysis.ring2Weight)}%`, background: 'linear-gradient(90deg, #d97706, #f59e0b)', transition: 'all 0.4s ease' }} 
-                    />
-                    <div 
-                      title={`3. Halka (Borçla Büyüyenler / Seyrelenler): %${portfolioFinvestAnalysis.ring3Weight.toFixed(1)} (${portfolioFinvestAnalysis.ring3Tickers.join(', ') || 'N/A'})`}
-                      style={{ width: `${Math.max(1, portfolioFinvestAnalysis.ring3Weight)}%`, background: 'linear-gradient(90deg, #dc2626, #ef4444)', transition: 'all 0.4s ease' }} 
-                    />
-                  </div>
-
-                  {/* Legend Chips */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8, marginTop: 8 }}>
-                    {/* Ring 1 Chip */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 5, padding: '5px 8px', fontSize: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: '#10b981' }}>1. Halka: Nakitle İnşa Edenler</strong>
-                          <strong className="mono" style={{ color: '#10b981' }}>%{portfolioFinvestAnalysis.ring1Weight.toFixed(1)}</strong>
-                        </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {portfolioFinvestAnalysis.ring1Tickers.length > 0 ? portfolioFinvestAnalysis.ring1Tickers.join(' • ') : 'Titan hisseler'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Ring 2 Chip */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 5, padding: '5px 8px', fontSize: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: '#f59e0b' }}>2. Halka: Kritik Tedarikçiler</strong>
-                          <strong className="mono" style={{ color: '#f59e0b' }}>%{portfolioFinvestAnalysis.ring2Weight.toFixed(1)}</strong>
-                        </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {portfolioFinvestAnalysis.ring2Tickers.length > 0 ? portfolioFinvestAnalysis.ring2Tickers.join(' • ') : 'Altyapı şirketleri'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Ring 3 Chip */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 5, padding: '5px 8px', fontSize: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: '#ef4444' }}>3. Halka: Borçla Büyüyenler</strong>
-                          <strong className="mono" style={{ color: '#ef4444' }}>%{portfolioFinvestAnalysis.ring3Weight.toFixed(1)}</strong>
-                        </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {portfolioFinvestAnalysis.ring3Tickers.length > 0 ? portfolioFinvestAnalysis.ring3Tickers.join(' • ') : 'Seyrelme / Kaldıraç'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4 Konsolide Finvest KPI Kartı */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10, marginBottom: 12 }}>
-                  {/* KPI 1: 1. Halka Titan Ağırlığı */}
-                  <div style={{ background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                        1. HALKA NAKİT KALELERİ
-                      </span>
-                      <span className="nav-badge emerald" style={{ fontSize: 9, padding: '1px 5px' }}>
-                        {portfolioFinvestAnalysis.ring1Weight >= 50 ? '🛡️ Güçlü Zırh' : '⚖️ Dengeli'}
-                      </span>
-                    </div>
-                    <div className="mono font-bold text-emerald" style={{ fontSize: 18, marginTop: 4 }}>
-                      %{portfolioFinvestAnalysis.ring1Weight.toFixed(1)}
-                    </div>
-                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
-                      Sıfır borç & organik FCF ile büyüyen piyasa liderleri
-                    </div>
-                  </div>
-
-                  {/* KPI 2: Konsolide Hissedar Getirisi */}
-                  <div style={{ background: 'rgba(56, 189, 248, 0.06)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                        KONSOLİDE HİSSEDAR VERİMİ
-                      </span>
-                      <span className="nav-badge cyan" style={{ fontSize: 9, padding: '1px 5px' }}>
-                        💎 Toplam İade
-                      </span>
-                    </div>
-                    <div className="mono font-bold text-cyan" style={{ fontSize: 18, marginTop: 4 }}>
-                      %{portfolioFinvestAnalysis.weightedShareholderYield.toFixed(2)} <span style={{ fontSize: 11, fontWeight: 500 }}>/ Yıl</span>
-                    </div>
-                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
-                      Buyback (+%{portfolioFinvestAnalysis.weightedBuybackYield.toFixed(2)}) + Temettü (%{portfolioFinvestAnalysis.weightedDividendYield.toFixed(2)})
-                    </div>
-                  </div>
-
-                  {/* KPI 3: Ağırlıklı Buyback Katkısı */}
-                  <div style={{ background: 'rgba(250, 204, 21, 0.06)', border: '1px solid rgba(250, 204, 21, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                        NET BUYBACK YIELD (İTFA)
-                      </span>
-                      <span className="nav-badge gold" style={{ fontSize: 9, padding: '1px 5px' }}>
-                        {portfolioFinvestAnalysis.weightedBuybackYield >= 0 ? '⚡ Dolaşım Azalıyor' : '⚠️ Seyrelme'}
-                      </span>
-                    </div>
-                    <div className="mono font-bold text-gold" style={{ fontSize: 18, marginTop: 4 }}>
-                      {portfolioFinvestAnalysis.weightedBuybackYield >= 0 ? '+' : ''}%{portfolioFinvestAnalysis.weightedBuybackYield.toFixed(2)} <span style={{ fontSize: 11, fontWeight: 500 }}>/ Yıl</span>
-                    </div>
-                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
-                      Hisse itfasıyla hisse başına kâr (EPS) büyüme desteği
-                    </div>
-                  </div>
-
-                  {/* KPI 4: Solvency & Borçluluk Skoru */}
-                  <div style={{ background: 'rgba(168, 85, 247, 0.06)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: 6, padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                        BİLANÇO SOLVENCY KALKANI
-                      </span>
-                      <span className="nav-badge" style={{ fontSize: 9, padding: '1px 5px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
-                        🏆 {portfolioFinvestAnalysis.weightedSolvencyScore >= 85 ? 'A+ Kalite' : 'B+ Dengeli'}
-                      </span>
-                    </div>
-                    <div className="mono font-bold" style={{ fontSize: 18, marginTop: 4, color: '#c084fc' }}>
-                      {portfolioFinvestAnalysis.weightedSolvencyScore} <span style={{ fontSize: 11, fontWeight: 500 }}>/ 100</span>
-                    </div>
-                    <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
-                      Konsolide Borç/Özkaynak: %{portfolioFinvestAnalysis.weightedDebtToEquity.toFixed(1)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Finvest Stratejik Portföy Pusulası (Callout Kutusu) */}
-                <div 
-                  style={{ 
-                    background: 'linear-gradient(135deg, rgba(8, 14, 28, 0.95), rgba(15, 23, 42, 0.9))', 
-                    border: '1px solid rgba(0, 229, 255, 0.25)', 
-                    borderLeft: `4px solid ${portfolioFinvestAnalysis.ringSummaryBadge === 'emerald' ? '#10b981' : (portfolioFinvestAnalysis.ringSummaryBadge === 'amber' ? '#f59e0b' : '#ef4444')}`,
-                    borderRadius: 6, 
-                    padding: '10px 14px', 
-                    fontSize: 11, 
-                    lineHeight: 1.5 
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 800, marginBottom: 4, color: '#f8fafc' }}>
-                    <span>💡</span>
-                    <span style={{ color: portfolioFinvestAnalysis.ringSummaryBadge === 'emerald' ? '#10b981' : (portfolioFinvestAnalysis.ringSummaryBadge === 'amber' ? '#f59e0b' : '#ef4444') }}>
-                      STRATEJİK SERMAYE VE KALKAN DEĞERLENDİRMESİ:
-                    </span>
-                    <span>{portfolioFinvestAnalysis.ringSummaryTitle}</span>
-                  </div>
-                  <div style={{ color: '#cbd5e1' }}>
-                    {portfolioFinvestAnalysis.ringSummaryDesc}
-                  </div>
-                </div>
-
-                {/* 🎯 PORTFÖY VARLIK SAYISI DİSİPLİNİ & AKILLI ROTASYON PUSULASI (1-GİRER, 1-ÇIKAR) */}
-                <div style={{
-                  marginTop: 12,
-                  padding: '12px 14px',
-                  background: 'linear-gradient(135deg, rgba(6, 12, 24, 0.95), rgba(10, 18, 36, 0.95))',
-                  border: '1px solid rgba(0, 229, 255, 0.3)',
-                  borderRadius: 6,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                  gap: 12
-                }}>
-                  {/* Sol Kutu: Varlık Sayısı Barometresi */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 13 }}>🎯</span>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#f8fafc', letterSpacing: '0.3px' }}>
-                          HİSSE & ETF SAYISI DİSİPLİNİ
-                        </span>
-                      </div>
-                      <span className={`nav-badge ${rotationAnalysis.statusBadgeClass}`} style={{ fontSize: 9.5, padding: '2px 7px' }}>
-                        {rotationAnalysis.statusBadge}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-                      <span className="mono" style={{ fontSize: 18, fontWeight: 900, color: 'var(--cyan)' }}>
-                        {rotationAnalysis.equityCount}
-                      </span>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                        / {rotationAnalysis.maxCeiling} Hisse & ETF (Tatlı Nokta)
-                      </span>
-                      <span style={{ fontSize: 9.5, color: '#64748b', marginLeft: 'auto' }}>
-                        * Kripto & Altın hariçtir
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div style={{ width: '100%', height: 6, background: '#0a0f1d', borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div style={{
-                        width: `${Math.min(100, (rotationAnalysis.equityCount / rotationAnalysis.maxCeiling) * 100)}%`,
-                        height: '100%',
-                        background: rotationAnalysis.isOverLimit 
-                          ? '#ef4444' 
-                          : (rotationAnalysis.isAtLimit ? '#f59e0b' : 'linear-gradient(90deg, #00e5ff, #10b981)'),
-                        transition: 'all 0.4s ease'
-                      }} />
-                    </div>
-
-                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, lineHeight: 1.4 }}>
-                      {rotationAnalysis.adviceText}
-                    </div>
-                  </div>
-
-                  {/* Sağ Kutu: Akıllı Pairs Rotasyon Pusulası (1-Çıkar ➔ 1-Ekle) */}
-                  {rotationAnalysis.weakestStock && rotationAnalysis.bestTarget && (
-                    <div style={{
-                      background: 'rgba(0, 229, 255, 0.04)',
-                      border: '1px solid rgba(0, 229, 255, 0.2)',
-                      borderRadius: 6,
-                      padding: '8px 12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--cyan)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span>🔄</span>
-                          <span>AKILLI ROTASYON (1-ÇIKAR ➔ 1-EKLE)</span>
-                        </span>
-                        <span style={{ fontSize: 9, color: '#94a3b8', fontStyle: 'italic' }}>
-                          Pairs Rotation Kuralı
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, margin: '4px 0' }}>
-                        {/* Çıkarılacak */}
-                        <div style={{ flex: 1, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 4, padding: '5px 8px' }}>
-                          <div style={{ fontSize: 8.5, color: '#f87171', fontWeight: 700, textTransform: 'uppercase' }}>
-                            🛑 ÇIKARILACAK
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 }}>
-                            <strong className="mono" style={{ color: '#fff', fontSize: 12 }}>
-                              {rotationAnalysis.weakestStock.clean}
-                            </strong>
-                            <span style={{ fontSize: 9.5, color: '#f87171', fontFamily: 'var(--font-mono)' }}>
-                              {rotationAnalysis.weakestStock.pnl >= 0 ? '+' : ''}%{rotationAnalysis.weakestStock.pnl.toFixed(1)}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 8.5, color: '#cbd5e1', marginTop: 1 }}>
-                            {rotationAnalysis.weakestStock.ring}. Halka • Solvency: {rotationAnalysis.weakestStock.solvencyScore}
-                          </div>
-                        </div>
-
-                        <div style={{ color: 'var(--cyan)', fontWeight: 900, fontSize: 14 }}>➔</div>
-
-                        {/* Eklenecek */}
-                        <div style={{ flex: 1, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 4, padding: '5px 8px' }}>
-                          <div style={{ fontSize: 8.5, color: '#34d399', fontWeight: 700, textTransform: 'uppercase' }}>
-                            ⚡ GÜÇLÜ KALE
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 2 }}>
-                            <strong className="mono" style={{ color: '#fff', fontSize: 12 }}>
-                              {rotationAnalysis.bestTarget.ticker}
-                            </strong>
-                            <span style={{ fontSize: 9.5, color: '#34d399', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
-                              Skor: {rotationAnalysis.bestTarget.solvency}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: 8.5, color: '#cbd5e1', marginTop: 1 }}>
-                            {rotationAnalysis.bestTarget.ring}. Halka Titanı • {rotationAnalysis.bestTarget.market}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 3 }}>
-                        💡 <strong>Strateji:</strong> {rotationAnalysis.bestTarget.reason}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* 🚀 AKILLI REBALANCE & SERBEST ALIM GÜCÜ KONTROL BARI */}
+          {/* 🚀 SERBEST ALIM GÜCÜ KONTROL BARI */}
           <div 
             className="card rebalance-control-strip" 
             style={{ 
@@ -2143,7 +1683,6 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               gap: 10
             }}
           >
-            {/* Left: Alım Gücü & Sinyal Özet Rozetleri */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--emerald)' }}>
@@ -2165,7 +1704,6 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       onClick={onOpenCashModal}
                       className="chip-btn"
                       style={{ fontSize: 9.5, padding: '1px 6px', marginLeft: 4, height: 18, color: 'var(--emerald)', borderColor: 'rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)' }}
-                      title="Nakit Giriş / Çıkış (TRY & USD Serbest Bakiye)"
                     >
                       + Nakit
                     </button>
@@ -2175,7 +1713,6 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         onClick={onOpenPpfModal}
                         className="chip-btn"
                         style={{ fontSize: 9.5, padding: '1px 6px', marginLeft: 4, height: 18, color: '#10b981', borderColor: 'rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)' }}
-                        title="PPF Kuru Barut Güncelle veya Sıfırla"
                       >
                         🛡️ PPF Barut
                       </button>
@@ -2183,136 +1720,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   </div>
                 </div>
               </div>
-
-              {/* Model Sinyalleri Rozetleri */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: 10, flexWrap: 'wrap' }}>
-                <span 
-                  className="nav-badge cyan" 
-                  style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                  title="Ağırlık ve risk sınırları içerisinde korunan pozisyonlar"
-                >
-                  🟢 {rebalanceSummary.holdCount} Dengeli
-                </span>
-                <span 
-                  className="nav-badge" 
-                  style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(0, 229, 255, 0.15)', color: 'var(--cyan)', border: '1px solid rgba(0, 229, 255, 0.35)' }}
-                  title="Hisse & ETF varlık sayısı (Kripto ve Altın hariç)"
-                >
-                  🎯 {rotationAnalysis.equityCount} / 16 Hisse
-                </span>
-
-                {rebalanceSummary.trimCount > 0 && (
-                  <span 
-                    className="nav-badge amber" 
-                    style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    title={`Model Tavanı Aşıldı: ${rebalanceSummary.trimTicker} %${rebalanceSummary.trimWeight.toFixed(1)}`}
-                  >
-                    ✂️ {rebalanceSummary.trimCount} Kâr Al ({rebalanceSummary.trimTicker})
-                  </span>
-                )}
-
-                {rebalanceSummary.accumCount > 0 && (
-                  <span 
-                    className="nav-badge emerald" 
-                    style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    title={`Yüksek Quant Skoru: ${rebalanceSummary.accumTicker} (${rebalanceSummary.accumScore.toFixed(0)})`}
-                  >
-                    ➕ {rebalanceSummary.accumCount} Biriktir ({rebalanceSummary.accumTicker})
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Right: Periyot Seçimi + Tablo Görünüm Modu */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {/* Period Selector */}
-              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: 2 }}>
-                <button
-                  type="button"
-                  className={`chip-btn ${rebalancePeriod === 'monthly' ? 'active' : ''}`}
-                  onClick={() => setRebalancePeriod('monthly')}
-                  style={{ fontSize: 9.5, padding: '3px 7px' }}
-                  title="Kurumsal standart: Ay başında çeyreklik bilançolara göre dengelenir"
-                >
-                  📅 Aylık
-                </button>
-                <button
-                  type="button"
-                  className={`chip-btn ${rebalancePeriod === 'weekly' ? 'active' : ''}`}
-                  onClick={() => setRebalancePeriod('weekly')}
-                  style={{ fontSize: 9.5, padding: '3px 7px' }}
-                  title="Haftalık momentum ve aşırı alım/satım takibi"
-                >
-                  ⚡ Haftalık
-                </button>
-              </div>
-
-              {/* View Sub-Mode Switcher */}
-              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0, 229, 255, 0.3)', borderRadius: 6, padding: 2 }}>
-                <button
-                  type="button"
-                  className={`chip-btn ${tableSubMode === 'unified' ? 'active' : ''}`}
-                  onClick={() => setTableSubMode('unified')}
-                  style={{ 
-                    fontSize: 10, 
-                    padding: '3px 8px',
-                    background: tableSubMode === 'unified' ? 'var(--cyan)' : 'transparent',
-                    color: tableSubMode === 'unified' ? '#000' : 'var(--text-bright)',
-                    fontWeight: 800
-                  }}
-                  title="Finansal değerler ve Quant/Rebalance sinyallerini tek süper tabloda birleştirir"
-                >
-                  ✨ Birleşik Süper Tablo
-                </button>
-                <button
-                  type="button"
-                  className={`chip-btn ${tableSubMode === 'financial' ? 'active' : ''}`}
-                  onClick={() => setTableSubMode('financial')}
-                  style={{ 
-                    fontSize: 10, 
-                    padding: '3px 8px',
-                    background: tableSubMode === 'financial' ? 'var(--cyan)' : 'transparent',
-                    color: tableSubMode === 'financial' ? '#000' : 'var(--text-bright)',
-                    fontWeight: 700
-                  }}
-                  title="Klasik alım/satım ve kâr/zarar odaklı görünüm"
-                >
-                  📊 Finansal
-                </button>
-                <button
-                  type="button"
-                  className={`chip-btn ${tableSubMode === 'rebalance' ? 'active' : ''}`}
-                  onClick={() => setTableSubMode('rebalance')}
-                  style={{ 
-                    fontSize: 10, 
-                    padding: '3px 8px',
-                    background: tableSubMode === 'rebalance' ? 'var(--cyan)' : 'transparent',
-                    color: tableSubMode === 'rebalance' ? '#000' : 'var(--text-bright)',
-                    fontWeight: 700
-                  }}
-                  title="Model portföy ağırlıkları, quant skorları ve rehberlik metinleri"
-                >
-                  🤖 Rebalance & Sinyal
-                </button>
-                <button
-                  type="button"
-                  className={`chip-btn ${tableSubMode === 'finvest' ? 'active' : ''}`}
-                  onClick={() => setTableSubMode('finvest')}
-                  style={{ 
-                    fontSize: 10, 
-                    padding: '3px 8px',
-                    background: tableSubMode === 'finvest' ? 'var(--cyan)' : 'transparent',
-                    color: tableSubMode === 'finvest' ? '#000' : 'var(--text-bright)',
-                    fontWeight: 700
-                  }}
-                  title="3-Halka Bilanço Teşhisi, Net Buyback Verimi, Temettü ve Solvency Röntgeni"
-                >
-                  🛡️ Sermaye & Solvency Röntgeni
-                </button>
-              </div>
             </div>
           </div>
-
         </div>
       )}
 
@@ -2425,10 +1834,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
             </div>
           </div>
 
-          {/* 🌟 2-Column Dashboard: Konsolide Sermaye & Zırh Dengesi + TÜM PORTFÖY KAR TANESİ RADARI */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 14, marginBottom: 16 }}>
-            
-            {/* Sol Kolon: Konsolide Sermaye Yapısı & Koruma Dağılımı */}
+          {/* 🌟 Konsolide Sermaye Yapısı & Koruma Dağılımı */}
+          <div style={{ marginBottom: 16 }}>
             <div 
               className="card" 
               style={{ 
@@ -2448,11 +1855,11 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                     <span>SERMAYE DAĞILIMI & ZIRH DENGESİ</span>
                   </div>
                   <span className="nav-badge gold" style={{ fontSize: 9 }}>
-                    All-Weather Portföy Mimarisi
+                    Gerçek Portföy Dağılımı
                   </span>
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 12 }}>
-                  Büyüme varlıklarınız (Hisse & Kripto) ile kriz tamponlarınız (Altın, PPF & Nakit) arasındaki koruma ve getiri optimizasyonu.
+                  Büyüme varlıklarınız (Hisse & Kripto) ile kriz tamponlarınız (Altın, PPF & Nakit) arasındaki gerçek bakiye dağılımı.
                 </div>
               </div>
 
@@ -2485,7 +1892,7 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
               </div>
 
               {/* 3-Sütunlu Sermaye Özet Paneli */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, background: 'rgba(0,0,0,0.5)', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 10, marginBottom: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, background: 'rgba(0,0,0,0.5)', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 10 }}>
                 <div>
                   <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 9 }}>Büyüme Motoru</span>
                   <strong className="mono" style={{ fontSize: 12.5, color: '#38bdf8' }}>
@@ -2516,108 +1923,185 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   </div>
                 </div>
               </div>
-
-              {/* Stratejik Portföy Yorumu / Kalkan Tespiti */}
-              <div style={{ background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.15)', borderRadius: 6, padding: '7px 10px', fontSize: 9.5, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={13} style={{ color: 'var(--cyan)', flexShrink: 0 }} />
-                <span>
-                  {totalSnowflake.totalDefensivePct >= 18
-                    ? `Zırh ve nakit tamponunuz (%${totalSnowflake.totalDefensivePct}), hisse düzeltmelerine karşı dengeli bir koruma kalkanı ve alım gücü sağlamaktadır.`
-                    : `Savunma zırhı ve nakit oranınız (%${totalSnowflake.totalDefensivePct}) düşük; piyasa dalgalanmalarına karşı altın veya PPF takviyesi direnci artırabilir.`}
-                </span>
-              </div>
             </div>
-
-            {/* Sağ Kolon: TÜM PORTFÖY KONSOLİDE KAR TANESİ RADARI */}
-            <div 
-              className="card" 
-              style={{ 
-                padding: 16, 
-                background: '#090d16', 
-                border: `1px solid ${totalSnowflakeTheme.color}50`, 
-                boxShadow: `0 0 16px ${totalSnowflakeTheme.color}18`, 
-                borderRadius: 8, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'space-between',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <div style={{ fontWeight: 800, fontSize: 12.5, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <Snowflake size={16} style={{ color: totalSnowflakeTheme.color }} />
-                    <span>TÜM PORTFÖY KONSOLİDE SAĞLIK KAR TANESİ</span>
-                  </div>
-                  <span 
-                    className="nav-badge" 
-                    style={{ 
-                      fontSize: 9.5, 
-                      fontWeight: 800, 
-                      background: `${totalSnowflakeTheme.color}22`, 
-                      color: totalSnowflakeTheme.color, 
-                      border: `1px solid ${totalSnowflakeTheme.color}66`,
-                      padding: '3px 8px'
-                    }}
-                  >
-                    {totalSnowflakeTheme.icon} {totalSnowflake.composite.toFixed(1)} / 100 Puan
-                  </span>
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 10 }}>
-                  Konsolide çoklu varlık sağlık ve direnç profili: <strong style={{ color: totalSnowflakeTheme.color }}>{totalSnowflakeTheme.label}</strong>
-                </div>
-              </div>
-
-              {/* Radar Chart Container */}
-              <div style={{ height: 185, width: '100%', position: 'relative', margin: '2px 0' }}>
-                <Radar data={totalSnowflakeChartData} options={snowflakeChartOptions} />
-              </div>
-
-              {/* 5 Pillar Mini Scores Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, background: 'rgba(0,0,0,0.5)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center', marginBottom: 6 }}>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Dağılım</div>
-                  <strong className="mono" style={{ color: totalSnowflake.alloc >= 70 ? 'var(--cyan)' : 'var(--amber)' }}>{totalSnowflake.alloc}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Zırh/Nakit</div>
-                  <strong className="mono" style={{ color: totalSnowflake.shield >= 70 ? 'var(--gold)' : 'var(--amber)' }}>{totalSnowflake.shield}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Kalite</div>
-                  <strong className="mono" style={{ color: totalSnowflake.quality >= 70 ? 'var(--emerald)' : 'var(--amber)' }}>{totalSnowflake.quality}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Direnç</div>
-                  <strong className="mono" style={{ color: totalSnowflake.risk >= 70 ? '#a855f7' : 'var(--red)' }}>{totalSnowflake.risk}</strong>
-                </div>
-                <div>
-                  <div style={{ color: 'var(--text-muted)' }}>Getiri</div>
-                  <strong className="mono" style={{ color: totalSnowflake.return >= 70 ? 'var(--cyan)' : 'var(--amber)' }}>{totalSnowflake.return}</strong>
-                </div>
-              </div>
-
-              {/* 4-Tier Color Legend Bar */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3, background: 'rgba(0,0,0,0.5)', padding: '4px 6px', borderRadius: 4, border: '1px solid var(--border)', fontSize: 8.5, textAlign: 'center' }}>
-                <div style={{ color: '#ef4444', fontWeight: totalSnowflakeTheme.status === 'critical' ? 900 : 500, background: totalSnowflakeTheme.status === 'critical' ? 'rgba(239,68,68,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🔴 &lt;50 Zayıf
-                </div>
-                <div style={{ color: '#f59e0b', fontWeight: totalSnowflakeTheme.status === 'warning' ? 900 : 500, background: totalSnowflakeTheme.status === 'warning' ? 'rgba(245,158,11,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🟡 50-69 Orta
-                </div>
-                <div style={{ color: '#00e5ff', fontWeight: totalSnowflakeTheme.status === 'healthy' ? 900 : 500, background: totalSnowflakeTheme.status === 'healthy' ? 'rgba(0,229,255,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🔵 70-84 Sağlıklı
-                </div>
-                <div style={{ color: '#10b981', fontWeight: totalSnowflakeTheme.status === 'excellent' ? 900 : 500, background: totalSnowflakeTheme.status === 'excellent' ? 'rgba(16,185,129,0.2)' : 'transparent', borderRadius: 3, padding: '1px 0' }}>
-                  🟢 ≥85 Mükemmel
-                </div>
-              </div>
-            </div>
-
           </div>
 
         </div>
       )}
+
+      {/* 🎯 TEKİL ENSTRÜMAN TAVANI & KONSANTRASYON RÖNTGENİ (UCITS 5/10/40 KURALI) */}
+      <div 
+        className="card" 
+        style={{ 
+          marginBottom: 16, 
+          padding: 16, 
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(9, 13, 22, 0.95))', 
+          border: '1px solid rgba(255, 255, 255, 0.1)', 
+          borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Activity size={16} className="text-cyan" />
+            <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.4px', color: '#f8fafc' }}>
+              🎯 TEKİL ENSTRÜMAN TAVANI & KONSANTRASYON RÖNTGENİ
+            </span>
+          </div>
+          <span 
+            className="nav-badge" 
+            style={{ 
+              fontSize: 10, 
+              padding: '3px 9px', 
+              background: 'rgba(0, 229, 255, 0.12)', 
+              color: 'var(--cyan)', 
+              border: '1px solid rgba(0, 229, 255, 0.3)',
+              fontWeight: 800
+            }}
+          >
+            UCITS 5/10/40 Kuralı • Tekil Sert Tavan: %10.0
+          </span>
+        </div>
+
+        {/* 4 Konsantrasyon KPI Kartı */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 12 }}>
+          {/* KPI 1: En Büyük Varlık ve Tavan */}
+          <div style={{ background: 'rgba(0,0,0,0.35)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              EN YÜKSEK TEKİL VARLIK
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+              <span className="mono font-bold" style={{ fontSize: 18, color: concentrationAnalysis.top1?.isBreached ? '#ef4444' : (concentrationAnalysis.top1?.isWarning ? '#f59e0b' : '#38bdf8') }}>
+                {concentrationAnalysis.top1?.ticker || '--'}
+              </span>
+              <span className="mono" style={{ fontSize: 14, fontWeight: 800, color: concentrationAnalysis.top1?.isBreached ? '#ef4444' : '#f8fafc' }}>
+                (%{concentrationAnalysis.top1?.weightPct.toFixed(1) || '0.0'})
+              </span>
+            </div>
+            <div style={{ fontSize: 10, marginTop: 3 }}>
+              {concentrationAnalysis.top1?.isBreached ? (
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                  🚨 Sert Tavan %{concentrationAnalysis.top1?.hardCap} (+%{concentrationAnalysis.top1?.excessWeightPct.toFixed(1)} Aşım)
+                </span>
+              ) : (
+                <span style={{ color: '#10b981' }}>✓ Tavan Dahilinde</span>
+              )}
+            </div>
+          </div>
+
+          {/* KPI 2: Top 3 Varlık Konsantrasyonu */}
+          <div style={{ background: 'rgba(0,0,0,0.35)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              İLK 3 VARLIK PAYI (TOP 3)
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+              <span className="mono font-bold" style={{ fontSize: 18, color: concentrationAnalysis.top3Weight > 45 ? '#f59e0b' : '#10b981' }}>
+                %{concentrationAnalysis.top3Weight.toFixed(1)}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                (Eşik: &lt;%40)
+              </span>
+            </div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {concentrationAnalysis.top3.map(x => x.ticker).join(', ')}
+            </div>
+          </div>
+
+          {/* KPI 3: HHI Konsantrasyon Endeksi */}
+          <div style={{ background: 'rgba(0,0,0,0.35)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              HHI RİSK SKORU
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+              <span className="mono font-bold" style={{ fontSize: 18, color: concentrationAnalysis.hhiColor }}>
+                {concentrationAnalysis.hhi}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                / 10.000
+              </span>
+            </div>
+            <div style={{ fontSize: 10, color: concentrationAnalysis.hhiColor, fontWeight: 700, marginTop: 3 }}>
+              {concentrationAnalysis.hhiLabel}
+            </div>
+          </div>
+
+          {/* KPI 4: Dengeleme & Açığa Çıkacak Nakit */}
+          <div style={{ background: 'rgba(0,0,0,0.35)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+              TAVAN REBALANCE POTANSİYELİ
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+              <span className="mono font-bold" style={{ fontSize: 18, color: concentrationAnalysis.totalExcessTRY > 0 ? '#fbbf24' : '#10b981' }}>
+                ₺{fmt(concentrationAnalysis.totalExcessTRY, 0)}
+              </span>
+            </div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
+              {concentrationAnalysis.totalExcessTRY > 0 ? (
+                <span>Tavan aşanları %10'a çekince serbest kalacak nakit</span>
+              ) : (
+                <span style={{ color: '#10b981' }}>Tüm hisseler tavan koridorunda</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* İlk 5 Varlık ve Tavan Çubuğu */}
+        <div style={{ background: 'rgba(0,0,0,0.25)', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>EN BÜYÜK 5 VARLIK & TAVAN ÇİZGİLERİ (İdeal: %7.5 • Sert Tavan: %10.0)</span>
+            <span style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>İlk 5 Toplamı: %{concentrationAnalysis.top5Weight.toFixed(1)}</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {concentrationAnalysis.top5.map(item => {
+              const capHard = item.hardCap || 10.0;
+              const capSoft = item.softCap || 7.5;
+              const isOver = item.weightPct > capHard;
+              const isWarn = item.weightPct > capSoft && !isOver;
+              const barColor = item.isGold ? '#eab308' : (isOver ? '#ef4444' : (isWarn ? '#f59e0b' : '#06b6d4'));
+
+              return (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 85, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <strong className="mono" style={{ fontSize: 11, color: '#fff' }}>{item.ticker}</strong>
+                    <span style={{ fontSize: 8.5, color: 'var(--text-muted)' }}>({item.type})</span>
+                  </div>
+
+                  <div style={{ flex: 1, position: 'relative', height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div 
+                      style={{ 
+                        width: `${Math.min(100, (item.weightPct / 35.0) * 100)}%`, 
+                        height: '100%', 
+                        background: barColor, 
+                        borderRadius: 4, 
+                        transition: 'width 0.4s' 
+                      }} 
+                    />
+                  </div>
+
+                  <div style={{ width: 60, textAlign: 'right' }}>
+                    <span className="mono font-bold" style={{ fontSize: 11, color: barColor }}>
+                      %{item.weightPct.toFixed(1)}
+                    </span>
+                  </div>
+
+                  <div style={{ width: 115, textAlign: 'right' }}>
+                    {item.isGold ? (
+                      <span className="nav-badge gold" style={{ fontSize: 9, padding: '1px 6px' }}>🟡 Kalkan</span>
+                    ) : isOver ? (
+                      <span className="nav-badge red" style={{ fontSize: 9, padding: '1px 6px' }}>🚨 &gt;%{capHard} Aşım</span>
+                    ) : isWarn ? (
+                      <span className="nav-badge amber" style={{ fontSize: 9, padding: '1px 6px' }}>⚖️ &gt;%{capSoft} Tavan</span>
+                    ) : (
+                      <span className="nav-badge cyan" style={{ fontSize: 9, padding: '1px 6px' }}>🟢 Dengeli</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* ========================================================================= */}
       {/* 📋 ORTAK TABLO BÖLÜMÜ: ARAMA & POZİSYON LİSTESİ                            */}
@@ -2815,6 +2299,12 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       {renderSortIndicator('type')}
                     </div>
                   </th>
+                  <th onClick={() => handleSort('weight')} className="text-right" style={{ cursor: 'pointer', minWidth: '95px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
+                      <span>Sepet Payı</span>
+                      {renderSortIndicator('weight')}
+                    </div>
+                  </th>
                   <th onClick={() => handleSort('shares')} className="text-right" style={{ cursor: 'pointer' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
                       <span>Adet</span>
@@ -2880,6 +2370,13 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
 
                 const reb = rebalanceMap[h.id] || rebalanceMap[(h.ticker || '').toUpperCase()];
                 const weightPct = reb?.weightPct || (((h.valTRY || 0) / totalValAll) * 100);
+
+                const cleanSym = (h.ticker || '').toUpperCase().replace('.IS', '').replace('-USD', '');
+                const isGold = h.type === 'Altın' || h.type === 'Emtia' || cleanSym === 'XAUT' || cleanSym.includes('GOLD');
+                const isCrypto = h.type === 'Kripto' || KNOWN_CRYPTO_SET.has(cleanSym);
+
+                const capSoft = isGold ? 20.0 : (isCrypto ? 5.0 : 7.5);
+                const capHard = isGold ? 25.0 : (isCrypto ? 7.5 : 10.0);
 
                 // ==========================================
                 // 1. UNIFIED SUPER TABLE VIEW (Hisse-ETF)
@@ -3414,6 +2911,47 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         {h.type || 'Hisse'}
                       </span>
                     </td>
+                    <td className="text-right">
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <div 
+                          className="mono font-bold" 
+                          style={{ 
+                            fontSize: 12, 
+                            color: isGold 
+                              ? '#fbbf24' 
+                              : (weightPct > capHard ? '#ef4444' : (weightPct > capSoft ? '#f59e0b' : '#f8fafc')) 
+                          }}
+                        >
+                          %{weightPct.toFixed(1)}
+                        </div>
+                        <div 
+                          style={{ width: 62, height: 4.5, background: 'rgba(255,255,255,0.08)', borderRadius: 2, position: 'relative', overflow: 'hidden' }}
+                          title={`Sepet Payı: %${weightPct.toFixed(1)} • İdeal Tavan: %${capSoft} • Sert Tavan: %${capHard}`}
+                        >
+                          <div 
+                            style={{ 
+                              width: `${Math.min(100, (weightPct / capHard) * 100)}%`, 
+                              height: '100%', 
+                              background: isGold 
+                                ? '#eab308' 
+                                : (weightPct > capHard ? '#ef4444' : (weightPct > capSoft ? '#f59e0b' : 'var(--cyan)')), 
+                              borderRadius: 2 
+                            }} 
+                          />
+                        </div>
+                        <div style={{ fontSize: 8.5, fontWeight: 700, marginTop: 1 }}>
+                          {isGold ? (
+                            <span style={{ color: '#fbbf24' }}>🛡️ Kalkan</span>
+                          ) : weightPct > capHard ? (
+                            <span style={{ color: '#ef4444' }}>⚠️ &gt;%{capHard} Aşım</span>
+                          ) : weightPct > capSoft ? (
+                            <span style={{ color: '#f59e0b' }}>⚖️ &gt;%{capSoft} Tavan</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>Max %{capSoft}</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
                     <td className="text-right mono font-medium">
                       {fmtShares(h.shares)}
                     </td>
@@ -3836,11 +3374,11 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                   );
                 }
 
-                // 3. Classical Financial Footnote (10 columns)
+                // 3. Classical Financial Footnote (11 columns)
                 const realProfitForFooter = (isTRY ? portfolioSummary?.realizedProfitTRY : portfolioSummary?.realizedProfitUSD) || 0;
                 return (
                   <tr style={{ background: '#090d16', borderTop: '2px solid rgba(0, 229, 255, 0.4)', fontWeight: 800 }}>
-                    <td colSpan={3} style={{ color: activeStat.color, letterSpacing: '0.4px', paddingLeft: 12 }}>
+                    <td colSpan={2} style={{ color: activeStat.color, letterSpacing: '0.4px', paddingLeft: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
                         <span style={{ fontWeight: 900, fontSize: 12 }}>{label}</span>
                         <span 
@@ -3873,6 +3411,10 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                         )}
                       </div>
                     </td>
+                    <td className="text-right mono text-bright" style={{ fontWeight: 800 }}>
+                      %{activeStat.weightPct.toFixed(1)}
+                    </td>
+                    <td className="text-right mono font-medium">--</td>
                     <td className="text-right mono text-muted" style={{ fontWeight: 800 }}>
                       <div>{sym}{fmt(costVal, 2)}</div>
                       <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 500 }}>Top. Maliyet</div>
