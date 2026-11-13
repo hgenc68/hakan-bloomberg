@@ -1,1740 +1,737 @@
-import React, { useState, useMemo } from 'react';
-import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
-import { Line, Bar } from 'react-chartjs-2';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useApp } from '../context/AppContext';
+import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
-import { 
-  LineChart, 
-  BarChart3, 
-  Shield, 
-  Activity, 
-  HelpCircle, 
-  CheckCircle2, 
-  TrendingUp, 
-  TrendingDown, 
-  Layers, 
-  PieChart, 
-  Target, 
-  Award, 
-  Zap, 
-  Sparkles, 
-  ArrowRight,
-  ShieldCheck,
-  Scale,
-  Filter,
-  Sliders,
-  CheckSquare,
-  Square,
-  RotateCcw,
-  ChevronDown,
-  ChevronUp,
-  Check
-} from 'lucide-react';
-import benchmarkData from '../data/benchmarkData.json';
+import { LineChart, RefreshCw } from 'lucide-react';
 
 ChartJS.register(...registerables);
 
+const BENCHMARKS = [
+  { id: 'SP500', symbol: 'SPY', label: 'S&P 500 (SPY)', color: '#38bdf8' },
+  { id: 'NASDAQ', symbol: 'QQQ', label: 'Nasdaq 100 (QQQ)', color: '#a78bfa' },
+  { id: 'BIST100', symbol: 'XU100.IS', label: 'BIST 100 (XU100)', color: '#ef4444' },
+  { id: 'GOLD', symbol: 'GC=F', label: 'Ons Altın (XAU/USD)', color: '#fbbf24' },
+  { id: 'BITCOIN', symbol: 'BTC-USD', label: 'Bitcoin (BTC)', color: '#f97316' }
+];
+
+const TIMEFRAMES = [
+  { id: '1W', label: '1 Hafta', days: 5 },
+  { id: '1M', label: '1 Ay', days: 22 },
+  { id: '3M', label: '3 Ay', days: 65 },
+  { id: '6M', label: '6 Ay', days: 130 },
+  { id: '1Y', label: '1 Yıl', days: 252 }
+];
+
+// Align an asset's daily candle array to a reference date list using latest close on or before each date
+function alignCandlesToDates(candles, dateList, fallbackSliceLen) {
+  if (!Array.isArray(candles) || candles.length === 0 || !Array.isArray(dateList) || dateList.length === 0) {
+    return null;
+  }
+  const sorted = [...candles].filter(c => typeof c.close === 'number' && c.close > 0 && c.time);
+  if (sorted.length === 0) return null;
+
+  const alignedCloses = [];
+  let ptr = 0;
+  let lastKnownClose = null;
+
+  for (const targetDate of dateList) {
+    while (ptr < sorted.length && String(sorted[ptr].time) <= String(targetDate)) {
+      lastKnownClose = sorted[ptr].close;
+      ptr++;
+    }
+    if (lastKnownClose !== null) {
+      alignedCloses.push(lastKnownClose);
+    } else {
+      // Target date is slightly before first available candle in range; use earliest candle
+      alignedCloses.push(sorted[0].close);
+    }
+  }
+
+  if (alignedCloses.length === 0) {
+    const tail = sorted.slice(-fallbackSliceLen);
+    return tail.map(c => c.close);
+  }
+  return alignedCloses;
+}
+
 export default function BenchmarkTab() {
-  const { currentCurrency, usdtry, portfolioSummary, marketQuotes = {} } = useApp();
+  const { currentCurrency, portfolioSummary } = useApp();
   const isTRY = currentCurrency === 'try';
-  const curKey = isTRY ? 'try' : 'usd';
   const sym = isTRY ? '₺' : '$';
 
-  const fmt = (v, d = 2) => (Number(v) || 0).toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d });
-
-  const [portfolioScope, setPortfolioScope] = useState('equity'); // 'equity', 'ex_bydnr', 'recent', 'all', 'custom'
-  const [chartType, setChartType] = useState('line'); // 'line' or 'bar'
-  const [timeframe, setTimeframe] = useState('1Y'); // '1W', '1M', '3M', '6M', '1Y', 'ALL'
-  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-
-  // Available holdings normalized list
-  const availableHoldings = useMemo(() => {
-    const list = portfolioSummary?.enrichedHoldings?.length > 0
-      ? portfolioSummary.enrichedHoldings
-      : (benchmarkData?.holdings || []);
-    
-    return list.map(h => {
-      const ticker = (h.ticker || '').toUpperCase();
-      const clean = (h.clean_ticker || ticker).toUpperCase();
-      const type = h.type || 'Hisse';
-      const name = h.name || ticker;
-      const valTRY = Number(h.valTRY != null ? h.valTRY : (h.val_try || 0));
-      const valUSD = Number(h.valUSD != null ? h.valUSD : (h.val_usd || 0));
-      const costTRY = Number(h.costTRY != null ? h.costTRY : (h.cost_try || 0));
-      const costUSD = Number(h.costUSD != null ? h.costUSD : (h.cost_usd || 0));
-      const profitTRY = Number(h.profitTRY != null ? h.profitTRY : (h.profit_try != null ? h.profit_try : (valTRY - costTRY)));
-      const profitUSD = Number(h.profitUSD != null ? h.profitUSD : (h.profit_usd != null ? h.profit_usd : (valUSD - costUSD)));
-      const returnPct = Number(h.returnPct != null ? h.returnPct : (h.return_pct != null ? h.return_pct : (costTRY > 0 ? (profitTRY / costTRY) * 100 : 0)));
-      const dayPLTRY = Number(h.dayPLTRY != null ? h.dayPLTRY : (h.day_pl_try || 0));
-      const dayPLUSD = Number(h.dayPLUSD != null ? h.dayPLUSD : (h.day_pl_usd || 0));
-      const dayPLPct = Number(h.dayPLPct != null ? h.dayPLPct : (h.day_change_pct || 0));
-
-      let category = 'equity';
-      if (type === 'Altın' || type === 'Altın / Kalkan' || clean.includes('XAUT') || ticker.includes('GOLD') || ticker.includes('ALTIN')) {
-        category = 'shield';
-      } else if (type === 'Kripto' || KNOWN_CRYPTO_SET?.has(clean) || KNOWN_CRYPTO_SET?.has(ticker)) {
-        category = 'crypto';
-      }
-
-      return {
-        id: ticker,
-        ticker,
-        clean,
-        name,
-        type,
-        category,
-        currency: h.currency || (category === 'equity' && !ticker.endsWith('.IS') ? 'USD' : 'TRY'),
-        valTRY,
-        valUSD,
-        costTRY,
-        costUSD,
-        profitTRY,
-        profitUSD,
-        returnPct,
-        dayPLTRY,
-        dayPLUSD,
-        dayPLPct
-      };
-    });
-  }, [portfolioSummary]);
-
-  // Selected tickers state for custom filtering
-  const [selectedTickers, setSelectedTickers] = useState(() => {
-    return new Set(['BYDNR', 'SPCX', 'DRAM', 'NVDA', 'TSM', 'ABBV']);
-  });
-
+  const [timeframe, setTimeframe] = useState('1Y');
+  const [candleMap, setCandleMap] = useState({});
+  const [holdingCandleMap, setHoldingCandleMap] = useState({});
+  const [loading, setLoading] = useState(true);
   const [activeSeries, setActiveSeries] = useState({
-    portfolio: true,
+    PORTFOLIO: true,
     SP500: true,
-    NASDAQ: true,
-    BIST100: true,
-    GOLD: true,
+    NASDAQ: false,
+    BIST100: false,
+    GOLD: false,
     BITCOIN: false
   });
 
-  // Dynamically extend historical series to the current trading date using live market quotes
-  const { rawDates, series } = useMemo(() => {
-    const baseDates = benchmarkData.dates ? [...benchmarkData.dates] : [];
-    const baseSeries = benchmarkData.normalized_series ? { ...benchmarkData.normalized_series } : {};
-    
-    const today = new Date().toISOString().split('T')[0];
-    const lastDate = baseDates[baseDates.length - 1];
+  // Extract unique holding tickers from the user's real Firestore portfolio
+  const portfolioTickers = useMemo(() => {
+    const list = portfolioSummary?.enrichedHoldings || [];
+    const set = new Set();
+    list.forEach(h => {
+      const t = String(h.ticker || '').trim().toUpperCase();
+      if (t) set.add(t);
+    });
+    return Array.from(set);
+  }, [portfolioSummary?.enrichedHoldings]);
 
-    if (lastDate && lastDate < today) {
-      baseDates.push(today);
+  const fetchAllCandles = useCallback(async () => {
+    setLoading(true);
+    try {
+      const bmResults = {};
+      await Promise.all(
+        BENCHMARKS.map(async (bm) => {
+          try {
+            const res = await fetch(`/api/market?type=candles&symbol=${encodeURIComponent(bm.symbol)}&interval=1d`);
+            if (res.ok) {
+              const json = await res.json();
+              if (Array.isArray(json.candles) && json.candles.length > 0) {
+                bmResults[bm.id] = json.candles;
+              }
+            }
+          } catch (e) {}
+        })
+      );
+      setCandleMap(bmResults);
 
-      Object.keys(baseSeries).forEach(key => {
-        const arr = [...baseSeries[key]];
-        const lastVal = arr[arr.length - 1] || 100;
-        let dayReturn = 0;
+      // Fetch real historical daily candles for each asset in the user's portfolio in batches of 8
+      const hResults = {};
+      const batchSize = 8;
+      for (let i = 0; i < portfolioTickers.length; i += batchSize) {
+        const batch = portfolioTickers.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (ticker) => {
+            try {
+              const res = await fetch(`/api/market?type=candles&symbol=${encodeURIComponent(ticker)}&interval=1d`);
+              if (res.ok) {
+                const json = await res.json();
+                if (Array.isArray(json.candles) && json.candles.length > 0) {
+                  hResults[ticker] = json.candles;
+                }
+              }
+            } catch (e) {}
+          })
+        );
+      }
+      setHoldingCandleMap(hResults);
+    } finally {
+      setLoading(false);
+    }
+  }, [portfolioTickers]);
 
-        if (key.includes('SP500')) {
-          dayReturn = Number(marketQuotes['SPY']?.changePct ?? marketQuotes['^GSPC']?.changePct ?? 0);
-        } else if (key.includes('NASDAQ')) {
-          dayReturn = Number(marketQuotes['QQQ']?.changePct ?? marketQuotes['^IXIC']?.changePct ?? 0);
-        } else if (key.includes('BIST100')) {
-          dayReturn = Number(marketQuotes['XU100.IS']?.changePct ?? 0);
-        } else if (key.includes('GOLD')) {
-          dayReturn = Number(marketQuotes['GC=F']?.changePct ?? 0);
-        } else if (key.includes('BITCOIN')) {
-          dayReturn = Number(marketQuotes['BTC-USD']?.changePct ?? marketQuotes['BTC']?.changePct ?? 0);
-        } else if (key.includes('portfolio') || key.includes('equity')) {
-          dayReturn = Number(portfolioSummary?.dayPLPct ?? 0);
+  useEffect(() => {
+    fetchAllCandles();
+  }, [fetchAllCandles]);
+
+  const tfDays = useMemo(() => {
+    return TIMEFRAMES.find(t => t.id === timeframe)?.days || 65;
+  }, [timeframe]);
+
+  // Compute real percentage return curves for Benchmarks + User's Real Weighted Portfolio
+  const { dates, normalizedCurves, periodReturns, holdingPeriodReturns } = useMemo(() => {
+    const spCandles = candleMap.SP500 || [];
+    const slice = spCandles.slice(-tfDays);
+    const dateList = slice.map(c => c.time);
+
+    const curves = {};
+    const returns = {};
+
+    // 1. Compute Benchmark Curves
+    for (const bm of BENCHMARKS) {
+      const raw = candleMap[bm.id] || [];
+      if (raw.length === 0 || dateList.length === 0) {
+        curves[bm.id] = [];
+        returns[bm.id] = null;
+        continue;
+      }
+      const aligned = alignCandlesToDates(raw, dateList, tfDays);
+      if (!aligned || aligned.length === 0) {
+        curves[bm.id] = [];
+        returns[bm.id] = null;
+        continue;
+      }
+      const baseClose = aligned[0] || 1;
+      const pctSeries = aligned.map(close => Number((((close - baseClose) / baseClose) * 100).toFixed(2)));
+      curves[bm.id] = pctSeries;
+      returns[bm.id] = pctSeries.length > 0 ? pctSeries[pctSeries.length - 1] : null;
+    }
+
+    // 2. Compute User's Real Weighted Portfolio Curve from real daily candles of their holdings
+    const holdings = portfolioSummary?.enrichedHoldings || [];
+    const perHoldingRet = {};
+    const weightedSums = new Array(dateList.length).fill(0);
+    let totalTrackedWeight = 0;
+
+    for (const h of holdings) {
+      const ticker = String(h.ticker || '').trim().toUpperCase();
+      const weightVal = Number(isTRY ? h.valTRY : h.valUSD) || 0;
+      const rawCandles = holdingCandleMap[ticker];
+      if (!rawCandles || rawCandles.length === 0 || dateList.length === 0) {
+        perHoldingRet[ticker] = null;
+        continue;
+      }
+
+      const aligned = alignCandlesToDates(rawCandles, dateList, tfDays);
+      if (!aligned || aligned.length === 0 || !aligned[0]) {
+        perHoldingRet[ticker] = null;
+        continue;
+      }
+
+      const baseClose = aligned[0];
+      const hSeries = aligned.map(c => ((c - baseClose) / baseClose) * 100);
+      perHoldingRet[ticker] = Number(hSeries[hSeries.length - 1].toFixed(2));
+
+      if (weightVal > 0) {
+        for (let i = 0; i < dateList.length; i++) {
+          weightedSums[i] += weightVal * hSeries[i];
         }
+        totalTrackedWeight += weightVal;
+      }
+    }
 
-        const nextVal = Number((lastVal * (1 + dayReturn / 100)).toFixed(2));
-        arr.push(nextVal);
-        baseSeries[key] = arr;
+    // Also include physical gold (Gram Altın) if present in portfolioSummary
+    const physGoldVal = isTRY
+      ? (Number(portfolioSummary?.totalGoldValTRY) || 0)
+      : ((Number(portfolioSummary?.totalGoldValTRY) || 0) / (portfolioSummary?.usdtry || 49.03));
+
+    if (physGoldVal > 0 && curves.GOLD && curves.GOLD.length === dateList.length) {
+      for (let i = 0; i < dateList.length; i++) {
+        weightedSums[i] += physGoldVal * curves.GOLD[i];
+      }
+      totalTrackedWeight += physGoldVal;
+    }
+
+    if (totalTrackedWeight > 0 && dateList.length > 0) {
+      const portSeries = weightedSums.map(sum => Number((sum / totalTrackedWeight).toFixed(2)));
+      curves.PORTFOLIO = portSeries;
+      returns.PORTFOLIO = portSeries[portSeries.length - 1];
+    } else {
+      curves.PORTFOLIO = [];
+      returns.PORTFOLIO = null;
+    }
+
+    return {
+      dates: dateList,
+      normalizedCurves: curves,
+      periodReturns: returns,
+      holdingPeriodReturns: perHoldingRet
+    };
+  }, [candleMap, holdingCandleMap, tfDays, portfolioSummary, isTRY]);
+
+  const chartData = useMemo(() => {
+    const datasets = [];
+
+    // Primary Line: User's Real Portfolio
+    if (activeSeries.PORTFOLIO && normalizedCurves.PORTFOLIO?.length > 0) {
+      datasets.push({
+        label: 'PORTFÖYÜM (Gerçek Ağırlıklı Sepet)',
+        data: normalizedCurves.PORTFOLIO,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+        borderWidth: 3.2,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.25
       });
     }
 
-    return { rawDates: baseDates, series: baseSeries };
-  }, [marketQuotes, portfolioSummary?.dayPLPct]);
-
-  let sliceCount = rawDates.length;
-  if (timeframe === '1W') sliceCount = Math.min(rawDates.length, 6);
-  else if (timeframe === '1M') sliceCount = Math.min(rawDates.length, 22);
-  else if (timeframe === '3M') sliceCount = Math.min(rawDates.length, 65);
-  else if (timeframe === '6M') sliceCount = Math.min(rawDates.length, 130);
-  else if (timeframe === '1Y') sliceCount = Math.min(rawDates.length, 252);
-
-  const startIndex = Math.max(0, rawDates.length - sliceCount);
-  const slicedDates = rawDates.slice(startIndex);
-
-  const sampleStep = slicedDates.length > 90 ? Math.max(1, Math.floor(slicedDates.length / 75)) : 1;
-  const sampledDates = slicedDates.filter((_, i) => i % sampleStep === 0);
-
-  const underwater = benchmarkData.underwater_series || {};
-  const metrics = benchmarkData.metrics_by_currency?.[curKey] || {};
-
-  const toggleSeries = (key) => {
-    setActiveSeries(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const rebaseSeries = (arr) => {
-    if (!arr || arr.length === 0) return [];
-    const sliced = arr.slice(startIndex);
-    const baseVal = sliced[0] || 1;
-    const rebased = sliced.map(v => (v / baseVal) * 100);
-    return rebased.filter((_, i) => i % sampleStep === 0);
-  };
-
-  const portLabel = useMemo(() => {
-    switch (portfolioScope) {
-      case 'ex_bydnr':
-        return '🛡️ BYDNR HARİÇ HİSSE SEPETİNİZ';
-      case 'recent':
-        return '🚀 SON DÖNEM YENİ ALIMLARINIZ';
-      case 'all':
-        return '🌐 TÜM KONSOLİDE PORTFÖYÜNÜZ';
-      case 'custom':
-        return `⚙️ ÖZEL SEPETİNİZ (${selectedTickers.size} Varlık)`;
-      case 'equity':
-      default:
-        return '📈 ÇEKİRDEK HİSSE & ETF SEPETİNİZ';
-    }
-  }, [portfolioScope, selectedTickers]);
-
-  // User's portfolio is always distinct RED across all scopes and charts
-  const portColor = '#ef4444';
-
-  const scopeBadge = useMemo(() => {
-    switch (portfolioScope) {
-      case 'ex_bydnr': return { label: 'BYDNR Hariç', color: 'rose' };
-      case 'recent': return { label: 'Yeni Alımlar', color: 'rose' };
-      case 'custom': return { label: 'Özel Sepet', color: 'rose' };
-      case 'all': return { label: 'Tüm Portföy', color: 'rose' };
-      case 'equity':
-      default: return { label: 'Hisse & ETF', color: 'rose' };
-    }
-  }, [portfolioScope]);
-
-  // Selected Basket live KPIs
-  const selectedBasketStats = useMemo(() => {
-    const active = availableHoldings.filter(h => selectedTickers.has(h.id));
-    const totalValTRY = active.reduce((acc, h) => acc + h.valTRY, 0);
-    const totalValUSD = active.reduce((acc, h) => acc + h.valUSD, 0);
-    const totalCostTRY = active.reduce((acc, h) => acc + h.costTRY, 0);
-    const totalCostUSD = active.reduce((acc, h) => acc + h.costUSD, 0);
-    const profitTRY = totalValTRY - totalCostTRY;
-    const profitUSD = totalValUSD - totalCostUSD;
-    const returnPct = totalCostTRY > 0 ? (profitTRY / totalCostTRY) * 100 : 0;
-    const dayPLTRY = active.reduce((acc, h) => acc + h.dayPLTRY, 0);
-    const dayPLUSD = active.reduce((acc, h) => acc + h.dayPLUSD, 0);
-    const prevValTRY = totalValTRY - dayPLTRY;
-    const dayPLPct = prevValTRY > 0 ? (dayPLTRY / prevValTRY) * 100 : 0;
-
-    const totalPortfolioTRY = availableHoldings.reduce((acc, h) => acc + h.valTRY, 0) || 1;
-    const basketWeightPct = (totalValTRY / totalPortfolioTRY) * 100;
+    // Benchmark Lines
+    BENCHMARKS.forEach(bm => {
+      if (activeSeries[bm.id] && normalizedCurves[bm.id]?.length > 0) {
+        datasets.push({
+          label: bm.label,
+          data: normalizedCurves[bm.id],
+          borderColor: bm.color,
+          backgroundColor: 'transparent',
+          borderWidth: 2.1,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.25
+        });
+      }
+    });
 
     return {
-      count: active.length,
-      valTRY: totalValTRY,
-      valUSD: totalValUSD,
-      costTRY: totalCostTRY,
-      costUSD: totalCostUSD,
-      profitTRY,
-      profitUSD,
-      returnPct,
-      dayPLTRY,
-      dayPLUSD,
-      dayPLPct,
-      basketWeightPct
+      labels: dates,
+      datasets
     };
-  }, [availableHoldings, selectedTickers]);
+  }, [dates, normalizedCurves, activeSeries]);
 
-  // Dynamic blended series for the selected basket
-  const dynamicBasketSeries = useMemo(() => {
-    const assetSeries = benchmarkData.asset_series || {};
-
-    // Fast path: standard scopes if precalculated series exist
-    if (portfolioScope === 'equity' && series[`equity_${curKey}`]) {
-      return series[`equity_${curKey}`];
-    }
-    if (portfolioScope === 'all' && series[`portfolio_${curKey}`]) {
-      return series[`portfolio_${curKey}`];
-    }
-
-    const active = availableHoldings.filter(h => selectedTickers.has(h.id));
-    if (active.length === 0) {
-      return series[`portfolio_${curKey}`] || [];
-    }
-
-    const totalWeight = active.reduce((sum, h) => sum + (isTRY ? h.valTRY : h.valUSD), 0);
-    if (totalWeight <= 0) return series[`portfolio_${curKey}`] || [];
-
-    const blended = new Array(rawDates.length).fill(0);
-
-    active.forEach(h => {
-      const w = (isTRY ? h.valTRY : h.valUSD) / totalWeight;
-      const s = assetSeries[h.id]?.[curKey] 
-             || assetSeries[h.clean]?.[curKey]
-             || (h.category === 'shield' ? (series[`GOLD_${curKey}`] || []) : null)
-             || (h.category === 'crypto' ? (series[`BITCOIN_${curKey}`] || []) : null)
-             || (series[`SP500_${curKey}`] || []);
-
-      for (let i = 0; i < rawDates.length; i++) {
-        blended[i] += w * (s[i] != null ? s[i] : 100);
-      }
-    });
-
-    const startVal = blended[0] || 1;
-    return blended.map(v => (v / startVal) * 100);
-  }, [portfolioScope, selectedTickers, availableHoldings, isTRY, curKey, series, rawDates.length]);
-
-  // Dynamic Underwater Drawdown Chart series
-  const dynamicUnderwater = useMemo(() => {
-    const s = dynamicBasketSeries || [];
-    if (s.length === 0) return [];
-    let peak = s[0] || 1;
-    const ddArr = [];
-    for (let i = 0; i < s.length; i++) {
-      const v = s[i] || 1;
-      if (v > peak) peak = v;
-      const dd = peak > 0 ? ((v - peak) / peak) * 100 : 0;
-      ddArr.push(dd);
-    }
-    return ddArr;
-  }, [dynamicBasketSeries]);
-
-  // Quantitative Risk & Metric Calculations for the active basket
-  const customCalculatedMetrics = useMemo(() => {
-    if (portfolioScope === 'equity' && metrics['EQUITY']) {
-      return metrics['EQUITY'];
-    }
-    if (portfolioScope === 'all' && metrics['PORTFOLIO']) {
-      return metrics['PORTFOLIO'];
-    }
-
-    const s = dynamicBasketSeries;
-    const sp = series[`SP500_${curKey}`] || [];
-    if (!s || s.length < 2) return metrics['EQUITY'] || {};
-
-    const rfRate = isTRY ? 40 : 4.25;
-    const returns = [];
-    const spReturns = [];
-    for (let i = 1; i < s.length; i++) {
-      returns.push((s[i] - s[i - 1]) / (s[i - 1] || 1));
-      if (sp[i] !== undefined && sp[i - 1] !== undefined) {
-        spReturns.push((sp[i] - sp[i - 1]) / (sp[i - 1] || 1));
-      }
-    }
-
-    const n = returns.length;
-    const mean = returns.reduce((a, b) => a + b, 0) / Math.max(1, n);
-    const spMean = spReturns.reduce((a, b) => a + b, 0) / Math.max(1, spReturns.length);
-
-    const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / Math.max(1, n - 1);
-    const spVariance = spReturns.reduce((a, b) => a + Math.pow(b - spMean, 2), 0) / Math.max(1, spReturns.length - 1);
-    const cov = returns.reduce((a, b, i) => a + (b - mean) * ((spReturns[i] || 0) - spMean), 0) / Math.max(1, n - 1);
-
-    const vol = Math.sqrt(variance) * Math.sqrt(252) * 100;
-    const beta = spVariance > 0 ? cov / spVariance : 1.0;
-    const periodReturn = s.length > 0 ? ((s[s.length - 1] - s[0]) / (s[0] || 1)) * 100 : 0;
-    const cagr = (Math.pow(Math.max(0.01, 1 + periodReturn / 100), 252 / Math.max(1, s.length)) - 1) * 100;
-    const sharpe = vol > 0 ? (cagr - rfRate) / vol : 0;
-    
-    // Downside deviation for Sortino
-    const downsideVar = returns.reduce((a, b) => a + (b < 0 ? Math.pow(b, 2) : 0), 0) / Math.max(1, n - 1);
-    const downsideVol = Math.sqrt(downsideVar) * Math.sqrt(252) * 100;
-    const sortino = downsideVol > 0 ? (cagr - rfRate) / downsideVol : 0;
-
-    // Drawdown
-    let peak = s[0];
-    let maxDD = 0;
-    for (const v of s) {
-      if (v > peak) peak = v;
-      const dd = (v - peak) / (peak || 1);
-      if (dd < maxDD) maxDD = dd;
-    }
-
-    const maxDrawdownPct = maxDD * 100;
-    const calmar = Math.abs(maxDrawdownPct) > 0.01 ? cagr / Math.abs(maxDrawdownPct) : 0;
-    const alpha = cagr - (rfRate + beta * (((metrics['SP500']?.cagr || 15) - rfRate)));
-
-    return {
-      period_return: periodReturn,
-      cagr: cagr,
-      volatility: vol,
-      sharpe: sharpe,
-      sortino: sortino,
-      beta: beta,
-      alpha: alpha,
-      tracking_error: vol * 0.45,
-      max_drawdown: maxDrawdownPct,
-      calmar: calmar,
-      correlation: Math.max(-1, Math.min(1, cov / (Math.sqrt(variance) * Math.sqrt(spVariance) || 1)))
-    };
-  }, [dynamicBasketSeries, portfolioScope, metrics, series, curKey, isTRY]);
-
-  // Scope & Filter Presets Handlers
-  const handleSelectScope = (scope) => {
-    setPortfolioScope(scope);
-    if (scope === 'equity') {
-      setSelectedTickers(new Set(availableHoldings.filter(h => h.category === 'equity').map(h => h.id)));
-    } else if (scope === 'ex_bydnr') {
-      setSelectedTickers(new Set(availableHoldings.filter(h => h.category === 'equity' && h.id !== 'BYDNR').map(h => h.id)));
-    } else if (scope === 'recent') {
-      setSelectedTickers(new Set(['SPCX', 'DRAM', 'NVDA', 'TSM', 'ABBV']));
-    } else if (scope === 'all') {
-      setSelectedTickers(new Set(availableHoldings.map(h => h.id)));
-    } else if (scope === 'custom') {
-      setIsSelectorOpen(true);
-    }
-  };
-
-  const handleSelectAll = () => {
-    setSelectedTickers(new Set(availableHoldings.map(h => h.id)));
-    setPortfolioScope('all');
-  };
-
-  const handleExcludeBydnr = () => {
-    const next = new Set(selectedTickers);
-    next.delete('BYDNR');
-    setSelectedTickers(next);
-    setPortfolioScope(next.size > 0 ? 'ex_bydnr' : 'custom');
-  };
-
-  const handleSelectRecent = () => {
-    setSelectedTickers(new Set(['SPCX', 'DRAM', 'NVDA', 'TSM', 'ABBV']));
-    setPortfolioScope('recent');
-  };
-
-  const handleSelectEquities = () => {
-    const eq = availableHoldings.filter(h => h.category === 'equity').map(h => h.id);
-    setSelectedTickers(new Set(eq));
-    setPortfolioScope('equity');
-  };
-
-  const handleSelectShield = () => {
-    const sh = availableHoldings.filter(h => h.category === 'shield').map(h => h.id);
-    setSelectedTickers(new Set(sh));
-    setPortfolioScope('custom');
-  };
-
-  const handleSelectCrypto = () => {
-    const cr = availableHoldings.filter(h => h.category === 'crypto').map(h => h.id);
-    setSelectedTickers(new Set(cr));
-    setPortfolioScope('custom');
-  };
-
-  const handleClearAll = () => {
-    setSelectedTickers(new Set());
-    setPortfolioScope('custom');
-  };
-
-  const toggleTicker = (id) => {
-    setSelectedTickers(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-    setPortfolioScope('custom');
-  };
-
-  // Base-100 Performance Line Chart
-  const perfDatasets = [];
-  if (activeSeries.portfolio) {
-    perfDatasets.push({
-      label: portLabel,
-      data: rebaseSeries(dynamicBasketSeries),
-      borderColor: '#ef4444',
-      backgroundColor: 'rgba(239, 68, 68, 0.12)',
-      borderWidth: 3.8, // Thicker than all benchmark lines!
-      pointRadius: 0,
-      tension: 0.2,
-      order: -1
-    });
-  }
-  if (activeSeries.SP500 && series[`SP500_${curKey}`]) {
-    perfDatasets.push({
-      label: 'S&P 500 (^GSPC)',
-      data: rebaseSeries(series[`SP500_${curKey}`]),
-      borderColor: '#3b82f6',
-      borderWidth: 1.8,
-      pointRadius: 0,
-      tension: 0.2
-    });
-  }
-  if (activeSeries.NASDAQ && series[`NASDAQ_${curKey}`]) {
-    perfDatasets.push({
-      label: 'Nasdaq 100 (^NDX)',
-      data: rebaseSeries(series[`NASDAQ_${curKey}`]),
-      borderColor: '#a855f7',
-      borderWidth: 1.8,
-      pointRadius: 0,
-      tension: 0.2
-    });
-  }
-  if (activeSeries.BIST100 && series[`BIST100_${curKey}`]) {
-    perfDatasets.push({
-      label: 'BIST 100 (XU100.IS)',
-      data: rebaseSeries(series[`BIST100_${curKey}`]),
-      borderColor: '#06b6d4', // Turkuaz / Cyan for BIST 100
-      borderWidth: 1.8,
-      pointRadius: 0,
-      tension: 0.2
-    });
-  }
-  if (activeSeries.GOLD && series[`GOLD_${curKey}`]) {
-    perfDatasets.push({
-      label: 'Altın Ons (GC=F)',
-      data: rebaseSeries(series[`GOLD_${curKey}`]),
-      borderColor: '#eab308',
-      borderWidth: 1.8,
-      pointRadius: 0,
-      tension: 0.2
-    });
-  }
-  if (activeSeries.BITCOIN && series[`BITCOIN_${curKey}`]) {
-    perfDatasets.push({
-      label: 'Bitcoin (BTC-USD)',
-      data: rebaseSeries(series[`BITCOIN_${curKey}`]),
-      borderColor: '#f97316',
-      borderWidth: 1.8,
-      pointRadius: 0,
-      tension: 0.2
-    });
-  }
-
-  const perfChartData = {
-    labels: sampledDates,
-    datasets: perfDatasets
-  };
-
-  const perfChartOptions = {
+  const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: false },
+      legend: {
+        labels: { color: '#cbd5e1', font: { size: 11, weight: 'bold' } }
+      },
       tooltip: {
-        backgroundColor: '#0f172a',
-        titleColor: '#e2e8f0',
-        bodyColor: '#e2e8f0',
-        borderColor: '#334155',
-        borderWidth: 1,
-        padding: 10,
         callbacks: {
-          label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(2)} (Baz 100)`
+          label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`
         }
       }
     },
     scales: {
       x: {
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 10 } }
+        ticks: { color: '#64748b', maxTicksLimit: 10 },
+        grid: { color: 'rgba(255,255,255,0.04)' }
       },
       y: {
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#64748b', font: { size: 10 } }
+        ticks: {
+          color: '#94a3b8',
+          callback: (v) => `${v >= 0 ? '+' : ''}${v}%`
+        },
+        grid: { color: 'rgba(255,255,255,0.06)' }
       }
     }
   };
 
-  // Real-time period return & Alpha calculations for the chosen timeframe
-  const rebasedPort = rebaseSeries(dynamicBasketSeries);
-  const rebasedSP500 = rebaseSeries(series[`SP500_${curKey}`]);
-  const rebasedNDX = rebaseSeries(series[`NASDAQ_${curKey}`]);
-  const rebasedBIST = rebaseSeries(series[`BIST100_${curKey}`]);
+  const [sortConfig, setSortConfig] = useState({
+    key: 'dayPct',
+    direction: 'desc'
+  });
 
-  const portPeriodReturn = rebasedPort.length > 0 ? (rebasedPort[rebasedPort.length - 1] - 100) : 0;
-  const sp500PeriodReturn = rebasedSP500.length > 0 ? (rebasedSP500[rebasedSP500.length - 1] - 100) : 0;
-  const ndxPeriodReturn = rebasedNDX.length > 0 ? (rebasedNDX[rebasedNDX.length - 1] - 100) : 0;
-  const bistPeriodReturn = rebasedBIST.length > 0 ? (rebasedBIST[rebasedBIST.length - 1] - 100) : 0;
-
-  const alphaVsSP500 = portPeriodReturn - sp500PeriodReturn;
-  const alphaVsNDX = portPeriodReturn - ndxPeriodReturn;
-  const alphaVsBIST = portPeriodReturn - bistPeriodReturn;
-
-  // Comparative Bar Chart Data
-  const barLabels = [
-    portLabel,
-    'S&P 500',
-    'Nasdaq 100',
-    'BIST 100',
-    'Altın (Ons)',
-    'Bitcoin'
-  ];
-  const barColors = [
-    '#ef4444',
-    '#3b82f6',
-    '#a855f7',
-    '#06b6d4',
-    '#eab308',
-    '#f97316'
-  ];
-
-  const barPeriodReturns = [
-    portPeriodReturn,
-    sp500PeriodReturn,
-    ndxPeriodReturn,
-    bistPeriodReturn,
-    metrics['GOLD']?.period_return || 0,
-    metrics['BITCOIN']?.period_return || 0
-  ];
-  const barCAGRReturns = [
-    customCalculatedMetrics.cagr || 0,
-    metrics['SP500']?.cagr || 0,
-    metrics['NASDAQ']?.cagr || 0,
-    metrics['BIST100']?.cagr || 0,
-    metrics['GOLD']?.cagr || 0,
-    metrics['BITCOIN']?.cagr || 0
-  ];
-
-  const barChartData = {
-    labels: barLabels,
-    datasets: [
-      {
-        label: `${timeframe} Kümülatif Getiri (%)`,
-        data: barPeriodReturns,
-        backgroundColor: barColors,
-        borderColor: barColors.map((c, i) => i === 0 ? '#ff7878' : 'transparent'),
-        borderWidth: [2, 0, 0, 0, 0, 0],
-        borderRadius: 4
-      },
-      {
-        label: 'Yıllıklandırılmış Getiri (CAGR %)',
-        data: barCAGRReturns,
-        backgroundColor: barColors.map((c, i) => i === 0 ? 'rgba(239, 68, 68, 0.65)' : c + '77'),
-        borderColor: barColors.map((c, i) => i === 0 ? '#ff7878' : 'transparent'),
-        borderWidth: [2, 0, 0, 0, 0, 0],
-        borderRadius: 4
+  const handleSort = (key) => {
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        return {
+          key,
+          direction: prev.direction === 'desc' ? 'asc' : 'desc'
+        };
       }
-    ]
+      return {
+        key,
+        direction: key === 'ticker' ? 'asc' : 'desc'
+      };
+    });
   };
 
-  const barChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: { color: '#94a3b8', font: { size: 11 } }
-      },
-      tooltip: {
-        backgroundColor: '#0f172a',
-        callbacks: {
-          label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(2)}%`
-        }
-      }
-    },
-    scales: {
-      x: { grid: { color: 'rgba(255, 255, 255, 0.04)' }, ticks: { color: '#e2e8f0', font: { size: 11, weight: 'bold' } } },
-      y: {
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#64748b', font: { size: 10 }, callback: (v) => `${v}%` }
-      }
+  const renderSortIndicator = (key) => {
+    if (sortConfig.key !== key) {
+      return (
+        <span style={{ color: '#475569', fontSize: '0.72rem', opacity: 0.6, userSelect: 'none' }}>
+          ⇅
+        </span>
+      );
     }
+    return (
+      <span style={{ color: '#38bdf8', fontSize: '0.75rem', fontWeight: 900, userSelect: 'none' }}>
+        {sortConfig.direction === 'asc' ? '▲' : '▼'}
+      </span>
+    );
   };
 
-  // Underwater Drawdown Chart
-  const rawUnderwater = (portfolioScope === 'equity' || portfolioScope === 'all'
-    ? (underwater[curKey] || [])
-    : dynamicUnderwater).slice(startIndex);
-  const sampledUnderwater = rawUnderwater.filter((_, i) => i % sampleStep === 0);
+  // Pre-calculate computed row metrics for fast & robust column sorting
+  const enrichedHoldingsList = useMemo(() => {
+    const list = portfolioSummary?.enrichedHoldings || [];
+    return list.map(h => {
+      const ticker = String(h.ticker || '').trim().toUpperCase();
+      const val = isTRY ? Number(h.valTRY || 0) : Number(h.valUSD || 0);
+      const prof = isTRY ? Number(h.profitTRY || 0) : Number(h.profitUSD || 0);
+      const periodRet = holdingPeriodReturns[ticker] != null ? Number(holdingPeriodReturns[ticker]) : null;
+      const retPct = Number(h.returnPct || 0);
+      const rawCandles = holdingCandleMap[ticker] || [];
+      const candleDayPct = rawCandles.length >= 2 && rawCandles[rawCandles.length - 2]?.close > 0
+        ? ((rawCandles[rawCandles.length - 1].close - rawCandles[rawCandles.length - 2].close) / rawCandles[rawCandles.length - 2].close) * 100
+        : null;
+      const dayPct = (typeof h.changePct === 'number' && h.changePct !== 0)
+        ? Number(h.changePct)
+        : (candleDayPct !== null ? Number(candleDayPct) : Number(h.changePct || 0));
 
-  const underwaterChartData = {
-    labels: sampledDates,
-    datasets: [
-      {
-        label: 'Zirveden Düşüş (Drawdown %)',
-        data: sampledUnderwater,
-        borderColor: '#ef4444',
-        backgroundColor: 'rgba(239, 68, 68, 0.15)',
-        borderWidth: 1.5,
-        fill: true,
-        pointRadius: 0,
-        tension: 0.2
+      return {
+        ...h,
+        calculatedTicker: ticker,
+        calculatedVal: val,
+        calculatedProf: prof,
+        calculatedPeriodRet: periodRet,
+        calculatedRetPct: retPct,
+        calculatedDayPct: dayPct
+      };
+    });
+  }, [portfolioSummary?.enrichedHoldings, isTRY, holdingPeriodReturns, holdingCandleMap]);
+
+  const sortedHoldings = useMemo(() => {
+    const list = [...enrichedHoldingsList];
+    const { key, direction } = sortConfig;
+    const isAsc = direction === 'asc';
+
+    list.sort((a, b) => {
+      if (key === 'ticker') {
+        const valA = String(a.ticker || a.calculatedTicker || '').toUpperCase();
+        const valB = String(b.ticker || b.calculatedTicker || '').toUpperCase();
+        return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
       }
-    ]
-  };
 
-  const underwaterChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#0f172a',
-        callbacks: {
-          label: (ctx) => `Düşüş: ${Number(ctx.raw).toFixed(2)}%`
-        }
-      }
-    },
-    scales: {
-      x: { display: false },
-      y: {
-        max: 0,
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#ef4444', font: { size: 9 }, callback: (v) => `${v}%` }
-      }
-    }
-  };
-
-  // Segments Statistics for Performance Attribution Matrix
-  const holdings = portfolioSummary?.enrichedHoldings || [];
-
-  const getHoldingSegment = (h) => {
-    const s = (h.ticker || '').toUpperCase();
-    const clean = s.replace('.IS', '').replace('-USD', '');
-    if (h.type === 'Altın' || clean === 'XAUT') return 'shield';
-    if (h.type === 'Kripto' || KNOWN_CRYPTO_SET?.has(clean) || KNOWN_CRYPTO_SET?.has(s)) return 'crypto';
-    return 'equity';
-  };
-
-  const segmentStats = useMemo(() => {
-    const totalValAllTRY = portfolioSummary?.totalValTRY || 1;
-    const stats = {
-      all: {
-        id: 'all',
-        label: 'Tüm Konsolide Portföy',
-        shortLabel: 'TÜM PORTFÖY',
-        icon: '🌐',
-        color: '#ffffff',
-        count: holdings.length + (((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0),
-        valTRY: portfolioSummary?.totalValTRY || 0,
-        valUSD: portfolioSummary?.totalValUSD || 0,
-        costTRY: portfolioSummary?.totalCostTRY || 0,
-        costUSD: portfolioSummary?.totalCostUSD || 0,
-        profitTRY: portfolioSummary?.unrealizedProfitTRY || 0,
-        profitUSD: portfolioSummary?.unrealizedProfitUSD || 0,
-        returnPct: portfolioSummary?.unrealizedReturnPct || 0,
-        dayPLTRY: portfolioSummary?.dayPLTRY || 0,
-        dayPLUSD: portfolioSummary?.dayPLUSD || 0,
-        dayPLPct: portfolioSummary?.dayPLPct || 0,
-        weightPct: 100,
-        benchmarkNote: 'Konsolide Denge & Koruma',
-        benchmarkBadge: 'Konsolide'
-      },
-      equity: {
-        id: 'equity',
-        label: 'Çekirdek Hisse & ETF Sepeti',
-        shortLabel: 'HİSSE & ETF',
-        icon: '📈',
-        color: '#00e5ff',
-        count: 0,
-        valTRY: 0,
-        valUSD: 0,
-        costTRY: 0,
-        costUSD: 0,
-        profitTRY: 0,
-        profitUSD: 0,
-        returnPct: 0,
-        dayPLTRY: 0,
-        dayPLUSD: 0,
-        dayPLPct: 0,
-        weightPct: 0,
-        benchmarkNote: 'S&P 500 & BIST 100 Alfa Odağı',
-        benchmarkBadge: 'Alfa Motoru'
-      },
-      shield: {
-        id: 'shield',
-        label: 'Kur Kalkanı & Güvence Havuzu',
-        shortLabel: 'KUR KALKANI',
-        icon: '🛡️',
-        color: '#fbbf24',
-        count: ((portfolioSummary?.totalGrams) || 0) > 0 ? 1 : 0,
-        valTRY: portfolioSummary?.totalGoldValTRY || 0,
-        valUSD: (portfolioSummary?.totalGoldValTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
-        costTRY: portfolioSummary?.totalGoldCostTRY || 0,
-        costUSD: (portfolioSummary?.totalGoldCostTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
-        profitTRY: portfolioSummary?.goldProfitTRY || 0,
-        profitUSD: (portfolioSummary?.goldProfitTRY || 0) / (portfolioSummary?.usdtry || usdtry || 1),
-        returnPct: portfolioSummary?.goldReturnPct || 0,
-        dayPLTRY: 0,
-        dayPLUSD: 0,
-        dayPLPct: 0,
-        weightPct: 0,
-        benchmarkNote: 'Enflasyon Kalkanı & Kuru Barut',
-        benchmarkBadge: 'Savunma'
-      },
-      crypto: {
-        id: 'crypto',
-        label: 'Asimetrik Kripto Varlıklar',
-        shortLabel: 'KRİPTO',
-        icon: '⚡',
-        color: '#c084fc',
-        count: 0,
-        valTRY: 0,
-        valUSD: 0,
-        costTRY: 0,
-        costUSD: 0,
-        profitTRY: 0,
-        profitUSD: 0,
-        returnPct: 0,
-        dayPLTRY: 0,
-        dayPLUSD: 0,
-        dayPLPct: 0,
-        weightPct: 0,
-        benchmarkNote: 'Yüksek Beta & Asimetrik Getiri',
-        benchmarkBadge: 'Yüksek Beta'
-      }
-    };
-
-    holdings.forEach(h => {
-      const seg = getHoldingSegment(h);
-      if (seg === 'shield') {
-        stats.shield.count++;
-        stats.shield.valTRY += (h.valTRY || 0);
-        stats.shield.valUSD += (h.valUSD || 0);
-        stats.shield.costTRY += (h.costTRY || 0);
-        stats.shield.costUSD += (h.costUSD || 0);
-        stats.shield.profitTRY += (h.profitTRY || 0);
-        stats.shield.profitUSD += (h.profitUSD || 0);
-        stats.shield.dayPLTRY += (h.dayPLTRY || 0);
-        stats.shield.dayPLUSD += (h.dayPLUSD || 0);
-      } else if (seg === 'crypto') {
-        stats.crypto.count++;
-        stats.crypto.valTRY += (h.valTRY || 0);
-        stats.crypto.valUSD += (h.valUSD || 0);
-        stats.crypto.costTRY += (h.costTRY || 0);
-        stats.crypto.costUSD += (h.costUSD || 0);
-        stats.crypto.profitTRY += (h.profitTRY || 0);
-        stats.crypto.profitUSD += (h.profitUSD || 0);
-        stats.crypto.dayPLTRY += (h.dayPLTRY || 0);
-        stats.crypto.dayPLUSD += (h.dayPLUSD || 0);
+      let valA, valB;
+      if (key === 'dayPct') {
+        valA = a.calculatedDayPct;
+        valB = b.calculatedDayPct;
+      } else if (key === 'val') {
+        valA = a.calculatedVal;
+        valB = b.calculatedVal;
+      } else if (key === 'retPct') {
+        valA = a.calculatedRetPct;
+        valB = b.calculatedRetPct;
+      } else if (key === 'prof') {
+        valA = a.calculatedProf;
+        valB = b.calculatedProf;
+      } else if (key === 'periodRet') {
+        valA = a.calculatedPeriodRet;
+        valB = b.calculatedPeriodRet;
       } else {
-        stats.equity.count++;
-        stats.equity.valTRY += (h.valTRY || 0);
-        stats.equity.valUSD += (h.valUSD || 0);
-        stats.equity.costTRY += (h.costTRY || 0);
-        stats.equity.costUSD += (h.costUSD || 0);
-        stats.equity.profitTRY += (h.profitTRY || 0);
-        stats.equity.profitUSD += (h.profitUSD || 0);
-        stats.equity.dayPLTRY += (h.dayPLTRY || 0);
-        stats.equity.dayPLUSD += (h.dayPLUSD || 0);
+        valA = a.calculatedDayPct;
+        valB = b.calculatedDayPct;
       }
+
+      if (valA == null && valB == null) return 0;
+      if (valA == null) return 1;
+      if (valB == null) return -1;
+
+      return isAsc ? (valA - valB) : (valB - valA);
     });
 
-    ['equity', 'shield', 'crypto'].forEach(k => {
-      const s = stats[k];
-      s.returnPct = s.costTRY > 0 ? (s.profitTRY / s.costTRY) * 100 : 0;
-      s.weightPct = totalValAllTRY > 0 ? (s.valTRY / totalValAllTRY) * 100 : 0;
-      const prevVal = s.valTRY - s.dayPLTRY;
-      s.dayPLPct = prevVal > 0 ? (s.dayPLTRY / prevVal) * 100 : 0;
-    });
+    return list;
+  }, [enrichedHoldingsList, sortConfig]);
 
-    return stats;
-  }, [holdings, portfolioSummary, usdtry]);
-
-  const metricRows = [
-    { 
-      key: 'CUSTOM_BASKET', 
-      name: portLabel, 
-      code: portfolioScope.toUpperCase(), 
-      color: portColor, 
-      bold: true,
-      customMetrics: customCalculatedMetrics
-    },
-    { key: 'SP500', name: 'S&P 500', code: '^GSPC', color: '#3b82f6' },
-    { key: 'NASDAQ', name: 'Nasdaq 100', code: '^NDX', color: '#a855f7' },
-    { key: 'BIST100', name: 'BIST 100', code: 'XU100.IS', color: '#06b6d4' },
-    { key: 'GOLD', name: 'Altın (Ons)', code: 'GC=F', color: '#eab308' },
-    { key: 'BITCOIN', name: 'Bitcoin', code: 'BTC-USD', color: '#f97316' }
-  ];
+  const portfolioCostReturnPct = portfolioSummary?.unrealizedReturnPct ?? 0;
+  const portfolioPeriodRet = periodReturns.PORTFOLIO;
 
   return (
-    <div className="tab-pane-content" style={{ animation: 'fadeIn 0.25s ease' }}>
-      {/* Workspace Header */}
-      <div className="workspace-header" style={{ marginBottom: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
+      {/* HEADER */}
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.9)',
+        border: '1px solid rgba(56, 189, 248, 0.3)',
+        borderRadius: '14px',
+        padding: '20px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '14px'
+      }}>
         <div>
-          <h2 className="workspace-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <LineChart size={20} className="text-cyan" />
-            <span>PORTFÖY & BENCHMARK KARŞILAŞTIRMA (GIPS STANDARDI)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+            <span style={{
+              background: 'rgba(16, 185, 129, 0.2)',
+              color: '#34d399',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              fontSize: '0.7rem',
+              fontWeight: 800,
+              padding: '3px 9px',
+              borderRadius: '6px'
+            }}>
+              %100 CANLI YAHOO FINANCE GÜNLÜK MUM VERİSİ (PORTFÖY + BENCHMARK)
+            </span>
+          </div>
+          <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LineChart size={20} style={{ color: '#38bdf8' }} />
+            <span>Küresel Benchmark & Gerçek Portföy Kıyaslaması</span>
           </h2>
-          <p className="workspace-subtitle">
-            Çekirdek hisse/ETF, BYDNR hariç sepet, son alımlar veya özel seçtiğiniz varlıklar bazında S&P 500, Nasdaq ve BIST 100 karşılaştırması ve Alfa analizi
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+            Portföyünüzdeki gerçek varlıkların güncel ağırlıklarıyla hesaplanan tarihsel getiri eğrisi ile S&P 500, Nasdaq 100, BIST 100, Altın ve Bitcoin kıyaslaması.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span className="nav-badge cyan" style={{ padding: '5px 12px', fontSize: 11 }}>
-            SEÇİLİ BAZ: {isTRY ? 'TRY NORMALIZE (%40 Rf)' : 'USD NORMALIZE (%4.25 Rf)'}
-          </span>
-          <span className="nav-badge amber" style={{ padding: '5px 12px', fontSize: 11, background: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b', color: '#fcd34d' }}>
-            ⚡ HİBRİT MODEL (1 Ekim 2026 Baz Serisi + Canlı Seans)
-          </span>
-        </div>
-      </div>
 
-      {/* Scope Selector Control */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        gap: 12, 
-        flexWrap: 'wrap', 
-        marginBottom: 12,
-        background: 'var(--bg-card)',
-        padding: '10px 14px',
-        borderRadius: 8,
-        border: '1px solid var(--border)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Karşılaştırma Kapsamı:
-          </span>
-          <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', padding: 3, borderRadius: 6, border: '1px solid var(--border)', flexWrap: 'wrap', gap: 2 }}>
-            <button
-              type="button"
-              className={`chip-btn ${portfolioScope === 'equity' ? 'active' : ''}`}
-              onClick={() => handleSelectScope('equity')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '5px 11px',
-                fontSize: 11,
-                fontWeight: 700,
-                color: portfolioScope === 'equity' ? '#00e5ff' : 'var(--text-muted)',
-                borderColor: portfolioScope === 'equity' ? '#00e5ff' : 'transparent',
-                background: portfolioScope === 'equity' ? 'rgba(0, 229, 255, 0.12)' : 'transparent'
-              }}
-            >
-              <Target size={13} />
-              <span>📈 Çekirdek Hisse & ETF (Tümü)</span>
-            </button>
-
-            <button
-              type="button"
-              className={`chip-btn ${portfolioScope === 'ex_bydnr' ? 'active' : ''}`}
-              onClick={() => handleSelectScope('ex_bydnr')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '5px 11px',
-                fontSize: 11,
-                fontWeight: 700,
-                color: portfolioScope === 'ex_bydnr' ? '#10b981' : 'var(--text-muted)',
-                borderColor: portfolioScope === 'ex_bydnr' ? '#10b981' : 'transparent',
-                background: portfolioScope === 'ex_bydnr' ? 'rgba(16, 185, 129, 0.14)' : 'transparent'
-              }}
-              title="BYDNR'nin ağırlıklı baskısını hariç tutarak hisselerin saf getirisini görün"
-            >
-              <ShieldCheck size={13} />
-              <span>🛡️ BYDNR Hariç Hisse Sepeti</span>
-            </button>
-
-            <button
-              type="button"
-              className={`chip-btn ${portfolioScope === 'recent' ? 'active' : ''}`}
-              onClick={() => handleSelectScope('recent')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '5px 11px',
-                fontSize: 11,
-                fontWeight: 700,
-                color: portfolioScope === 'recent' ? '#c084fc' : 'var(--text-muted)',
-                borderColor: portfolioScope === 'recent' ? '#c084fc' : 'transparent',
-                background: portfolioScope === 'recent' ? 'rgba(192, 132, 252, 0.14)' : 'transparent'
-              }}
-              title="Son dönemde portföye eklenen yeni alımlar: SPCX, DRAM, NVDA, TSM, ABBV"
-            >
-              <Sparkles size={13} />
-              <span>🚀 Son Dönem Yeni Alımlar</span>
-            </button>
-
-            <button
-              type="button"
-              className={`chip-btn ${portfolioScope === 'all' ? 'active' : ''}`}
-              onClick={() => handleSelectScope('all')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '5px 11px',
-                fontSize: 11,
-                fontWeight: 700,
-                color: portfolioScope === 'all' ? '#ffffff' : 'var(--text-muted)',
-                borderColor: portfolioScope === 'all' ? '#ffffff' : 'transparent',
-                background: portfolioScope === 'all' ? 'rgba(255, 255, 255, 0.12)' : 'transparent'
-              }}
-            >
-              <Layers size={13} />
-              <span>🌐 Tüm Portföy</span>
-            </button>
-
-            <button
-              type="button"
-              className={`chip-btn ${portfolioScope === 'custom' ? 'active' : ''}`}
-              onClick={() => handleSelectScope('custom')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '5px 11px',
-                fontSize: 11,
-                fontWeight: 700,
-                color: portfolioScope === 'custom' ? '#f59e0b' : 'var(--text-muted)',
-                borderColor: portfolioScope === 'custom' ? '#f59e0b' : 'transparent',
-                background: portfolioScope === 'custom' ? 'rgba(245, 158, 11, 0.14)' : 'transparent'
-              }}
-            >
-              <Sliders size={13} />
-              <span>⚙️ Özel Seçim ({selectedBasketStats.count})</span>
-            </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', background: 'rgba(2, 6, 23, 0.8)', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {TIMEFRAMES.map(tf => (
+              <button
+                key={tf.id}
+                onClick={() => setTimeframe(tf.id)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: timeframe === tf.id ? '#2563eb' : 'transparent',
+                  color: timeframe === tf.id ? '#fff' : '#94a3b8',
+                  fontWeight: 800,
+                  fontSize: '0.76rem',
+                  cursor: 'pointer'
+                }}
+              >
+                {tf.label}
+              </button>
+            ))}
           </div>
-        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
-            type="button"
-            className="chip-btn"
-            onClick={() => setIsSelectorOpen(!isSelectorOpen)}
+            onClick={fetchAllCandles}
             style={{
-              display: 'inline-flex',
+              padding: '7px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              background: 'rgba(56, 189, 248, 0.15)',
+              color: '#38bdf8',
+              fontSize: '0.76rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              fontSize: 11,
-              fontWeight: 700,
-              color: isSelectorOpen ? '#00e5ff' : 'var(--text-muted)',
-              borderColor: isSelectorOpen ? '#00e5ff' : 'var(--border)',
-              background: isSelectorOpen ? 'rgba(0, 229, 255, 0.12)' : 'transparent'
+              gap: '6px'
             }}
           >
-            <Filter size={13} />
-            <span>{isSelectorOpen ? '▲ Varlık Listesini Gizle' : '▼ Varlık Seçici & Filtreyi Aç'}</span>
+            <RefreshCw size={13} /> Yenile
           </button>
         </div>
       </div>
 
-      {/* Varlık Filtresi & Özel Sepet Seçici Paneli */}
-      {isSelectorOpen && (
-        <div className="card" style={{ 
-          padding: '14px 16px', 
-          marginBottom: 16, 
-          background: 'var(--bg-card)', 
-          border: '1px solid rgba(0, 229, 255, 0.3)',
-          borderRadius: 8,
-          animation: 'fadeIn 0.2s ease'
-        }}>
-          {/* Header & Quick Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Sliders size={16} className="text-cyan" />
-              <div>
-                <strong style={{ fontSize: 12.5, color: '#f1f5f9' }}>
-                  İNTERAKTİF VARLIK SEÇİCİ & ÖZEL BENCHMARK MOTORU
-                </strong>
-                <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                  İstediğiniz varlıkları işaretleyerek veya çıkararak benchmark eğrisini anında yeniden hesaplayın
+      {/* KPI CARDS FOR REAL PORTFOLIO + REAL BENCHMARKS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+        {/* USER'S REAL WEIGHTED PORTFOLIO CARD (CLICKABLE FOR CHART TOGGLE) */}
+        <div
+          onClick={() => setActiveSeries(prev => ({ ...prev, PORTFOLIO: !prev.PORTFOLIO }))}
+          style={{
+            background: activeSeries.PORTFOLIO ? 'rgba(16, 185, 129, 0.14)' : 'rgba(15, 23, 42, 0.45)',
+            border: `1.5px solid ${activeSeries.PORTFOLIO ? '#10b981' : 'rgba(255,255,255,0.08)'}`,
+            borderRadius: '12px',
+            padding: '14px',
+            cursor: 'pointer',
+            opacity: activeSeries.PORTFOLIO ? 1 : 0.65
+          }}
+        >
+          <div style={{ fontSize: '0.7rem', color: '#d1fae5', fontWeight: 800 }}>
+            PORTFÖYÜM ({timeframe})
+          </div>
+          <div style={{
+            fontSize: '1.35rem',
+            fontWeight: 900,
+            fontFamily: 'monospace',
+            color: portfolioPeriodRet == null ? '#94a3b8' : portfolioPeriodRet >= 0 ? '#10b981' : '#ef4444',
+            marginTop: '4px'
+          }}>
+            {portfolioPeriodRet == null ? '—' : `${portfolioPeriodRet >= 0 ? '+' : ''}${portfolioPeriodRet.toFixed(2)}%`}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.67rem', color: '#6ee7b7', marginTop: '3px' }}>
+            <span>{activeSeries.PORTFOLIO ? '✓ Grafikte Aktif' : 'Grafiğe Ekle'}</span>
+            <span style={{ color: '#94a3b8' }}>
+              Maliyet K/Z: {portfolioCostReturnPct >= 0 ? '+' : ''}{portfolioCostReturnPct.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+
+        {BENCHMARKS.map(bm => {
+          const ret = periodReturns[bm.id];
+          const isSelected = activeSeries[bm.id];
+          return (
+            <div
+              key={bm.id}
+              onClick={() => setActiveSeries(prev => ({ ...prev, [bm.id]: !prev[bm.id] }))}
+              style={{
+                background: isSelected ? 'rgba(15, 23, 42, 0.9)' : 'rgba(15, 23, 42, 0.45)',
+                border: `1px solid ${isSelected ? bm.color : 'rgba(255,255,255,0.07)'}`,
+                borderRadius: '12px',
+                padding: '14px',
+                cursor: 'pointer',
+                opacity: isSelected ? 1 : 0.6
+              }}
+            >
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700 }}>{bm.label} ({timeframe})</div>
+              <div style={{
+                fontSize: '1.3rem',
+                fontWeight: 900,
+                fontFamily: 'monospace',
+                color: ret == null ? '#64748b' : ret >= 0 ? '#10b981' : '#ef4444',
+                marginTop: '4px'
+              }}>
+                {ret == null ? '—' : `${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: bm.color, marginTop: '2px' }}>
+                {isSelected ? '✓ Grafikte Aktif' : 'Grafiğe Eklemek İçin Tıkla'}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* LIVE NORMALIZED CHART */}
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.88)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '14px',
+        padding: '20px'
+      }}>
+        <h3 style={{ margin: '0 0 14px 0', fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc' }}>
+          📈 Canlı Normalize Yüzdesel Getiri Grafiği ({timeframe}) — Portföyüm vs Küresel Endeksler
+        </h3>
+        <div style={{ height: '360px' }}>
+          {loading ? (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+              ⏳ Portföy Varlıkları ve Küresel Benchmark Mum Serileri Çekiliyor...
+            </div>
+          ) : (
+            <Line data={chartData} options={chartOptions} />
+          )}
+        </div>
+      </div>
+
+      {/* REAL PORTFOLIO HOLDINGS PERFORMANCE TABLE */}
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.88)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '14px',
+        padding: '20px',
+        overflowX: 'auto'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc' }}>
+            💼 Portföyünüzdeki Gerçek Pozisyonların Dönemsel ({timeframe}) ve Maliyet Bazlı Performansı
+          </h3>
+          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+            💡 Sıralamak için sütun başlıklarına tıklayabilirsiniz
+          </span>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left', userSelect: 'none' }}>
+              {/* 1. GÜNLÜK DEĞİŞİM (EN SOLDA) */}
+              <th
+                onClick={() => handleSort('dayPct')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'left', minWidth: '130px' }}
+                title="Günlük değişime göre sırala"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'dayPct' ? '#38bdf8' : '#94a3b8' }}>Günlük Değişim %</span>
+                  {renderSortIndicator('dayPct')}
                 </div>
-              </div>
-              <span className="nav-badge cyan" style={{ fontSize: 10, padding: '2px 8px' }}>
-                {selectedBasketStats.count} / {availableHoldings.length} Varlık Seçili
-              </span>
-            </div>
+              </th>
 
-            {/* Quick Action Presets */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={handleSelectAll}
-                style={{ fontSize: 10.5, padding: '4px 9px' }}
-                title="Tüm portföyü seç"
+              {/* 2. VARLIK */}
+              <th
+                onClick={() => handleSort('ticker')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'left', minWidth: '140px' }}
+                title="Varlık sembolüne göre sırala"
               >
-                ⭐ Tüm Varlıklar
-              </button>
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={handleExcludeBydnr}
-                style={{ fontSize: 10.5, padding: '4px 9px', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.08)' }}
-                title="BYDNR'yi sepetten hariç tut"
-              >
-                🚫 BYDNR'siz
-              </button>
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={handleSelectRecent}
-                style={{ fontSize: 10.5, padding: '4px 9px', color: '#c084fc', borderColor: 'rgba(192, 132, 252, 0.4)', background: 'rgba(192, 132, 252, 0.08)' }}
-                title="Son dönemde eklenen SPCX, DRAM, NVDA, TSM, ABBV hisselerini seç"
-              >
-                🚀 Sadece Yeni Alımlar
-              </button>
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={handleSelectEquities}
-                style={{ fontSize: 10.5, padding: '4px 9px', color: '#00e5ff', borderColor: 'rgba(0, 229, 255, 0.4)' }}
-              >
-                📈 Sadece Hisseler
-              </button>
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={handleSelectShield}
-                style={{ fontSize: 10.5, padding: '4px 9px', color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.4)' }}
-              >
-                🛡️ Altın & Kur
-              </button>
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={handleSelectCrypto}
-                style={{ fontSize: 10.5, padding: '4px 9px', color: '#f97316', borderColor: 'rgba(249, 115, 22, 0.4)' }}
-              >
-                ⚡ Kriptolar
-              </button>
-              <button
-                type="button"
-                className="chip-btn"
-                onClick={handleClearAll}
-                style={{ fontSize: 10.5, padding: '4px 9px', color: '#ef4444' }}
-              >
-                🧹 Temizle
-              </button>
-            </div>
-          </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'ticker' ? '#38bdf8' : '#94a3b8' }}>Varlık</span>
+                  {renderSortIndicator('ticker')}
+                </div>
+              </th>
 
-          {/* Active Custom Basket Live KPI Banner */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-            gap: 8,
-            padding: '8px 12px',
-            background: 'rgba(0, 0, 0, 0.4)',
-            borderRadius: 6,
-            border: '1px solid var(--border)',
-            marginBottom: 12,
-            fontSize: 11
-          }}>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>Seçili Sepet Değeri</div>
-              <div className="mono font-bold" style={{ color: '#fff', fontSize: 13 }}>
-                {sym}{fmt(isTRY ? selectedBasketStats.valTRY : selectedBasketStats.valUSD)}
-              </div>
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>Toplam Maliyet</div>
-              <div className="mono font-bold" style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                {sym}{fmt(isTRY ? selectedBasketStats.costTRY : selectedBasketStats.costUSD)}
-              </div>
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>Net Kâr / Zarar</div>
-              <div className="mono font-bold" style={{ color: selectedBasketStats.profitTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontSize: 13 }}>
-                {selectedBasketStats.profitTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? selectedBasketStats.profitTRY : selectedBasketStats.profitUSD)}
-              </div>
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>Kümülatif Getiri</div>
-              <div className="mono font-bold" style={{ color: selectedBasketStats.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)', fontSize: 13 }}>
-                {selectedBasketStats.returnPct >= 0 ? '+' : ''}%{fmt(selectedBasketStats.returnPct, 2)}
-              </div>
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>Portföy Payı</div>
-              <div className="mono font-bold" style={{ color: '#00e5ff', fontSize: 13 }}>
-                %{fmt(selectedBasketStats.basketWeightPct, 1)}
-              </div>
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 10 }}>24s Günlük Değişim</div>
-              <div className="mono font-bold" style={{ color: selectedBasketStats.dayPLTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontSize: 13 }}>
-                {selectedBasketStats.dayPLTRY >= 0 ? '+' : ''}%{fmt(selectedBasketStats.dayPLPct, 2)}
-              </div>
-            </div>
-          </div>
+              {/* 3. GÜNCEL DEĞER */}
+              <th
+                onClick={() => handleSort('val')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '120px' }}
+                title="Güncel portföy değerine göre sırala"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'val' ? '#38bdf8' : '#94a3b8' }}>Güncel Değer</span>
+                  {renderSortIndicator('val')}
+                </div>
+              </th>
 
-          {/* Interactive Holding Chips Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
-            gap: 8,
-            maxHeight: 280,
-            overflowY: 'auto',
-            paddingRight: 4
-          }}>
-            {availableHoldings.map(h => {
-              const isSelected = selectedTickers.has(h.id);
-              const icon = h.category === 'equity' ? '📈' : (h.category === 'shield' ? '🛡️' : '⚡');
-              const ret = h.returnPct;
+              {/* 4. MALİYET BAZLI K/Z % */}
+              <th
+                onClick={() => handleSort('retPct')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '130px' }}
+                title="Maliyet bazlı kâr/zarar oranına göre sırala"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'retPct' ? '#38bdf8' : '#94a3b8' }}>Maliyet Bazlı K/Z %</span>
+                  {renderSortIndicator('retPct')}
+                </div>
+              </th>
+
+              {/* 5. NET KÂR / ZARAR */}
+              <th
+                onClick={() => handleSort('prof')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '120px' }}
+                title="Açık net kâr/zarar tutarına göre sırala"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'prof' ? '#38bdf8' : '#94a3b8' }}>Net Kâr / Zarar</span>
+                  {renderSortIndicator('prof')}
+                </div>
+              </th>
+
+              {/* 6. DÖNEM GETİRİSİ (EN SAĞDA) */}
+              <th
+                onClick={() => handleSort('periodRet')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '150px' }}
+                title="Dönemsel benchmark getirisine göre sırala"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'periodRet' ? '#38bdf8' : '#94a3b8' }}>Dönem Getirisi ({timeframe})</span>
+                  {renderSortIndicator('periodRet')}
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedHoldings.map((h) => {
+              const val = h.calculatedVal;
+              const prof = h.calculatedProf;
+              const periodRet = h.calculatedPeriodRet;
+              const retPct = h.calculatedRetPct;
+              const dayPct = h.calculatedDayPct;
 
               return (
-                <div
-                  key={h.id}
-                  onClick={() => toggleTicker(h.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '7px 10px',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    transition: 'all 0.15s ease',
-                    background: isSelected ? 'rgba(0, 229, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                    border: isSelected ? '1px solid rgba(0, 229, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.06)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                    <div style={{ 
-                      width: 16, 
-                      height: 16, 
-                      borderRadius: 3, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      background: isSelected ? '#00e5ff' : 'rgba(255, 255, 255, 0.1)',
-                      color: isSelected ? '#000' : 'transparent',
-                      fontSize: 11,
-                      fontWeight: 900
+                <tr key={h.id || h.ticker} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.15s' }}>
+                  {/* 1. GÜNLÜK DEĞİŞİM (EN SOLDA) */}
+                  <td style={{ padding: '10px 8px', textAlign: 'left' }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontWeight: 800,
+                      fontSize: '0.78rem',
+                      background: dayPct >= 0 ? 'rgba(16, 185, 129, 0.14)' : 'rgba(239, 68, 68, 0.14)',
+                      color: dayPct >= 0 ? '#10b981' : '#ef4444',
+                      border: `1px solid ${dayPct >= 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
                     }}>
-                      ✓
-                    </div>
-                    <span style={{ fontSize: 13 }}>{icon}</span>
-                    <div style={{ overflow: 'hidden' }}>
-                      <div style={{ fontWeight: 700, fontSize: 11.5, color: isSelected ? '#fff' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {h.ticker}
-                      </div>
-                      <div style={{ fontSize: 9.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100 }}>
-                        {h.name}
-                      </div>
-                    </div>
-                  </div>
+                      {dayPct >= 0 ? '▲ +' : '▼ '}{dayPct.toFixed(2)}%
+                    </span>
+                  </td>
 
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div className="mono font-bold" style={{ fontSize: 10.5, color: ret >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {ret >= 0 ? '+' : ''}%{fmt(ret, 1)}
-                    </div>
-                    <div className="mono" style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                      {sym}{fmt(isTRY ? h.valTRY : h.valUSD, 0)}
-                    </div>
-                  </div>
-                </div>
+                  {/* 2. VARLIK */}
+                  <td style={{ padding: '10px 8px', fontWeight: 800, color: '#f8fafc' }}>
+                    <span style={{ color: '#38bdf8' }}>{h.ticker}</span>{' '}
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{h.name}</span>
+                  </td>
+
+                  {/* 3. GÜNCEL DEĞER */}
+                  <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#e2e8f0', fontWeight: 700 }}>
+                    {sym}{val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+
+                  {/* 4. MALİYET BAZLI K/Z % */}
+                  <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800, color: retPct >= 0 ? '#10b981' : '#ef4444' }}>
+                    {retPct >= 0 ? '+' : ''}{retPct.toFixed(2)}%
+                  </td>
+
+                  {/* 5. NET KÂR / ZARAR */}
+                  <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: prof >= 0 ? '#10b981' : '#ef4444' }}>
+                    {prof >= 0 ? '+' : ''}{sym}{prof.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+
+                  {/* 6. DÖNEM GETİRİSİ (EN SAĞDA) */}
+                  <td style={{
+                    padding: '10px 8px',
+                    textAlign: 'right',
+                    fontFamily: 'monospace',
+                    fontWeight: 900,
+                    fontSize: '0.84rem',
+                    color: periodRet == null ? '#64748b' : periodRet >= 0 ? '#10b981' : '#ef4444'
+                  }}>
+                    {periodRet == null ? '—' : `${periodRet >= 0 ? '+' : ''}${periodRet.toFixed(2)}%`}
+                  </td>
+                </tr>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Alpha Spread Executive Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
-        {/* Basket Return Card */}
-        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
-              {portLabel} ({timeframe})
-            </span>
-            <span className={`nav-badge ${scopeBadge.color}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
-              {scopeBadge.label}
-            </span>
-          </div>
-          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: portPeriodReturn >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
-            {portPeriodReturn >= 0 ? '+' : ''}{fmt(portPeriodReturn)}%
-          </div>
-          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-            Dönem Başlangıcına Göre Net Değişim
-          </div>
-        </div>
-
-        {/* Alpha vs S&P 500 */}
-        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6' }}>
-              S&P 500 ALFA / SPREAD
-            </span>
-            <span className={`nav-badge ${alphaVsSP500 >= 0 ? 'emerald' : 'red'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
-              {alphaVsSP500 >= 0 ? '+Alfa' : 'Gecikme'}
-            </span>
-          </div>
-          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: alphaVsSP500 >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
-            {alphaVsSP500 >= 0 ? '+' : ''}{fmt(alphaVsSP500)}%
-          </div>
-          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-            S&P 500 Getirisi: <strong className="mono" style={{ color: '#e2e8f0' }}>{sp500PeriodReturn >= 0 ? '+' : ''}{fmt(sp500PeriodReturn)}%</strong>
-          </div>
-        </div>
-
-        {/* Alpha vs Nasdaq 100 */}
-        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#a855f7' }}>
-              NASDAQ 100 ALFA / SPREAD
-            </span>
-            <span className={`nav-badge ${alphaVsNDX >= 0 ? 'emerald' : 'red'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
-              {alphaVsNDX >= 0 ? '+Alfa' : 'Gecikme'}
-            </span>
-          </div>
-          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: alphaVsNDX >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
-            {alphaVsNDX >= 0 ? '+' : ''}{fmt(alphaVsNDX)}%
-          </div>
-          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-            Nasdaq Getirisi: <strong className="mono" style={{ color: '#e2e8f0' }}>{ndxPeriodReturn >= 0 ? '+' : ''}{fmt(ndxPeriodReturn)}%</strong>
-          </div>
-        </div>
-
-        {/* Alpha vs BIST 100 */}
-        <div className="card" style={{ padding: 14, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#06b6d4' }}>
-              BIST 100 ALFA / SPREAD
-            </span>
-            <span className={`nav-badge ${alphaVsBIST >= 0 ? 'emerald' : 'red'}`} style={{ fontSize: 9.5, padding: '1px 6px' }}>
-              {alphaVsBIST >= 0 ? '+Alfa' : 'Gecikme'}
-            </span>
-          </div>
-          <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: alphaVsBIST >= 0 ? 'var(--emerald)' : 'var(--red)', margin: '4px 0' }}>
-            {alphaVsBIST >= 0 ? '+' : ''}{fmt(alphaVsBIST)}%
-          </div>
-          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-            BIST 100 Getirisi: <strong className="mono" style={{ color: '#e2e8f0' }}>{bistPeriodReturn >= 0 ? '+' : ''}{fmt(bistPeriodReturn)}%</strong>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Charts Card */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 20 }}>
-        
-        {/* Performance & Underwater Card */}
-        <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          {/* Chart Header & Mode Toggles */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0' }}>
-                {chartType === 'line' 
-                  ? `${portLabel} NORMALİZE PERFORMANS (BAZ 100)` 
-                  : 'BENCHMARK GETİRİ KARŞILAŞTIRMA ÇUBUK GRAFİĞİ'}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                {chartType === 'line' ? `${timeframe} dönemi normalize getiri eğrileri (Başlangıç = 100)` : 'Dönem Getirisi ve Yıllıklandırılmış CAGR Karşılaştırması'}
-              </div>
-            </div>
-
-            {/* Timeframe & View Mode Toggles */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              {/* Timeframe Selectors */}
-              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border)', borderRadius: 4, padding: 2, gap: 2 }}>
-                {[
-                  { id: '1W', label: '1H' },
-                  { id: '1M', label: '1A' },
-                  { id: '3M', label: '3A' },
-                  { id: '6M', label: '6A' },
-                  { id: '1Y', label: '1Y' },
-                  { id: 'ALL', label: 'TÜMÜ' }
-                ].map(tf => (
-                  <button
-                    key={tf.id}
-                    type="button"
-                    className={`chip-btn ${timeframe === tf.id ? 'active' : ''}`}
-                    onClick={() => setTimeframe(tf.id)}
-                    style={{ padding: '3px 8px', fontSize: 11, fontWeight: 700 }}
-                  >
-                    {tf.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* View Mode Toggle: Line vs Bar */}
-              <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.5)', border: '1px solid var(--border)', borderRadius: 4, padding: 2 }}>
-                <button
-                  type="button"
-                  className={`chip-btn ${chartType === 'line' ? 'active' : ''}`}
-                  onClick={() => setChartType('line')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                >
-                  <LineChart size={13} />
-                  <span>Çizgi Grafik</span>
-                </button>
-                <button
-                  type="button"
-                  className={`chip-btn ${chartType === 'bar' ? 'active' : ''}`}
-                  onClick={() => setChartType('bar')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                >
-                  <BarChart3 size={13} />
-                  <span>Çubuk Grafik</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Series Toggles (Active for Line Chart) */}
-          {chartType === 'line' && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-              <button
-                type="button"
-                className={`chip-btn ${activeSeries.portfolio ? 'active' : ''}`}
-                style={{ 
-                  borderColor: activeSeries.portfolio ? portColor : 'transparent', 
-                  color: portColor,
-                  background: activeSeries.portfolio ? `${portColor}20` : 'transparent',
-                  fontWeight: 800
-                }}
-                onClick={() => toggleSeries('portfolio')}
-              >
-                🔴 {portLabel}
-              </button>
-              <button
-                type="button"
-                className={`chip-btn ${activeSeries.SP500 ? 'active' : ''}`}
-                style={{ borderColor: activeSeries.SP500 ? '#3b82f6' : 'transparent', color: '#3b82f6' }}
-                onClick={() => toggleSeries('SP500')}
-              >
-                🔵 S&P 500
-              </button>
-              <button
-                type="button"
-                className={`chip-btn ${activeSeries.NASDAQ ? 'active' : ''}`}
-                style={{ borderColor: activeSeries.NASDAQ ? '#a855f7' : 'transparent', color: '#a855f7' }}
-                onClick={() => toggleSeries('NASDAQ')}
-              >
-                🟣 Nasdaq
-              </button>
-              <button
-                type="button"
-                className={`chip-btn ${activeSeries.BIST100 ? 'active' : ''}`}
-                style={{ borderColor: activeSeries.BIST100 ? '#06b6d4' : 'transparent', color: '#06b6d4' }}
-                onClick={() => toggleSeries('BIST100')}
-              >
-                🇹🇷 BIST 100
-              </button>
-              <button
-                type="button"
-                className={`chip-btn ${activeSeries.GOLD ? 'active' : ''}`}
-                style={{ borderColor: activeSeries.GOLD ? '#eab308' : 'transparent', color: '#eab308' }}
-                onClick={() => toggleSeries('GOLD')}
-              >
-                🟡 Altın
-              </button>
-              <button
-                type="button"
-                className={`chip-btn ${activeSeries.BITCOIN ? 'active' : ''}`}
-                style={{ borderColor: activeSeries.BITCOIN ? '#f97316' : 'transparent', color: '#f97316' }}
-                onClick={() => toggleSeries('BITCOIN')}
-              >
-                🟠 Bitcoin
-              </button>
-            </div>
-          )}
-
-          {/* Chart Display Area */}
-          <div style={{ height: 320, width: '100%', marginBottom: 16 }}>
-            {chartType === 'line' ? (
-              <Line data={perfChartData} options={perfChartOptions} />
-            ) : (
-              <Bar data={barChartData} options={barChartOptions} />
-            )}
-          </div>
-
-          {/* Underwater Drawdown Chart Box */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>
-                UNDERWATER DRAWDOWN GRAFİĞİ (Zirveden Düşüş & Toparlanma)
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                Maksimum Kayıp: <strong style={{ color: '#ef4444' }}>
-                  {fmt(customCalculatedMetrics.max_drawdown || -38.5)}%
-                </strong>
-              </div>
-            </div>
-            <div style={{ height: 100, width: '100%' }}>
-              <Line data={underwaterChartData} options={underwaterChartOptions} />
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Asset Class Performance & Attribution Matrix Card */}
-      <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>📐</span>
-              <span>VARLIK SINIFI PERFORMANS, KÂR/ZARAR & DAĞILIM MATRİSİ</span>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Her varlık kümesinin portföy ağırlığı, maliyeti, anlık kâr/zararı, 24 saatlik değişimi ve benchmark rolü
-            </div>
-          </div>
-          <span className="nav-badge cyan" style={{ fontSize: 10.5, padding: '4px 10px' }}>
-            Portföy Büyüklüğü: <strong className="mono" style={{ color: '#fff' }}>{sym}{fmt(isTRY ? segmentStats.all.valTRY : segmentStats.all.valUSD)}</strong>
-          </span>
-        </div>
-
-        <div className="table-responsive">
-          <table className="terminal-table" style={{ fontSize: 11 }}>
-            <thead>
-              <tr>
-                <th>Varlık Segmenti & Odak</th>
-                <th style={{ width: 140 }}>Portföy Payı (%)</th>
-                <th className="text-right">Piyasa Değeri</th>
-                <th className="text-right">Maliyet</th>
-                <th className="text-right">24s Değişim</th>
-                <th className="text-right">Toplam Net Kâr / Zarar</th>
-                <th className="text-right">Toplam Kâr (%)</th>
-                <th className="text-center">Benchmark & Strateji Rolü</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                segmentStats.equity,
-                segmentStats.shield,
-                segmentStats.crypto
-              ].map(seg => {
-                const val = isTRY ? seg.valTRY : seg.valUSD;
-                const cost = isTRY ? seg.costTRY : seg.costUSD;
-                const profit = isTRY ? seg.profitTRY : seg.profitUSD;
-                const dayPL = isTRY ? seg.dayPLTRY : seg.dayPLUSD;
-
-                return (
-                  <tr key={seg.id} className="table-row">
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 16 }}>{seg.icon}</span>
-                        <div>
-                          <strong style={{ color: seg.color, fontSize: 11.5 }}>
-                            {seg.label}
-                          </strong>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                            {seg.count} Varlık Pozisyonu
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Weight & Progress Bar */}
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ flex: 1, height: 6, background: 'rgba(255, 255, 255, 0.08)', borderRadius: 3, overflow: 'hidden' }}>
-                          <div 
-                            style={{ 
-                              height: '100%', 
-                              width: `${Math.min(100, Math.max(0, seg.weightPct))}%`, 
-                              background: seg.color, 
-                              borderRadius: 3 
-                            }} 
-                          />
-                        </div>
-                        <span className="mono font-bold" style={{ fontSize: 11, minWidth: 42, textAlign: 'right' }}>
-                          %{fmt(seg.weightPct, 1)}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Market Value */}
-                    <td className="text-right mono font-bold" style={{ color: '#f1f5f9' }}>
-                      {sym}{fmt(val)}
-                    </td>
-
-                    {/* Cost */}
-                    <td className="text-right mono text-muted">
-                      {sym}{fmt(cost)}
-                    </td>
-
-                    {/* 24h P/L & % (Moved to left) */}
-                    <td className="text-right mono">
-                      <div style={{ color: dayPL >= 0 ? 'var(--emerald)' : 'var(--red)', fontWeight: 700 }}>
-                        {dayPL >= 0 ? '+' : ''}{sym}{fmt(dayPL)}
-                      </div>
-                      <div style={{ fontSize: 9.5, color: seg.dayPLPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                        {seg.dayPLPct >= 0 ? '+' : ''}%{fmt(seg.dayPLPct, 2)}
-                      </div>
-                    </td>
-
-                    {/* Total Net Profit */}
-                    <td className="text-right mono font-bold" style={{ color: profit >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {profit >= 0 ? '+' : ''}{sym}{fmt(profit)}
-                    </td>
-
-                    {/* Total Return % */}
-                    <td className="text-right mono font-bold" style={{ color: seg.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {seg.returnPct >= 0 ? '+' : ''}%{fmt(seg.returnPct, 2)}
-                    </td>
-
-                    {/* Role / Benchmark Badge */}
-                    <td className="text-center">
-                      <span className="nav-badge" style={{ 
-                        borderColor: seg.color, 
-                        color: seg.color, 
-                        background: `${seg.color}15`, 
-                        fontSize: 10, 
-                        padding: '3px 8px' 
-                      }}>
-                        {seg.benchmarkNote}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {/* Total Consolidated Row */}
-              <tr style={{ background: 'rgba(255, 255, 255, 0.04)', fontWeight: 'bold', borderTop: '2px solid var(--border)' }}>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>🌐</span>
-                    <div>
-                      <strong style={{ color: '#ffffff', fontSize: 12 }}>
-                        {segmentStats.all.label}
-                      </strong>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                        Toplam {segmentStats.all.count} Varlık
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span className="mono font-bold" style={{ color: '#ffffff' }}>%100.0</span>
-                </td>
-                <td className="text-right mono font-bold" style={{ color: '#ffffff', fontSize: 12 }}>
-                  {sym}{fmt(isTRY ? segmentStats.all.valTRY : segmentStats.all.valUSD)}
-                </td>
-                <td className="text-right mono text-muted">
-                  {sym}{fmt(isTRY ? segmentStats.all.costTRY : segmentStats.all.costUSD)}
-                </td>
-                <td className="text-right mono">
-                  <div style={{ color: segmentStats.all.dayPLTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontWeight: 700 }}>
-                    {segmentStats.all.dayPLTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? segmentStats.all.dayPLTRY : segmentStats.all.dayPLUSD)}
-                  </div>
-                  <div style={{ fontSize: 9.5, color: segmentStats.all.dayPLPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                    {segmentStats.all.dayPLPct >= 0 ? '+' : ''}%{fmt(segmentStats.all.dayPLPct, 2)}
-                  </div>
-                </td>
-                <td className="text-right mono font-bold" style={{ color: segmentStats.all.profitTRY >= 0 ? 'var(--emerald)' : 'var(--red)', fontSize: 12 }}>
-                  {segmentStats.all.profitTRY >= 0 ? '+' : ''}{sym}{fmt(isTRY ? segmentStats.all.profitTRY : segmentStats.all.profitUSD)}
-                </td>
-                <td className="text-right mono font-bold" style={{ color: segmentStats.all.returnPct >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                  {segmentStats.all.returnPct >= 0 ? '+' : ''}%{fmt(segmentStats.all.returnPct, 2)}
-                </td>
-                <td className="text-center">
-                  <span className="nav-badge gray" style={{ fontSize: 10, padding: '3px 8px' }}>
-                    Tam Portföy Dengesi
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Quantitative Risk & Benchmark Analytics Matrix Card */}
-      <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>📊</span>
-            <span>BLOOMBERG KANTİTATİF RİSK & GÖSTERGE ANALİTİK MATRİSİ</span>
-          </div>
-          <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-            Seçili Kapsam: <strong style={{ color: portfolioScope === 'equity' ? '#00e5ff' : '#fff' }}>
-              {portfolioScope === 'equity' ? 'Çekirdek Hisse & ETF' : 'Tüm Konsolide Portföy'}
-            </strong> | Baz: <strong style={{ color: 'var(--amber)' }}>{isTRY ? 'TRY' : 'USD'}</strong>
-          </span>
-        </div>
-
-        <div className="table-responsive">
-          <table className="terminal-table" style={{ fontSize: 11 }}>
-            <thead>
-              <tr>
-                <th>Varlık / Gösterge</th>
-                <th>Sembol</th>
-                <th className="text-right">Dönem Getirisi</th>
-                <th className="text-right">Yıllık Getiri (CAGR)</th>
-                <th className="text-right">Volatilite (σ)</th>
-                <th className="text-right">Sharpe Oranı</th>
-                <th className="text-right">Sortino Oranı</th>
-                <th className="text-right">Beta (β)</th>
-                <th className="text-right">Jensen Alpha (α)</th>
-                <th className="text-right">Tracking Error</th>
-                <th className="text-right">Max Drawdown</th>
-                <th className="text-right">Calmar</th>
-                <th className="text-right">Korelasyon</th>
-              </tr>
-            </thead>
-            <tbody>
-              {metricRows.map(row => {
-                const m = row.customMetrics || metrics[row.key] || {};
-                const isSelectedBasket = row.key === 'CUSTOM_BASKET' || row.key === 'EQUITY' || row.key === 'PORTFOLIO';
-
-                return (
-                  <tr
-                    key={row.key}
-                    className="table-row"
-                    style={{ background: isSelectedBasket ? `${portColor}10` : 'transparent' }}
-                  >
-                    <td>
-                      <strong style={{ color: row.color, fontWeight: isSelectedBasket ? 900 : 700 }}>
-                        {row.name}
-                      </strong>
-                    </td>
-                    <td className="mono text-muted">{row.code}</td>
-                    <td className="text-right mono" style={{ fontWeight: 700, color: (m.period_return || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {(m.period_return || 0) >= 0 ? '+' : ''}{Number(m.period_return || 0).toFixed(2)}%
-                    </td>
-                    <td className="text-right mono" style={{ color: (m.cagr || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {(m.cagr || 0) >= 0 ? '+' : ''}{Number(m.cagr || 0).toFixed(2)}%
-                    </td>
-                    <td className="text-right mono">{Number(m.volatility || 0).toFixed(2)}%</td>
-                    <td className="text-right mono font-medium" style={{ color: (m.sharpe || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {Number(m.sharpe || 0).toFixed(2)}
-                    </td>
-                    <td className="text-right mono" style={{ color: (m.sortino || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {Number(m.sortino || 0).toFixed(2)}
-                    </td>
-                    <td className="text-right mono font-medium">
-                      {isSelectedBasket ? Number(m.beta != null ? m.beta : 1.0).toFixed(2) : Number(m.beta || 0).toFixed(2)}
-                    </td>
-                    <td className="text-right mono" style={{ color: (m.alpha || 0) >= 0 ? 'var(--emerald)' : 'var(--red)' }}>
-                      {(m.alpha || 0) >= 0 ? '+' : ''}{Number(m.alpha || 0).toFixed(2)}%
-                    </td>
-                    <td className="text-right mono">
-                      {Number(m.tracking_error || 0).toFixed(2)}%
-                    </td>
-                    <td className="text-right mono text-down" style={{ color: 'var(--red)' }}>
-                      {Number(m.max_drawdown || 0).toFixed(2)}%
-                    </td>
-                    <td className="text-right mono">
-                      {Number(m.calmar || 0).toFixed(2)}
-                    </td>
-                    <td className="text-right mono">
-                      {isSelectedBasket ? '1.00' : Number(m.correlation || 0).toFixed(2)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Quantitative Decision Guide Legend */}
-        <div style={{ background: '#0b101b', borderTop: '1px solid var(--border)', padding: '12px 16px', fontSize: 10.5, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 14, borderRadius: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="nav-badge emerald" style={{ padding: '2px 6px', fontSize: 9 }}>Üstün</span>
-            <span style={{ color: 'var(--text-muted)' }}>
-              <strong style={{ color: '#fff' }}>Sharpe & Sortino:</strong> Risksiz faiz üzeri birim risk başına getiri kalitesi.
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="nav-badge cyan" style={{ padding: '2px 6px', fontSize: 9 }}>Defansif</span>
-            <span style={{ color: 'var(--text-muted)' }}>
-              <strong style={{ color: '#fff' }}>Beta (β):</strong> &lt; 0.85 portföyün piyasa çöküşlerine karşı korumalı olduğunu gösterir.
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="nav-badge emerald" style={{ padding: '2px 6px', fontSize: 9 }}>+Alfa</span>
-            <span style={{ color: 'var(--text-muted)' }}>
-              <strong style={{ color: '#fff' }}>Jensen Alpha (α):</strong> Portföy yöneticisinin piyasaya attığı reel performans farkı.
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="nav-badge cyan" style={{ padding: '2px 6px', fontSize: 9 }}>Eş Koruma</span>
-            <span style={{ color: 'var(--text-muted)' }}>
-              <strong style={{ color: '#fff' }}>Korelasyon:</strong> 0'a yakın/negatif varlıklar portföy riskini dağıtır.
-            </span>
-          </div>
-        </div>
-
+          </tbody>
+        </table>
       </div>
     </div>
   );
