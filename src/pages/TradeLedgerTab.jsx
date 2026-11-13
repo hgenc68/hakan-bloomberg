@@ -8,6 +8,10 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
 
+  const totalRealizedTRY = Number(portfolioSummary?.realizedProfitTRY) || 0;
+  const totalRealizedUSD = Number(portfolioSummary?.realizedProfitUSD) || 0;
+  const isNetProfit = totalRealizedTRY >= 0;
+
   const filteredTrades = tradeLedger.filter(t => {
     const q = search.toLowerCase();
     return (
@@ -43,18 +47,22 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
 
       {/* 4 KPI Cards for Trade Ledger */}
       <div className="kpi-grid">
-        {/* KPI 1: Toplam Gerçekleşen Kâr */}
-        <div className="kpi-card green">
+        {/* KPI 1: Toplam Gerçekleşen Net Kâr / Zarar */}
+        <div className={`kpi-card ${isNetProfit ? 'green' : 'red'}`}>
           <div className="kpi-header">
-            <span>Toplam Gerçekleşen Net Kâr</span>
-            <span className="badge-pill emerald">Cebe Giren</span>
+            <span>{isNetProfit ? 'Toplam Gerçekleşen Net Kâr' : 'Toplam Gerçekleşen Net Zarar'}</span>
+            <span className={`badge-pill ${isNetProfit ? 'emerald' : 'red'}`}>
+              {isNetProfit ? 'Cebe Giren' : 'Net Zarar'}
+            </span>
           </div>
-          <div className="kpi-val mono text-emerald">
-            +₺{(Number(portfolioSummary?.realizedProfitTRY) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className={`kpi-val mono ${isNetProfit ? 'text-emerald' : 'text-down'}`}>
+            {isNetProfit ? '+' : '-'}₺{Math.abs(totalRealizedTRY).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="kpi-sub mono">
             <span>Dolar Karşılığı:</span>
-            <strong style={{ color: '#fff' }}>+${(Number(portfolioSummary?.realizedProfitUSD) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</strong>
+            <strong style={{ color: isNetProfit ? '#10b981' : '#ef4444' }}>
+              {isNetProfit ? '+' : '-'}${Math.abs(totalRealizedUSD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+            </strong>
           </div>
         </div>
 

@@ -550,6 +550,7 @@ button {
 }
 
 .badge-pill.emerald { background: rgba(16, 185, 129, 0.15); color: var(--emerald); border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-pill.red { background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); }
 .badge-pill.cyan { background: rgba(0, 229, 255, 0.15); color: var(--cyan); border: 1px solid rgba(0, 229, 255, 0.3); }
 .badge-pill.gold { background: rgba(245, 158, 11, 0.15); color: var(--gold); border: 1px solid rgba(245, 158, 11, 0.3); }
 .badge-pill.purple { background: rgba(129, 140, 248, 0.15); color: var(--purple); border: 1px solid rgba(129, 140, 248, 0.3); }
