@@ -593,19 +593,7 @@ export default function BenchmarkTab() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left', userSelect: 'none' }}>
-              {/* 1. GÜNLÜK DEĞİŞİM (EN SOLDA) */}
-              <th
-                onClick={() => handleSort('dayPct')}
-                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'left', minWidth: '130px' }}
-                title="Günlük değişime göre sırala"
-              >
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ color: sortConfig.key === 'dayPct' ? '#38bdf8' : '#94a3b8' }}>Günlük Değişim %</span>
-                  {renderSortIndicator('dayPct')}
-                </div>
-              </th>
-
-              {/* 2. VARLIK */}
+              {/* 1. VARLIK */}
               <th
                 onClick={() => handleSort('ticker')}
                 style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'left', minWidth: '140px' }}
@@ -617,7 +605,7 @@ export default function BenchmarkTab() {
                 </div>
               </th>
 
-              {/* 3. GÜNCEL DEĞER */}
+              {/* 2. GÜNCEL DEĞER */}
               <th
                 onClick={() => handleSort('val')}
                 style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '120px' }}
@@ -626,6 +614,18 @@ export default function BenchmarkTab() {
                 <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
                   <span style={{ color: sortConfig.key === 'val' ? '#38bdf8' : '#94a3b8' }}>Güncel Değer</span>
                   {renderSortIndicator('val')}
+                </div>
+              </th>
+
+              {/* 3. GÜNLÜK DEĞİŞİM (GÜNCEL DEĞER'İN SAĞI) */}
+              <th
+                onClick={() => handleSort('dayPct')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '130px' }}
+                title="Günlük değişime göre sırala"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'dayPct' ? '#38bdf8' : '#94a3b8' }}>Günlük Değişim %</span>
+                  {renderSortIndicator('dayPct')}
                 </div>
               </th>
 
@@ -676,8 +676,19 @@ export default function BenchmarkTab() {
 
               return (
                 <tr key={h.id || h.ticker} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.15s' }}>
-                  {/* 1. GÜNLÜK DEĞİŞİM (EN SOLDA) */}
-                  <td style={{ padding: '10px 8px', textAlign: 'left' }}>
+                  {/* 1. VARLIK */}
+                  <td style={{ padding: '10px 8px', fontWeight: 800, color: '#f8fafc' }}>
+                    <span style={{ color: '#38bdf8' }}>{h.ticker}</span>{' '}
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{h.name}</span>
+                  </td>
+
+                  {/* 2. GÜNCEL DEĞER */}
+                  <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#e2e8f0', fontWeight: 700 }}>
+                    {sym}{val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+
+                  {/* 3. GÜNLÜK DEĞİŞİM (GÜNCEL DEĞER'İN SAĞINDA) */}
+                  <td style={{ padding: '10px 8px', textAlign: 'right' }}>
                     <span style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -693,17 +704,6 @@ export default function BenchmarkTab() {
                     }}>
                       {dayPct >= 0 ? '▲ +' : '▼ '}{dayPct.toFixed(2)}%
                     </span>
-                  </td>
-
-                  {/* 2. VARLIK */}
-                  <td style={{ padding: '10px 8px', fontWeight: 800, color: '#f8fafc' }}>
-                    <span style={{ color: '#38bdf8' }}>{h.ticker}</span>{' '}
-                    <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{h.name}</span>
-                  </td>
-
-                  {/* 3. GÜNCEL DEĞER */}
-                  <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#e2e8f0', fontWeight: 700 }}>
-                    {sym}{val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
 
                   {/* 4. MALİYET BAZLI K/Z % */}
