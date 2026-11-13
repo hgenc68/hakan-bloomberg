@@ -1209,9 +1209,10 @@ export const AppProvider = ({ children }) => {
   };
 
   // Automated Sell Execution: calculates realized P/L and logs to ledger
-  const sellHolding = async (holding, sharesSold, sellPrice, sellCurrency = 'TRY') => {
+  const sellHolding = async (holding, sharesSold, sellPrice, sellCurrency = 'TRY', commission = 0) => {
     const qty = parseFloat(String(sharesSold).replace(',', '.'));
     const p = parseFloat(String(sellPrice).replace(',', '.'));
+    const comm = parseFloat(String(commission).replace(',', '.')) || 0;
     if (!qty || qty <= 0 || !p || p <= 0) {
       showToast('Geçersiz satış adedi veya fiyatı!', '⚠️');
       return;
@@ -1221,19 +1222,37 @@ export const AppProvider = ({ children }) => {
       const isSellUSD = sellCurrency === 'USD';
       const isCostUSD = holding.currency === 'USD' || (holding.cost_rate && Number(holding.cost_rate) > 1.5) || holding.isHoldingUSD;
       
-      // Total proceeds
-      const proceedsTRY = isSellUSD ? (qty * p * usdtry) : (qty * p);
-      const proceedsUSD = proceedsTRY / usdtry;
+      // Total gross proceeds
+      const grossProceedsTRY = isSellUSD ? (qty * p * usdtry) : (qty * p);
+      const grossProceedsUSD = grossProceedsTRY / usdtry;
+
+      // Commission in TRY & USD (e.g. 1.5 USD for US stocks or custom)
+      const commissionTRY = isSellUSD ? (comm * usdtry) : comm;
+      const commissionUSD = isSellUSD ? comm : (usdtry > 0 ? commissionTRY / usdtry : 0);
+
+      // Net proceeds after commission
+      const proceedsTRY = Math.max(0, grossProceedsTRY - commissionTRY);
+      const proceedsUSD = Math.max(0, grossProceedsUSD - commissionUSD);
 
       // Cost basis of sold shares
       const costRate = Number(holding.cost_rate) > 1.5 ? Number(holding.cost_rate) : usdtry;
       const costTRY = isCostUSD ? (qty * (holding.avg_cost || 0) * costRate) : (qty * (holding.avg_cost || 0));
       const costUSD = costTRY / costRate;
 
-      // Realized Profit
+      // Realized Profit (Net of commission)
       const realizedPL_TRY = proceedsTRY - costTRY;
       const realizedPL_USD = proceedsUSD - costUSD;
       const returnPct = costTRY > 0 ? (realizedPL_TRY / costTRY) * 100 : 0;
+
+      // Holding duration calculation (if buy_date or created_at exists)
+      const rawBuyDate = holding.buy_date || holding.created_at || holding.updated_at || null;
+      let holdingDays = null;
+      if (rawBuyDate) {
+        const buyMs = new Date(rawBuyDate).getTime();
+        if (Number.isFinite(buyMs)) {
+          holdingDays = Math.max(1, Math.round((Date.now() - buyMs) / (1000 * 60 * 60 * 24)));
+        }
+      }
 
       const tradeId = Date.now();
       const tradeItem = {
@@ -1249,12 +1268,19 @@ export const AppProvider = ({ children }) => {
         currency: sellCurrency,
         holding_currency: holding.currency || 'TRY',
         exchange_rate: usdtry,
+        gross_proceeds_try: Math.round(grossProceedsTRY * 100) / 100,
+        gross_proceeds_usd: Math.round(grossProceedsUSD * 100) / 100,
+        commission_try: Math.round(commissionTRY * 100) / 100,
+        commission_usd: Math.round(commissionUSD * 100) / 100,
+        commission: comm,
         total_proceeds_try: Math.round(proceedsTRY * 100) / 100,
         total_proceeds_usd: Math.round(proceedsUSD * 100) / 100,
         realized_pl_try: Math.round(realizedPL_TRY * 100) / 100,
         realized_pl_usd: Math.round(realizedPL_USD * 100) / 100,
         realized_return_pct: Math.round(returnPct * 100) / 100,
-        note: `${holding.ticker} ${qty >= (holding.shares || 0) ? 'Tam' : 'Kısmi'} Satış (${sellCurrency})`
+        buy_date: rawBuyDate,
+        holding_days: holdingDays,
+        note: `${holding.ticker} ${qty >= (holding.shares || 0) ? 'Tam' : 'Kısmi'} Satış (${sellCurrency})${comm > 0 ? ` • Komisyon: ${isSellUSD ? '$' : '₺'}${comm}` : ''}`
       };
 
       // 1. Record in trade ledger (Firestore)

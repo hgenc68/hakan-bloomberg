@@ -441,16 +441,23 @@ export function SellHoldingModal({ holding, onClose }) {
   const [sharesSold, setSharesSold] = useState('');
   const [sellPrice, setSellPrice] = useState(String(defaultPrice || ''));
 
+  // Default Commission: If USD holding or US ticker, default to 1.50 USD; otherwise 0.00
+  const isHoldingUSD = initialCurrency === 'USD' || holding.currency === 'USD' || holding.isHoldingUSD;
+  const defaultCommission = isHoldingUSD ? '1.50' : '0.00';
+  const [commission, setCommission] = useState(defaultCommission);
+
   const sharesNum = parseFloat(String(sharesSold).replace(',', '.')) || 0;
   const priceNum = parseFloat(String(sellPrice).replace(',', '.')) || 0;
+  const commissionNum = parseFloat(String(commission).replace(',', '.')) || 0;
 
   // Real-time calculation preview
-  const proceeds = sharesNum * priceNum;
+  const grossProceeds = sharesNum * priceNum;
+  const netProceeds = Math.max(0, grossProceeds - commissionNum);
   const costRate = Number(holding.cost_rate) > 1.5 ? Number(holding.cost_rate) : (usdtry || 49.03);
   const costBasis = isUSD
     ? (sharesNum * (holding.currency === 'USD' ? (holding.avg_cost || 0) : ((holding.avg_cost || 0) / costRate)))
     : (sharesNum * (holding.currency === 'USD' ? ((holding.avg_cost || 0) * costRate) : (holding.avg_cost || 0)));
-  const profit = proceeds - costBasis;
+  const profit = netProceeds - costBasis;
   const returnPct = costBasis > 0 ? (profit / costBasis) * 100 : 0;
   const remainingShares = Math.max(0, currentShares - sharesNum);
 
@@ -471,7 +478,7 @@ export function SellHoldingModal({ holding, onClose }) {
       alert(`Mevcut adetten (${currentShares}) fazla satış yapamazsınız!`);
       return;
     }
-    await sellHolding(holding, sharesNum, priceNum, sellCurrency);
+    await sellHolding(holding, sharesNum, priceNum, sellCurrency, commissionNum);
     onClose();
   };
 
@@ -554,12 +561,65 @@ export function SellHoldingModal({ holding, onClose }) {
           </div>
         </div>
 
+        {/* İşlem Komisyonu / Masraf (ABD Hisseleri Standart $1.50 / BIST 0 ₺) */}
+        <div className="form-group" style={{ marginTop: 10 }}>
+          <div className="label-between">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px' }}>
+              <span>İŞLEM KOMİSYONU / MASRAF</span>
+              <span className={`badge-pill ${isUSD ? 'cyan' : 'emerald'}`} style={{ fontSize: 9 }}>{isUSD ? '$ USD' : '₺ TRY'}</span>
+            </label>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                type="button"
+                className="chip-btn"
+                onClick={() => setCommission('0.00')}
+                style={{ fontSize: 9.5, padding: '1px 6px', fontWeight: commissionNum === 0 ? 700 : 400 }}
+              >
+                0.00 (Sıfır)
+              </button>
+              {isUSD && (
+                <button
+                  type="button"
+                  className="chip-btn"
+                  onClick={() => setCommission('1.50')}
+                  style={{ fontSize: 9.5, padding: '1px 6px', color: '#06b6d4', borderColor: '#06b6d4', fontWeight: commissionNum === 1.5 ? 700 : 400 }}
+                >
+                  Standart ($1.50)
+                </button>
+              )}
+            </div>
+          </div>
+          <input
+            type="text"
+            placeholder="0.00"
+            value={commission}
+            onChange={e => setCommission(e.target.value)}
+            className="quant-input mono"
+            style={{ width: '100%' }}
+          />
+          <div style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 4 }}>
+            {isUSD
+              ? '🇺🇸 ABD hisselerinde standart aracı kurum komisyonu ($1.50). Net kâr ve hasılat hesabından otomatik düşülür.'
+              : '🇹🇷 BIST hisselerinde standart komisyon 0 kabul edilir (veya aracı kurum kesintinizi girebilirsiniz).'}
+          </div>
+        </div>
+
         {/* Real-time Calculation Summary Box */}
         {sharesNum > 0 && priceNum > 0 && (
           <div className="calc-preview-box" style={{ background: '#090d16', border: '1px solid rgba(0, 229, 255, 0.25)', borderRadius: 6, padding: '10px 12px', marginTop: 10 }}>
             <div className="preview-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Kasaya Girecek Hasılat:</span>
-              <strong className="mono text-cyan">{sym}{proceeds.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Brüt Satış Hasılatı:</span>
+              <span className="mono" style={{ color: '#fff' }}>{sym}{grossProceeds.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            {commissionNum > 0 && (
+              <div className="preview-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, color: '#f59e0b' }}>İşlem Komisyonu:</span>
+                <span className="mono" style={{ color: '#f59e0b', fontWeight: 700 }}>-{sym}{commissionNum.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            )}
+            <div className="preview-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Kasaya Girecek Net Hasılat:</span>
+              <strong className="mono text-cyan">{sym}{netProceeds.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
             </div>
             <div className="preview-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Gerçekleşecek Net Kâr/Zarar:</span>
@@ -572,7 +632,7 @@ export function SellHoldingModal({ holding, onClose }) {
               <strong className="mono" style={{ color: '#fff' }}>{remainingShares.toLocaleString('tr-TR', { maximumFractionDigits: 6 })}</strong>
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 6 }}>
-              ✓ Satış onaylandığında bu kâr/hasılat anında <strong>Kâr Defterine</strong> kalıcı olarak işlenecektir.
+              ✓ Satış onaylandığında net kâr ve komisyon anında <strong>Kâr Defterine</strong> kalıcı olarak işlenecektir.
             </div>
           </div>
         )}
