@@ -23,7 +23,7 @@ import {
   Flame
 } from 'lucide-react';
 
-// Mini SVG Equity Curve Sparkline Component
+// Mini SVG Equity Curve Sparkline Component with Zero Baseline and Dual Color Fill
 function EquityCurveSparkline({ data, height = 75 }) {
   if (!data || data.length < 2) {
     return (
@@ -32,68 +32,104 @@ function EquityCurveSparkline({ data, height = 75 }) {
       </div>
     );
   }
-  const vals = data.map(d => d.val);
-  const min = Math.min(...vals, 0);
-  const max = Math.max(...vals, 100);
-  const range = (max - min) || 1;
+
+  // Prepend genesis zero point if first trade doesn't start at 0
+  const normalizedData = (data[0] && data[0].val !== 0)
+    ? [{ step: 0, ticker: 'BAŞLANGIÇ', val: 0 }, ...data]
+    : data;
+
+  const vals = normalizedData.map(d => d.val);
+  const minVal = Math.min(...vals, 0);
+  const maxVal = Math.max(...vals, 0);
+
+  // Add 12% vertical padding so curve doesn't clamp hard to SVG border
+  const rangeRaw = maxVal - minVal;
+  const pad = rangeRaw > 0 ? rangeRaw * 0.12 : 500;
+  const yMin = minVal - pad;
+  const yMax = maxVal + pad;
+  const range = (yMax - yMin) || 1;
+
   const w = 460;
   const h = height;
 
-  const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * (w - 24) + 12;
-    const y = h - ((d.val - min) / range) * (h - 22) - 11;
+  const points = normalizedData.map((d, i) => {
+    const x = (i / (normalizedData.length - 1)) * (w - 24) + 12;
+    const y = h - ((d.val - yMin) / range) * (h - 22) - 11;
     return `${x},${y}`;
   }).join(' ');
 
   const firstX = 12;
   const lastX = w - 12;
-  const zeroY = h - ((0 - min) / range) * (h - 22) - 11;
-  const areaPoints = `${firstX},${h} ${points} ${lastX},${h}`;
-  const isUp = (vals[vals.length - 1] || 0) >= (vals[0] || 0);
-  const strokeColor = isUp ? '#10b981' : '#ef4444';
+  const zeroY = h - ((0 - yMin) / range) * (h - 22) - 11;
 
-  const lastPoint = data[data.length - 1];
+  // Closed area polygon anchored along the 0 baseline
+  const areaPoints = `${firstX},${zeroY} ${points} ${lastX},${zeroY}`;
+
+  // Percentage offset of the 0 baseline from top (0%) to bottom (100%)
+  const zeroOffsetPct = Math.max(0, Math.min(100, ((yMax - 0) / range) * 100));
+
+  const lastPoint = normalizedData[normalizedData.length - 1];
   const lastXCoord = w - 12;
-  const lastYCoord = h - ((lastPoint.val - min) / range) * (h - 22) - 11;
+  const lastYCoord = h - ((lastPoint.val - yMin) / range) * (h - 22) - 11;
+  const isCurrentProfitable = (lastPoint.val >= 0);
+  const lastNodeColor = isCurrentProfitable ? '#10b981' : '#ef4444';
 
   return (
     <div style={{ width: '100%', position: 'relative' }}>
       <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height, overflow: 'visible' }}>
         <defs>
-          <linearGradient id="equityGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.32" />
-            <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+          {/* Dual-color stroke: Green above 0 line, Red below 0 line */}
+          <linearGradient id="equityDualStroke" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset={`${Math.max(0, zeroOffsetPct - 0.5)}%`} stopColor="#10b981" />
+            <stop offset={`${Math.min(100, zeroOffsetPct + 0.5)}%`} stopColor="#ef4444" />
+            <stop offset="100%" stopColor="#ef4444" />
+          </linearGradient>
+
+          {/* Dual-color area fill: Green glow above 0 line, Red glow below 0 line */}
+          <linearGradient id="equityDualArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.40" />
+            <stop offset={`${Math.max(0, zeroOffsetPct - 2)}%`} stopColor="#10b981" stopOpacity="0.04" />
+            <stop offset={`${zeroOffsetPct}%`} stopColor="rgba(255,255,255,0)" stopOpacity="0" />
+            <stop offset={`${Math.min(100, zeroOffsetPct + 2)}%`} stopColor="#ef4444" stopOpacity="0.04" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0.38" />
           </linearGradient>
         </defs>
 
-        {/* Zero Baseline */}
-        {min < 0 && max > 0 && (
-          <line 
-            x1="10" 
-            y1={zeroY} 
-            x2={w - 10} 
-            y2={zeroY} 
-            stroke="rgba(255,255,255,0.12)" 
-            strokeDasharray="3 3" 
-            strokeWidth="1"
-          />
-        )}
+        {/* 0 ₺ Başabaş Referans Çizgisi */}
+        <line 
+          x1="8" 
+          y1={zeroY} 
+          x2={w - 8} 
+          y2={zeroY} 
+          stroke="rgba(255, 255, 255, 0.30)" 
+          strokeDasharray="4 3" 
+          strokeWidth="1.2"
+        />
 
-        {/* Shaded Area */}
-        <polygon points={areaPoints} fill="url(#equityGradient)" />
+        {/* 0 ₺ Başabaş Rozeti */}
+        <g transform={`translate(8, ${Math.min(h - 12, Math.max(12, zeroY))})`}>
+          <rect x="0" y="-8" width="76" height="15" rx="3" fill="#0f172a" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
+          <text x="38" y="2.5" fill="#94a3b8" fontSize="8" fontFamily="monospace" fontWeight="700" textAnchor="middle">
+            0 ₺ (Başabaş)
+          </text>
+        </g>
 
-        {/* Trend Line */}
+        {/* Çift Renkli Gölgeli Alan */}
+        <polygon points={areaPoints} fill="url(#equityDualArea)" />
+
+        {/* Çift Renkli Kümülatif Kâr Trend Çizgisi */}
         <polyline 
           points={points} 
           fill="none" 
-          stroke={strokeColor} 
+          stroke="url(#equityDualStroke)" 
           strokeWidth="2.5" 
           strokeLinecap="round" 
           strokeLinejoin="round" 
         />
 
-        {/* Latest Node Marker */}
-        <circle cx={lastXCoord} cy={lastYCoord} r="4" fill={strokeColor} stroke="#fff" strokeWidth="1.5" />
+        {/* Güncel Son İşlem Düğümü */}
+        <circle cx={lastXCoord} cy={lastYCoord} r="4.5" fill={lastNodeColor} stroke="#ffffff" strokeWidth="1.8" />
       </svg>
     </div>
   );
@@ -124,10 +160,10 @@ function calcTradeInflationMetrics(t) {
   const ppfHurdlePct = (Math.pow(1 + annualPpfRate, days / 365) - 1) * 100;
   const nominalPct = Number(t.realized_return_pct || t.return_pct || 0);
   
-  // Real Alpha = ((1 + nominal) / (1 + hurdle)) - 1
-  const realAlphaPct = ((1 + nominalPct / 100) / (1 + ppfHurdlePct / 100) - 1) * 100;
+  // Real Alpha = nominal % minus PPF hurdle %
+  const realAlphaPct = nominalPct - ppfHurdlePct;
 
-  // Approximate opportunity cost in TRY
+  // Exact opportunity cost in TRY
   const costTRY = Number(t.avg_cost || 0) * Number(t.shares || 0) * (t.currency === 'USD' ? (Number(t.exchange_rate) || 49.03) : 1);
   const ppfOpportunityCostTRY = costTRY * (ppfHurdlePct / 100);
   const realNetProfitTRY = (Number(t.realized_pl_try) || 0) - ppfOpportunityCostTRY;
@@ -139,7 +175,7 @@ function calcTradeInflationMetrics(t) {
     realAlphaPct,
     ppfOpportunityCostTRY,
     realNetProfitTRY,
-    beatPPF: realAlphaPct > 0
+    beatPPF: (Number(t.realized_pl_try) || 0) > ppfOpportunityCostTRY
   };
 }
 
@@ -156,7 +192,7 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
   const totalRealizedUSD = Number(portfolioSummary?.realizedProfitUSD) || 0;
   const isNetProfit = totalRealizedTRY >= 0;
 
-  // 1. Comprehensive Trade Performance & Analytics Engine
+  // 1. Comprehensive Trade Performance & Analytics Engine (with Portfolio Time-Weighted PPF Hurdle)
   const analytics = useMemo(() => {
     if (!tradeLedger || tradeLedger.length === 0) {
       return {
@@ -178,8 +214,16 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
         worstTrade: null,
         equityCurve: [],
         avgHoldingDays: 0,
-        realAlphaCount: 0,
-        realAlphaPctTotal: 0,
+        beatPpfCount: 0,
+        beatPpfWinRatePct: 0,
+        totalInvestedCostTRY: 0,
+        totalRealizedProfitTRY: 0,
+        totalPpfOpportunityTRY: 0,
+        netPortfolioAlphaTRY: 0,
+        isPortfolioAlphaPositive: true,
+        weightedNominalPct: 0,
+        weightedPpfPct: 0,
+        netPortfolioAlphaPct: 0,
         equityMax: 0,
         equityMin: 0
       };
@@ -194,7 +238,11 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
     let totalCommissionsTRY = 0;
     let totalCommissionsUSD = 0;
     let totalHoldingDays = 0;
-    let realAlphaCount = 0;
+    let beatPpfCount = 0;
+
+    let totalInvestedCostTRY = 0;
+    let totalRealizedProfitTRY = 0;
+    let totalPpfOpportunityTRY = 0;
 
     let bestTrade = null;
     let worstTrade = null;
@@ -233,9 +281,23 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
       const days = getTradeHoldingDays(t);
       totalHoldingDays += days;
 
+      // Actual invested cost for this trade in TRY
+      const shares = Number(t.shares || 0);
+      const avgCost = Number(t.avg_cost || t.buy_price || 0);
+      const rate = t.currency === 'USD' ? (Number(t.exchange_rate) || 49.03) : 1;
+      const tradeCostTRY = shares * avgCost * rate;
+      totalInvestedCostTRY += tradeCostTRY;
+
+      totalRealizedProfitTRY += plTRY;
+
+      // Compounded PPF yield if this trade's cost stayed in PPF during these exact 'days'
+      const ppfHurdlePct = Math.pow(1 + 0.45, days / 365) - 1;
+      const tradePpfYieldTRY = tradeCostTRY * ppfHurdlePct;
+      totalPpfOpportunityTRY += tradePpfYieldTRY;
+
       const inf = calcTradeInflationMetrics(t);
       if (inf.beatPPF) {
-        realAlphaCount++;
+        beatPpfCount++;
       }
 
       cumPLTRY += plTRY;
@@ -265,7 +327,14 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
     const avgLossTRY = losingCount > 0 ? grossLossTRY / losingCount : 0;
     const payoffRatio = avgLossTRY > 0 ? avgWinTRY / avgLossTRY : avgWinTRY > 0 ? 99.9 : 0;
     const avgHoldingDays = tradeLedger.length > 0 ? Math.round(totalHoldingDays / tradeLedger.length) : 0;
-    const realAlphaPctTotal = tradeLedger.length > 0 ? (realAlphaCount / tradeLedger.length) * 100 : 0;
+    const beatPpfWinRatePct = tradeLedger.length > 0 ? (beatPpfCount / tradeLedger.length) * 100 : 0;
+
+    const netPortfolioAlphaTRY = totalRealizedProfitTRY - totalPpfOpportunityTRY;
+    const isPortfolioAlphaPositive = netPortfolioAlphaTRY >= 0;
+
+    const weightedNominalPct = totalInvestedCostTRY > 0 ? (totalRealizedProfitTRY / totalInvestedCostTRY) * 100 : 0;
+    const weightedPpfPct = totalInvestedCostTRY > 0 ? (totalPpfOpportunityTRY / totalInvestedCostTRY) * 100 : 0;
+    const netPortfolioAlphaPct = weightedNominalPct - weightedPpfPct;
 
     const equityVals = equityCurve.map(e => e.val);
     const equityMax = equityVals.length > 0 ? Math.max(...equityVals) : 0;
@@ -290,8 +359,16 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
       worstTrade,
       equityCurve,
       avgHoldingDays,
-      realAlphaCount,
-      realAlphaPctTotal,
+      beatPpfCount,
+      beatPpfWinRatePct,
+      totalInvestedCostTRY,
+      totalRealizedProfitTRY,
+      totalPpfOpportunityTRY,
+      netPortfolioAlphaTRY,
+      isPortfolioAlphaPositive,
+      weightedNominalPct,
+      weightedPpfPct,
+      netPortfolioAlphaPct,
       equityMax,
       equityMin
     };
@@ -525,14 +602,16 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
                 </span>
               </div>
               <span className="badge-pill cyan" style={{ fontSize: 9.5 }}>
-                {analytics.equityCurve.length} Adım
+                {analytics.equityCurve.length} İşlem
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Zirve Realize Kâr:</span>
-              <strong className="mono" style={{ color: '#10b981', fontSize: 13 }}>
-                +₺{analytics.equityMax.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                {isNetProfit ? '🟢 0 ₺ Üzeri Net Kâr Bölgesi' : '🔴 0 ₺ Altı Zarar Bölgesi'}
+              </span>
+              <strong className="mono" style={{ color: isNetProfit ? '#10b981' : '#ef4444', fontSize: 13 }}>
+                {isNetProfit ? '+' : '-'}₺{Math.abs(totalRealizedTRY).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </strong>
             </div>
 
@@ -540,14 +619,17 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
           </div>
 
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 6, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
-            <span>İşlem Yolculuğu (Başlangıçtan Bugüne)</span>
+            <span>
+              Zirve: <strong className="mono" style={{ color: '#10b981' }}>+₺{analytics.equityMax.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong>
+              {' '}• Dip: <strong className="mono" style={{ color: analytics.equityMin < 0 ? '#ef4444' : '#94a3b8' }}>{analytics.equityMin < 0 ? '-' : ''}₺{Math.abs(analytics.equityMin).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong>
+            </span>
             <span style={{ color: isNetProfit ? '#10b981' : '#ef4444', fontWeight: 700 }}>
-              {isNetProfit ? '↗ Pozitif Büyüme Trendi' : '↘ Düzeltme Bölgesi'}
+              {isNetProfit ? '↗ Başabaş Üstü (Yeşil)' : '↘ Başabaş Altı (Kırmızı)'}
             </span>
           </div>
         </div>
 
-        {/* Kokpit Kart 3: Zaman Maliyeti & Enflasyon Kalkanı (Hurdle Rate) */}
+        {/* Kokpit Kart 3: Zaman Maliyeti & Portföy PPF Performansı */}
         <div 
           style={{ 
             background: 'rgba(15, 23, 42, 0.75)', 
@@ -562,11 +644,11 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
           }}
         >
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Clock size={14} className="text-gold" />
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.5px', color: '#cbd5e1' }}>
-                  ZAMAN MALİYETİ & ENFLASYON EŞİĞİ
+                  ZAMAN MALİYETİ & PPF REEL ALFA
                 </span>
               </div>
               <span 
@@ -580,25 +662,72 @@ export default function TradeLedgerTab({ onOpenTransferModal }) {
                   border: '1px solid rgba(245, 158, 11, 0.35)'
                 }}
               >
-                PPF Eşiği: %45/Yıl
+                Eşik: %45 Yıllık PPF
               </span>
             </div>
 
+            {/* Portföy Seviyesinde Net Reel Alfa */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 24, fontWeight: 800, fontFamily: 'monospace', color: analytics.realAlphaPctTotal >= 50 ? '#10b981' : '#f59e0b' }}>
-                %{analytics.realAlphaPctTotal.toFixed(0)}
+              <span 
+                style={{ 
+                  fontSize: 22, 
+                  fontWeight: 800, 
+                  fontFamily: 'monospace', 
+                  color: analytics.isPortfolioAlphaPositive ? '#10b981' : '#f59e0b' 
+                }}
+              >
+                {analytics.isPortfolioAlphaPositive ? '+' : '-'}₺{Math.abs(analytics.netPortfolioAlphaTRY).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                İşlemde PPF & Enflasyon Üzeri Reel Alfa
+              <span 
+                style={{ 
+                  fontSize: 11.5, 
+                  fontWeight: 700, 
+                  fontFamily: 'monospace',
+                  color: analytics.isPortfolioAlphaPositive ? '#10b981' : '#f59e0b'
+                }}
+              >
+                ({analytics.isPortfolioAlphaPositive ? '+' : ''}{analytics.netPortfolioAlphaPct.toFixed(1)}% {analytics.isPortfolioAlphaPositive ? 'Net Alfa' : 'Fırsat Farkı'})
               </span>
             </div>
 
-            <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4, margin: '6px 0' }}>
-              Ort. Elde Tutma: <strong style={{ color: '#fff' }}>~{analytics.avgHoldingDays} Gün</strong> • 10 ayda %15 nominal kazanç, %45 faizde <strong style={{ color: '#ef4444' }}>-%16.8 reel zaman kaybıdır</strong>.
+            <div style={{ fontSize: 10, color: analytics.isPortfolioAlphaPositive ? '#34d399' : '#fbbf24', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+              {analytics.isPortfolioAlphaPositive ? (
+                <>
+                  <CheckCircle2 size={11} className="text-emerald" />
+                  <span>İşlemleriniz paranın bağlı kaldığı sürede risksiz faizin üzerinde getiri sağladı.</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle size={11} style={{ color: '#fbbf24' }} />
+                  <span>Nominal kâr, aynı sürede risksiz PPF'de kalacak getirinin gerisinde kaldı.</span>
+                </>
+              )}
+            </div>
+
+            {/* Konsolide Portföy İşlem vs PPF Karşılaştırması */}
+            <div style={{ background: 'rgba(0,0,0,0.28)', borderRadius: 6, padding: '7px 10px', margin: '4px 0', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 3 }}>
+                <span style={{ color: 'var(--text-muted)' }}>Gerçekleşen Trade Kârı:</span>
+                <strong className="mono" style={{ color: analytics.totalRealizedProfitTRY >= 0 ? '#10b981' : '#ef4444' }}>
+                  {analytics.totalRealizedProfitTRY >= 0 ? '+' : ''}₺{analytics.totalRealizedProfitTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} (%{analytics.weightedNominalPct.toFixed(1)})
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 3 }}>
+                <span style={{ color: 'var(--text-muted)' }}>Aynı Günlerde PPF Getirisi:</span>
+                <strong className="mono" style={{ color: '#fbbf24' }}>
+                  +₺{analytics.totalPpfOpportunityTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} (%{analytics.weightedPpfPct.toFixed(1)})
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, paddingTop: 3, borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>PPF'yi Aşan İşlemler:</span>
+                <strong className="mono" style={{ color: '#38bdf8' }}>
+                  {analytics.beatPpfCount} / {tradeLedger.length} İşlem (%{analytics.beatPpfWinRatePct.toFixed(0)}) • ~{analytics.avgHoldingDays} Gün
+                </strong>
+              </div>
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8, marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 6, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 10.5 }}>
             <span style={{ color: 'var(--text-muted)' }}>Toplam Kesilen Komisyon:</span>
             <strong className="mono" style={{ color: analytics.totalCommissionsUSD > 0 ? '#f59e0b' : '#94a3b8' }}>
               -${analytics.totalCommissionsUSD.toFixed(2)} USD (-₺{analytics.totalCommissionsTRY.toFixed(0)})
