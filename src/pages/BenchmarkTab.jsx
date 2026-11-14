@@ -330,6 +330,15 @@ export default function BenchmarkTab() {
     );
   };
 
+  // Total portfolio value for accurate asset weight percentages
+  const totalPortfolioValue = useMemo(() => {
+    const fromSummary = isTRY ? Number(portfolioSummary?.totalValTRY || 0) : Number(portfolioSummary?.totalValUSD || 0);
+    if (fromSummary > 0) return fromSummary;
+    const list = portfolioSummary?.enrichedHoldings || [];
+    const sum = list.reduce((acc, h) => acc + (isTRY ? Number(h.valTRY || 0) : Number(h.valUSD || 0)), 0);
+    return sum > 0 ? sum : 1;
+  }, [portfolioSummary, isTRY]);
+
   // Pre-calculate computed row metrics for fast & robust column sorting
   const enrichedHoldingsList = useMemo(() => {
     const list = portfolioSummary?.enrichedHoldings || [];
@@ -337,6 +346,7 @@ export default function BenchmarkTab() {
       const ticker = String(h.ticker || '').trim().toUpperCase();
       const val = isTRY ? Number(h.valTRY || 0) : Number(h.valUSD || 0);
       const prof = isTRY ? Number(h.profitTRY || 0) : Number(h.profitUSD || 0);
+      const weight = totalPortfolioValue > 0 ? ((val / totalPortfolioValue) * 100) : 0;
       const periodRet = holdingPeriodReturns[ticker] != null ? Number(holdingPeriodReturns[ticker]) : null;
       const retPct = Number(h.returnPct || 0);
       const rawCandles = holdingCandleMap[ticker] || [];
@@ -351,13 +361,14 @@ export default function BenchmarkTab() {
         ...h,
         calculatedTicker: ticker,
         calculatedVal: val,
+        calculatedWeight: weight,
         calculatedProf: prof,
         calculatedPeriodRet: periodRet,
         calculatedRetPct: retPct,
         calculatedDayPct: dayPct
       };
     });
-  }, [portfolioSummary?.enrichedHoldings, isTRY, holdingPeriodReturns, holdingCandleMap]);
+  }, [portfolioSummary?.enrichedHoldings, isTRY, totalPortfolioValue, holdingPeriodReturns, holdingCandleMap]);
 
   const sortedHoldings = useMemo(() => {
     const list = [...enrichedHoldingsList];
@@ -375,6 +386,9 @@ export default function BenchmarkTab() {
       if (key === 'dayPct') {
         valA = a.calculatedDayPct;
         valB = b.calculatedDayPct;
+      } else if (key === 'weight') {
+        valA = a.calculatedWeight;
+        valB = b.calculatedWeight;
       } else if (key === 'val') {
         valA = a.calculatedVal;
         valB = b.calculatedVal;
@@ -605,7 +619,19 @@ export default function BenchmarkTab() {
                 </div>
               </th>
 
-              {/* 2. GÜNCEL DEĞER */}
+              {/* 2. PORTFÖY PAYI (VARLIK İLE GÜNCEL DEĞER ARASINDA) */}
+              <th
+                onClick={() => handleSort('weight')}
+                style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '110px' }}
+                title="Portföy içindeki pay oranına göre sırala"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', width: '100%', gap: '4px' }}>
+                  <span style={{ color: sortConfig.key === 'weight' ? '#38bdf8' : '#94a3b8' }}>Portföy Payı %</span>
+                  {renderSortIndicator('weight')}
+                </div>
+              </th>
+
+              {/* 3. GÜNCEL DEĞER */}
               <th
                 onClick={() => handleSort('val')}
                 style={{ padding: '10px 8px', cursor: 'pointer', textAlign: 'right', minWidth: '120px' }}
@@ -669,6 +695,7 @@ export default function BenchmarkTab() {
           <tbody>
             {sortedHoldings.map((h) => {
               const val = h.calculatedVal;
+              const weight = h.calculatedWeight || 0;
               const prof = h.calculatedProf;
               const periodRet = h.calculatedPeriodRet;
               const retPct = h.calculatedRetPct;
@@ -682,12 +709,46 @@ export default function BenchmarkTab() {
                     <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{h.name}</span>
                   </td>
 
-                  {/* 2. GÜNCEL DEĞER */}
+                  {/* 2. PORTFÖY PAYI (VARLIK İLE GÜNCEL DEĞER ARASINDA) */}
+                  <td style={{ padding: '10px 8px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                      <span style={{
+                        fontFamily: 'monospace',
+                        fontWeight: 800,
+                        fontSize: '0.84rem',
+                        color: weight > 10.0 ? '#ef4444' : (weight > 7.5 ? '#f59e0b' : '#38bdf8')
+                      }}>
+                        %{weight.toFixed(1)}
+                      </span>
+                      <div 
+                        style={{
+                          width: '54px',
+                          height: '4px',
+                          background: 'rgba(255,255,255,0.08)',
+                          borderRadius: '2px',
+                          overflow: 'hidden'
+                        }}
+                        title={`Portföy Payı: %${weight.toFixed(2)}`}
+                      >
+                        <div 
+                          style={{
+                            width: `${Math.min(100, Math.max(4, (weight / 15) * 100))}%`,
+                            height: '100%',
+                            background: weight > 10.0 ? '#ef4444' : (weight > 7.5 ? '#f59e0b' : '#38bdf8'),
+                            borderRadius: '2px',
+                            transition: 'width 0.3s ease'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* 3. GÜNCEL DEĞER */}
                   <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'monospace', color: '#e2e8f0', fontWeight: 700 }}>
                     {sym}{val.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
 
-                  {/* 3. GÜNLÜK DEĞİŞİM (GÜNCEL DEĞER'İN SAĞINDA) */}
+                  {/* 4. GÜNLÜK DEĞİŞİM (GÜNCEL DEĞER'İN SAĞINDA) */}
                   <td style={{ padding: '10px 8px', textAlign: 'right' }}>
                     <span style={{
                       display: 'inline-flex',
