@@ -3946,7 +3946,7 @@ export default function NativeProChart({
       });
     }
 
-    // Subscribe to crosshair move for HUD inspection
+    // Subscribe to crosshair move for HUD inspection (with stable volume extraction)
     mainChart.subscribeCrosshairMove(param => {
       if (!param || !param.time || !param.seriesData) {
         setHoverData(null);
@@ -3954,7 +3954,20 @@ export default function NativeProChart({
       }
       const data = param.seriesData.get(candleSeries);
       if (data) {
-        setHoverData(data);
+        let vol = 0;
+        const list = candlesRef.current;
+        if (Array.isArray(list)) {
+          for (let i = list.length - 1; i >= 0; i--) {
+            if (list[i].time === param.time) {
+              vol = list[i].volume || 0;
+              break;
+            }
+          }
+        }
+        setHoverData({
+          ...data,
+          volume: vol
+        });
       }
     });
 
@@ -3966,17 +3979,23 @@ export default function NativeProChart({
       recalcSvgLines();
     });
 
-    // Resize Observer for auto responsive sizing
+    // Resize Observer for auto responsive sizing (with subpixel debounce guard)
+    let lastObservedW = 0;
+    let lastObservedH = 0;
     const resizeObserver = new ResizeObserver(entries => {
       if (!entries || !entries[0] || !chartInstanceRef.current) return;
       const { width: newWidth, height: newHeight } = entries[0].contentRect;
-      if (newWidth > 0 && newHeight > 0) {
-        chartInstanceRef.current.resize(newWidth, newHeight);
+      const roundedW = Math.round(newWidth);
+      const roundedH = Math.round(newHeight);
+      if (roundedW > 0 && roundedH > 0 && (Math.abs(roundedW - lastObservedW) >= 1 || Math.abs(roundedH - lastObservedH) >= 1)) {
+        lastObservedW = roundedW;
+        lastObservedH = roundedH;
+        chartInstanceRef.current.resize(roundedW, roundedH);
         if (rsiChartInstanceRef.current && rsiContainerRef.current) {
-          rsiChartInstanceRef.current.resize(newWidth, rsiHeightRef.current);
+          rsiChartInstanceRef.current.resize(roundedW, rsiHeightRef.current);
         }
         if (macdChartInstanceRef.current && macdContainerRef.current) {
-          macdChartInstanceRef.current.resize(newWidth, macdHeightRef.current);
+          macdChartInstanceRef.current.resize(roundedW, macdHeightRef.current);
         }
         recalcSvgLines();
       }
@@ -5205,12 +5224,12 @@ export default function NativeProChart({
     return ((displayBar.close - displayBar.open) / displayBar.open) * 100;
   }, [displayBar]);
 
-  // Portfolio PnL for Holding Overlay
+  // Portfolio PnL for Holding Overlay (stable live portfolio valuation based on latest bar)
   const holdingInfo = useMemo(() => {
     if (!activeHolding) return null;
     const cost = activeHolding.chartUnitCost || activeHolding.holdingCost || activeHolding.avgPrice || activeHolding.avg_cost || 0;
     const shares = activeHolding.shares || activeHolding.quantity || 0;
-    const currentPrice = displayBar?.close || activeHolding.currentPrice || cost;
+    const currentPrice = lastBar?.close || activeHolding.currentPrice || cost;
     const pnlPct = cost > 0 ? ((currentPrice - cost) / cost) * 100 : (activeHolding.returnPct || 0);
     const pnlVal = (currentPrice - cost) * shares;
     const symMark = activeHolding.chartSymMark || (isBist ? '₺' : '$');
@@ -5225,7 +5244,7 @@ export default function NativeProChart({
       symMark,
       isProfit: pnlPct >= 0
     };
-  }, [activeHolding, displayBar, isBist]);
+  }, [activeHolding, lastBar, isBist]);
 
   const totalDrawingsCount = 
     (drawings.horizontals?.length || 0) + 
@@ -6240,15 +6259,21 @@ export default function NativeProChart({
             borderBottom: isLight 
               ? (holdingInfo.isProfit ? '1px solid #a7f3d0' : '1px solid #fecaca') 
               : `1px solid ${holdingInfo.isProfit ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-            padding: '5px 14px', 
+            padding: '0 14px', 
+            height: '30px',
+            minHeight: '30px',
+            maxHeight: '30px',
+            flexShrink: 0,
+            overflow: 'hidden',
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
             fontSize: 11,
-            fontWeight: 600
+            fontWeight: 600,
+            whiteSpace: 'nowrap'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>
             <span style={{ color: indicatorSettings.costLineColor || '#eab308' }}>💼 PORTFÖYÜNÜZDE:</span>
             <span style={{ color: isLight ? '#0f172a' : '#f8fafc' }}>{holdingInfo.shares} Adet / Lot</span>
             <span style={{ color: isLight ? '#64748b' : '#94a3b8' }}>•</span>
@@ -6262,7 +6287,7 @@ export default function NativeProChart({
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, whiteSpace: 'nowrap' }}>
             <span style={{ color: holdingInfo.isProfit ? '#10b981' : '#ef4444' }}>
               Pozisyon K/Z: <strong>{holdingInfo.isProfit ? '+' : ''}{holdingInfo.pnlPct.toFixed(2)}%</strong> ({holdingInfo.symMark}{holdingInfo.pnlVal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
             </span>
@@ -6280,36 +6305,41 @@ export default function NativeProChart({
         </div>
       )}
 
-      {/* 📈 REAL-TIME HOVER HUD BAR */}
+      {/* 📈 REAL-TIME HOVER HUD BAR (Fixed height 34px to prevent any layout shifts/chart bouncing) */}
       <div 
         style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          padding: '6px 14px', 
+          padding: '0 14px', 
+          height: '34px',
+          minHeight: '34px',
+          maxHeight: '34px',
+          flexShrink: 0,
+          overflow: 'hidden',
           background: isLight ? '#ffffff' : 'rgba(4, 7, 17, 0.98)', 
           borderBottom: isLight ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.05)',
           fontSize: 11,
           fontFamily: 'monospace'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 800, color: isLight ? '#0284c7' : 'var(--cyan)', fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', minWidth: 0, flex: 1 }}>
+          <span style={{ fontWeight: 800, color: isLight ? '#0284c7' : 'var(--cyan)', fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap' }}>
             {cleanTicker || symbol}
           </span>
 
-          <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '1px 6px' }}>
+          <span className="nav-badge cyan" style={{ fontSize: 9.5, padding: '1px 6px', flexShrink: 0, whiteSpace: 'nowrap' }}>
             {chartInterval}
           </span>
 
           {['TOTAL', 'TOTAL2', 'TOTAL3', 'OTHERS', 'TOTALDEFI'].includes((cleanTicker || symbol || '').toUpperCase()) && (
-            <span className="nav-badge amber" style={{ fontSize: 9.5, padding: '1px 7px', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fcd34d' }}>
+            <span className="nav-badge amber" style={{ fontSize: 9.5, padding: '1px 7px', background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fcd34d', flexShrink: 0, whiteSpace: 'nowrap' }}>
               ⚡ SENTEZ PİYASA DEĞERİ (BTC & ETH Proxy)
             </span>
           )}
 
           {candleType === 'heikin_ashi' && (
-            <span className="nav-badge" style={{ fontSize: 9.5, padding: '1px 6px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
+            <span className="nav-badge" style={{ fontSize: 9.5, padding: '1px 6px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.4)', flexShrink: 0, whiteSpace: 'nowrap' }}>
               HEIKIN ASHI
             </span>
           )}
@@ -6323,7 +6353,9 @@ export default function NativeProChart({
                 background: `${latestKamaState.color}22`,
                 color: latestKamaState.color,
                 border: `1px solid ${latestKamaState.color}77`,
-                fontWeight: 700
+                fontWeight: 700,
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
               title={`Adaptif KAMA: ${latestKamaState.value} • Renk Değişim / Stop Eşiği: ${latestKamaState.stopLevel} • Verimlilik (ER): %${latestKamaState.er}`}
             >
@@ -6340,7 +6372,9 @@ export default function NativeProChart({
                 background: isLight ? '#f1f5f9' : 'rgba(15, 23, 42, 0.85)',
                 color: mtfKamaState.decisionColor,
                 border: `1px solid ${mtfKamaState.decisionColor}66`,
-                fontWeight: 700
+                fontWeight: 700,
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
               title={`Çoklu Zaman Dilimi (MTF) KAMA Trend Uyumu: ${mtfKamaState.decisionText}`}
             >
@@ -6361,7 +6395,9 @@ export default function NativeProChart({
                 fontWeight: 700,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5
+                gap: 5,
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
               title={`55 HO Değeri: ${latestTrendMaState.value} • Son Kapanış: ${latestTrendMaState.close} (${latestTrendMaState.diffPercent >= 0 ? '+' : ''}${latestTrendMaState.diffPercent}%) • 2-Bar Teyitli Trend: ${latestTrendMaState.label}\nRSI(24): ${latestTrendMaState.rsi} • RSI SMA(55): ${latestTrendMaState.rsiMa || '-'} (${latestTrendMaState.rsiConfirmed ? 'Momentum Trendi Destekliyor' : 'Momentum Zayıf'})`}
             >
@@ -6395,7 +6431,9 @@ export default function NativeProChart({
                   background: `${indicatorSettings.avwapColor || '#06b6d4'}22`,
                   color: indicatorSettings.avwapColor || '#06b6d4',
                   border: `1px solid ${indicatorSettings.avwapColor || '#06b6d4'}66`,
-                  fontWeight: 700
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap'
                 }}
                 title={`Çapalı Kurumsal Maliyet (${latestAvwapState.anchorType || 'AVWAP'}): ${latestAvwapState.value}\nÇapa Tarihi: ${anchorDateFull}${barInfo}\nÇapa Seviyesi: ${anchorPriceStr}${reasonLine}`}
               >
@@ -6413,7 +6451,9 @@ export default function NativeProChart({
                 background: `${indicatorSettings.pocColor || '#d946ef'}22`,
                 color: indicatorSettings.pocColor || '#d946ef',
                 border: `1px solid ${indicatorSettings.pocColor || '#d946ef'}66`,
-                fontWeight: 700
+                fontWeight: 700,
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
               title={`En Yoğun Hacim Takas Seviyesi (POC): ${latestPocState.poc} • Değer Alanı (VA): ${latestPocState.val} - ${latestPocState.vah}`}
             >
@@ -6430,7 +6470,9 @@ export default function NativeProChart({
                 background: 'rgba(245, 158, 11, 0.18)',
                 color: '#f59e0b',
                 border: '1px solid rgba(245, 158, 11, 0.5)',
-                fontWeight: 700
+                fontWeight: 700,
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
               title={`ATR Dinamik İz Süren Stop: ${latestTrailingStopState.value} • Trend: ${latestTrailingStopState.trend === 1 ? 'Boğa / Altta' : 'Ayı / Üstte'}`}
             >
@@ -6439,7 +6481,7 @@ export default function NativeProChart({
           )}
 
           {displayBar && (
-            <>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0, whiteSpace: 'nowrap' }}>
               <span style={{ color: isLight ? '#64748b' : '#94a3b8' }}>A: <strong style={{ color: isLight ? '#0f172a' : '#e2e8f0' }}>{displayBar.open?.toFixed(2)}</strong></span>
               <span style={{ color: isLight ? '#64748b' : '#94a3b8' }}>Y: <strong style={{ color: '#10b981' }}>{displayBar.high?.toFixed(2)}</strong></span>
               <span style={{ color: isLight ? '#64748b' : '#94a3b8' }}>D: <strong style={{ color: '#ef4444' }}>{displayBar.low?.toFixed(2)}</strong></span>
@@ -6450,7 +6492,7 @@ export default function NativeProChart({
               {displayBar.volume > 0 && (
                 <span style={{ color: isLight ? '#64748b' : '#94a3b8' }}>Hacim: <strong style={{ color: isLight ? '#0284c7' : '#38bdf8' }}>{displayBar.volume.toLocaleString('tr-TR')}</strong></span>
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -6466,7 +6508,10 @@ export default function NativeProChart({
             padding: '2px 8px',
             borderRadius: 4,
             border: isLight ? '1px solid #7dd3fc' : '1px solid rgba(56, 189, 248, 0.25)',
-            fontWeight: 600
+            fontWeight: 600,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+            marginLeft: 8
           }}>
             <span>✏️ Çizim Modu: {
               activeDrawTool === 'horizontal' 
