@@ -427,6 +427,8 @@ export const AppProvider = ({ children }) => {
         'USDTRY=X', 'GC=F', '^GSPC', 'XU100.IS', 'XU030.IS', '^IXIC', '^DJI', '^RUT', 'BTC-USD', 'ETH-USD',
         'SPY', 'QQQ', 'DIA', 'IWM', 'MDY', 'IJR', '^TNX', '^VIX', 'BZ=F',
         'DX-Y.NYB', 'SI=F', 'CL=F', '2YY=F',
+        // Macro Capital Flow & Liquidity Radar Assets
+        'TLT', 'HYG', 'LQD', 'HG=F', 'BIL', 'EEM',
         // US Tech & Wall Street Core Leaders (Top 10 & Leaders)
         'NVDA', 'AMZN', 'SOFI', 'AAPL', 'MSFT', 'TSLA', 'GOOGL', 'META', 'PLTR', 'AMD', 'TSM', 'AVGO',
         'CVX', 'XOM', 'ABBV', 'TXN', 'MRK', 'JPM', 'LLY', 'JNJ', 'QCOM', 'CSCO', 'CAT', 'GLD', 'ITA', 'SCHD',

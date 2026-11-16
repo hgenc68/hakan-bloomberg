@@ -43,6 +43,7 @@ const ManageTab = safeLazy(() => import('./pages/ManageTab'));
 const PotentialStocksTab = safeLazy(() => import('./pages/PotentialStocksTab'));
 const BroadcastStudioTab = safeLazy(() => import('./pages/BroadcastStudioTab'));
 const FundXRayTab = safeLazy(() => import('./pages/FundXRayTab'));
+const CapitalFlowTab = safeLazy(() => import('./pages/CapitalFlowTab'));
 
 import {
   AddHoldingModal,
@@ -174,6 +175,21 @@ function MainTerminal() {
                     setLastNavigatedFrom({
                       tab: 'market',
                       label: 'Piyasa Nabzı'
+                    });
+                  }
+                  setSelectedStockTicker(ticker);
+                  setActiveTab('single_stock');
+                }}
+              />
+            )}
+
+            {activeTab === 'capital_flow' && (
+              <CapitalFlowTab 
+                onSelectStock={(ticker) => {
+                  if (setLastNavigatedFrom) {
+                    setLastNavigatedFrom({
+                      tab: 'capital_flow',
+                      label: 'Sermaye Akışı'
                     });
                   }
                   setSelectedStockTicker(ticker);

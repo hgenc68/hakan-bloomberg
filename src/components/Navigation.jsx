@@ -10,7 +10,8 @@ import {
   Sparkles,
   LineChart,
   Radio,
-  Layers
+  Layers,
+  Waves
 } from 'lucide-react';
 
 export default function Navigation() {
@@ -20,6 +21,7 @@ export default function Navigation() {
     { id: 'pro_chart', label: 'Pro Grafik', icon: LineChart, badge: 'TV', badgeColor: 'cyan', highlight: false },
     { id: 'broadcast_studio', label: 'Yayın Stüdyosu', icon: Radio, badge: 'Prompter', badgeColor: 'rose', highlight: true },
     { id: 'market', label: 'Piyasa Nabzı', icon: Globe, badge: 'Canlı', badgeColor: 'cyan' },
+    { id: 'capital_flow', label: 'Sermaye Akışı', icon: Waves, badge: 'Likidite', badgeColor: 'cyan', highlight: true },
     { id: 'potential', label: 'Büyüme & Dip Radarı', icon: Rocket, badge: 'Canlı', badgeColor: 'gold' },
     { id: 'top10', label: 'En Güçlü 10 (Elit Seçim)', icon: Trophy, badge: '5/5 Tam Not', badgeColor: 'emerald', highlight: true },
     { id: 'single_stock', label: 'Tekil Hisse', icon: Target, badge: 'DCF', badgeColor: 'cyan' }
