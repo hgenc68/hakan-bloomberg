@@ -3442,9 +3442,17 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
                       <div style={{ fontSize: 8.5, color: 'var(--text-muted)', fontWeight: 600, marginTop: 1 }}>
                         Açık K/Z (Mevcut)
                       </div>
-                      {selectedSegment === 'all' && !isEqMode && realProfitForFooter !== 0 && (
-                        <div style={{ fontSize: 8.5, color: 'var(--emerald)', marginTop: 2, whiteSpace: 'nowrap' }} title="Daha önce satılan işlemlerden cebe giren realize kâr">
-                          +{sym}{fmt(realProfitForFooter, 0)} Realize
+                      {selectedSegment === 'all' && !isEqMode && Math.abs(realProfitForFooter) > 0.01 && (
+                        <div 
+                          style={{ 
+                            fontSize: 8.5, 
+                            color: realProfitForFooter >= 0 ? 'var(--emerald)' : 'var(--red)', 
+                            marginTop: 2, 
+                            whiteSpace: 'nowrap' 
+                          }} 
+                          title={realProfitForFooter >= 0 ? "Daha önce satılan işlemlerden cebe giren realize kâr" : "Daha önce kapatılan işlemlerden kaynaklanan net realize zarar"}
+                        >
+                          {realProfitForFooter >= 0 ? '+' : '-'}{sym}{fmt(Math.abs(realProfitForFooter), 0)} Realize
                         </div>
                       )}
                     </td>

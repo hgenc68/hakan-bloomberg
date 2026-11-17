@@ -26,6 +26,7 @@ export default function OverviewTab() {
   
   const unrealProfit = (isTRY ? portfolioSummary.unrealizedProfitTRY : portfolioSummary.unrealizedProfitUSD) || 0;
   const realProfit = (isTRY ? portfolioSummary.realizedProfitTRY : portfolioSummary.realizedProfitUSD) || 0;
+  const isRealProfit = realProfit >= 0;
 
   const dayPL = (isTRY ? portfolioSummary.dayPLTRY : portfolioSummary.dayPLUSD) || 0;
   const dayPLPct = portfolioSummary.dayPLPct || 0;
@@ -268,7 +269,7 @@ export default function OverviewTab() {
         <div className={`kpi-card ${consProfit >= 0 ? 'green' : 'red'}`}>
           <div className="kpi-header">
             <span>Konsolide Net Kâr / Zarar</span>
-            <span className="badge-pill emerald">Açık + Gerçekleşen</span>
+            <span className={`badge-pill ${consProfit >= 0 ? 'emerald' : 'red'}`}>Açık + Gerçekleşen</span>
           </div>
           <div className={`kpi-val mono ${consProfit >= 0 ? 'text-up' : 'text-down'}`}>
             {consProfit >= 0 ? '+' : ''}{sym}{fmt(consProfit)}
@@ -280,8 +281,8 @@ export default function OverviewTab() {
             </strong>
           </div>
           <div className="kpi-breakdown-row">
-            <span>Açık K/Z: <strong className={unrealProfit >= 0 ? 'text-up' : 'text-down'}>{sym}{fmt(unrealProfit)}</strong></span>
-            <span>Gerçekleşen: <strong className="text-emerald">+{sym}{fmt(realProfit)}</strong></span>
+            <span>Açık K/Z: <strong className={unrealProfit >= 0 ? 'text-up' : 'text-down'}>{unrealProfit >= 0 ? '+' : ''}{sym}{fmt(unrealProfit)}</strong></span>
+            <span>Gerçekleşen: <strong className={isRealProfit ? 'text-emerald' : 'text-down'}>{isRealProfit ? '+' : '-'}{sym}{fmt(Math.abs(realProfit))}</strong></span>
           </div>
         </div>
 
@@ -517,7 +518,9 @@ export default function OverviewTab() {
         {/* Kâr Realizasyon & Kalkan Çağrısı */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title">📜 KÂR REALİZASYONU & BİLEŞİK GETİRİ</span>
+            <span className="card-title">
+              {isRealProfit ? '📜 KÂR REALİZASYONU & BİLEŞİK GETİRİ' : '📜 GERÇEKLEŞEN İŞLEMLER & NAKİT HASILAT'}
+            </span>
             <button
               type="button"
               className="btn-action-sm"
@@ -531,10 +534,13 @@ export default function OverviewTab() {
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
                 <div>
                   <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 2 }}>
-                    Cebe Giren Gerçekleşen Net Kâr:
+                    {isRealProfit ? 'Cebe Giren Gerçekleşen Net Kâr:' : 'Kapanan İşlemler Net Realize Zarar:'}
                   </span>
-                  <div className="callout-val mono text-emerald" style={{ fontSize: 26, fontWeight: 900 }}>
-                    +₺{fmt(portfolioSummary.realizedProfitTRY)}
+                  <div 
+                    className={`callout-val mono ${isRealProfit ? 'text-emerald' : 'text-down'}`} 
+                    style={{ fontSize: 26, fontWeight: 900, color: isRealProfit ? 'var(--emerald)' : 'var(--red)' }}
+                  >
+                    {isRealProfit ? '+' : '-'}{sym}{fmt(Math.abs(realProfit))}
                   </div>
                 </div>
                 <div style={{ paddingLeft: 14, borderLeft: '1px solid rgba(255, 255, 255, 0.1)' }}>
@@ -542,14 +548,33 @@ export default function OverviewTab() {
                     Kasaya Giren Toplam Satış Hasılatı:
                   </span>
                   <div className="mono text-cyan" style={{ fontSize: 20, fontWeight: 800 }}>
-                    ₺{fmt(portfolioSummary.totalProceedsTRY)}
+                    {sym}{fmt(isTRY ? portfolioSummary.totalProceedsTRY : portfolioSummary.totalProceedsUSD)}
                   </div>
                 </div>
               </div>
 
-              <div className="callout-desc" style={{ background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.15)', borderRadius: 6, padding: '8px 12px', fontSize: 11, color: '#cbd5e1', lineHeight: 1.5 }}>
-                💡 <strong>Hasılat ile Net Kâr Arasındaki Fark:</strong> Kasaya giren <strong>₺{fmt(portfolioSummary.totalProceedsTRY)}</strong> hasılat, yaptığınız satışlardan hesabınıza nakit olarak geçen <u>toplam para</u>dır (Geri Dönen Ana Para + Kâr). 
-                Bunun <strong>+₺{fmt(portfolioSummary.realizedProfitTRY)}</strong>'si ise hisselerin alış maliyeti düşüldükten sonra cebinize kalan <u>saf kârınızdır</u>.
+              <div 
+                className="callout-desc" 
+                style={{ 
+                  background: isRealProfit ? 'rgba(0, 229, 255, 0.04)' : 'rgba(239, 68, 68, 0.06)', 
+                  border: `1px solid ${isRealProfit ? 'rgba(0, 229, 255, 0.15)' : 'rgba(239, 68, 68, 0.25)'}`, 
+                  borderRadius: 6, 
+                  padding: '8px 12px', 
+                  fontSize: 11, 
+                  color: '#cbd5e1', 
+                  lineHeight: 1.5 
+                }}
+              >
+                {isRealProfit ? (
+                  <>
+                    💡 <strong>Hasılat ile Net Kâr Arasındaki Fark:</strong> Kasaya giren <strong>{sym}{fmt(isTRY ? portfolioSummary.totalProceedsTRY : portfolioSummary.totalProceedsUSD)}</strong> hasılat, yaptığınız satışlardan hesabınıza nakit olarak geçen <u>toplam para</u>dır (Geri Dönen Ana Para + Kâr). 
+                    Bunun <strong style={{ color: 'var(--emerald)' }}>+{sym}{fmt(realProfit)}</strong>'si ise hisselerin alış maliyeti düşüldükten sonra cebinize kalan <u>saf kârınızdır</u>.
+                  </>
+                ) : (
+                  <>
+                    ⚠️ <strong>Kapanan Pozisyonlar Durumu:</strong> Kapanan işlemlerinizden hesabınıza toplam <strong>{sym}{fmt(isTRY ? portfolioSummary.totalProceedsTRY : portfolioSummary.totalProceedsUSD)}</strong> nakit hasılat (geri dönen likidite) girmiş; ancak alış maliyetleri ve komisyonlar düşüldükten sonra toplamda <strong style={{ color: 'var(--red)' }}>-{sym}{fmt(Math.abs(realProfit))}</strong> net realize zarar oluşmuştur.
+                  </>
+                )}
               </div>
 
               <div className="callout-stats" style={{ marginTop: 8 }}>
@@ -559,11 +584,15 @@ export default function OverviewTab() {
                 </div>
                 <div>
                   <span className="lbl">Win Rate (Başarı):</span>
-                  <span className="stat mono text-emerald">%{fmt(portfolioSummary.winRatePct, 1)}</span>
+                  <span className={`stat mono ${Number(portfolioSummary.winRatePct || 0) >= 50 ? 'text-emerald' : 'text-down'}`}>
+                    %{fmt(portfolioSummary.winRatePct, 1)}
+                  </span>
                 </div>
                 <div>
                   <span className="lbl">Geri Alınan Ana Para (Maliyet):</span>
-                  <span className="stat mono text-bright">₺{fmt(Math.max(0, (portfolioSummary.totalProceedsTRY || 0) - (portfolioSummary.realizedProfitTRY || 0)))}</span>
+                  <span className="stat mono text-bright">
+                    {sym}{fmt(Math.max(0, (isTRY ? portfolioSummary.totalProceedsTRY : (portfolioSummary.totalProceedsUSD || 0)) - realProfit))}
+                  </span>
                 </div>
               </div>
             </div>

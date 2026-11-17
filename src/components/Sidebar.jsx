@@ -26,7 +26,10 @@ export default function Sidebar({ collapsed, onToggle }) {
   const fmt = (v, d = 0) => (Number(v) || 0).toLocaleString('tr-TR', { maximumFractionDigits: d });
 
   const realizedTRY = portfolioSummary.realizedProfitTRY || 0;
-  const realizedBadge = realizedTRY > 0 ? `+₺${Math.round(realizedTRY).toLocaleString('tr-TR')}` : null;
+  const isRealizedProfit = realizedTRY >= 0;
+  const realizedBadge = Math.abs(realizedTRY) > 0.01 
+    ? `${isRealizedProfit ? '+' : '-'}₺${Math.round(Math.abs(realizedTRY)).toLocaleString('tr-TR')}` 
+    : null;
   const holdingsCount = portfolioSummary.enrichedHoldings?.length || 0;
 
   const portfolioTabs = [
@@ -35,7 +38,7 @@ export default function Sidebar({ collapsed, onToggle }) {
     { id: 'shield', label: 'Kur Kalkanı', icon: ShieldCheck, badge: 'Zırh', badgeColor: 'gold', category: 'Koruma' },
     { id: 'benchmark', label: 'Benchmark', icon: LineChart, badge: 'GIPS', badgeColor: 'cyan', category: 'Analiz' },
     { id: 'health', label: 'Sağlık (Kar Tanesi)', icon: Snowflake, badge: '84', badgeColor: 'emerald', category: 'Analiz' },
-    { id: 'ledger', label: 'Kâr Defteri', icon: ScrollText, badge: realizedBadge, badgeColor: 'emerald', category: 'Finansal' },
+    { id: 'ledger', label: 'Kâr Defteri', icon: ScrollText, badge: realizedBadge, badgeColor: isRealizedProfit ? 'emerald' : 'rose', category: 'Finansal' },
     { id: 'manage', label: 'Veri Yönetimi', icon: PlusCircle, badge: 'CRUD', badgeColor: 'amber', category: 'Sistem' }
   ];
 

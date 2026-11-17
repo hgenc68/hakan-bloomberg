@@ -847,13 +847,15 @@ export function TransferToShieldModal({ defaultAmount, onClose }) {
         </div>
 
         <div className="quick-btn-row">
-          <button
-            type="button"
-            className="btn-quick-fill"
-            onClick={() => setAmount(String(Math.max(0, Math.round((portfolioSummary?.realizedProfitTRY || 0) * 100) / 100)))}
-          >
-            Toplam Kârı Yaz (₺{(portfolioSummary?.realizedProfitTRY || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
-          </button>
+          {(portfolioSummary?.realizedProfitTRY || 0) > 0 && (
+            <button
+              type="button"
+              className="btn-quick-fill"
+              onClick={() => setAmount(String(Math.max(0, Math.round((portfolioSummary?.realizedProfitTRY || 0) * 100) / 100)))}
+            >
+              Toplam Kârı Yaz (₺{(portfolioSummary?.realizedProfitTRY || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+            </button>
+          )}
           <button
             type="button"
             className="btn-quick-fill"

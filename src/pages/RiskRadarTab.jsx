@@ -824,13 +824,15 @@ export default function RiskRadarTab({ onOpenSellModal, onOpenAddModal }) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-          <div style={{ background: '#090d16', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 700 }}>GERÇEKLEŞEN NET KÂR (CANLI DEFTER)</div>
-            <div style={{ fontSize: 16, fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--emerald)', marginTop: 2 }}>
-              +₺{Number(portfolioSummary?.realizedProfitTRY || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div style={{ background: '#090d16', padding: '10px 14px', borderRadius: 6, border: `1px solid ${(portfolioSummary?.realizedProfitTRY || 0) >= 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}` }}>
+            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 700 }}>
+              {(portfolioSummary?.realizedProfitTRY || 0) >= 0 ? 'GERÇEKLEŞEN NET KÂR (CANLI DEFTER)' : 'GERÇEKLEŞEN NET ZARAR (CANLI DEFTER)'}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, fontFamily: 'var(--font-mono)', color: (portfolioSummary?.realizedProfitTRY || 0) >= 0 ? 'var(--emerald)' : 'var(--red)', marginTop: 2 }}>
+              {(portfolioSummary?.realizedProfitTRY || 0) >= 0 ? '+' : '-'}₺{Math.abs(Number(portfolioSummary?.realizedProfitTRY || 0)).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>
-              ${Number(portfolioSummary?.realizedProfitUSD || 0).toFixed(2)} USD • Onaylı Satışlar
+              {(portfolioSummary?.realizedProfitUSD || 0) >= 0 ? '+' : '-'}${Math.abs(Number(portfolioSummary?.realizedProfitUSD || 0)).toFixed(2)} USD • Onaylı Satışlar
             </div>
           </div>
 
