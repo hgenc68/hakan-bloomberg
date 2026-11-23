@@ -147,7 +147,10 @@ export function getStrategyProfile(stock) {
 
 export function getTechnicalSignal(stock) {
   const p = stock.livePrice ?? stock.price;
-  const distHigh = stock.dist_52w_high_pct; // % distance to 52w high (e.g. -2.5% or -16.4%)
+  const high52w = stock.high_52w ? Number(stock.high_52w) : null;
+  const distHigh = (high52w && high52w > 0 && p > 0)
+    ? ((p - high52w) / high52w) * 100
+    : (stock.dist_52w_high_pct != null ? Number(stock.dist_52w_high_pct) : null);
   const ma50 = stock.ma_50;
   const ma200 = stock.ma_200;
 
@@ -223,16 +226,18 @@ export function calcTradeSetup(stock) {
   const ma50 = stock.ma_50 ? Number(stock.ma_50) : null;
   const ma200 = stock.ma_200 ? Number(stock.ma_200) : null;
   const analystTarget = stock.analyst_target ? Number(stock.analyst_target) : null;
-  const analystUpside = stock.analyst_upside_pct != null ? Number(stock.analyst_upside_pct) : 0;
+  const analystUpside = (analystTarget && analystTarget > 0 && price > 0)
+    ? ((analystTarget - price) / price) * 100
+    : (stock.analyst_upside_pct != null ? Number(stock.analyst_upside_pct) : 0);
   const revGrowth = stock.rev_growth_pct != null ? Number(stock.rev_growth_pct) : 0;
   const roic = stock.roic_pct ?? stock.roe_pct ?? 0;
   const forwardPe = stock.forward_pe ?? stock.pe_ratio ?? 0;
   const de = stock.debt_to_equity_pct ?? 100;
 
-  // Compute distance to 52w high if not provided directly
-  const distHigh = stock.dist_52w_high_pct != null
-    ? Number(stock.dist_52w_high_pct)
-    : high52w && high52w > 0 ? ((price - high52w) / high52w) * 100 : 0;
+  // Compute distance to 52w high dynamically based on live price
+  const distHigh = (high52w && high52w > 0 && price > 0)
+    ? ((price - high52w) / high52w) * 100
+    : (stock.dist_52w_high_pct != null ? Number(stock.dist_52w_high_pct) : 0);
 
   // 1. Moving average status
   const aboveMa200 = ma200 ? price >= ma200 * 0.94 : true;
@@ -374,6 +379,7 @@ export default function Top10QuantTab({ onSelectStock, onSelectStockForChart }) 
   }); // 'CONVICTION' | 'TRADE' | 'GARP' | 'ROIC' | 'FCF' | 'ROE' | 'GROWTH' | 'VALUE'
   const [showAllRows, setShowAllRows] = useState(false);
   const [screenerData, setScreenerData] = useState({ us_stocks: [], bist_stocks: [], scanned_at: null });
+  const [screenerQuotes, setScreenerQuotes] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -401,7 +407,7 @@ export default function Top10QuantTab({ onSelectStock, onSelectStockForChart }) 
 
       const extraParam = customList && customList.length > 0 ? `&extra=${encodeURIComponent(customList.join(','))}` : '';
       const forceParam = force ? '&force=1' : '';
-      const res = await fetch(`/api/market?type=screener${extraParam}${forceParam}`);
+      const res = await fetch(`/api/market?type=screener${extraParam}${forceParam}&_t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.status === 'success') {
@@ -425,6 +431,49 @@ export default function Top10QuantTab({ onSelectStock, onSelectStockForChart }) 
     fetchScreener(false, extraTickers);
   }, [fetchScreener, extraTickers]);
 
+  // Batch fetch live prices for all stocks in the screener universe
+  const fetchLiveScreenerPrices = useCallback(async () => {
+    try {
+      const allTickers = [
+        ...(screenerData.us_stocks || []).map(s => s.ticker),
+        ...(screenerData.bist_stocks || []).map(s => s.ticker)
+      ].filter(Boolean);
+
+      if (allTickers.length === 0) return;
+
+      const uniqueTickers = Array.from(new Set(allTickers));
+      const chunks = [];
+      const CHUNK_SIZE = 35;
+      for (let i = 0; i < uniqueTickers.length; i += CHUNK_SIZE) {
+        chunks.push(uniqueTickers.slice(i, i + CHUNK_SIZE));
+      }
+
+      const newQuotes = {};
+      for (const chunk of chunks) {
+        const symStr = encodeURIComponent(chunk.join(','));
+        const res = await fetch(`/api/market?symbols=${symStr}&_t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === 'object') {
+            Object.assign(newQuotes, data);
+          }
+        }
+      }
+
+      if (Object.keys(newQuotes).length > 0) {
+        setScreenerQuotes(prev => ({ ...prev, ...newQuotes }));
+      }
+    } catch (err) {
+      console.warn('Live screener quotes update failed:', err);
+    }
+  }, [screenerData.us_stocks, screenerData.bist_stocks]);
+
+  useEffect(() => {
+    fetchLiveScreenerPrices();
+    const interval = setInterval(fetchLiveScreenerPrices, 30000);
+    return () => clearInterval(interval);
+  }, [fetchLiveScreenerPrices]);
+
   const handleAddTicker = (e) => {
     e.preventDefault();
     const raw = customTickerInput.trim().toUpperCase();
@@ -440,13 +489,16 @@ export default function Top10QuantTab({ onSelectStock, onSelectStockForChart }) 
     setCustomTickerInput('');
   };
 
-  // Merge live real-time prices from marketQuotes into the screener universe
+  // Merge live real-time prices from screenerQuotes & marketQuotes into the screener universe
   const rawList = market === 'US' ? screenerData.us_stocks : screenerData.bist_stocks;
 
   const processedStocks = useMemo(() => {
     const enriched = (rawList || []).map(stock => {
       const cleanTicker = (stock.ticker || '').replace('.IS', '').toUpperCase();
       const q =
+        screenerQuotes[stock.ticker] ||
+        screenerQuotes[`${cleanTicker}.IS`] ||
+        screenerQuotes[cleanTicker] ||
         marketQuotes[stock.ticker] ||
         marketQuotes[`${cleanTicker}.IS`] ||
         marketQuotes[cleanTicker];
@@ -567,7 +619,7 @@ export default function Top10QuantTab({ onSelectStock, onSelectStockForChart }) 
     });
 
     return filtered.map((item, idx) => ({ ...item, displayRank: idx + 1 }));
-  }, [rawList, marketQuotes, sortMode]);
+  }, [rawList, screenerQuotes, marketQuotes, sortMode]);
 
   const top10Cards = useMemo(() => processedStocks.slice(0, 10), [processedStocks]);
   const tableRows = useMemo(

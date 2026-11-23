@@ -432,9 +432,12 @@ export const AppProvider = ({ children }) => {
         // US Tech & Wall Street Core Leaders (Top 10 & Leaders)
         'NVDA', 'AMZN', 'SOFI', 'AAPL', 'MSFT', 'TSLA', 'GOOGL', 'META', 'PLTR', 'AMD', 'TSM', 'AVGO',
         'CVX', 'XOM', 'ABBV', 'TXN', 'MRK', 'JPM', 'LLY', 'JNJ', 'QCOM', 'CSCO', 'CAT', 'GLD', 'ITA', 'SCHD',
+        // Quant Screener & Trade Momentum Leaders
+        'APP', 'MU', 'ASML', 'LRCX', 'KLAC', 'AMAT', 'FIX', 'ANET', 'CRDO', 'COHR', 'AXON', 'SYM', 'ASND', 'EXEL', 'ISRG', 'UNH', 'WSM', 'COST', 'MELI', 'V', 'MA', 'BRK-B', 'NFLX', 'ORCL', 'CRM',
         // BIST Core Leaders (Top 10 & Leaders)
         'THYAO.IS', 'TUPRS.IS', 'FROTO.IS', 'EREGL.IS', 'ASELS.IS', 'BIMAS.IS', 'KCHOL.IS', 'SISE.IS', 'GARAN.IS', 'AKBNK.IS', 'BYDNR.IS', 'BYDNR',
         'AGHOL.IS', 'KRDMD.IS', 'SOKM.IS', 'CCOLA.IS', 'BRSAN.IS', 'VAKBN.IS', 'TRGYO.IS', 'AEFES.IS', 'HALKB.IS', 'TOASO.IS',
+        'MGROS.IS', 'ASTOR.IS', 'ENKAI.IS', 'PGSUS.IS', 'DOAS.IS', 'MAVI.IS', 'TCELL.IS', 'TTKOM.IS', 'ISCTR.IS', 'YKBNK.IS', 'SAHOL.IS', 'KOZAL.IS',
         // Potential & Radar Stocks (Multi-Baggers)
         'SPCX', 'DRAM', 'VRT', 'ALAB', 'CAMT', 'MRVL', 'POET', 'VKTX', 'RXRX', 'IONQ'
       ]);

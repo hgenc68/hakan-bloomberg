@@ -1586,19 +1586,21 @@ export default async function handler(req, res) {
   // Handle Live GARP / ROIC / FCF Fundamental Screener request (100% Real Data from Yahoo Finance)
   if (type === 'screener') {
     try {
-      if (!globalThis.__screenerCache) {
-        globalThis.__screenerCache = { data: null, timestamp: 0, extraKey: '' };
-      }
       const forceRefresh = req.query.force === '1' || req.query.force === 'true';
       const extraRaw = (req.query.extra || '').toUpperCase().trim();
       const now = Date.now();
+
+      if (!globalThis.__screenerCache || forceRefresh) {
+        globalThis.__screenerCache = { data: null, timestamp: 0, extraKey: '' };
+      }
 
       if (
         !forceRefresh &&
         globalThis.__screenerCache.data &&
         globalThis.__screenerCache.extraKey === extraRaw &&
-        now - globalThis.__screenerCache.timestamp < 10 * 60 * 1000
+        now - globalThis.__screenerCache.timestamp < 3 * 60 * 1000
       ) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
         return res.status(200).json(globalThis.__screenerCache.data);
       }
 
@@ -1938,7 +1940,9 @@ export default async function handler(req, res) {
         extraKey: extraRaw
       };
 
-      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       return res.status(200).json(responsePayload);
     } catch (err) {
       return res.status(500).json({ status: 'error', message: err.message });
