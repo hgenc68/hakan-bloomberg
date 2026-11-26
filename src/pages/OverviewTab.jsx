@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp, KNOWN_CRYPTO_SET } from '../context/AppContext';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, registerables } from 'chart.js';
-import { TrendingUp, TrendingDown, DollarSign, Award, Shield, PieChart as PieIcon, ArrowUpRight, FileText, Printer, X, Zap, CheckCircle2, Dna, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Award, Shield, PieChart as PieIcon, ArrowUpRight, FileText, Printer, X, Zap, CheckCircle2, Dna, Activity, Sparkles, ArrowRight } from 'lucide-react';
 import stocksData from '../data/stocksData.json';
 
 ChartJS.register(...registerables);
@@ -344,6 +344,63 @@ export default function OverviewTab() {
             {dayPLPct >= 0 ? '▲ +' : '▼ '}{fmt(dayPLPct, 2)}%
           </span>
         </div>
+      </div>
+
+      {/* 🌟 Hızlı Geçiş: Yönetici Portföy Röntgeni & Getiri Analizi */}
+      <div 
+        style={{
+          marginTop: 14,
+          padding: '12px 18px',
+          background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(16, 185, 129, 0.12) 100%)',
+          borderRadius: 10,
+          border: '1px solid rgba(245, 158, 11, 0.35)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Sparkles size={16} className="text-gold" />
+          </div>
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>YÖNETİCİ PORTFÖY RÖNTGENİ & GETİRİ ANALİZİ</span>
+              <span className="nav-badge gold" style={{ fontSize: 9, padding: '1px 6px' }}>16:9 SNAPSHOT</span>
+            </div>
+            <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 2 }}>
+              Ağırlık kapsül barları, Moat & Risk strateji kartları ve Gain/Loss getiri dağılımı grafiği
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            try { localStorage.setItem('bb_holdings_display_mode', 'executive'); } catch {}
+            setActiveTab('holdings');
+          }}
+          className="btn-primary"
+          style={{
+            padding: '7px 16px',
+            fontSize: 11.5,
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #f59e0b, #10b981)',
+            color: '#000',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.25)'
+          }}
+        >
+          <span>Röntgen Görünümüne Git</span>
+          <ArrowRight size={13} />
+        </button>
       </div>
 
       {/* 🧬 PORTFÖY DNA RÖNTGENİ & KONSOLİDASYON KARNESİ */}

@@ -13,6 +13,7 @@ import potentialStocksData from '../data/potentialStocksData.json';
 import benchmarkData from '../data/benchmarkData.json';
 import { getHealthColorTheme } from './RiskRadarTab';
 import { getTickerSector, SECTOR_DEFINITIONS, DEFAULT_CONCENTRATION_LIMITS } from '../data/sectorConfig';
+import ExecutivePortfolioSnapshot from '../components/ExecutivePortfolioSnapshot';
 
 ChartJS.register(...registerables);
 
@@ -34,6 +35,13 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
   const [tableSubMode, setTableSubMode] = useState('financial'); // 100% real financial view
   const [expandedRebalanceId, setExpandedRebalanceId] = useState(null);
   const [showFinvestCard, setShowFinvestCard] = useState(true);
+  const [holdingsDisplayMode, setHoldingsDisplayMode] = useState(() => {
+    try {
+      return localStorage.getItem('bb_holdings_display_mode') || 'table';
+    } catch {
+      return 'table';
+    }
+  }); // 'table' | 'executive'
 
   const isTRY = currentCurrency === 'try';
   const sym = isTRY ? '₺' : '$';
@@ -1619,6 +1627,73 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
           </button>
         </div>
       </div>
+
+      {/* 🧭 VIEW SWITCHER: [ 📋 Detaylı Pozisyon Tablosu ]  [ 📊 Yönetici Portföy Röntgeni & Getiri Analizi ] */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 6, background: 'rgba(0,0,0,0.5)', padding: '3px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <button
+            type="button"
+            className={`chip-btn ${holdingsDisplayMode === 'table' ? 'active' : ''}`}
+            onClick={() => {
+              setHoldingsDisplayMode('table');
+              try { localStorage.setItem('bb_holdings_display_mode', 'table'); } catch {}
+            }}
+            style={{
+              padding: '6px 14px',
+              fontSize: 11.5,
+              fontWeight: 800,
+              background: holdingsDisplayMode === 'table' ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
+              borderColor: holdingsDisplayMode === 'table' ? 'var(--cyan)' : 'transparent',
+              color: holdingsDisplayMode === 'table' ? '#ffffff' : 'var(--text-muted)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <Layers size={13} />
+            <span>📋 Standart Pozisyon Tablosu</span>
+          </button>
+          <button
+            type="button"
+            className={`chip-btn ${holdingsDisplayMode === 'executive' ? 'active' : ''}`}
+            onClick={() => {
+              setHoldingsDisplayMode('executive');
+              try { localStorage.setItem('bb_holdings_display_mode', 'executive'); } catch {}
+            }}
+            style={{
+              padding: '6px 14px',
+              fontSize: 11.5,
+              fontWeight: 800,
+              background: holdingsDisplayMode === 'executive' ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(16, 185, 129, 0.2))' : 'transparent',
+              borderColor: holdingsDisplayMode === 'executive' ? 'var(--gold)' : 'transparent',
+              color: holdingsDisplayMode === 'executive' ? '#ffffff' : 'var(--text-muted)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <Sparkles size={13} style={{ color: '#fbbf24' }} />
+            <span>📊 Yönetici Portföy Röntgeni (Snapshot)</span>
+            <span className="nav-badge gold" style={{ fontSize: 9, padding: '1px 5px' }}>YENİ</span>
+          </button>
+        </div>
+
+        {holdingsDisplayMode === 'executive' && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>💡 16:9 Yönetici Özeti, Moat & Risk Analizi ve Getiri Dağılımı</span>
+          </div>
+        )}
+      </div>
+
+      {holdingsDisplayMode === 'executive' ? (
+        <ExecutivePortfolioSnapshot
+          portfolioSummary={portfolioSummary}
+          currentCurrency={currentCurrency}
+          onSelectStockForChart={onSelectStockForChart}
+          onSelectStockForAnalysis={onSelectStockForAnalysis}
+        />
+      ) : (
+        <>
 
       {/* ========================================================================= */}
       {/* 📈 GÖRÜNÜM 1: HİSSE & ETF PORTFÖYÜ (%100 GERÇEK PORTFÖY VERİLERİ)         */}
@@ -3478,6 +3553,8 @@ export default function HoldingsTab({ onOpenSellModal, onOpenEditModal, onOpenAd
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
