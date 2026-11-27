@@ -883,15 +883,33 @@ export default function MarketPulseTab({ onSelectStock }) {
     { name: 'S&P 500', symbol: 'SPY', price: marketQuotes['SPY']?.price || 762.63, today: marketQuotes['SPY']?.changePct || -0.20, d5: -0.67, m1: -0.58, ytd: 11.63, y1: 14.09 },
     { name: 'Nasdaq 100', symbol: 'QQQ', price: marketQuotes['QQQ']?.price || 739.77, today: marketQuotes['QQQ']?.changePct || 0.25, d5: -0.19, m1: 3.21, ytd: 20.66, y1: 22.63 },
     { name: 'Dow Jones', symbol: 'DIA', price: marketQuotes['DIA']?.price || 508.55, today: marketQuotes['DIA']?.changePct || -0.84, d5: -1.12, m1: -4.33, ytd: 5.15, y1: 9.54 },
-    { name: 'BIST 100', symbol: 'XU100.IS', price: marketQuotes['XU100.IS']?.price || 10850.4, today: marketQuotes['XU100.IS']?.changePct || 0.45, d5: 1.25, m1: 4.80, ytd: 38.63, y1: 42.10 },
+    { name: 'BIST 100', symbol: 'XU100.IS', price: marketQuotes['XU100.IS']?.price || 10996.25, today: marketQuotes['XU100.IS']?.changePct || 2.36, d5: 1.25, m1: -1.51, ytd: -6.03, y1: 0.46 },
+    { name: 'BIST 100 ($ USD)', symbol: 'XU100/USD', price: (marketQuotes['XU100.IS']?.price && usdtry) ? Number((marketQuotes['XU100.IS'].price / usdtry).toFixed(2)) : 216.54, today: 2.23, d5: -1.69, m1: -3.42, ytd: -19.03, y1: -16.03, isUsdTerms: true },
     { name: 'Altın (Ons)', symbol: 'GC=F', price: marketQuotes['GC=F']?.price || 4198.10, today: marketQuotes['GC=F']?.changePct || 0.38, d5: 0.85, m1: 3.40, ytd: 28.50, y1: 36.20 },
     { name: 'Brent Petrol', symbol: 'BZ=F', price: marketQuotes['BZ=F']?.price || 74.20, today: marketQuotes['BZ=F']?.changePct || -0.65, d5: -1.80, m1: -3.10, ytd: -2.40, y1: -5.10 },
     { name: 'ABD 10Y Tahvil', symbol: '^TNX', price: marketQuotes['^TNX']?.price || 4.15, today: marketQuotes['^TNX']?.changePct || -0.40, d5: 0.12, m1: -0.85, ytd: -1.20, y1: -2.50 },
-    { name: 'Dolar / TL', symbol: 'USDTRY=X', price: usdtry || 49.03, today: marketQuotes['USDTRY=X']?.changePct || 0.12, d5: 0.45, m1: 1.85, ytd: 18.40, y1: 32.10 }
+    { name: 'Dolar / TL', symbol: 'USDTRY=X', price: usdtry || 50.78, today: marketQuotes['USDTRY=X']?.changePct || 0.12, d5: 0.45, m1: 1.85, ytd: 18.40, y1: 32.10 }
   ];
 
   const equities = liveEquities && liveEquities.length > 0
     ? liveEquities.map(item => {
+        if (item.symbol === 'XU100/USD' || item.isUsdTerms) {
+          const qBist = marketQuotes['XU100.IS'] || marketQuotes['XU100'];
+          const qUsd = marketQuotes['USDTRY=X'] || marketQuotes['USDTRY'];
+          const livePrice = (qBist?.price && qUsd?.price) ? Number((qBist.price / qUsd.price).toFixed(2)) : item.price;
+          let liveToday = item.today;
+          if (qBist?.changePct != null && qUsd?.changePct != null) {
+            const rb = Number(qBist.changePct) / 100;
+            const ru = Number(qUsd.changePct) / 100;
+            liveToday = Number((((1 + rb) / (1 + ru) - 1) * 100).toFixed(2));
+          }
+          return {
+            ...item,
+            price: livePrice,
+            today: liveToday,
+            isUsdTerms: true
+          };
+        }
         const q = marketQuotes[item.symbol];
         return {
           ...item,
@@ -1241,12 +1259,36 @@ export default function MarketPulseTab({ onSelectStock }) {
                 <tbody>
                   {equities.map((eq, i) => {
                     const isPositive = (n) => n >= 0;
+                    const isUsdTerms = eq.isUsdTerms || eq.symbol === 'XU100/USD';
                     return (
-                      <tr key={eq.symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                        <td style={{ padding: '9px 10px', fontWeight: 700, color: '#fff' }}>{eq.name}</td>
-                        <td style={{ padding: '9px 10px', fontFamily: 'var(--font-mono)', color: 'var(--cyan)' }}>{eq.symbol}</td>
-                        <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                          {eq.price ? eq.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '--'}
+                      <tr 
+                        key={eq.symbol} 
+                        style={{ 
+                          borderBottom: '1px solid rgba(255,255,255,0.04)', 
+                          background: isUsdTerms 
+                            ? 'rgba(56, 189, 248, 0.05)' 
+                            : (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)') 
+                        }}
+                      >
+                        <td style={{ padding: '9px 10px', fontWeight: 700, color: isUsdTerms ? '#38bdf8' : '#fff' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>{eq.name}</span>
+                            {isUsdTerms && (
+                              <span 
+                                className="nav-badge cyan" 
+                                style={{ fontSize: 8.5, padding: '1px 5px', fontWeight: 800 }}
+                                title="BIST 100 Endeksinin Dolar Kuru (USD/TRY) Arındırılmış Reel Getirisi"
+                              >
+                                💵 DOLAR BAZLI
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '9px 10px', fontFamily: 'var(--font-mono)', color: isUsdTerms ? '#38bdf8' : 'var(--cyan)' }}>
+                          {eq.symbol}
+                        </td>
+                        <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, color: isUsdTerms ? '#38bdf8' : 'inherit' }}>
+                          {isUsdTerms ? '$' : ''}{eq.price ? eq.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '--'}
                         </td>
                         <td style={{ padding: '9px 10px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, color: isPositive(eq.today) ? 'var(--emerald)' : 'var(--red)' }}>
                           {isPositive(eq.today) ? '+' : ''}{Number(eq.today).toFixed(2)}%
@@ -1497,16 +1539,16 @@ export default function MarketPulseTab({ onSelectStock }) {
                     {sec.stocks.map(st => {
                       const sym = st.ticker.toUpperCase();
                       const liveQ = marketQuotes[sym] || (isBist ? marketQuotes[sym + '.IS'] : marketQuotes[sym + '-USD']) || {};
-                      const price = liveQ.price != null && liveQ.price > 0 ? liveQ.price : st.defaultPrice;
-                      const changePct = liveQ.changePct != null ? liveQ.changePct : st.defaultChange;
-                      const col = getHeatmapColor(changePct);
+                      const price = liveQ.price != null && liveQ.price > 0 ? liveQ.price : null;
+                      const changePct = liveQ.changePct != null ? liveQ.changePct : null;
+                      const col = getHeatmapColor(changePct ?? 0);
                       const isTRY = isBist || sym.endsWith('.IS');
 
                       return (
                         <div
                           key={st.ticker}
                           onClick={() => onSelectStock && onSelectStock(st.ticker)}
-                          title={`${st.name} (${st.ticker}) - ${st.cap} | Tıkla ve DCF Analizine Git`}
+                          title={`${st.name} (${st.ticker}) | Tıkla ve DCF Analizine Git`}
                           style={{
                             background: col.bg,
                             border: `1px solid ${col.border}50`,
@@ -1536,10 +1578,10 @@ export default function MarketPulseTab({ onSelectStock }) {
                             {st.ticker}
                           </div>
                           <div style={{ fontSize: 9, color: '#f1f5f9', opacity: 0.9, marginTop: 1, fontFamily: 'var(--font-mono)' }}>
-                            {isTRY ? '₺' : '$'}{Number(price).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}
+                            {price != null ? `${isTRY ? '₺' : '$'}${Number(price).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}` : '—'}
                           </div>
                           <div style={{ fontSize: 9.5, fontWeight: 800, color: col.text, marginTop: 1, fontFamily: 'var(--font-mono)' }}>
-                            {changePct >= 0 ? '+' : ''}{Number(changePct).toFixed(1)}%
+                            {changePct != null ? `${changePct >= 0 ? '+' : ''}${Number(changePct).toFixed(1)}%` : '—'}
                           </div>
                         </div>
                       );
@@ -1557,283 +1599,6 @@ export default function MarketPulseTab({ onSelectStock }) {
           </div>
         );
       })()}
-
-      {/* ========================================================================= */}
-      {/* 📅 BİLANÇO & MAKRO KATALİZÖR TAKVİMİ                                 */}
-      {/* ========================================================================= */}
-      <div className="card" style={{ padding: 18, background: '#070a13', border: '1px solid var(--border)', marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(56,189,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Calendar size={20} className="text-cyan" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 13, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>BİLANÇO & MAKRO KATALİZÖR TAKVİMİ</span>
-                <span className="nav-badge cyan" style={{ fontSize: 9.5 }}>Katalizör Takvimi</span>
-              </div>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                Şirket Bilanço Açıklama Günleri, Konsensüs Beklentileri & Fed / TCMB Toplantıları
-              </span>
-            </div>
-          </div>
-
-          {/* Sub-Tabs: Şirket Bilançoları vs Makro Katalizörler */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {calendarTab === 'earnings' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="nav-badge emerald" style={{ fontSize: 9, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                  <span>OTOMATİK BİLANÇO RADARI AKTİF</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleAutoSyncEarnings}
-                  className="chip-btn"
-                  title="Canlı Bilanço ve Konsensüs Sonuçlarını Tara"
-                  style={{ fontSize: 10, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#38bdf8' }}
-                >
-                  <RefreshCw size={11} className={isAutoSyncingEarnings ? 'animate-spin' : ''} />
-                  <span>{isAutoSyncingEarnings ? 'Taranıyor...' : 'Canlı Bilanço Tara'}</span>
-                </button>
-              </div>
-            )}
-            <button
-              type="button"
-              className={`chip-btn ${calendarTab === 'earnings' ? 'active' : ''}`}
-              onClick={() => setCalendarTab('earnings')}
-              style={{ fontSize: 10.5, padding: '4px 10px' }}
-            >
-              🏢 Şirket Bilançoları ({UPCOMING_EARNINGS_CALENDAR.length})
-            </button>
-            <button
-              type="button"
-              className={`chip-btn ${calendarTab === 'macro' ? 'active' : ''}`}
-              onClick={() => setCalendarTab('macro')}
-              style={{ fontSize: 10.5, padding: '4px 10px' }}
-            >
-              🏛️ Fed & TCMB Makro ({UPCOMING_MACRO_CATALYSTS.length})
-            </button>
-          </div>
-        </div>
-
-        {calendarTab === 'earnings' ? (
-          /* Earnings Calendar Table */
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: 10 }}>
-                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>HİSSE & ŞİRKET</th>
-                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>BİLANÇO TARİHİ & SAATİ</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>DURUM / GERİ SAYIM</th>
-                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>EPS (BEKLENEN / GERÇEK)</th>
-                  <th style={{ textAlign: 'right', padding: '6px 8px' }}>CİRO (BEKLENEN / GERÇEK)</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>KONSENSÜS / SONUÇ</th>
-                  <th style={{ textAlign: 'left', padding: '6px 8px' }}>ANA KATALİZÖR & ÖZET SONUÇ NOTU</th>
-                </tr>
-              </thead>
-              <tbody>
-                {UPCOMING_EARNINGS_CALENDAR.map((rawItem, idx) => {
-                  const item = resolveEarningsItem(rawItem, marketQuotes, earningsRegistry);
-                  const diff = item.daysDiff;
-                  const isAnnounced = item.isAnnounced;
-                  const isNegative = item.resultStatus === 'MISS' || (item.resultBadge && (item.resultBadge.includes('MISS') || item.resultBadge.includes('🔴')));
-                  const isMixed = item.resultStatus === 'MIXED' || (item.resultBadge && (item.resultBadge.includes('KARIŞIK') || item.resultBadge.includes('NÖTR') || item.resultBadge.includes('🟡')));
-                  const statusColor = isNegative ? '#ef4444' : isMixed ? '#f59e0b' : '#10b981';
-                  const statusBg = isNegative ? 'rgba(239,68,68,0.08)' : isMixed ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.06)';
-                  const statusBorder = isNegative ? 'rgba(239,68,68,0.3)' : isMixed ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)';
-
-                  let daysText = '';
-                  let daysBadge = 'cyan';
-
-                  if (isAnnounced) {
-                    daysText = 'Açıklandı ✓';
-                    daysBadge = isNegative ? 'red' : isMixed ? 'amber' : 'emerald';
-                  } else if (diff === 0) {
-                    daysText = 'Bugün!';
-                    daysBadge = 'red';
-                  } else if (diff === 1) {
-                    daysText = 'Yarın!';
-                    daysBadge = 'amber';
-                  } else {
-                    daysText = `${diff} Gün Kaldı`;
-                    daysBadge = diff <= 4 ? 'amber' : 'cyan';
-                  }
-
-                  return (
-                    <tr
-                      key={idx}
-                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'background 0.15s ease' }}
-                      onClick={() => onSelectStock && onSelectStock(item.ticker)}
-                      title="Tıkla ve Tekil Hisse Analizine Git"
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '8px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                            {item.ticker}
-                          </span>
-                          <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: item.market === 'BIST' ? 'rgba(59,130,246,0.15)' : 'rgba(6,182,212,0.15)', color: item.market === 'BIST' ? '#3b82f6' : '#06b6d4', fontWeight: 700 }}>
-                            {item.market}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.name}</div>
-                      </td>
-                      <td style={{ padding: '8px 8px', color: '#e2e8f0' }}>
-                        <div style={{ fontWeight: 700 }}>{item.date}</div>
-                        <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>{item.time}</div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '8px 8px' }}>
-                        <span className={`nav-badge ${daysBadge}`} style={{ fontSize: 9.5, padding: '2px 8px', fontWeight: 800 }}>
-                          {daysText}
-                        </span>
-                        {isAnnounced && item.priceReaction && (
-                          <div style={{ fontSize: 9.5, fontWeight: 700, color: item.priceReaction.startsWith('+') ? '#10b981' : item.priceReaction.startsWith('-') ? '#ef4444' : '#f59e0b', marginTop: 3 }}>
-                            Reaksiyon: {item.priceReaction}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                        {isAnnounced && item.actualEPS ? (
-                          <>
-                            <div style={{ color: statusColor, fontSize: 12 }}>{item.actualEPS}</div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Bekl: {item.expectedEPS}</div>
-                            {item.epsSurprise && (
-                              <div style={{ fontSize: 8.5, color: statusColor, fontWeight: 600 }}>{item.epsSurprise}</div>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <div style={{ color: '#fff' }}>{item.expectedEPS}</div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Önceki: {item.prevEPS}</div>
-                          </>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'right', padding: '8px 8px', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                        {isAnnounced && item.actualRev ? (
-                          <>
-                            <div style={{ color: '#38bdf8', fontSize: 12 }}>{item.actualRev}</div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Bekl: {item.expectedRev}</div>
-                          </>
-                        ) : (
-                          <span style={{ color: 'var(--cyan)' }}>{item.expectedRev}</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '8px 8px' }}>
-                        {isAnnounced ? (
-                          <>
-                            <span style={{ fontSize: 9.5, fontWeight: 800, color: statusColor, background: statusBg, padding: '2px 6px', borderRadius: 4, border: `1px solid ${statusBorder}`, display: 'inline-block' }}>
-                              {item.resultBadge || (isNegative ? '🔴 MISS' : isMixed ? '🟡 KARIŞIK' : '🟢 BEAT')}
-                            </span>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>Tarihsel: {item.beatRate}</div>
-                          </>
-                        ) : (
-                          <>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--emerald)' }}>
-                              {item.consensus}
-                            </span>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>Tarihsel Beat: {item.beatRate}</div>
-                          </>
-                        )}
-                      </td>
-                      <td style={{ padding: '8px 8px', fontSize: 10.5 }}>
-                        {isAnnounced && item.resultSummary ? (
-                          <div style={{
-                            background: statusBg,
-                            borderLeft: `3px solid ${statusColor}`,
-                            padding: '5px 8px',
-                            borderRadius: '0 4px 4px 0',
-                            maxWidth: 440
-                          }}>
-                            <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 10, lineHeight: 1.35 }}>
-                              {item.resultSummary}
-                            </div>
-                            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <span>📌 Katalizör: {item.catalyst}</span>
-                              {item.isVerified && (
-                                <span style={{ color: '#10b981', fontWeight: 700, fontSize: 8.5, background: 'rgba(16,185,129,0.1)', padding: '1px 5px', borderRadius: 3 }}>
-                                  ✓ SEC / KAP Teyitli
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <span style={{ color: '#94a3b8' }}>{item.catalyst}</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          /* Macro Catalysts Grid */
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-            {UPCOMING_MACRO_CATALYSTS.map((m, idx) => {
-              const diff = calculateDayDiff(m.targetDate);
-              const isAnnounced = m.isAnnounced || diff < 0;
-              let countdownLabel = '';
-              let badgeColor = 'var(--cyan)';
-
-              if (isAnnounced) {
-                countdownLabel = 'Gerçekleşti ✓';
-                badgeColor = '#94a3b8';
-              } else if (diff === 0) {
-                countdownLabel = 'Bugün!';
-                badgeColor = '#ef4444';
-              } else if (diff === 1) {
-                countdownLabel = 'Yarın!';
-                badgeColor = '#f59e0b';
-              } else {
-                countdownLabel = `${diff} Gün Kaldı`;
-                badgeColor = diff <= 4 ? 'var(--emerald)' : 'var(--amber)';
-              }
-
-              return (
-                <div key={idx} style={{ background: '#090d18', padding: 14, borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <span className="nav-badge cyan" style={{ fontSize: 9 }}>{m.status}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: badgeColor, fontFamily: 'var(--font-mono)' }}>
-                      ⏱️ {countdownLabel}
-                    </span>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: 12.5, color: '#fff', marginBottom: 4 }}>
-                    {m.event}
-                  </div>
-                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 8 }}>
-                    📅 Tarih: <strong style={{ color: '#e2e8f0' }}>{m.date} ({m.time})</strong>
-                  </div>
-                  <div style={{ background: '#0b101c', padding: '8px 10px', borderRadius: 4, fontSize: 10.5, marginBottom: 8 }}>
-                    <div>Beklenti: <strong style={{ color: 'var(--emerald)' }}>{m.expectation}</strong></div>
-                    <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>Önceki Seviye: {m.prev}</div>
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--cyan)' }}>
-                    🎯 Etki: <strong>{m.impact}</strong>
-                  </div>
-                  {m.actualResult && (
-                    <div style={{
-                      marginTop: 8,
-                      background: 'rgba(16,185,129,0.08)',
-                      border: '1px solid rgba(16,185,129,0.25)',
-                      borderLeft: '3px solid #10b981',
-                      padding: '7px 9px',
-                      borderRadius: 4,
-                      fontSize: 10.5
-                    }}>
-                      <div style={{ fontSize: 9.5, fontWeight: 800, color: '#10b981', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span>✓ GERÇEKLEŞEN KARAR & ÖZET</span>
-                      </div>
-                      <div style={{ color: '#f1f5f9', lineHeight: 1.35, fontWeight: 600 }}>{m.actualResult}</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
       {/* Live Financial & KAP News Feed Card */}
       <div className="card" style={{ padding: 18, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>

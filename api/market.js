@@ -998,6 +998,7 @@ async function fetchEquitiesMatrix() {
     { name: 'Nasdaq 100', symbol: 'QQQ' },
     { name: 'Dow Jones', symbol: 'DIA' },
     { name: 'BIST 100', symbol: 'XU100.IS' },
+    { name: 'BIST 100 ($ USD)', symbol: 'XU100/USD', isSynthetic: true },
     { name: 'Altın (Ons)', symbol: 'GC=F' },
     { name: 'Brent Petrol', symbol: 'BZ=F' },
     { name: 'ABD 10Y Tahvil', symbol: '^TNX' },
@@ -1005,7 +1006,9 @@ async function fetchEquitiesMatrix() {
   ];
 
   const results = [];
-  await Promise.all(syms.map(async (item) => {
+  const chartDataMap = {};
+
+  await Promise.all(syms.filter(s => !s.isSynthetic).map(async (item) => {
     try {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=1d&range=1y`;
       const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
@@ -1016,6 +1019,13 @@ async function fetchEquitiesMatrix() {
       const closes = (j?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || []).filter(c => typeof c === 'number' && !isNaN(c));
       const len = closes.length;
       if (len === 0) return;
+
+      chartDataMap[item.symbol] = {
+        meta,
+        timestamps,
+        closes,
+        rawResult: j?.chart?.result?.[0]
+      };
 
       const cur = meta?.regularMarketPrice || closes[len - 1];
       const prev = meta?.previousClose || (len > 1 ? closes[len - 2] : cur);
@@ -1047,6 +1057,93 @@ async function fetchEquitiesMatrix() {
       });
     } catch (e) {}
   }));
+
+  // Calculate synthetic BIST 100 in USD terms (XU100/USD)
+  const bData = chartDataMap['XU100.IS'];
+  const uData = chartDataMap['USDTRY=X'];
+
+  if (bData && uData) {
+    try {
+      const bTimes = bData.timestamps || [];
+      const bCloses = bData.rawResult?.indicators?.quote?.[0]?.close || [];
+      const uTimes = uData.timestamps || [];
+      const uCloses = uData.rawResult?.indicators?.quote?.[0]?.close || [];
+
+      // Create date-indexed map for USD/TRY (YYYY-MM-DD)
+      const usdMap = new Map();
+      for (let i = 0; i < uTimes.length; i++) {
+        const val = uCloses[i];
+        if (typeof val === 'number' && !isNaN(val) && val > 0) {
+          const dt = new Date(uTimes[i] * 1000).toISOString().slice(0, 10);
+          usdMap.set(dt, val);
+        }
+      }
+
+      // Build daily ratio series
+      const ratioSeries = [];
+      let lastKnownUsd = uData.meta?.regularMarketPrice || 50.62;
+
+      for (let i = 0; i < bTimes.length; i++) {
+        const bVal = bCloses[i];
+        if (typeof bVal === 'number' && !isNaN(bVal) && bVal > 0) {
+          const dt = new Date(bTimes[i] * 1000).toISOString().slice(0, 10);
+          if (usdMap.has(dt)) {
+            lastKnownUsd = usdMap.get(dt);
+          }
+          ratioSeries.push({
+            time: bTimes[i],
+            date: dt,
+            ratio: bVal / lastKnownUsd
+          });
+        }
+      }
+
+      const curBist = bData.meta?.regularMarketPrice || bCloses[bCloses.length - 1];
+      const curUsd = uData.meta?.regularMarketPrice || uCloses[uCloses.length - 1];
+      const curRatio = (curBist && curUsd) ? curBist / curUsd : 216.44;
+
+      const rLen = ratioSeries.length;
+      const prevRatio = rLen > 1 ? ratioSeries[rLen - 2].ratio : curRatio;
+      const d5Ratio = rLen > 5 ? ratioSeries[rLen - 6].ratio : (rLen > 0 ? ratioSeries[0].ratio : curRatio);
+      const m1Ratio = rLen > 21 ? ratioSeries[rLen - 22].ratio : (rLen > 0 ? ratioSeries[0].ratio : curRatio);
+      const y1Ratio = rLen > 0 ? ratioSeries[0].ratio : curRatio;
+
+      const curYear = new Date().getFullYear();
+      let ytdRatio = rLen > 0 ? ratioSeries[0].ratio : curRatio;
+      for (let i = 0; i < ratioSeries.length; i++) {
+        if (new Date(ratioSeries[i].time * 1000).getFullYear() === curYear) {
+          ytdRatio = ratioSeries[i].ratio;
+          break;
+        }
+      }
+
+      const calcRatioPct = (base) => base > 0 ? Number((((curRatio - base) / base) * 100).toFixed(2)) : 0;
+
+      // Real-time today return: ((1 + r_bist) / (1 + r_usd) - 1) * 100
+      let todayPct = calcRatioPct(prevRatio);
+      const bTodayPct = bData.meta?.regularMarketChangePercent;
+      const uTodayPct = uData.meta?.regularMarketChangePercent;
+      if (bTodayPct != null && uTodayPct != null) {
+        const rb = bTodayPct / 100;
+        const ru = uTodayPct / 100;
+        todayPct = Number((((1 + rb) / (1 + ru) - 1) * 100).toFixed(2));
+      }
+
+      results.push({
+        name: 'BIST 100 ($ USD)',
+        symbol: 'XU100/USD',
+        price: Number(curRatio.toFixed(2)),
+        today: todayPct,
+        d5: calcRatioPct(d5Ratio),
+        m1: calcRatioPct(m1Ratio),
+        ytd: calcRatioPct(ytdRatio),
+        y1: calcRatioPct(y1Ratio),
+        isUsdTerms: true
+      });
+    } catch (e) {
+      console.warn('XU100/USD calculation error:', e.message);
+    }
+  }
 
   const ordered = [];
   syms.forEach(s => {
